@@ -167,7 +167,7 @@ static void test_earth_body_starts_at_perihelion_with_tangential_velocity(void)
     assert_close(earth.position_m.x, 0.0, 1e-12);
     assert_close(earth.position_m.y, 0.0, 1e-12);
     assert_close(earth.position_m.z, SOLAR_EARTH_PERIHELION_M, 1e-3);
-    assert_close(earth.velocity_mps.x, SOLAR_EARTH_PERIHELION_SPEED_MPS, 1e-6);
+    assert_close(earth.velocity_mps.x, -SOLAR_EARTH_PERIHELION_SPEED_MPS, 1e-6);
     assert_close(earth.velocity_mps.y, 0.0, 1e-12);
     assert_close(earth.velocity_mps.z, 0.0, 1e-12);
 }
@@ -315,7 +315,7 @@ static void test_earth_moves_after_one_day_while_sun_stays_fixed(void)
     assert_close(system.bodies[0].position_m.x, 0.0, 1e-12);
     assert_close(system.bodies[0].position_m.y, 0.0, 1e-12);
     assert_close(system.bodies[0].position_m.z, 0.0, 1e-12);
-    assert(system.bodies[3].position_m.x > initial_earth_position.x);
+    assert(system.bodies[3].position_m.x < initial_earth_position.x);
     assert(system.bodies[3].position_m.z < initial_earth_position.z);
 }
 

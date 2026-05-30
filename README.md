@@ -17,11 +17,11 @@ Current milestone behavior:
 - Keeps the Sun fixed at the origin for a stable heliocentric baseline.
 - Initializes Mercury at perihelion on the +X axis with tangential +Z velocity from the vis-viva equation.
 - Initializes Venus at perihelion on the -X axis with tangential -Z velocity from the vis-viva equation.
-- Initializes Earth at perihelion on the +Z axis with tangential +X velocity from the vis-viva equation.
+- Initializes Earth at perihelion on the +Z axis with tangential -X velocity from the vis-viva equation.
 - Advances Mercury, Venus, and Earth with Newtonian gravity from all simulated bodies using the shared simulation integrator.
 - Supports illustrative/default and real-scale visualization modes.
 - Allows camera focus cycling across every simulated body: Sun, Mercury, Venus, and Earth.
-- Clamps mouse-wheel camera zoom while preserving the fixed default viewing angle, so max zoom-in does not flip or corrupt the camera orientation.
+- Clamps mouse-wheel camera zoom while preserving the default viewing pitch, so max zoom-in does not flip or corrupt the camera orientation.
 - Displays body count, elapsed simulation days, time scale, view mode, camera focus target, camera zoom, and render scale notes.
 
 ## Physics model
@@ -83,12 +83,13 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 
 ## Camera model
 
-The app uses a small fixed-angle orbit camera instead of raylib's automatic orbital helper.
+The app uses a small stable orbit camera instead of raylib's automatic orbital helper.
 
 - Camera target follows the focused body.
+- The camera slowly auto-orbits around the focused body.
 - Mouse-wheel input changes only camera distance.
 - Zoom distance is clamped between a minimum and maximum value.
-- The yaw and pitch remain fixed at the default viewing angle, so zooming all the way in and then back out preserves a stable angle around the focused body.
+- Pitch remains fixed at the default viewing angle, so zooming all the way in and then back out does not flip or corrupt the camera orientation.
 
 ## Controls
 
@@ -98,7 +99,7 @@ The app uses a small fixed-angle orbit camera instead of raylib's automatic orbi
 - `Tab` or `C`: cycle camera focus across Sun, Mercury, Venus, and Earth.
 - Mouse wheel: zoom camera in/out around the focused body.
   - Zoom distance is clamped.
-  - The viewing angle remains fixed so max zoom-in does not flip or corrupt the camera orientation.
+  - The viewing pitch remains fixed so max zoom-in does not flip or corrupt the camera orientation.
 
 ## Build prerequisites
 
