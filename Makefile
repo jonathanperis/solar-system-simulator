@@ -18,13 +18,14 @@ SIM_SRCS := \
     src/sim/physics.c \
     src/sim/solar_system.c
 
-APP_SRCS := src/main.c src/render/renderer.c $(SIM_SRCS)
+APP_SRCS := src/main.c src/app/orbit_camera.c src/render/renderer.c $(SIM_SRCS)
 APP_OBJS := $(APP_SRCS:%.c=build/%.o)
 
 TEST_VEC3D := $(TEST_DIR)/test_vec3d
 TEST_PHYSICS := $(TEST_DIR)/test_physics
 TEST_SOLAR_SYSTEM := $(TEST_DIR)/test_solar_system
-TEST_BINS := $(TEST_VEC3D) $(TEST_PHYSICS) $(TEST_SOLAR_SYSTEM)
+TEST_ORBIT_CAMERA := $(TEST_DIR)/test_orbit_camera
+TEST_BINS := $(TEST_VEC3D) $(TEST_PHYSICS) $(TEST_SOLAR_SYSTEM) $(TEST_ORBIT_CAMERA)
 
 .PHONY: all run test clean
 
@@ -58,6 +59,10 @@ $(TEST_PHYSICS): tests/test_physics.c src/sim/vec3d.c src/sim/body.c src/sim/phy
 $(TEST_SOLAR_SYSTEM): tests/test_solar_system.c $(SIM_SRCS)
 	@mkdir -p $(@D)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $^ $(LDLIBS) -o $@
+
+$(TEST_ORBIT_CAMERA): tests/test_orbit_camera.c src/app/orbit_camera.c src/app/orbit_camera.h
+	@mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_orbit_camera.c src/app/orbit_camera.c $(LDLIBS) -o $@
 
 clean:
 	rm -rf build

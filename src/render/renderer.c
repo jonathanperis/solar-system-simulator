@@ -46,6 +46,10 @@ static Color body_render_color(const Body *body)
         return BEIGE;
     }
 
+    if (body->name != NULL && strcmp(body->name, "Earth") == 0) {
+        return BLUE;
+    }
+
     return LIGHTGRAY;
 }
 
