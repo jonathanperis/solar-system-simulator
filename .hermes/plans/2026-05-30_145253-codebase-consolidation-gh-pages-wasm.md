@@ -26,10 +26,10 @@
 | Agent/product/design context | yes | Missing `AGENTS.md`, `PRODUCT.md`, `DESIGN.md`; Impeccable context created from repo evidence | planning/context docs created in this pass | 100% |
 | Codebase consolidation/refactor | yes | Repeated scene factories, name-based renderer parent/color logic, HUD strings, trail allocation behavior | body IDs/parents, metadata-driven renderer lookup, and generated HUD labels implemented | 70% |
 | Commenting/learning docs | yes | sparse source comments, README is detailed but no per-module docs site | source comments added for physics, units, parent-relative moons, trails, renderer compromises, and substeps | 55% |
-| WASM build pipeline | yes | current Makefile has native build only; Super Mango `make web` uses Emscripten + controlled startup | roadmap with exact files | 20% |
+| WASM build pipeline | yes | current Makefile has native build only; Super Mango `make web` uses Emscripten + controlled startup | native CI workflow added; WASM artifact path remains next | 35% |
 | GitHub Pages/Astro site | yes | no `docs/`; Super Mango uses Astro `docs/`, base path, loader, deploy workflows | roadmap with exact files | 20% |
 
-**Overall planning progress:** ~60% complete. The audit/context scaffolding and first consolidation pass are complete; implementation remains for native CI, WASM build, docs site, and Pages deployment.
+**Overall planning progress:** ~65% complete. The audit/context scaffolding, first consolidation pass, and native CI workflow are complete; implementation remains for WASM build, docs site, and Pages deployment.
 
 ---
 
