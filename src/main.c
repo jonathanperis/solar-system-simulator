@@ -82,9 +82,11 @@ int main(void)
             render_mode = next_render_scale_mode(render_mode);
         }
 
+        float frame_time = GetFrameTime();
         Vector3 camera_target = body_camera_target(&system, focused_body_index);
         orbit_camera_apply_zoom(&orbit_camera, GetMouseWheelMove());
-        solar_system_step(&system, (double)GetFrameTime() * time_scale);
+        orbit_camera_advance(&orbit_camera, frame_time);
+        solar_system_step(&system, (double)frame_time * time_scale);
         camera_target = body_camera_target(&system, focused_body_index);
         apply_orbit_camera(&camera, &orbit_camera, camera_target);
 
@@ -107,7 +109,7 @@ int main(void)
         DrawText(TextFormat("View: %s (V to toggle)", renderer_scale_mode_label(render_mode)), 20, 125, 18, RAYWHITE);
         DrawText(TextFormat("Camera focus: %s (Tab/C to cycle)", focused_body_name), 20, 150, 18, RAYWHITE);
         DrawText(TextFormat("Camera zoom: %.1f units (mouse wheel, clamped)", orbit_camera.distance), 20, 175, 18, RAYWHITE);
-        DrawText("Camera angle stays fixed while zooming", 20, 200, 18, RAYWHITE);
+        DrawText("Camera auto-orbits at fixed pitch; zoom cannot flip the angle", 20, 200, 18, RAYWHITE);
         DrawText("Physics: SI Newtonian baseline; rendering scale: 1 AU = 10 units", 20, 225, 18, RAYWHITE);
         DrawText("Illustrative view clamps radii; real-scale view uses physical radius scale", 20, 250, 18, RAYWHITE);
         DrawText("Mercury, Venus, and Earth start at perihelion with vis-viva tangential speeds", 20, 275, 18, RAYWHITE);

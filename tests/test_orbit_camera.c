@@ -31,6 +31,32 @@ static void test_orbit_camera_position_offsets_from_focused_target(void)
     assert_close_float(position.z, 22.0f, 1e-5f);
 }
 
+static void test_orbit_camera_advances_yaw_without_changing_pitch_or_distance(void)
+{
+    OrbitCameraState state = orbit_camera_default_state();
+    float pitch = state.pitch_radians;
+    float distance = state.distance;
+
+    orbit_camera_advance(&state, 2.0f);
+
+    assert(state.yaw_radians > 0.0f);
+    assert_close_float(state.pitch_radians, pitch, 1e-6f);
+    assert_close_float(state.distance, distance, 1e-6f);
+}
+
+static void test_orbit_camera_zoom_and_auto_orbit_preserve_pitch(void)
+{
+    OrbitCameraState state = orbit_camera_default_state();
+    float pitch = state.pitch_radians;
+
+    orbit_camera_apply_zoom(&state, 1000.0f);
+    orbit_camera_advance(&state, 2.0f);
+    orbit_camera_apply_zoom(&state, -3.0f);
+
+    assert(state.distance > state.min_distance);
+    assert_close_float(state.pitch_radians, pitch, 1e-6f);
+}
+
 static void test_orbit_camera_zoom_clamps_at_minimum_without_changing_angle(void)
 {
     OrbitCameraState state = orbit_camera_default_state();
@@ -75,6 +101,8 @@ int main(void)
 {
     test_default_orbit_camera_matches_initial_view_angle();
     test_orbit_camera_position_offsets_from_focused_target();
+    test_orbit_camera_advances_yaw_without_changing_pitch_or_distance();
+    test_orbit_camera_zoom_and_auto_orbit_preserve_pitch();
     test_orbit_camera_zoom_clamps_at_minimum_without_changing_angle();
     test_orbit_camera_zoom_out_after_minimum_keeps_same_angle();
     test_orbit_camera_zoom_clamps_at_maximum_without_changing_angle();

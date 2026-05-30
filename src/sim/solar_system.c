@@ -50,7 +50,7 @@ Body solar_system_create_earth_at_perihelion(void)
         SOLAR_EARTH_MASS_KG,
         SOLAR_EARTH_RADIUS_M,
         (Vec3d){0.0, 0.0, SOLAR_EARTH_PERIHELION_M},
-        (Vec3d){SOLAR_EARTH_PERIHELION_SPEED_MPS, 0.0, 0.0},
+        (Vec3d){-SOLAR_EARTH_PERIHELION_SPEED_MPS, 0.0, 0.0},
         false
     );
 }

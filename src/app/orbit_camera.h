@@ -14,10 +14,12 @@ typedef struct OrbitCameraState {
     float min_distance;
     float max_distance;
     float zoom_speed;
+    float auto_orbit_speed_radians_per_second;
 } OrbitCameraState;
 
 OrbitCameraState orbit_camera_default_state(void);
 OrbitCameraVec3 orbit_camera_position(OrbitCameraVec3 target, const OrbitCameraState *state);
 void orbit_camera_apply_zoom(OrbitCameraState *state, float wheel_move);
+void orbit_camera_advance(OrbitCameraState *state, float dt_seconds);
 
 #endif

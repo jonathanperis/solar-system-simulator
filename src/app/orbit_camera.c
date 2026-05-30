@@ -25,6 +25,7 @@ OrbitCameraState orbit_camera_default_state(void)
         .min_distance = 4.0f,
         .max_distance = 80.0f,
         .zoom_speed = 2.0f,
+        .auto_orbit_speed_radians_per_second = 0.25f,
     };
 }
 
@@ -46,4 +47,9 @@ void orbit_camera_apply_zoom(OrbitCameraState *state, float wheel_move)
         state->min_distance,
         state->max_distance
     );
+}
+
+void orbit_camera_advance(OrbitCameraState *state, float dt_seconds)
+{
+    state->yaw_radians += state->auto_orbit_speed_radians_per_second * dt_seconds;
 }
