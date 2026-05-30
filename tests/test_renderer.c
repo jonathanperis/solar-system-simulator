@@ -148,6 +148,34 @@ static void test_illustrative_phobos_trail_matches_visible_body_position(void)
     assert_close(trail_position.z, body_position.z, 1e-12);
 }
 
+static void test_illustrative_satellite_position_uses_parent_metadata_not_name(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
+    system.bodies[6].name = "Inner Mars Moon";
+
+    Vec3d mars_position = renderer_body_position(&system, 5, RENDER_SCALE_ILLUSTRATIVE);
+    Vec3d phobos_position = renderer_body_position(&system, 6, RENDER_SCALE_ILLUSTRATIVE);
+    double render_distance = vec3d_length(vec3d_sub(phobos_position, mars_position));
+    double combined_radius =
+        renderer_body_radius(&system.bodies[5], RENDER_SCALE_ILLUSTRATIVE) +
+        renderer_body_radius(&system.bodies[6], RENDER_SCALE_ILLUSTRATIVE);
+
+    assert(combined_radius < render_distance);
+}
+
+static void test_body_color_uses_catalog_id_not_name(void)
+{
+    Body mars = solar_system_create_mars_at_perihelion();
+    mars.name = "Red Planet";
+
+    Color color = renderer_body_color(&mars);
+
+    assert(color.r == ORANGE.r);
+    assert(color.g == ORANGE.g);
+    assert(color.b == ORANGE.b);
+    assert(color.a == ORANGE.a);
+}
+
 static void test_grid_keeps_at_least_minimum_square_count_for_inner_system(void)
 {
     SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
@@ -180,6 +208,8 @@ int main(void)
     test_real_scale_trail_point_uses_physical_meter_scale();
     test_illustrative_moon_trail_uses_expanded_parent_relative_position();
     test_illustrative_phobos_trail_matches_visible_body_position();
+    test_illustrative_satellite_position_uses_parent_metadata_not_name();
+    test_body_color_uses_catalog_id_not_name();
     test_grid_keeps_at_least_minimum_square_count_for_inner_system();
     test_grid_expands_to_cover_mars_orbit_with_padding();
     puts("test_renderer passed");

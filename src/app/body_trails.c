@@ -40,6 +40,9 @@ void body_trails_destroy(BodyTrails *trails)
 
 void body_trails_record_system(BodyTrails *trails, const SolarSystem *system)
 {
+    /* Trails live in app state, not the physics body, so the simulator can keep
+     * all historical positions without constraining integrator state or wrapping
+     * a fixed-size buffer during long runs. */
     for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
         if (system->bodies[i].kind == BODY_KIND_STAR) {
             continue;

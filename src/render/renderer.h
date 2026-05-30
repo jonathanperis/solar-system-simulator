@@ -1,6 +1,8 @@
 #ifndef SOLAR_RENDERER_H
 #define SOLAR_RENDERER_H
 
+#include <raylib.h>
+
 #include "../app/body_trails.h"
 #include "../sim/solar_system.h"
 
@@ -10,6 +12,7 @@ typedef enum RenderScaleMode {
 } RenderScaleMode;
 
 const char *renderer_scale_mode_label(RenderScaleMode mode);
+Color renderer_body_color(const Body *body);
 Vec3d renderer_body_position(const SolarSystem *system, size_t body_index, RenderScaleMode mode);
 Vec3d renderer_trail_point_position(const SolarSystem *system, const BodyTrails *trails, size_t body_index, size_t point_index, RenderScaleMode mode);
 float renderer_body_radius(const Body *body, RenderScaleMode mode);

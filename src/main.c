@@ -1,5 +1,6 @@
 #include <raylib.h>
 
+#include "app/body_labels.h"
 #include "app/body_trails.h"
 #include "app/orbit_camera.h"
 #include "sim/constants.h"
@@ -45,6 +46,8 @@ static RenderScaleMode next_render_scale_mode(RenderScaleMode mode)
 
 static void step_system_with_substeps(SolarSystem *system, double dt_seconds)
 {
+    /* The renderer may deliver long frames; clamp physics updates into smaller
+     * SI-second chunks so close moons do not receive one huge unstable step. */
     while (dt_seconds > SOLAR_APP_MAX_PHYSICS_STEP_SECONDS) {
         solar_system_step(system, SOLAR_APP_MAX_PHYSICS_STEP_SECONDS);
         dt_seconds -= SOLAR_APP_MAX_PHYSICS_STEP_SECONDS;
@@ -85,6 +88,8 @@ int main(void)
     const double time_scale = SOLAR_DAY_SECONDS;
     size_t focused_body_index = 0;
     RenderScaleMode render_mode = RENDER_SCALE_ILLUSTRATIVE;
+    char body_list_label[160];
+    solar_app_body_list_label(&system, body_list_label, sizeof(body_list_label));
 
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_TAB) || IsKeyPressed(KEY_C)) {
@@ -117,7 +122,7 @@ int main(void)
         EndMode3D();
 
         DrawText("Solar System Simulator - Milestone 7: Phobos + Deimos", 20, 20, 20, RAYWHITE);
-        DrawText(TextFormat("Bodies: %zu (Sun + Mercury + Venus + Earth + Moon + Mars + Phobos + Deimos)", system.body_count), 20, 50, 18, RAYWHITE);
+        DrawText(TextFormat("Bodies: %zu (%s)", system.body_count, body_list_label), 20, 50, 18, RAYWHITE);
         DrawText(TextFormat("Elapsed days: %.2f", seconds_to_days(system.elapsed_seconds)), 20, 75, 18, RAYWHITE);
         DrawText(TextFormat("Time scale: %.0f simulation seconds / real second", time_scale), 20, 100, 18, RAYWHITE);
         DrawText(TextFormat("View: %s (V to toggle)", renderer_scale_mode_label(render_mode)), 20, 125, 18, RAYWHITE);
