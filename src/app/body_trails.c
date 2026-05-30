@@ -1,22 +1,41 @@
 #include "body_trails.h"
 
-static void body_trail_append(BodyTrail *trail, Vec3d point)
+#include <stdlib.h>
+
+static void body_trail_grow(BodyTrail *trail)
 {
-    if (trail->count < SOLAR_TRAIL_POINT_CAPACITY) {
-        size_t write_index = (trail->start + trail->count) % SOLAR_TRAIL_POINT_CAPACITY;
-        trail->points[write_index] = point;
-        ++trail->count;
-        return;
+    size_t new_capacity = trail->capacity == 0 ? SOLAR_TRAIL_INITIAL_CAPACITY : trail->capacity * 2;
+    Vec3d *new_points = realloc(trail->points, new_capacity * sizeof(*new_points));
+    if (new_points == NULL) {
+        abort();
     }
 
-    trail->points[trail->start] = point;
-    trail->start = (trail->start + 1) % SOLAR_TRAIL_POINT_CAPACITY;
+    trail->points = new_points;
+    trail->capacity = new_capacity;
+}
+
+static void body_trail_append(BodyTrail *trail, Vec3d point)
+{
+    if (trail->count == trail->capacity) {
+        body_trail_grow(trail);
+    }
+
+    trail->points[trail->count] = point;
+    ++trail->count;
 }
 
 BodyTrails body_trails_create(void)
 {
     BodyTrails trails = {0};
     return trails;
+}
+
+void body_trails_destroy(BodyTrails *trails)
+{
+    for (size_t i = 0; i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
+        free(trails->trails[i].points);
+        trails->trails[i] = (BodyTrail){0};
+    }
 }
 
 void body_trails_record_system(BodyTrails *trails, const SolarSystem *system)
@@ -50,6 +69,5 @@ Vec3d body_trails_point_at(const BodyTrails *trails, size_t body_index, size_t p
         return vec3d_zero();
     }
 
-    size_t stored_index = (trail->start + point_index) % SOLAR_TRAIL_POINT_CAPACITY;
-    return trail->points[stored_index];
+    return trail->points[point_index];
 }
