@@ -6,23 +6,24 @@ A bare-bones 3D solar system simulator written in C with [raylib](https://www.ra
 
 This project is intentionally physics-first. The renderer exists to show the simulation, but the core work is mathematical: deterministic celestial-body state, SI-unit physics, and testable orbital mechanics foundations.
 
-## Milestone 5: Foundation + Sun + Mercury + Venus + Earth + Moon
+## Milestone 6: Foundation + Sun + Mercury + Venus + Earth + Moon + Mars
 
-The current milestone extends the foundation to Earth's Moon as the first natural satellite. Additional planets, asteroids, dwarf planets, textures, shaders, labels, trails, and visual polish are intentionally deferred to later iterations.
+The current milestone extends the foundation to Mars as the next heliocentric planet after the Earth-Moon system. Martian moons, additional planets, asteroids, dwarf planets, textures, shaders, labels, and visual polish are intentionally deferred to later iterations.
 
 Current milestone behavior:
 
 - Opens a raylib 3D scene titled `Solar System Simulator`.
-- Renders exactly five celestial bodies: the Sun, Mercury, Venus, Earth, and Moon.
+- Renders exactly six celestial bodies: the Sun, Mercury, Venus, Earth, Moon, and Mars.
 - Keeps the Sun fixed at the origin for a stable heliocentric baseline.
 - Initializes Mercury at perihelion on the +X axis with tangential +Z velocity from the vis-viva equation.
 - Initializes Venus at perihelion on the -X axis with tangential -Z velocity from the vis-viva equation.
 - Initializes Earth at perihelion on the +Z axis with tangential -X velocity from the vis-viva equation.
 - Initializes the Moon at Earth-relative perigee with tangential relative velocity from the Earth-Moon vis-viva equation.
-- Advances Mercury, Venus, Earth, and the Moon with Newtonian gravity from all simulated bodies using the shared simulation integrator.
+- Initializes Mars at heliocentric perihelion on the -Z axis with tangential +X velocity from the vis-viva equation.
+- Advances Mercury, Venus, Earth, the Moon, and Mars with Newtonian gravity from all simulated bodies using the shared simulation integrator.
 - Supports illustrative/default and real-scale visualization modes.
-- Draws persistent motion traces for every non-star body so Mercury, Venus, Earth, and the Moon leave visible paths as they move.
-- Allows camera focus cycling across every simulated body: Sun, Mercury, Venus, Earth, and Moon.
+- Draws persistent motion traces for every non-star body so Mercury, Venus, Earth, the Moon, and Mars leave visible paths as they move.
+- Allows camera focus cycling across every simulated body: Sun, Mercury, Venus, Earth, Moon, and Mars.
 - Clamps mouse-wheel camera zoom while preserving the default viewing pitch, so max zoom-in does not flip or corrupt the camera orientation.
 - Displays body count, elapsed simulation days, time scale, view mode, camera focus target, camera zoom, and render scale notes.
 
@@ -40,7 +41,7 @@ Simulation code lives under `src/sim/` and is independent from raylib.
   - `a = G * source_mass / distance^3 * displacement`
 - Time stepping uses a velocity-Verlet / kick-drift-kick integrator.
 - The Sun is fixed for this milestone; barycentric Sun motion is deferred.
-- This is a deterministic physics baseline, not an ephemeris-accurate model. It does not include relativistic precession, J2000 state vectors, barycentric Earth-Moon initialization, or perturbations from bodies beyond the Sun, Mercury, Venus, Earth, and Moon.
+- This is a deterministic physics baseline, not an ephemeris-accurate model. It does not include relativistic precession, J2000 state vectors, barycentric Earth-Moon initialization, or perturbations from bodies beyond the Sun, Mercury, Venus, Earth, Moon, and Mars.
 
 Current simulation data:
 
@@ -51,6 +52,7 @@ Current simulation data:
 | Venus | `4.8675e24 kg` | `6051800 m` | perihelion position and tangential speed |
 | Earth | `5.9736e24 kg` | `6371000 m` | perihelion position and tangential speed |
 | Moon | `7.346e22 kg` | `1737400 m` | Earth-relative perigee offset and tangential relative speed |
+| Mars | `6.419e23 kg` | `3390000 m` | perihelion position and tangential speed |
 
 Mercury orbital values used for initialization:
 
@@ -82,6 +84,14 @@ Moon orbital values used for initialization around Earth:
 - absolute Moon state: Earth heliocentric state plus the Earth-relative perigee offset and relative tangential velocity
 - Earth-Moon barycentric initialization is deferred; Earth keeps its existing heliocentric perihelion state for this milestone
 
+Mars orbital values used for initialization:
+
+- semi-major axis: `227900000000 m`
+- eccentricity: `0.0934`
+- perihelion distance: `semi-major axis * (1 - eccentricity)` = `206614140000 m`
+- aphelion distance: `semi-major axis * (1 + eccentricity)` = `249185860000 m`
+- perihelion speed: `26501.588011990192 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
+
 ## Rendering model
 
 Rendering code lives under `src/render/` and converts simulation state at the boundary.
@@ -109,7 +119,7 @@ The app uses a small stable orbit camera instead of raylib's automatic orbital h
 - `V`: toggle visualization mode.
   - Illustrative: physical planetary positions with large visible planet radii, smaller Moon radius, and expanded Earth-Moon visual separation.
   - Real scale: physical orbital positions and physical radii under the same render scale; planets may be nearly invisible.
-- `Tab` or `C`: cycle camera focus across Sun, Mercury, Venus, Earth, and Moon.
+- `Tab` or `C`: cycle camera focus across Sun, Mercury, Venus, Earth, Moon, and Mars.
 - Mouse wheel: zoom camera in/out around the focused body.
   - Zoom distance is clamped.
   - The viewing pitch remains fixed so max zoom-in does not flip or corrupt the camera orientation.
@@ -151,7 +161,7 @@ tests/                 # C test binaries for simulation and app math
 
 Each future body should be added one iteration at a time, with physical constants, initial conditions, tests, and rendering checks scoped to that body.
 
-1. Mars
+1. Phobos or Deimos, if the next iteration should continue Mars's moon system
 2. asteroid belt representatives / major asteroids
 3. Jupiter
 4. Galilean moons

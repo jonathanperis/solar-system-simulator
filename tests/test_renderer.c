@@ -41,8 +41,17 @@ static void test_real_scale_position_uses_physical_meter_scale(void)
 static void test_illustrative_planets_keep_old_visible_radius(void)
 {
     Body earth = solar_system_create_earth_at_perihelion();
+    Body mars = solar_system_create_mars_at_perihelion();
 
     assert_close(renderer_body_radius(&earth, RENDER_SCALE_ILLUSTRATIVE), SOLAR_ILLUSTRATIVE_PLANET_RADIUS, 1e-6);
+    assert_close(renderer_body_radius(&mars, RENDER_SCALE_ILLUSTRATIVE), SOLAR_ILLUSTRATIVE_PLANET_RADIUS, 1e-6);
+}
+
+static void test_real_scale_mars_radius_uses_physical_meter_scale(void)
+{
+    Body mars = solar_system_create_mars_at_perihelion();
+
+    assert_close(renderer_body_radius(&mars, RENDER_SCALE_REAL), meters_to_render_units(SOLAR_MARS_RADIUS_M), 1e-12);
 }
 
 static void test_illustrative_moon_is_smaller_but_still_visible(void)
@@ -108,6 +117,7 @@ int main(void)
     test_real_scale_radius_uses_physical_meter_scale();
     test_real_scale_position_uses_physical_meter_scale();
     test_illustrative_planets_keep_old_visible_radius();
+    test_real_scale_mars_radius_uses_physical_meter_scale();
     test_illustrative_moon_is_smaller_but_still_visible();
     test_illustrative_earth_and_moon_do_not_overlap_at_perigee();
     test_real_scale_trail_point_uses_physical_meter_scale();

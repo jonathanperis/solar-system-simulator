@@ -108,6 +108,10 @@ static Color body_render_color(const Body *body)
         return RAYWHITE;
     }
 
+    if (body->name != NULL && strcmp(body->name, "Mars") == 0) {
+        return ORANGE;
+    }
+
     return LIGHTGRAY;
 }
 

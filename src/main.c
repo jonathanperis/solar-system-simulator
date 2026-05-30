@@ -65,7 +65,7 @@ int main(void)
     camera.projection = CAMERA_PERSPECTIVE;
 
     OrbitCameraState orbit_camera = orbit_camera_default_state();
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars();
     BodyTrails trails = body_trails_create();
     body_trails_record_system(&trails, &system);
     const double time_scale = SOLAR_DAY_SECONDS;
@@ -102,8 +102,8 @@ int main(void)
         renderer_draw_solar_system(&system, &trails, render_mode);
         EndMode3D();
 
-        DrawText("Solar System Simulator - Milestone 5: Moon", 20, 20, 20, RAYWHITE);
-        DrawText(TextFormat("Bodies: %zu (Sun + Mercury + Venus + Earth + Moon)", system.body_count), 20, 50, 18, RAYWHITE);
+        DrawText("Solar System Simulator - Milestone 6: Mars", 20, 20, 20, RAYWHITE);
+        DrawText(TextFormat("Bodies: %zu (Sun + Mercury + Venus + Earth + Moon + Mars)", system.body_count), 20, 50, 18, RAYWHITE);
         DrawText(TextFormat("Elapsed days: %.2f", seconds_to_days(system.elapsed_seconds)), 20, 75, 18, RAYWHITE);
         DrawText(TextFormat("Time scale: %.0f simulation seconds / real second", time_scale), 20, 100, 18, RAYWHITE);
         DrawText(TextFormat("View: %s (V to toggle)", renderer_scale_mode_label(render_mode)), 20, 125, 18, RAYWHITE);
@@ -113,7 +113,8 @@ int main(void)
         DrawText("Physics: SI Newtonian baseline; rendering scale: 1 AU = 10 units", 20, 225, 18, RAYWHITE);
         DrawText("Illustrative view keeps planets large and expands Moon offset; real-scale view uses physical scale", 20, 250, 18, RAYWHITE);
         DrawText("Moon starts at Earth-relative perigee with vis-viva speed", 20, 275, 18, RAYWHITE);
-        DrawText("Traces: planets and moons leave bounded motion trails", 20, 300, 18, RAYWHITE);
+        DrawText("Mars starts at heliocentric perihelion with vis-viva speed", 20, 300, 18, RAYWHITE);
+        DrawText("Traces: planets and moons leave bounded motion trails", 20, 325, 18, RAYWHITE);
 
         EndDrawing();
     }

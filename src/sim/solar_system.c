@@ -71,6 +71,19 @@ Body solar_system_create_moon_at_perigee_near_earth(const Body *earth)
     );
 }
 
+Body solar_system_create_mars_at_perihelion(void)
+{
+    return body_create(
+        "Mars",
+        BODY_KIND_PLANET,
+        SOLAR_MARS_MASS_KG,
+        SOLAR_MARS_RADIUS_M,
+        (Vec3d){0.0, 0.0, -SOLAR_MARS_PERIHELION_M},
+        (Vec3d){SOLAR_MARS_PERIHELION_SPEED_MPS, 0.0, 0.0},
+        false
+    );
+}
+
 SolarSystem solar_system_create_sun_only(void)
 {
     SolarSystem system = {
@@ -142,6 +155,26 @@ SolarSystem solar_system_create_sun_mercury_venus_earth_moon(void)
             solar_system_create_moon_at_perigee_near_earth(&earth),
         },
         .body_count = 5,
+        .elapsed_seconds = 0.0,
+    };
+
+    return system;
+}
+
+SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars(void)
+{
+    Body earth = solar_system_create_earth_at_perihelion();
+
+    SolarSystem system = {
+        .bodies = {
+            create_sun(),
+            solar_system_create_mercury_at_perihelion(),
+            solar_system_create_venus_at_perihelion(),
+            earth,
+            solar_system_create_moon_at_perigee_near_earth(&earth),
+            solar_system_create_mars_at_perihelion(),
+        },
+        .body_count = 6,
         .elapsed_seconds = 0.0,
     };
 
