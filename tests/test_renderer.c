@@ -112,6 +112,26 @@ static void test_illustrative_moon_trail_uses_expanded_parent_relative_position(
     assert_close(actual.z, expected.z, 1e-12);
 }
 
+static void test_grid_keeps_at_least_minimum_square_count_for_inner_system(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
+    int slices = renderer_grid_slices_for_system(&system, RENDER_SCALE_ILLUSTRATIVE);
+
+    assert(slices >= 20);
+    assert((slices % 2) == 0);
+}
+
+static void test_grid_expands_to_cover_mars_orbit_with_padding(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars();
+    Vec3d mars_position = renderer_body_position(&system, 5, RENDER_SCALE_ILLUSTRATIVE);
+    double required_half_width = fabs(mars_position.z) + 2.0;
+    int slices = renderer_grid_slices_for_system(&system, RENDER_SCALE_ILLUSTRATIVE);
+
+    assert(slices > 20);
+    assert(((double)slices / 2.0) >= required_half_width);
+}
+
 int main(void)
 {
     test_real_scale_radius_uses_physical_meter_scale();
@@ -122,6 +142,8 @@ int main(void)
     test_illustrative_earth_and_moon_do_not_overlap_at_perigee();
     test_real_scale_trail_point_uses_physical_meter_scale();
     test_illustrative_moon_trail_uses_expanded_parent_relative_position();
+    test_grid_keeps_at_least_minimum_square_count_for_inner_system();
+    test_grid_expands_to_cover_mars_orbit_with_padding();
     puts("test_renderer passed");
     return 0;
 }

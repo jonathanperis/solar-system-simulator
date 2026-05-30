@@ -114,7 +114,8 @@ int main(void)
         DrawText("Illustrative view keeps planets large and expands Moon offset; real-scale view uses physical scale", 20, 250, 18, RAYWHITE);
         DrawText("Moon starts at Earth-relative perigee with vis-viva speed", 20, 275, 18, RAYWHITE);
         DrawText("Mars starts at heliocentric perihelion with vis-viva speed", 20, 300, 18, RAYWHITE);
-        DrawText("Traces: planets and moons leave bounded motion trails", 20, 325, 18, RAYWHITE);
+        DrawText("Grid expands to cover the farthest rendered orbit", 20, 325, 18, RAYWHITE);
+        DrawText("Traces: planets and moons leave bounded motion trails", 20, 350, 18, RAYWHITE);
 
         EndDrawing();
     }
