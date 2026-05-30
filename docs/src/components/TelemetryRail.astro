@@ -1,0 +1,21 @@
+---
+import { currentMilestone } from '../lib/site';
+import { implementedBodies } from '../lib/bodies';
+
+const telemetry = [
+  ['Catalog', `${implementedBodies.length} implemented bodies`],
+  ['Integrator', currentMilestone.integrator],
+  ['Units', currentMilestone.units],
+  ['Runtime', 'Native C loop plus Emscripten callback loop'],
+  ['Controls', 'Tab/C focus, V scale mode, mouse-wheel zoom'],
+  ['Artifacts', 'HTML, JS, WASM checked before Pages deploy']
+];
+---
+<section class="telemetry-rail" aria-label="Current simulator telemetry">
+  {telemetry.map(([label, value]) => (
+    <div class="telemetry-cell">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  ))}
+</section>

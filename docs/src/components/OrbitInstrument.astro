@@ -1,0 +1,30 @@
+---
+import { implementedBodies } from '../lib/bodies';
+---
+<figure class="orbit-instrument" aria-labelledby="orbit-instrument-title">
+  <div class="instrument-toolbar">
+    <p class="eyebrow">Observatory instrument</p>
+    <span>Illustrative orbit schematic</span>
+  </div>
+  <div class="orbit-stage" role="img" aria-label="Schematic orbit map of the Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, and Deimos">
+    <span class="orbit-ring ring-mercury"></span>
+    <span class="orbit-ring ring-venus"></span>
+    <span class="orbit-ring ring-earth"></span>
+    <span class="orbit-ring ring-mars"></span>
+    <span class="body-dot sun" data-label="Sun"></span>
+    <span class="body-dot mercury" data-label="Mercury"></span>
+    <span class="body-dot venus" data-label="Venus"></span>
+    <span class="body-dot earth" data-label="Earth"></span>
+    <span class="body-dot moon" data-label="Moon"></span>
+    <span class="body-dot mars" data-label="Mars"></span>
+    <span class="body-dot phobos" data-label="Phobos"></span>
+    <span class="body-dot deimos" data-label="Deimos"></span>
+    <div class="instrument-readout">
+      <h2 id="orbit-instrument-title">{implementedBodies.length} bodies under inspection</h2>
+      <p>Positions are schematic here. The simulator keeps physical state in meters and renders readability at the boundary.</p>
+    </div>
+  </div>
+  <figcaption>
+    Atlas view is not scale accurate. It exists to expose the current catalog and make the physics routes discoverable.
+  </figcaption>
+</figure>

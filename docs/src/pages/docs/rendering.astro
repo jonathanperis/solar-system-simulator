@@ -1,0 +1,31 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import DocsShell from '../../components/DocsShell.astro';
+---
+<BaseLayout title="Rendering docs">
+  <DocsShell
+    title="Rendering adapts physics for human eyes."
+    eyebrow="raylib boundary"
+    lede="The renderer converts meters into readable 3D space and never changes the simulation state it receives."
+  >
+    <section class="doc-panel">
+      <h2>Boundary files</h2>
+      <ul class="check-list">
+        <li><code>src/render/renderer.c</code> owns raylib drawing, render-scale conversion, body colors, and grid sizing.</li>
+        <li><code>src/app/body_labels.c</code> formats HUD labels and body names outside the physics model.</li>
+        <li><code>src/app/body_trails.c</code> records persistent SI-unit trail history for non-star bodies.</li>
+      </ul>
+    </section>
+
+    <section class="doc-panel">
+      <h2>Scale modes</h2>
+      <p>Illustrative mode keeps large bodies readable and expands close moon separation only as a visual transform. Real-scale mode uses the same physical scale for positions and radii, so planets can become nearly invisible.</p>
+      <p>Both modes use the same simulation source. The difference is presentation policy at the raylib boundary.</p>
+    </section>
+
+    <section class="doc-panel">
+      <h2>Reference grid and trails</h2>
+      <p>The ground grid expands from the farthest rendered body so later outer planets do not leave the reference frame behind. Trails are drawn as faint line segments before bodies, preserving motion history for the whole run.</p>
+    </section>
+  </DocsShell>
+</BaseLayout>

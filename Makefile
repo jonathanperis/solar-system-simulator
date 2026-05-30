@@ -37,7 +37,7 @@ TEST_BODY_LABELS := $(TEST_DIR)/test_body_labels
 TEST_RENDERER := $(TEST_DIR)/test_renderer
 TEST_BINS := $(TEST_VEC3D) $(TEST_PHYSICS) $(TEST_SOLAR_SYSTEM) $(TEST_ORBIT_CAMERA) $(TEST_BODY_TRAILS) $(TEST_BODY_LABELS) $(TEST_RENDERER)
 
-.PHONY: all run test web raylib-web dist-wasm clean
+.PHONY: all run test web raylib-web dist-wasm docs-check clean
 
 all: $(APP)
 
@@ -60,6 +60,9 @@ dist-wasm: web
 	@rm -f $(WASM_ZIP)
 	python3 -m zipfile -c $(WASM_ZIP) $(WEB_DIR)/solar-system-simulator.html $(WEB_DIR)/solar-system-simulator.js $(WEB_DIR)/solar-system-simulator.wasm
 	@echo "Created $(WASM_ZIP)"
+
+docs-check:
+	python3 tools/check_docs_routes.py docs/dist
 
 $(WEB_APP): $(APP_SRCS) web/shell.html $(RAYLIB_WEB_LIB)
 	@mkdir -p $(@D)

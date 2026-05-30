@@ -1,0 +1,57 @@
+---
+import { normalizeBase } from '../lib/base';
+import { withBase } from '../lib/site';
+
+const rawBase = import.meta.env.BASE_URL;
+const base = normalizeBase(rawBase);
+const rows = [
+  {
+    label: 'Physics model',
+    proof: 'Newtonian acceleration and velocity-Verlet stepping live in src/sim.',
+    href: 'docs/simulation-core/',
+    source: 'src/sim/physics.c'
+  },
+  {
+    label: 'Body catalog',
+    proof: 'Stable BodyId and parent metadata keep renderer, labels, and docs aligned.',
+    href: 'body-catalog/',
+    source: 'src/sim/solar_system.c'
+  },
+  {
+    label: 'Rendering boundary',
+    proof: 'raylib conversion handles readable scale without mutating physics state.',
+    href: 'docs/rendering/',
+    source: 'src/render/renderer.c'
+  },
+  {
+    label: 'WASM pipeline',
+    proof: 'Emscripten artifacts are checked before Astro publishes them.',
+    href: 'docs/build-and-web/',
+    source: 'tools/check_wasm_artifacts.py'
+  },
+  {
+    label: 'Astro docs',
+    proof: 'The dedicated docs section explains the code as a maintained public notebook.',
+    href: 'docs/',
+    source: 'docs/src/pages/docs/'
+  }
+];
+---
+<section class="evidence-ledger" aria-labelledby="evidence-ledger-title">
+  <div class="section-heading">
+    <p class="eyebrow">Evidence ledger</p>
+    <h2 id="evidence-ledger-title">Every claim points back to code.</h2>
+  </div>
+  <div class="ledger-table">
+    {rows.map((row, index) => (
+      <a class="ledger-row" href={withBase(base, row.href)}>
+        <span class="ledger-index">{String(index + 1).padStart(2, '0')}</span>
+        <span>
+          <strong>{row.label}</strong>
+          <em>{row.proof}</em>
+        </span>
+        <code>{row.source}</code>
+      </a>
+    ))}
+  </div>
+</section>

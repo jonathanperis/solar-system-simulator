@@ -1,0 +1,37 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import DocsShell from '../../components/DocsShell.astro';
+import { implementedBodies, plannedBodies } from '../../lib/bodies';
+---
+<BaseLayout title="Roadmap docs">
+  <DocsShell
+    title="Expansion stays one body at a time."
+    eyebrow="Roadmap"
+    lede="The project grows by physical milestone, not by dumping a catalog into the renderer. Each new body needs constants, initialization, tests, visibility, docs, and verification."
+  >
+    <section class="doc-panel">
+      <h2>Implemented now</h2>
+      <div class="body-chip-row">
+        {implementedBodies.map((body) => <span>{body.name}</span>)}
+      </div>
+    </section>
+
+    <section class="doc-panel">
+      <h2>Planned sequence</h2>
+      <ol class="roadmap-list">
+        {plannedBodies.map((body) => <li>{body}</li>)}
+      </ol>
+    </section>
+
+    <section class="doc-panel">
+      <h2>Per-body acceptance template</h2>
+      <ul class="check-list">
+        <li>Authoritative constants and units are documented.</li>
+        <li>Initial state is parent-relative where needed and converted into absolute simulation state.</li>
+        <li>C tests prove body count, parent metadata, physical initialization, and integration stability.</li>
+        <li>Renderer keeps the new body visible without mutating physics state.</li>
+        <li>Docs, body catalog, and Pages smoke checks are updated in the same iteration.</li>
+      </ul>
+    </section>
+  </DocsShell>
+</BaseLayout>

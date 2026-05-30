@@ -1,16 +1,19 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { normalizeBase } from '../lib/base';
+const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 <BaseLayout title="Pipeline">
-  <section class="hero">
+  <section class="hero page-hero">
     <div>
       <p class="eyebrow">Build and publish</p>
       <h1>Native tests feed a Pages lab bench.</h1>
       <p class="lede">The pipeline keeps native correctness, WebAssembly packaging, and static publishing as explicit phases so a broken browser artifact cannot silently deploy.</p>
+      <div class="actions"><a class="button-secondary" href={`${base}docs/build-and-web/`}>Read build and web docs</a></div>
     </div>
   </section>
 
-  <section class="grid">
+  <section class="grid feature-grid">
     <article class="card">
       <h2>1. Native gate</h2>
       <p><code>make clean && make && make test</code> builds the raylib app and runs C tests for vectors, physics, scene state, trails, labels, camera, and renderer behavior.</p>

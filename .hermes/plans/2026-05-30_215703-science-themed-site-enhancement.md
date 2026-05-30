@@ -23,13 +23,13 @@
 |---|---:|---:|---|---:|
 | Repo and Pages orientation | yes | yes | complete for roadmap | 100% |
 | Impeccable design direction | yes | yes | brief captured in this plan | 100% |
-| Visual system enhancement | yes | current CSS and live page inspected | not started | 25% |
-| Footer and common footprints | yes | current layout inspected | not started | 20% |
-| Dedicated Astro docs section | yes | current docs routes inspected | not started | 25% |
-| Source-backed code explainer content | yes | README and source tree inspected | not started | 20% |
-| Validation and deployment gates | yes | existing pipeline known | not started | 30% |
+| Visual system enhancement | yes | current CSS and local browser QA inspected | implemented | 100% |
+| Footer and common footprints | yes | generated HTML and browser QA inspected | implemented | 100% |
+| Dedicated Astro docs section | yes | generated routes and browser QA inspected | implemented | 100% |
+| Source-backed code explainer content | yes | source-map, docs pages, and route smoke checked | implemented | 100% |
+| Validation and deployment gates | yes | local native/WASM/docs checks passing | implemented locally; CI/deploy pending for pushed SHA | 90% |
 
-**Overall planning progress:** approximately 55%. The site direction, file targets, and validation gates are defined. Implementation, visual QA, CI, deploy watching, and live smoke verification remain.
+**Overall implementation progress:** approximately 95%. Local implementation, route checks, full validation, and browser QA are complete. Commit, push, CI/deploy watching, and live route smoke remain.
 
 ## Verified Current Context
 

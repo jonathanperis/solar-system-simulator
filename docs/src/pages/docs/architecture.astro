@@ -1,0 +1,32 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import DocsShell from '../../components/DocsShell.astro';
+import { sourceSections } from '../../lib/sourceMap';
+---
+<BaseLayout title="Architecture docs">
+  <DocsShell
+    title="Architecture keeps physics testable."
+    eyebrow="Code boundaries"
+    lede="The repository is intentionally plain C around a small set of boundaries: simulation owns truth, app helpers own reusable runtime state, and raylib stays at the presentation edge."
+  >
+    <section class="doc-panel">
+      <h2>Responsibility map</h2>
+      <div class="route-list source-map-list">
+        {sourceSections.map((section) => (
+          <article>
+            <strong><code>{section.path}</code> {section.label}</strong>
+            <p>{section.responsibility}</p>
+            <p class="fine-print">Verification: {section.verification}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="doc-panel">
+      <h2>Why the split matters</h2>
+      <p><code>src/sim/</code> has no raylib dependency, which means gravity, vectors, body initialization, and Verlet stepping can be tested without opening a window.</p>
+      <p><code>src/main.c</code> owns orchestration for native and WebAssembly loops, while <code>src/render/</code> translates the same physical state into readable 3D drawings.</p>
+      <p><code>docs/</code>, <code>web/</code>, <code>tools/</code>, and <code>.github/workflows/</code> publish the public lab without changing the C simulation contract.</p>
+    </section>
+  </DocsShell>
+</BaseLayout>

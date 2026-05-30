@@ -1,0 +1,32 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import DocsShell from '../../components/DocsShell.astro';
+---
+<BaseLayout title="Build and web docs">
+  <DocsShell
+    title="Native checks feed the public WebAssembly lab."
+    eyebrow="Build and web"
+    lede="The pipeline keeps simulator correctness, browser artifacts, and static Pages publishing as separate gates."
+  >
+    <section class="doc-panel">
+      <h2>Local commands</h2>
+      <div class="command-grid">
+        <article><code>make</code><p>Build the native raylib app.</p></article>
+        <article><code>make test</code><p>Run C test binaries for simulation, app, and renderer helpers.</p></article>
+        <article><code>make web</code><p>Compile the browser target with Emscripten.</p></article>
+        <article><code>make dist-wasm</code><p>Package the generated HTML, JS, and WASM artifact.</p></article>
+      </div>
+    </section>
+
+    <section class="doc-panel">
+      <h2>Artifact checks</h2>
+      <p><code>tools/check_wasm_artifacts.py</code> confirms the generated <code>solar-system-simulator.html</code>, <code>.js</code>, and <code>.wasm</code> files exist and contain expected markers. The WebAssembly binary is checked for valid magic bytes.</p>
+      <p><code>web/shell.html</code> is the Emscripten shell that gives the browser runtime a stable status surface.</p>
+    </section>
+
+    <section class="doc-panel">
+      <h2>GitHub workflows</h2>
+      <p><code>.github/workflows/build.yml</code> builds native and WebAssembly lanes. <code>.github/workflows/deploy-pages.yml</code> runs after a successful Build workflow on <code>main</code>, normalizes downloaded artifact paths, builds Astro, and publishes to GitHub Pages.</p>
+    </section>
+  </DocsShell>
+</BaseLayout>
