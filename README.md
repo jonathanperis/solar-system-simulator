@@ -89,7 +89,7 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 - Physics units are isolated from rendering units.
 - Position scale: `1 AU = 10 render units`.
 - Physical radii remain real in simulation data.
-- Illustrative mode is the default: orbital positions use the physical render scale, while non-star body radii use a compressed relative scale with a tiny visibility floor. This keeps bodies visible without making the Moon the same size as Earth or overlapping Earth at perigee.
+- Illustrative mode is the default: planets keep the previous large visible radius, while the Moon renders smaller in proportion to Earth's physical radius. The Moon's Earth-relative render offset is expanded only in illustrative mode so the large visual spheres remain readable without changing the underlying physics state.
 - Real-scale mode uses the same physical render scale for both positions and radii with no radius clamp. Planets may be nearly invisible in this mode; that is physically expected at solar-system scale.
 
 ## Camera model
@@ -105,7 +105,7 @@ The app uses a small stable orbit camera instead of raylib's automatic orbital h
 ## Controls
 
 - `V`: toggle visualization mode.
-  - Illustrative: physical orbital positions with compressed relative visible body radii.
+  - Illustrative: physical planetary positions with large visible planet radii, smaller Moon radius, and expanded Earth-Moon visual separation.
   - Real scale: physical orbital positions and physical radii under the same render scale; planets may be nearly invisible.
 - `Tab` or `C`: cycle camera focus across Sun, Mercury, Venus, Earth, and Moon.
 - Mouse wheel: zoom camera in/out around the focused body.
