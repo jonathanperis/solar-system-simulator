@@ -101,7 +101,7 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 - Position scale: `1 AU = 10 render units`.
 - Physical radii remain real in simulation data.
 - Illustrative mode is the default: planets keep the previous large visible radius, while the Moon renders smaller in proportion to Earth's physical radius. The Moon's Earth-relative render offset is expanded only in illustrative mode so the large visual spheres remain readable without changing the underlying physics state.
-- Planet and Moon traces retain a bounded history of recent simulation positions and are drawn before the bodies as faint colored line segments.
+- Planet and Moon traces keep every simulation position recorded during the run and are drawn before the bodies as faint colored line segments, so trails never extinguish while the app is running.
 - The ground grid keeps a minimum readable square count and expands from the farthest rendered body, so Mars and later outer planets do not outgrow the visible reference grid.
 - Real-scale mode uses the same physical render scale for both positions and radii with no radius clamp. Planets may be nearly invisible in this mode; that is physically expected at solar-system scale.
 
