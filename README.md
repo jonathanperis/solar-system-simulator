@@ -6,15 +6,17 @@ A bare-bones 3D solar system simulator written in C with [raylib](https://www.ra
 
 This project is intentionally physics-first. The renderer exists to show the simulation, but the core work is mathematical: deterministic celestial-body state, SI-unit physics, and testable orbital mechanics foundations.
 
-## Milestone 1: Foundation + Sun
+## Milestone 2: Foundation + Sun + Mercury
 
-The first milestone builds only the simulation foundation and the Sun. Planets, moons, asteroids, dwarf planets, textures, shaders, and visual polish are intentionally deferred to later iterations.
+The current milestone extends the foundation from a fixed Sun to the first orbiting planet: Mercury. Additional planets, moons, asteroids, dwarf planets, textures, shaders, and visual polish are intentionally deferred to later iterations.
 
 Current milestone behavior:
 
 - Opens a raylib 3D scene titled `Solar System Simulator`.
-- Renders exactly one celestial body: the Sun.
-- Keeps the Sun fixed at the origin for a stable first visual baseline.
+- Renders exactly two celestial bodies: the Sun and Mercury.
+- Keeps the Sun fixed at the origin for a stable heliocentric baseline.
+- Initializes Mercury at perihelion on the +X axis with tangential +Z velocity from the vis-viva equation.
+- Advances Mercury with Newtonian gravity from the Sun using the shared simulation integrator.
 - Displays body count, elapsed simulation days, time scale, and render scale notes.
 
 ## Physics model
@@ -30,9 +32,22 @@ Simulation code lives under `src/sim/` and is independent from raylib.
 - Gravity uses the Newtonian point-mass formula:
   - `a = G * source_mass / distance^3 * displacement`
 - Time stepping uses a velocity-Verlet / kick-drift-kick integrator.
-- The Sun uses real simulation data:
-  - mass: `1.98847e30 kg`
-  - radius: `695700000 m`
+- The Sun is fixed for this milestone; barycentric Sun motion is deferred.
+- This is a deterministic physics baseline, not an ephemeris-accurate model. It does not include relativistic precession, J2000 state vectors, or perturbations from bodies beyond the Sun and Mercury.
+
+Current simulation data:
+
+| Body | Mass | Radius | Initial state |
+|---|---:|---:|---|
+| Sun | `1.98847e30 kg` | `695700000 m` | fixed at origin |
+| Mercury | `3.3011e23 kg` | `2439700 m` | perihelion position and tangential speed |
+
+Mercury orbital values used for initialization:
+
+- semi-major axis: `57909050000 m`
+- eccentricity: `0.205630`
+- perihelion distance: `semi-major axis * (1 - eccentricity)` = `46001212048.5 m`
+- perihelion speed: `58977.28405570045 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
 
 ## Rendering model
 
@@ -41,7 +56,8 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 - raylib handles windowing, camera, 3D drawing, and overlays.
 - Physics units are isolated from rendering units.
 - Position scale: `1 AU = 10 render units`.
-- Physical radii remain real in simulation data, but rendered body radii can be clamped for visibility.
+- Physical radii remain real in simulation data, but rendered body radii are clamped per body class for visibility.
+- Visual size is therefore a display aid and is not the physical radius scale.
 
 ## Build prerequisites
 
@@ -79,16 +95,15 @@ tests/                  # C test binaries for simulation code
 
 Each future body should be added one iteration at a time, with physical constants, initial conditions, tests, and rendering checks scoped to that body.
 
-1. Mercury
-2. Venus
-3. Earth
-4. Moon
-5. Mars
-6. asteroid belt representatives / major asteroids
-7. Jupiter
-8. Galilean moons
-9. Saturn
-10. major Saturnian moons
-11. Uranus
-12. Neptune
-13. dwarf planets / Kuiper belt representatives
+1. Venus
+2. Earth
+3. Moon
+4. Mars
+5. asteroid belt representatives / major asteroids
+6. Jupiter
+7. Galilean moons
+8. Saturn
+9. major Saturnian moons
+10. Uranus
+11. Neptune
+12. dwarf planets / Kuiper belt representatives
