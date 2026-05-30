@@ -1,0 +1,34 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import DocsShell from '../../components/DocsShell.astro';
+---
+<BaseLayout title="Simulation core docs">
+  <DocsShell
+    title="Simulation state uses physical units first."
+    eyebrow="Newtonian core"
+    lede="The simulator treats rendering as a view of SI-unit state. This page names the assumptions that make the current model readable and testable."
+  >
+    <section class="doc-panel equation-panel">
+      <h2>Core equation</h2>
+      <p><code>a = G * source_mass / distance^3 * displacement</code></p>
+      <p>The implementation scales the displacement vector directly, so direction and magnitude remain coupled in <code>src/sim/physics.c</code>.</p>
+    </section>
+
+    <section class="doc-panel">
+      <h2>Source-backed model facts</h2>
+      <ul class="check-list">
+        <li><code>src/sim/vec3d.c</code> provides double-precision vector operations.</li>
+        <li><code>src/sim/body.c</code> stores mass, radius, position, velocity, and acceleration in SI units.</li>
+        <li><code>src/sim/physics.c</code> computes Newtonian point-mass acceleration.</li>
+        <li><code>src/sim/solar_system.c</code> initializes the Sun, planets, Moon, Phobos, and Deimos with parent-aware states.</li>
+        <li>The integrator is velocity-Verlet / kick-drift-kick, not Euler stepping.</li>
+      </ul>
+    </section>
+
+    <section class="doc-panel">
+      <h2>Known approximations</h2>
+      <p>The Sun remains fixed for the current milestone. The project does not claim relativistic precession, J2000 state vectors, barycentric Earth-Moon initialization, or ephemeris accuracy.</p>
+      <p>That limitation is intentional for the foundation: the goal is inspectable orbital mechanics before catalog scale.</p>
+    </section>
+  </DocsShell>
+</BaseLayout>

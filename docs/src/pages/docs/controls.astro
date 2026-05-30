@@ -1,0 +1,33 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import DocsShell from '../../components/DocsShell.astro';
+import { bodyFocusOrder } from '../../lib/bodies';
+---
+<BaseLayout title="Controls docs">
+  <DocsShell
+    title="Controls expose the current physics scene."
+    eyebrow="Runtime interaction"
+    lede="The controls stay small because the project is a lab bench, not a cockpit. Each input changes the camera or presentation layer, not the physics state."
+  >
+    <section class="doc-panel">
+      <h2>Keyboard and mouse</h2>
+      <div class="command-grid">
+        <article><code>Tab</code><p>Cycle camera focus across the body catalog.</p></article>
+        <article><code>C</code><p>Cycle camera focus using the alternate key path.</p></article>
+        <article><code>V</code><p>Toggle illustrative scale and real-scale rendering.</p></article>
+        <article><code>Mouse wheel</code><p>Zoom around the focused body with clamp protection.</p></article>
+      </div>
+    </section>
+
+    <section class="doc-panel">
+      <h2>Camera model</h2>
+      <p><code>src/app/orbit_camera.c</code> keeps focus, distance, and pitch stable. The camera target follows the selected body and slowly auto-orbits around it.</p>
+      <p>Zoom changes distance only. The fixed pitch avoids flip or orientation corruption at maximum zoom.</p>
+    </section>
+
+    <section class="doc-panel">
+      <h2>Focus order</h2>
+      <p>{bodyFocusOrder.join(' → ')}</p>
+    </section>
+  </DocsShell>
+</BaseLayout>

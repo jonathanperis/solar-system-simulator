@@ -1,16 +1,19 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { normalizeBase } from '../lib/base';
+const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 <BaseLayout title="Physics model">
-  <section class="hero">
+  <section class="hero page-hero">
     <div>
       <p class="eyebrow">Model notes</p>
       <h1>Physics stays in SI units.</h1>
       <p class="lede">Every body stores mass in kilograms, radius in meters, positions in meters, velocities in meters per second, and acceleration in meters per second squared.</p>
+      <div class="actions"><a class="button-secondary" href={`${base}docs/simulation-core/`}>Read simulation-core docs</a></div>
     </div>
   </section>
 
-  <section class="grid">
+  <section class="grid feature-grid">
     <article class="card">
       <h2>Gravity</h2>
       <p>The simulator applies Newtonian point-mass acceleration: <code>a = G·M·r̂/r²</code>. The code scales the displacement vector by <code>G·M/r³</code> so direction and magnitude stay coupled.</p>

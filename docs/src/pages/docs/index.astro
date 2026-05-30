@@ -1,0 +1,39 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import DocsShell from '../../components/DocsShell.astro';
+import { docsRoutes, withBase } from '../../lib/site';
+import { normalizeBase } from '../../lib/base';
+
+const base = normalizeBase(import.meta.env.BASE_URL);
+const paths = [
+  ['Learner', 'Start with Simulation core, then Controls, then run the WebAssembly lab.'],
+  ['C maintainer', 'Read Architecture, Rendering, and Build and web before changing source boundaries.'],
+  ['Physics reviewer', 'Compare Simulation core with Body catalog and source tests.'],
+  ['Deployment reviewer', 'Use Build and web, Pipeline, and the WASM smoke checks.']
+];
+---
+<BaseLayout title="Astro docs">
+  <DocsShell
+    title="Astro docs for the C solar-system lab."
+    lede="This section is the maintained code notebook: architecture, physics, rendering, controls, build pipeline, and roadmap in one navigable surface."
+  >
+    <section class="doc-panel">
+      <h2>Choose a reading path</h2>
+      <div class="doc-card-grid">
+        {paths.map(([label, copy]) => <article><h3>{label}</h3><p>{copy}</p></article>)}
+      </div>
+    </section>
+
+    <section class="doc-panel">
+      <h2>Code explainer index</h2>
+      <div class="route-list">
+        {docsRoutes.slice(1).map((route) => (
+          <a href={withBase(base, route.href)}>
+            <strong>{route.label}</strong>
+            <span>{route.summary}</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  </DocsShell>
+</BaseLayout>

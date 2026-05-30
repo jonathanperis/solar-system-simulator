@@ -68,6 +68,9 @@ jobs:
         working-directory: docs
         run: npm run build
 
+      - name: Smoke-check docs routes
+        run: python3 tools/check_docs_routes.py docs/dist
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

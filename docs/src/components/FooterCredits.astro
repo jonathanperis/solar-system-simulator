@@ -1,0 +1,26 @@
+---
+import { authorName, currentMilestone, footerLinks, techStack } from '../lib/site';
+import { implementedBodies } from '../lib/bodies';
+---
+<footer class="site-footer" data-footer-credits>
+  <div class="footer-grid">
+    <section class="footer-credit-block">
+      <p class="eyebrow">Credits and scope</p>
+      <h2>Designed as a physics learning lab by {authorName}.</h2>
+      <p>
+        Built with {techStack.slice(0, 5).join(', ')}. The C simulation remains the source of truth;
+        Astro publishes the notebook around it.
+      </p>
+    </section>
+
+    <section class="footer-credit-block">
+      <p class="eyebrow">Current milestone</p>
+      <p><strong>{currentMilestone.shortLabel}:</strong> {implementedBodies.length} implemented bodies, {currentMilestone.integrator}, and {currentMilestone.units}.</p>
+      <p class="fine-print">{currentMilestone.disclaimer}</p>
+    </section>
+
+    <nav class="footer-links" aria-label="Footer links">
+      {footerLinks.map((link) => <a href={link.href}>{link.label}</a>)}
+    </nav>
+  </div>
+</footer>

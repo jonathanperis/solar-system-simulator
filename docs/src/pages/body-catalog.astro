@@ -1,33 +1,27 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-const bodies = [
-  ['Sun', 'Star', 'None', 'Fixed origin anchor for current milestones'],
-  ['Mercury', 'Planet', 'Sun', 'Heliocentric perihelion start'],
-  ['Venus', 'Planet', 'Sun', 'Heliocentric perihelion start'],
-  ['Earth', 'Planet', 'Sun', 'Heliocentric perihelion start'],
-  ['Moon', 'Moon', 'Earth', 'Earth-relative perigee start'],
-  ['Mars', 'Planet', 'Sun', 'Heliocentric perihelion start'],
-  ['Phobos', 'Moon', 'Mars', 'Mars-relative periareion start'],
-  ['Deimos', 'Moon', 'Mars', 'Mars-relative periareion start']
-];
+import { implementedBodies } from '../lib/bodies';
+import { normalizeBase } from '../lib/base';
+const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 <BaseLayout title="Body catalog">
-  <section class="hero">
+  <section class="hero page-hero">
     <div>
       <p class="eyebrow">Catalog state</p>
       <h1>Stable IDs prevent duplicate knowledge.</h1>
       <p class="lede">The simulator gives each current body a stable <code>BodyId</code> and parent relationship. Renderer colors, moon separation, and HUD labels derive from that state instead of hardcoded display strings.</p>
+      <div class="actions"><a class="button-secondary" href={`${base}docs/roadmap/`}>Read body-by-body roadmap</a></div>
     </div>
   </section>
 
-  <section class="panel table-wrap">
+  <section class="panel table-wrap science-table">
     <table>
       <thead>
-        <tr><th>Body</th><th>Kind</th><th>Parent</th><th>Initialization note</th></tr>
+        <tr><th>Body</th><th>Kind</th><th>Parent</th><th>Milestone</th><th>Initialization note</th></tr>
       </thead>
       <tbody>
-        {bodies.map(([name, kind, parent, note]) => (
-          <tr><td>{name}</td><td>{kind}</td><td>{parent}</td><td>{note}</td></tr>
+        {implementedBodies.map((body) => (
+          <tr><td>{body.name}</td><td>{body.kind}</td><td>{body.parent}</td><td>{body.milestone}</td><td>{body.initialization}</td></tr>
         ))}
       </tbody>
     </table>
