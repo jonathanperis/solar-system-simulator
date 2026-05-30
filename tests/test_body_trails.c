@@ -24,7 +24,7 @@ static void test_trails_start_empty_for_all_body_slots(void)
 
 static void test_trails_record_planets_and_moons_but_not_stars(void)
 {
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars();
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
     BodyTrails trails = body_trails_create();
 
     body_trails_record_system(&trails, &system);
@@ -35,14 +35,18 @@ static void test_trails_record_planets_and_moons_but_not_stars(void)
     assert(body_trails_point_count(&trails, 3) == 1);
     assert(body_trails_point_count(&trails, 4) == 1);
     assert(body_trails_point_count(&trails, 5) == 1);
+    assert(body_trails_point_count(&trails, 6) == 1);
+    assert(body_trails_point_count(&trails, 7) == 1);
     assert_vec3d_equal(body_trails_point_at(&trails, 3, 0), system.bodies[3].position_m);
     assert_vec3d_equal(body_trails_point_at(&trails, 4, 0), system.bodies[4].position_m);
     assert_vec3d_equal(body_trails_point_at(&trails, 5, 0), system.bodies[5].position_m);
+    assert_vec3d_equal(body_trails_point_at(&trails, 6, 0), system.bodies[6].position_m);
+    assert_vec3d_equal(body_trails_point_at(&trails, 7, 0), system.bodies[7].position_m);
 }
 
 static void test_trails_append_new_positions_after_motion(void)
 {
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars();
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
     BodyTrails trails = body_trails_create();
 
     body_trails_record_system(&trails, &system);
@@ -52,14 +56,18 @@ static void test_trails_append_new_positions_after_motion(void)
     assert(body_trails_point_count(&trails, 3) == 2);
     assert(body_trails_point_count(&trails, 4) == 2);
     assert(body_trails_point_count(&trails, 5) == 2);
+    assert(body_trails_point_count(&trails, 6) == 2);
+    assert(body_trails_point_count(&trails, 7) == 2);
     assert_vec3d_equal(body_trails_point_at(&trails, 3, 1), system.bodies[3].position_m);
     assert_vec3d_equal(body_trails_point_at(&trails, 4, 1), system.bodies[4].position_m);
     assert_vec3d_equal(body_trails_point_at(&trails, 5, 1), system.bodies[5].position_m);
+    assert_vec3d_equal(body_trails_point_at(&trails, 6, 1), system.bodies[6].position_m);
+    assert_vec3d_equal(body_trails_point_at(&trails, 7, 1), system.bodies[7].position_m);
 }
 
 static void test_trails_keep_every_recorded_point_beyond_initial_capacity(void)
 {
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars();
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
     BodyTrails trails = body_trails_create();
 
     for (size_t i = 0; i < SOLAR_TRAIL_INITIAL_CAPACITY + 3; ++i) {

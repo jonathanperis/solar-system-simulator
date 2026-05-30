@@ -9,6 +9,8 @@
 
 #define SOLAR_MIN_GRID_SLICES 20
 #define SOLAR_GRID_PADDING_UNITS 2.0
+#define SOLAR_ILLUSTRATIVE_SATELLITE_GAP_UNITS 0.03
+#define SOLAR_ILLUSTRATIVE_SMALL_MOON_RADIUS 0.012f
 
 static int body_named(const Body *body, const char *name)
 {
@@ -24,52 +26,28 @@ static Vector3 vec3d_to_raylib(Vec3d vector)
     };
 }
 
-Vec3d renderer_body_position(const SolarSystem *system, size_t body_index, RenderScaleMode mode)
+static int moon_parent_index(const SolarSystem *system, size_t body_index)
 {
-    if (system->body_count == 0 || body_index >= system->body_count) {
-        return vec3d_zero();
+    const Body *body = &system->bodies[body_index];
+    const char *parent_name = NULL;
+
+    if (body_named(body, "Moon")) {
+        parent_name = "Earth";
+    } else if (body_named(body, "Phobos") || body_named(body, "Deimos")) {
+        parent_name = "Mars";
     }
 
-    const Body *body = &system->bodies[body_index];
-    Vec3d position = meters_vec_to_render_vec3d(body->position_m);
-    if (mode == RENDER_SCALE_REAL || !body_named(body, "Moon")) {
-        return position;
+    if (parent_name == NULL) {
+        return -1;
     }
 
     for (size_t i = 0; i < system->body_count; ++i) {
-        const Body *candidate_parent = &system->bodies[i];
-        if (body_named(candidate_parent, "Earth")) {
-            Vec3d parent_position = meters_vec_to_render_vec3d(candidate_parent->position_m);
-            Vec3d relative_position = vec3d_sub(position, parent_position);
-            return vec3d_add(parent_position, vec3d_scale(relative_position, SOLAR_ILLUSTRATIVE_MOON_DISTANCE_FACTOR));
+        if (body_named(&system->bodies[i], parent_name)) {
+            return (int)i;
         }
     }
 
-    return position;
-}
-
-Vec3d renderer_trail_point_position(const SolarSystem *system, const BodyTrails *trails, size_t body_index, size_t point_index, RenderScaleMode mode)
-{
-    if (system->body_count == 0 || body_index >= system->body_count || body_index >= SOLAR_SYSTEM_BODY_CAPACITY) {
-        return vec3d_zero();
-    }
-
-    Vec3d position = meters_vec_to_render_vec3d(body_trails_point_at(trails, body_index, point_index));
-    const Body *body = &system->bodies[body_index];
-    if (mode == RENDER_SCALE_REAL || !body_named(body, "Moon")) {
-        return position;
-    }
-
-    for (size_t i = 0; i < system->body_count; ++i) {
-        const Body *candidate_parent = &system->bodies[i];
-        if (body_named(candidate_parent, "Earth") && point_index < body_trails_point_count(trails, i)) {
-            Vec3d parent_position = meters_vec_to_render_vec3d(body_trails_point_at(trails, i, point_index));
-            Vec3d relative_position = vec3d_sub(position, parent_position);
-            return vec3d_add(parent_position, vec3d_scale(relative_position, SOLAR_ILLUSTRATIVE_MOON_DISTANCE_FACTOR));
-        }
-    }
-
-    return position;
+    return -1;
 }
 
 float renderer_body_radius(const Body *body, RenderScaleMode mode)
@@ -84,10 +62,82 @@ float renderer_body_radius(const Body *body, RenderScaleMode mode)
     }
 
     if (body->kind == BODY_KIND_MOON) {
-        return SOLAR_ILLUSTRATIVE_PLANET_RADIUS * (float)(body->radius_m / SOLAR_EARTH_RADIUS_M);
+        float moon_radius = SOLAR_ILLUSTRATIVE_PLANET_RADIUS * (float)(body->radius_m / SOLAR_EARTH_RADIUS_M);
+        return moon_radius < SOLAR_ILLUSTRATIVE_SMALL_MOON_RADIUS ? SOLAR_ILLUSTRATIVE_SMALL_MOON_RADIUS : moon_radius;
     }
 
     return SOLAR_ILLUSTRATIVE_PLANET_RADIUS;
+}
+
+static Vec3d visible_satellite_position(const Body *body, const Body *parent, Vec3d position, Vec3d parent_position, RenderScaleMode mode)
+{
+    Vec3d relative_position = vec3d_sub(position, parent_position);
+    double current_distance = vec3d_length(relative_position);
+    if (current_distance <= 0.0) {
+        return position;
+    }
+
+    double required_distance =
+        renderer_body_radius(parent, mode) +
+        renderer_body_radius(body, mode) +
+        SOLAR_ILLUSTRATIVE_SATELLITE_GAP_UNITS;
+
+    if (body_named(body, "Moon")) {
+        Vec3d expanded = vec3d_scale(relative_position, SOLAR_ILLUSTRATIVE_MOON_DISTANCE_FACTOR);
+        if (vec3d_length(expanded) > required_distance) {
+            return vec3d_add(parent_position, expanded);
+        }
+    }
+
+    if (current_distance < required_distance) {
+        return vec3d_add(parent_position, vec3d_scale(relative_position, required_distance / current_distance));
+    }
+
+    return position;
+}
+
+Vec3d renderer_body_position(const SolarSystem *system, size_t body_index, RenderScaleMode mode)
+{
+    if (system->body_count == 0 || body_index >= system->body_count) {
+        return vec3d_zero();
+    }
+
+    const Body *body = &system->bodies[body_index];
+    Vec3d position = meters_vec_to_render_vec3d(body->position_m);
+    if (mode == RENDER_SCALE_REAL || body->kind != BODY_KIND_MOON) {
+        return position;
+    }
+
+    int parent_index = moon_parent_index(system, body_index);
+    if (parent_index < 0) {
+        return position;
+    }
+
+    const Body *parent = &system->bodies[parent_index];
+    Vec3d parent_position = meters_vec_to_render_vec3d(parent->position_m);
+    return visible_satellite_position(body, parent, position, parent_position, mode);
+}
+
+Vec3d renderer_trail_point_position(const SolarSystem *system, const BodyTrails *trails, size_t body_index, size_t point_index, RenderScaleMode mode)
+{
+    if (system->body_count == 0 || body_index >= system->body_count || body_index >= SOLAR_SYSTEM_BODY_CAPACITY) {
+        return vec3d_zero();
+    }
+
+    Vec3d position = meters_vec_to_render_vec3d(body_trails_point_at(trails, body_index, point_index));
+    const Body *body = &system->bodies[body_index];
+    if (mode == RENDER_SCALE_REAL || body->kind != BODY_KIND_MOON) {
+        return position;
+    }
+
+    int parent_index = moon_parent_index(system, body_index);
+    if (parent_index < 0 || point_index >= body_trails_point_count(trails, (size_t)parent_index)) {
+        return position;
+    }
+
+    const Body *parent = &system->bodies[parent_index];
+    Vec3d parent_position = meters_vec_to_render_vec3d(body_trails_point_at(trails, (size_t)parent_index, point_index));
+    return visible_satellite_position(body, parent, position, parent_position, mode);
 }
 
 static Color body_render_color(const Body *body)
@@ -114,6 +164,14 @@ static Color body_render_color(const Body *body)
 
     if (body->name != NULL && strcmp(body->name, "Mars") == 0) {
         return ORANGE;
+    }
+
+    if (body->name != NULL && strcmp(body->name, "Phobos") == 0) {
+        return BROWN;
+    }
+
+    if (body->name != NULL && strcmp(body->name, "Deimos") == 0) {
+        return MAROON;
     }
 
     return LIGHTGRAY;
