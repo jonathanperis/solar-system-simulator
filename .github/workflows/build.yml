@@ -10,6 +10,8 @@ jobs:
   native:
     name: Native C/raylib build and tests
     runs-on: ubuntu-latest
+    env:
+      RAYLIB_LIBS: -lraylib -lm -ldl -lpthread -lGL -lrt -lX11 -lXrandr -lXi -lXinerama -lXcursor
 
     steps:
       - name: Check out repository
