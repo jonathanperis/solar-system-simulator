@@ -1,6 +1,7 @@
 #include "renderer.h"
 
 #include <raylib.h>
+#include <string.h>
 
 #include "../sim/constants.h"
 #include "../sim/units.h"
@@ -15,10 +16,29 @@ static Vector3 body_render_position(const Body *body)
     };
 }
 
+static float body_min_visible_radius(const Body *body)
+{
+    return body->kind == BODY_KIND_STAR ? SOLAR_MIN_VISIBLE_BODY_RADIUS : SOLAR_MIN_VISIBLE_PLANET_RADIUS;
+}
+
 static float body_render_radius(const Body *body)
 {
     float scaled_radius = meters_to_render_units(body->radius_m);
-    return scaled_radius < SOLAR_MIN_VISIBLE_BODY_RADIUS ? SOLAR_MIN_VISIBLE_BODY_RADIUS : scaled_radius;
+    float min_radius = body_min_visible_radius(body);
+    return scaled_radius < min_radius ? min_radius : scaled_radius;
+}
+
+static Color body_render_color(const Body *body)
+{
+    if (body->kind == BODY_KIND_STAR) {
+        return GOLD;
+    }
+
+    if (body->name != NULL && strcmp(body->name, "Mercury") == 0) {
+        return GRAY;
+    }
+
+    return LIGHTGRAY;
 }
 
 void renderer_draw_solar_system(const SolarSystem *system)
@@ -27,7 +47,7 @@ void renderer_draw_solar_system(const SolarSystem *system)
 
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
-        Color color = body->kind == BODY_KIND_STAR ? GOLD : LIGHTGRAY;
+        Color color = body_render_color(body);
         Vector3 position = body_render_position(body);
         float radius = body_render_radius(body);
 

@@ -3,21 +3,53 @@
 #include "constants.h"
 #include "physics.h"
 
+static Body create_sun(void)
+{
+    return body_create(
+        "Sun",
+        BODY_KIND_STAR,
+        SOLAR_SUN_MASS_KG,
+        SOLAR_SUN_RADIUS_M,
+        vec3d_zero(),
+        vec3d_zero(),
+        true
+    );
+}
+
+Body solar_system_create_mercury_at_perihelion(void)
+{
+    return body_create(
+        "Mercury",
+        BODY_KIND_PLANET,
+        SOLAR_MERCURY_MASS_KG,
+        SOLAR_MERCURY_RADIUS_M,
+        (Vec3d){SOLAR_MERCURY_PERIHELION_M, 0.0, 0.0},
+        (Vec3d){0.0, 0.0, SOLAR_MERCURY_PERIHELION_SPEED_MPS},
+        false
+    );
+}
+
 SolarSystem solar_system_create_sun_only(void)
 {
     SolarSystem system = {
         .bodies = {
-            body_create(
-                "Sun",
-                BODY_KIND_STAR,
-                SOLAR_SUN_MASS_KG,
-                SOLAR_SUN_RADIUS_M,
-                vec3d_zero(),
-                vec3d_zero(),
-                true
-            ),
+            create_sun(),
         },
         .body_count = 1,
+        .elapsed_seconds = 0.0,
+    };
+
+    return system;
+}
+
+SolarSystem solar_system_create_sun_mercury(void)
+{
+    SolarSystem system = {
+        .bodies = {
+            create_sun(),
+            solar_system_create_mercury_at_perihelion(),
+        },
+        .body_count = 2,
         .elapsed_seconds = 0.0,
     };
 
