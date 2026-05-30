@@ -116,9 +116,32 @@ static void test_earth_perihelion_speed_matches_vis_viva(void)
     assert_close(SOLAR_EARTH_PERIHELION_SPEED_MPS, expected, 1e-6);
 }
 
-static void test_solar_system_capacity_supports_sun_mercury_venus_and_earth(void)
+static void test_moon_constants_are_real_si_values(void)
 {
-    assert(SOLAR_SYSTEM_BODY_CAPACITY == 4);
+    assert_close(SOLAR_MOON_MASS_KG, 7.346e22, 7.346e22 * 1e-12);
+    assert_close(SOLAR_MOON_RADIUS_M, 1737400.0, 1e-6);
+    assert_close(SOLAR_MOON_SEMI_MAJOR_AXIS_M, 384400000.0, 1e-6);
+    assert_close(SOLAR_MOON_ECCENTRICITY, 0.0549, 1e-12);
+}
+
+static void test_moon_perigee_distance_is_derived_from_orbital_elements(void)
+{
+    double expected = SOLAR_MOON_SEMI_MAJOR_AXIS_M * (1.0 - SOLAR_MOON_ECCENTRICITY);
+
+    assert_close(SOLAR_MOON_PERIGEE_M, expected, 1e-6);
+}
+
+static void test_moon_perigee_speed_matches_earth_moon_vis_viva(void)
+{
+    double mu = SOLAR_G * (SOLAR_EARTH_MASS_KG + SOLAR_MOON_MASS_KG);
+    double expected = sqrt(mu * ((2.0 / SOLAR_MOON_PERIGEE_M) - (1.0 / SOLAR_MOON_SEMI_MAJOR_AXIS_M)));
+
+    assert_close(SOLAR_MOON_PERIGEE_SPEED_MPS, expected, 1e-9);
+}
+
+static void test_solar_system_capacity_supports_sun_mercury_venus_earth_and_moon(void)
+{
+    assert(SOLAR_SYSTEM_BODY_CAPACITY == 5);
 }
 
 static void test_mercury_body_starts_at_perihelion_with_tangential_velocity(void)
@@ -172,6 +195,26 @@ static void test_earth_body_starts_at_perihelion_with_tangential_velocity(void)
     assert_close(earth.velocity_mps.z, 0.0, 1e-12);
 }
 
+static void test_moon_body_starts_at_earth_relative_perigee_with_tangential_velocity(void)
+{
+    Body earth = solar_system_create_earth_at_perihelion();
+    Body moon = solar_system_create_moon_at_perigee_near_earth(&earth);
+    Vec3d earth_to_moon = vec3d_sub(moon.position_m, earth.position_m);
+    Vec3d relative_velocity = vec3d_sub(moon.velocity_mps, earth.velocity_mps);
+
+    assert(strcmp(moon.name, "Moon") == 0);
+    assert(moon.kind == BODY_KIND_MOON);
+    assert(!moon.fixed);
+    assert_close(moon.mass_kg, SOLAR_MOON_MASS_KG, SOLAR_MOON_MASS_KG * 1e-12);
+    assert_close(moon.radius_m, SOLAR_MOON_RADIUS_M, 1e-6);
+    assert_close(earth_to_moon.x, SOLAR_MOON_PERIGEE_M, 1e-6);
+    assert_close(earth_to_moon.y, 0.0, 1e-12);
+    assert_close(earth_to_moon.z, 0.0, 1e-12);
+    assert_close(relative_velocity.x, 0.0, 1e-12);
+    assert_close(relative_velocity.y, 0.0, 1e-12);
+    assert_close(relative_velocity.z, SOLAR_MOON_PERIGEE_SPEED_MPS, 1e-9);
+}
+
 static void test_sun_mercury_system_has_two_expected_bodies(void)
 {
     SolarSystem system = solar_system_create_sun_mercury();
@@ -212,6 +255,21 @@ static void test_sun_mercury_venus_earth_system_has_four_expected_bodies(void)
     assert(!system.bodies[2].fixed);
     assert(!system.bodies[3].fixed);
     assert(system.bodies[3].kind == BODY_KIND_PLANET);
+}
+
+static void test_sun_mercury_venus_earth_moon_system_has_five_expected_bodies(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
+
+    assert(system.body_count == 5);
+    assert(strcmp(system.bodies[0].name, "Sun") == 0);
+    assert(strcmp(system.bodies[1].name, "Mercury") == 0);
+    assert(strcmp(system.bodies[2].name, "Venus") == 0);
+    assert(strcmp(system.bodies[3].name, "Earth") == 0);
+    assert(strcmp(system.bodies[4].name, "Moon") == 0);
+    assert(system.bodies[0].fixed);
+    assert(!system.bodies[4].fixed);
+    assert(system.bodies[4].kind == BODY_KIND_MOON);
 }
 
 static void test_mercury_acceleration_points_toward_sun_at_perihelion(void)
@@ -334,6 +392,44 @@ static void test_earth_roughly_returns_after_one_orbit(void)
     assert(distance_from_initial < 0.08 * SOLAR_AU_METERS);
 }
 
+static void test_moon_moves_prograde_relative_to_earth_after_one_day(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
+    Vec3d initial_relative = vec3d_sub(system.bodies[4].position_m, system.bodies[3].position_m);
+
+    solar_system_step(&system, SOLAR_DAY_SECONDS);
+
+    Vec3d relative = vec3d_sub(system.bodies[4].position_m, system.bodies[3].position_m);
+    assert(relative.x < initial_relative.x);
+    assert(relative.z > initial_relative.z);
+    assert_close(system.bodies[0].position_m.x, 0.0, 1e-12);
+    assert_close(system.bodies[0].position_m.y, 0.0, 1e-12);
+    assert_close(system.bodies[0].position_m.z, 0.0, 1e-12);
+}
+
+static void test_moon_remains_near_earth_after_one_lunar_orbit(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
+    const double dt_seconds = 3.0 * 60.0 * 60.0;
+    const double earth_moon_mu = SOLAR_G * (SOLAR_EARTH_MASS_KG + SOLAR_MOON_MASS_KG);
+    const double pi = acos(-1.0);
+    const double lunar_period_seconds = 2.0 * pi * sqrt(
+        (SOLAR_MOON_SEMI_MAJOR_AXIS_M * SOLAR_MOON_SEMI_MAJOR_AXIS_M * SOLAR_MOON_SEMI_MAJOR_AXIS_M) /
+        earth_moon_mu
+    );
+    const int steps = (int)(lunar_period_seconds / dt_seconds);
+
+    for (int i = 0; i < steps; ++i) {
+        solar_system_step(&system, dt_seconds);
+    }
+
+    Vec3d earth_to_moon = vec3d_sub(system.bodies[4].position_m, system.bodies[3].position_m);
+    double distance = vec3d_length(earth_to_moon);
+
+    assert(distance > 0.80 * SOLAR_MOON_PERIGEE_M);
+    assert(distance < 1.30 * (SOLAR_MOON_SEMI_MAJOR_AXIS_M * (1.0 + SOLAR_MOON_ECCENTRICITY)));
+}
+
 int main(void)
 {
     test_sun_body_creation_preserves_fields();
@@ -348,13 +444,18 @@ int main(void)
     test_earth_constants_are_real_si_values();
     test_earth_perihelion_distance_is_derived_from_orbital_elements();
     test_earth_perihelion_speed_matches_vis_viva();
-    test_solar_system_capacity_supports_sun_mercury_venus_and_earth();
+    test_moon_constants_are_real_si_values();
+    test_moon_perigee_distance_is_derived_from_orbital_elements();
+    test_moon_perigee_speed_matches_earth_moon_vis_viva();
+    test_solar_system_capacity_supports_sun_mercury_venus_earth_and_moon();
     test_mercury_body_starts_at_perihelion_with_tangential_velocity();
     test_venus_body_starts_at_perihelion_with_tangential_velocity();
     test_earth_body_starts_at_perihelion_with_tangential_velocity();
+    test_moon_body_starts_at_earth_relative_perigee_with_tangential_velocity();
     test_sun_mercury_system_has_two_expected_bodies();
     test_sun_mercury_venus_system_has_three_expected_bodies();
     test_sun_mercury_venus_earth_system_has_four_expected_bodies();
+    test_sun_mercury_venus_earth_moon_system_has_five_expected_bodies();
     test_mercury_acceleration_points_toward_sun_at_perihelion();
     test_mercury_moves_after_one_day_while_sun_stays_fixed();
     test_mercury_roughly_returns_after_one_orbit();
@@ -364,6 +465,8 @@ int main(void)
     test_earth_acceleration_points_toward_sun_at_perihelion();
     test_earth_moves_after_one_day_while_sun_stays_fixed();
     test_earth_roughly_returns_after_one_orbit();
+    test_moon_moves_prograde_relative_to_earth_after_one_day();
+    test_moon_remains_near_earth_after_one_lunar_orbit();
     puts("test_solar_system passed");
     return 0;
 }

@@ -18,7 +18,7 @@ static Vector3 body_render_position(const Body *body)
 
 static float body_min_visible_radius(const Body *body)
 {
-    return body->kind == BODY_KIND_STAR ? SOLAR_MIN_VISIBLE_BODY_RADIUS : SOLAR_MIN_VISIBLE_PLANET_RADIUS;
+    return body->kind == BODY_KIND_STAR ? SOLAR_MIN_VISIBLE_BODY_RADIUS : SOLAR_MIN_VISIBLE_NON_STAR_RADIUS;
 }
 
 static float body_render_radius(const Body *body, RenderScaleMode mode)
@@ -48,6 +48,10 @@ static Color body_render_color(const Body *body)
 
     if (body->name != NULL && strcmp(body->name, "Earth") == 0) {
         return BLUE;
+    }
+
+    if (body->name != NULL && strcmp(body->name, "Moon") == 0) {
+        return RAYWHITE;
     }
 
     return LIGHTGRAY;

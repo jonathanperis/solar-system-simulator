@@ -6,21 +6,22 @@ A bare-bones 3D solar system simulator written in C with [raylib](https://www.ra
 
 This project is intentionally physics-first. The renderer exists to show the simulation, but the core work is mathematical: deterministic celestial-body state, SI-unit physics, and testable orbital mechanics foundations.
 
-## Milestone 4: Foundation + Sun + Mercury + Venus + Earth
+## Milestone 5: Foundation + Sun + Mercury + Venus + Earth + Moon
 
-The current milestone extends the foundation to three orbiting planets: Mercury, Venus, and Earth. Additional planets, moons, asteroids, dwarf planets, textures, shaders, and visual polish are intentionally deferred to later iterations.
+The current milestone extends the foundation to Earth's Moon as the first natural satellite. Additional planets, asteroids, dwarf planets, textures, shaders, labels, trails, and visual polish are intentionally deferred to later iterations.
 
 Current milestone behavior:
 
 - Opens a raylib 3D scene titled `Solar System Simulator`.
-- Renders exactly four celestial bodies: the Sun, Mercury, Venus, and Earth.
+- Renders exactly five celestial bodies: the Sun, Mercury, Venus, Earth, and Moon.
 - Keeps the Sun fixed at the origin for a stable heliocentric baseline.
 - Initializes Mercury at perihelion on the +X axis with tangential +Z velocity from the vis-viva equation.
 - Initializes Venus at perihelion on the -X axis with tangential -Z velocity from the vis-viva equation.
 - Initializes Earth at perihelion on the +Z axis with tangential -X velocity from the vis-viva equation.
-- Advances Mercury, Venus, and Earth with Newtonian gravity from all simulated bodies using the shared simulation integrator.
+- Initializes the Moon at Earth-relative perigee with tangential relative velocity from the Earth-Moon vis-viva equation.
+- Advances Mercury, Venus, Earth, and the Moon with Newtonian gravity from all simulated bodies using the shared simulation integrator.
 - Supports illustrative/default and real-scale visualization modes.
-- Allows camera focus cycling across every simulated body: Sun, Mercury, Venus, and Earth.
+- Allows camera focus cycling across every simulated body: Sun, Mercury, Venus, Earth, and Moon.
 - Clamps mouse-wheel camera zoom while preserving the default viewing pitch, so max zoom-in does not flip or corrupt the camera orientation.
 - Displays body count, elapsed simulation days, time scale, view mode, camera focus target, camera zoom, and render scale notes.
 
@@ -38,7 +39,7 @@ Simulation code lives under `src/sim/` and is independent from raylib.
   - `a = G * source_mass / distance^3 * displacement`
 - Time stepping uses a velocity-Verlet / kick-drift-kick integrator.
 - The Sun is fixed for this milestone; barycentric Sun motion is deferred.
-- This is a deterministic physics baseline, not an ephemeris-accurate model. It does not include relativistic precession, J2000 state vectors, or perturbations from bodies beyond the Sun, Mercury, Venus, and Earth.
+- This is a deterministic physics baseline, not an ephemeris-accurate model. It does not include relativistic precession, J2000 state vectors, barycentric Earth-Moon initialization, or perturbations from bodies beyond the Sun, Mercury, Venus, Earth, and Moon.
 
 Current simulation data:
 
@@ -48,6 +49,7 @@ Current simulation data:
 | Mercury | `3.3011e23 kg` | `2439700 m` | perihelion position and tangential speed |
 | Venus | `4.8675e24 kg` | `6051800 m` | perihelion position and tangential speed |
 | Earth | `5.9736e24 kg` | `6371000 m` | perihelion position and tangential speed |
+| Moon | `7.346e22 kg` | `1737400 m` | Earth-relative perigee offset and tangential relative speed |
 
 Mercury orbital values used for initialization:
 
@@ -69,6 +71,15 @@ Earth orbital values used for initialization:
 - eccentricity: `0.01671022`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `147098073549.85776 m`
 - perihelion speed: `30287.085630725956 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
+
+Moon orbital values used for initialization around Earth:
+
+- semi-major axis: `384400000 m`
+- eccentricity: `0.0549`
+- perigee distance: `semi-major axis * (1 - eccentricity)` = `363296440 m`
+- perigee relative speed: `1082.5552631364333 m/s`, computed from `sqrt(G * (EarthMass + MoonMass) * (2 / perigee - 1 / semiMajorAxis))`
+- absolute Moon state: Earth heliocentric state plus the Earth-relative perigee offset and relative tangential velocity
+- Earth-Moon barycentric initialization is deferred; Earth keeps its existing heliocentric perihelion state for this milestone
 
 ## Rendering model
 
@@ -96,7 +107,7 @@ The app uses a small stable orbit camera instead of raylib's automatic orbital h
 - `V`: toggle visualization mode.
   - Illustrative: physical orbital positions with clamped/enlarged visible body radii.
   - Real scale: physical orbital positions and physical radii under the same render scale; planets may be nearly invisible.
-- `Tab` or `C`: cycle camera focus across Sun, Mercury, Venus, and Earth.
+- `Tab` or `C`: cycle camera focus across Sun, Mercury, Venus, Earth, and Moon.
 - Mouse wheel: zoom camera in/out around the focused body.
   - Zoom distance is clamped.
   - The viewing pitch remains fixed so max zoom-in does not flip or corrupt the camera orientation.
@@ -138,13 +149,12 @@ tests/                 # C test binaries for simulation and app math
 
 Each future body should be added one iteration at a time, with physical constants, initial conditions, tests, and rendering checks scoped to that body.
 
-1. Moon
-2. Mars
-3. asteroid belt representatives / major asteroids
-4. Jupiter
-5. Galilean moons
-6. Saturn
-7. major Saturnian moons
-8. Uranus
-9. Neptune
-10. dwarf planets / Kuiper belt representatives
+1. Mars
+2. asteroid belt representatives / major asteroids
+3. Jupiter
+4. Galilean moons
+5. Saturn
+6. major Saturnian moons
+7. Uranus
+8. Neptune
+9. dwarf planets / Kuiper belt representatives
