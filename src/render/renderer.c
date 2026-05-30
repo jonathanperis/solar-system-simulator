@@ -1,20 +1,47 @@
 #include "renderer.h"
 
-#include <math.h>
 #include <raylib.h>
 #include <string.h>
 
 #include "../sim/constants.h"
 #include "../sim/units.h"
 
-static Vector3 body_render_position(const Body *body)
+static int body_named(const Body *body, const char *name)
 {
-    Vec3d render_position = meters_vec_to_render_vec3d(body->position_m);
+    return body->name != NULL && strcmp(body->name, name) == 0;
+}
+
+static Vector3 vec3d_to_raylib(Vec3d vector)
+{
     return (Vector3){
-        (float)render_position.x,
-        (float)render_position.y,
-        (float)render_position.z,
+        (float)vector.x,
+        (float)vector.y,
+        (float)vector.z,
     };
+}
+
+Vec3d renderer_body_position(const SolarSystem *system, size_t body_index, RenderScaleMode mode)
+{
+    if (system->body_count == 0 || body_index >= system->body_count) {
+        return vec3d_zero();
+    }
+
+    const Body *body = &system->bodies[body_index];
+    Vec3d position = meters_vec_to_render_vec3d(body->position_m);
+    if (mode == RENDER_SCALE_REAL || !body_named(body, "Moon")) {
+        return position;
+    }
+
+    for (size_t i = 0; i < system->body_count; ++i) {
+        const Body *candidate_parent = &system->bodies[i];
+        if (body_named(candidate_parent, "Earth")) {
+            Vec3d parent_position = meters_vec_to_render_vec3d(candidate_parent->position_m);
+            Vec3d relative_position = vec3d_sub(position, parent_position);
+            return vec3d_add(parent_position, vec3d_scale(relative_position, SOLAR_ILLUSTRATIVE_MOON_DISTANCE_FACTOR));
+        }
+    }
+
+    return position;
 }
 
 float renderer_body_radius(const Body *body, RenderScaleMode mode)
@@ -28,8 +55,11 @@ float renderer_body_radius(const Body *body, RenderScaleMode mode)
         return scaled_radius < SOLAR_MIN_VISIBLE_BODY_RADIUS ? SOLAR_MIN_VISIBLE_BODY_RADIUS : scaled_radius;
     }
 
-    float illustrative_radius = sqrtf(scaled_radius) * SOLAR_ILLUSTRATIVE_NON_STAR_RADIUS_FACTOR;
-    return illustrative_radius < SOLAR_MIN_VISIBLE_NON_STAR_RADIUS ? SOLAR_MIN_VISIBLE_NON_STAR_RADIUS : illustrative_radius;
+    if (body->kind == BODY_KIND_MOON) {
+        return SOLAR_ILLUSTRATIVE_PLANET_RADIUS * (float)(body->radius_m / SOLAR_EARTH_RADIUS_M);
+    }
+
+    return SOLAR_ILLUSTRATIVE_PLANET_RADIUS;
 }
 
 static Color body_render_color(const Body *body)
@@ -75,7 +105,7 @@ void renderer_draw_solar_system(const SolarSystem *system, RenderScaleMode mode)
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
         Color color = body_render_color(body);
-        Vector3 position = body_render_position(body);
+        Vector3 position = vec3d_to_raylib(renderer_body_position(system, i, mode));
         float radius = renderer_body_radius(body, mode);
 
         DrawSphere(position, radius, color);

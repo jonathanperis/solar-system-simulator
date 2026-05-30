@@ -25,13 +25,9 @@ static OrbitCameraVec3 raylib_vec3_to_orbit_camera(Vector3 vector)
     return (OrbitCameraVec3){vector.x, vector.y, vector.z};
 }
 
-static Vector3 body_camera_target(const SolarSystem *system, size_t body_index)
+static Vector3 body_camera_target(const SolarSystem *system, size_t body_index, RenderScaleMode mode)
 {
-    if (system->body_count == 0 || body_index >= system->body_count) {
-        return (Vector3){0.0f, 0.0f, 0.0f};
-    }
-
-    Vec3d render_position = meters_vec_to_render_vec3d(system->bodies[body_index].position_m);
+    Vec3d render_position = renderer_body_position(system, body_index, mode);
     return (Vector3){
         (float)render_position.x,
         (float)render_position.y,
@@ -83,11 +79,11 @@ int main(void)
         }
 
         float frame_time = GetFrameTime();
-        Vector3 camera_target = body_camera_target(&system, focused_body_index);
+        Vector3 camera_target = body_camera_target(&system, focused_body_index, render_mode);
         orbit_camera_apply_zoom(&orbit_camera, GetMouseWheelMove());
         orbit_camera_advance(&orbit_camera, frame_time);
         solar_system_step(&system, (double)frame_time * time_scale);
-        camera_target = body_camera_target(&system, focused_body_index);
+        camera_target = body_camera_target(&system, focused_body_index, render_mode);
         apply_orbit_camera(&camera, &orbit_camera, camera_target);
 
         const char *focused_body_name = "None";
@@ -111,7 +107,7 @@ int main(void)
         DrawText(TextFormat("Camera zoom: %.1f units (mouse wheel, clamped)", orbit_camera.distance), 20, 175, 18, RAYWHITE);
         DrawText("Camera auto-orbits at fixed pitch; zoom cannot flip the angle", 20, 200, 18, RAYWHITE);
         DrawText("Physics: SI Newtonian baseline; rendering scale: 1 AU = 10 units", 20, 225, 18, RAYWHITE);
-        DrawText("Illustrative view compresses non-star radii; real-scale view uses physical radius scale", 20, 250, 18, RAYWHITE);
+        DrawText("Illustrative view keeps planets large and expands Moon offset; real-scale view uses physical scale", 20, 250, 18, RAYWHITE);
         DrawText("Moon starts at Earth-relative perigee with vis-viva speed", 20, 275, 18, RAYWHITE);
 
         EndDrawing();
