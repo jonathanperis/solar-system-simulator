@@ -1,0 +1,27 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Pipeline">
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Build and publish</p>
+      <h1>Native tests feed a Pages lab bench.</h1>
+      <p class="lede">The pipeline keeps native correctness, WebAssembly packaging, and static publishing as explicit phases so a broken browser artifact cannot silently deploy.</p>
+    </div>
+  </section>
+
+  <section class="grid">
+    <article class="card">
+      <h2>1. Native gate</h2>
+      <p><code>make clean && make && make test</code> builds the raylib app and runs C tests for vectors, physics, scene state, trails, labels, camera, and renderer behavior.</p>
+    </article>
+    <article class="card">
+      <h2>2. WASM artifact</h2>
+      <p><code>make web</code> compiles the same C app with Emscripten and checks the generated HTML, JavaScript, and WebAssembly files.</p>
+    </article>
+    <article class="card">
+      <h2>3. Pages deploy</h2>
+      <p>The deploy workflow downloads the WASM artifact into Astro public assets, builds the docs site under the repository base path, and publishes to GitHub Pages.</p>
+    </article>
+  </section>
+</BaseLayout>

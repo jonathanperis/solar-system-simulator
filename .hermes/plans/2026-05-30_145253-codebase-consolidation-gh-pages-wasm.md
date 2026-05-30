@@ -13,7 +13,7 @@
 ## Planning Progress Snapshot
 
 **Planning state as of:** 2026-05-30 14:52 UTC  
-**Implementation checkpoint:** 2026-05-30 — Tasks 2-5 completed and verified locally
+**Implementation checkpoint:** 2026-05-30 — Tasks 2-9 completed and verified locally
 **Repository:** `/opt/data/github/jonathanperis/solar-system-simulator`  
 **Branch/ref inspected:** `main @ 015eb1e`  
 **Working tree state before planning:** clean and even with `origin/main` (`0 0`)  
@@ -26,10 +26,10 @@
 | Agent/product/design context | yes | Missing `AGENTS.md`, `PRODUCT.md`, `DESIGN.md`; Impeccable context created from repo evidence | planning/context docs created in this pass | 100% |
 | Codebase consolidation/refactor | yes | Repeated scene factories, name-based renderer parent/color logic, HUD strings, trail allocation behavior | body IDs/parents, metadata-driven renderer lookup, and generated HUD labels implemented | 70% |
 | Commenting/learning docs | yes | sparse source comments, README is detailed but no per-module docs site | source comments added for physics, units, parent-relative moons, trails, renderer compromises, and substeps | 55% |
-| WASM build pipeline | yes | current Makefile has native build only; Super Mango `make web` uses Emscripten + controlled startup | native CI workflow added; WASM artifact path remains next | 35% |
-| GitHub Pages/Astro site | yes | no `docs/`; Super Mango uses Astro `docs/`, base path, loader, deploy workflows | roadmap with exact files | 20% |
+| WASM build pipeline | yes | current Makefile has native build only; Super Mango `make web` uses Emscripten + controlled startup | `make web`/`dist-wasm`, artifact checker, and CI upload added | 100% |
+| GitHub Pages/Astro site | yes | no `docs/`; Super Mango uses Astro `docs/`, base path, loader, deploy workflows | Astro lab site and workflow-run Pages deploy added | 100% |
 
-**Overall planning progress:** ~65% complete. The audit/context scaffolding, first consolidation pass, and native CI workflow are complete; implementation remains for WASM build, docs site, and Pages deployment.
+**Overall planning progress:** ~85% complete. The audit/context scaffold, code consolidation, native CI, WASM build, Astro site, and Pages workflow are implemented; remaining work is live deploy verification after GitHub Pages runs on `main`.
 
 ---
 

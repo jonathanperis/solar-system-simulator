@@ -1,0 +1,16 @@
+{
+  "name": "solar-system-simulator-docs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "astro build",
+    "preview": "astro preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.4",
+    "astro": "^6.4.2",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {}
+}

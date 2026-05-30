@@ -1,0 +1,27 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Physics model">
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Model notes</p>
+      <h1>Physics stays in SI units.</h1>
+      <p class="lede">Every body stores mass in kilograms, radius in meters, positions in meters, velocities in meters per second, and acceleration in meters per second squared.</p>
+    </div>
+  </section>
+
+  <section class="grid">
+    <article class="card">
+      <h2>Gravity</h2>
+      <p>The simulator applies Newtonian point-mass acceleration: <code>a = G·M·r̂/r²</code>. The code scales the displacement vector by <code>G·M/r³</code> so direction and magnitude stay coupled.</p>
+    </article>
+    <article class="card">
+      <h2>Integration</h2>
+      <p>The physics step uses velocity-Verlet: half-kick velocity, drift position, recompute acceleration, then finish the second half-kick.</p>
+    </article>
+    <article class="card">
+      <h2>Initial orbits</h2>
+      <p>Planets and moons start from perihelion, perigee, or periareion assumptions with vis-viva speeds relative to their parent frame.</p>
+    </article>
+  </section>
+</BaseLayout>

@@ -1,0 +1,244 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #020617;
+  color: #dbeafe;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(56, 189, 248, 0.18), transparent 26rem),
+    radial-gradient(circle at 84% 4%, rgba(250, 204, 21, 0.14), transparent 24rem),
+    linear-gradient(180deg, #020617 0%, #0f172a 55%, #020617 100%);
+}
+
+.stars {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px),
+    radial-gradient(circle, rgba(125,211,252,0.7) 1px, transparent 1px);
+  background-size: 71px 71px, 113px 113px;
+  mask-image: linear-gradient(to bottom, black, transparent 85%);
+}
+
+.site-header,
+main,
+footer {
+  position: relative;
+  width: min(1180px, calc(100vw - 2rem));
+  margin-inline: auto;
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.2rem 0;
+}
+
+.brand,
+nav a,
+footer a {
+  color: #e0f2fe;
+  text-decoration: none;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  color: #111827;
+  background: radial-gradient(circle, #fef3c7 0%, #f59e0b 70%);
+  box-shadow: 0 0 32px rgba(245, 158, 11, 0.6);
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+nav a {
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  background: rgba(15, 23, 42, 0.68);
+}
+
+h1,
+h2,
+h3 {
+  color: #f8fafc;
+  line-height: 1.05;
+}
+
+h1 {
+  font-size: clamp(2.8rem, 8vw, 6.5rem);
+  margin: 0;
+}
+
+h2 {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+}
+
+p,
+li {
+  line-height: 1.75;
+  color: #bfdbfe;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: 2rem;
+  align-items: center;
+  padding: 4rem 0 2rem;
+}
+
+.eyebrow {
+  color: #38bdf8;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.lede {
+  font-size: clamp(1.1rem, 2vw, 1.35rem);
+  max-width: 68ch;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+}
+
+.button,
+.button-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.8rem;
+  border-radius: 999px;
+  padding: 0 1.1rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.button {
+  color: #08111f;
+  background: linear-gradient(135deg, #facc15, #38bdf8);
+}
+
+.button-secondary {
+  color: #e0f2fe;
+  border: 1px solid rgba(125, 211, 252, 0.45);
+}
+
+.panel,
+.card,
+.wasm-card {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 24px;
+  background: rgba(15, 23, 42, 0.72);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+}
+
+.panel,
+.card {
+  padding: 1.25rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 3rem;
+}
+
+.wasm-card {
+  overflow: hidden;
+}
+
+.wasm-card iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  background: black;
+}
+
+.wasm-card figcaption {
+  padding: 0.9rem 1rem;
+  color: #bae6fd;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 2rem;
+}
+
+th,
+td {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  padding: 0.8rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: #fef3c7;
+}
+
+code {
+  color: #fef08a;
+}
+
+footer {
+  padding: 3rem 0;
+  color: #93c5fd;
+}
+
+@media (max-width: 860px) {
+  .site-header,
+  .hero {
+    display: block;
+  }
+
+  nav {
+    justify-content: flex-start;
+    margin-top: 1rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

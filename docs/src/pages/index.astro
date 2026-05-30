@@ -1,0 +1,54 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+const rawBase = import.meta.env.BASE_URL;
+const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+---
+<BaseLayout>
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Physics-first C/raylib lab</p>
+      <h1>Solar system mechanics you can inspect.</h1>
+      <p class="lede">
+        This simulator starts from Newtonian gravity, SI units, and body-by-body milestone growth.
+        Rendering is intentionally secondary: the browser view is a readable observatory over the same C source.
+      </p>
+      <div class="actions">
+        <a class="button" href="#play">Launch WebAssembly demo</a>
+        <a class="button-secondary" href="https://github.com/jonathanperis/solar-system-simulator">Read the C source</a>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Current scene</h2>
+      <p>Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, and Deimos are initialized with catalog IDs, parent metadata, and vis-viva-derived orbital speeds.</p>
+      <p><strong>Controls:</strong> <code>Tab</code>/<code>C</code> cycles camera focus, <code>V</code> toggles illustrative vs real scale, mouse wheel zooms.</p>
+    </div>
+  </section>
+
+  <section id="play">
+    <h2>Browser simulator</h2>
+    <figure class="wasm-card">
+      <iframe title="Solar System Simulator WebAssembly demo" src={`${base}wasm/solar-system-simulator.html`} loading="lazy"></iframe>
+      <figcaption>
+        The embedded artifact is built by Emscripten from the same C/raylib app target used by native development.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section class="grid" aria-label="Learning paths">
+    <article class="card">
+      <h3>Physics model</h3>
+      <p>Follow the SI-unit boundary, Newtonian acceleration, and velocity-Verlet integration choices.</p>
+      <a href={`${base}physics/`}>Study the model →</a>
+    </article>
+    <article class="card">
+      <h3>Body catalog</h3>
+      <p>Inspect the stable body IDs and parent relationships that keep rendering and docs from drifting.</p>
+      <a href={`${base}body-catalog/`}>Open catalog →</a>
+    </article>
+    <article class="card">
+      <h3>Build pipeline</h3>
+      <p>See how native tests, WebAssembly artifacts, and GitHub Pages deployment connect.</p>
+      <a href={`${base}pipeline/`}>Trace pipeline →</a>
+    </article>
+  </section>
+</BaseLayout>

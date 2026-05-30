@@ -1,0 +1,35 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+const bodies = [
+  ['Sun', 'Star', 'None', 'Fixed origin anchor for current milestones'],
+  ['Mercury', 'Planet', 'Sun', 'Heliocentric perihelion start'],
+  ['Venus', 'Planet', 'Sun', 'Heliocentric perihelion start'],
+  ['Earth', 'Planet', 'Sun', 'Heliocentric perihelion start'],
+  ['Moon', 'Moon', 'Earth', 'Earth-relative perigee start'],
+  ['Mars', 'Planet', 'Sun', 'Heliocentric perihelion start'],
+  ['Phobos', 'Moon', 'Mars', 'Mars-relative periareion start'],
+  ['Deimos', 'Moon', 'Mars', 'Mars-relative periareion start']
+];
+---
+<BaseLayout title="Body catalog">
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Catalog state</p>
+      <h1>Stable IDs prevent duplicate knowledge.</h1>
+      <p class="lede">The simulator gives each current body a stable <code>BodyId</code> and parent relationship. Renderer colors, moon separation, and HUD labels derive from that state instead of hardcoded display strings.</p>
+    </div>
+  </section>
+
+  <section class="panel table-wrap">
+    <table>
+      <thead>
+        <tr><th>Body</th><th>Kind</th><th>Parent</th><th>Initialization note</th></tr>
+      </thead>
+      <tbody>
+        {bodies.map(([name, kind, parent, note]) => (
+          <tr><td>{name}</td><td>{kind}</td><td>{parent}</td><td>{note}</td></tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+</BaseLayout>

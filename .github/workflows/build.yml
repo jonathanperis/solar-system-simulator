@@ -51,3 +51,37 @@ jobs:
 
       - name: Run C test suite
         run: make test
+
+  wasm:
+    name: WebAssembly artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.58
+
+      - name: Build raylib for WebAssembly
+        run: |
+          git clone --depth 1 --branch 6.0 https://github.com/raysan5/raylib.git /tmp/raylib
+          make PLATFORM=PLATFORM_WEB -C /tmp/raylib/src
+
+      - name: Build and smoke-check WebAssembly bundle
+        run: make web RAYLIB_WEB_SRC=/tmp/raylib/src
+
+      - name: Package WebAssembly artifact
+        run: make dist-wasm RAYLIB_WEB_SRC=/tmp/raylib/src
+
+      - name: Upload WebAssembly artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: solar-system-simulator-wasm
+          path: |
+            build/web/solar-system-simulator.html
+            build/web/solar-system-simulator.js
+            build/web/solar-system-simulator.wasm
+            build/solar-system-simulator-wasm.zip
