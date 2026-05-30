@@ -3,6 +3,12 @@
 
 #include "../sim/solar_system.h"
 
-void renderer_draw_solar_system(const SolarSystem *system);
+typedef enum RenderScaleMode {
+    RENDER_SCALE_ILLUSTRATIVE,
+    RENDER_SCALE_REAL
+} RenderScaleMode;
+
+const char *renderer_scale_mode_label(RenderScaleMode mode);
+void renderer_draw_solar_system(const SolarSystem *system, RenderScaleMode mode);
 
 #endif
