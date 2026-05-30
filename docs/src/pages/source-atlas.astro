@@ -1,0 +1,27 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Source atlas">
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Repository map</p>
+      <h1>The code separates physics from presentation.</h1>
+      <p class="lede">The project is intentionally plain C. Simulation, app state, and raylib rendering live in separate directories so each new planet or moon can be reviewed as a physics milestone.</p>
+    </div>
+  </section>
+
+  <section class="grid">
+    <article class="card">
+      <h2><code>src/sim</code></h2>
+      <p>Owns SI-unit bodies, constants, vector math, Newtonian acceleration, Verlet stepping, and scene factories.</p>
+    </article>
+    <article class="card">
+      <h2><code>src/render</code></h2>
+      <p>Converts simulation positions and radii into readable raylib space, including real and illustrative scale modes.</p>
+    </article>
+    <article class="card">
+      <h2><code>src/app</code></h2>
+      <p>Tracks camera orbit, body trails, and generated HUD labels outside the physics model.</p>
+    </article>
+  </section>
+</BaseLayout>

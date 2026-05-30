@@ -1,0 +1,42 @@
+---
+const rawBase = import.meta.env.BASE_URL;
+const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
+const title = Astro.props.title ? `${Astro.props.title} · Solar System Simulator` : 'Solar System Simulator';
+const description = 'A physics-first C and raylib solar-system lab with a browser WebAssembly demo.';
+const nav = [
+  ['Lab', base],
+  ['Physics', `${base}physics/`],
+  ['Body catalog', `${base}body-catalog/`],
+  ['Source atlas', `${base}source-atlas/`],
+  ['Pipeline', `${base}pipeline/`]
+];
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="stylesheet" href={`${base}styles/global.css`} />
+  </head>
+  <body>
+    <div class="stars" aria-hidden="true"></div>
+    <header class="site-header">
+      <a class="brand" href={base}>
+        <span class="brand-mark">☉</span>
+        <span>Solar System Simulator</span>
+      </a>
+      <nav aria-label="Main navigation">
+        {nav.map(([label, href]) => <a href={href}>{label}</a>)}
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer>
+      <p>Built with C, raylib, Emscripten, and Astro. Physics state stays in SI units; rendering adapts only at the boundary.</p>
+      <p><a href="https://github.com/jonathanperis/solar-system-simulator">Source on GitHub</a></p>
+    </footer>
+  </body>
+</html>

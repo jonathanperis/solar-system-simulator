@@ -1,5 +1,9 @@
 # Build output
 build/
+docs/dist/
+docs/.astro/
+docs/node_modules/
+docs/public/wasm/
 
 # Prerequisites
 *.d
