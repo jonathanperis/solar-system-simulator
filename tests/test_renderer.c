@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "app/body_trails.h"
 #include "render/renderer.h"
 #include "sim/constants.h"
 #include "sim/solar_system.h"
@@ -72,6 +73,36 @@ static void test_illustrative_earth_and_moon_do_not_overlap_at_perigee(void)
     assert(combined_radius < render_distance);
 }
 
+static void test_real_scale_trail_point_uses_physical_meter_scale(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
+    BodyTrails trails = body_trails_create();
+    body_trails_record_system(&trails, &system);
+
+    Vec3d actual = renderer_trail_point_position(&system, &trails, 3, 0, RENDER_SCALE_REAL);
+    Vec3d expected = meters_vec_to_render_vec3d(system.bodies[3].position_m);
+
+    assert_close(actual.x, expected.x, 1e-12);
+    assert_close(actual.y, expected.y, 1e-12);
+    assert_close(actual.z, expected.z, 1e-12);
+}
+
+static void test_illustrative_moon_trail_uses_expanded_parent_relative_position(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
+    BodyTrails trails = body_trails_create();
+    body_trails_record_system(&trails, &system);
+
+    Vec3d actual = renderer_trail_point_position(&system, &trails, 4, 0, RENDER_SCALE_ILLUSTRATIVE);
+    Vec3d earth = meters_vec_to_render_vec3d(system.bodies[3].position_m);
+    Vec3d moon = meters_vec_to_render_vec3d(system.bodies[4].position_m);
+    Vec3d expected = vec3d_add(earth, vec3d_scale(vec3d_sub(moon, earth), SOLAR_ILLUSTRATIVE_MOON_DISTANCE_FACTOR));
+
+    assert_close(actual.x, expected.x, 1e-12);
+    assert_close(actual.y, expected.y, 1e-12);
+    assert_close(actual.z, expected.z, 1e-12);
+}
+
 int main(void)
 {
     test_real_scale_radius_uses_physical_meter_scale();
@@ -79,6 +110,8 @@ int main(void)
     test_illustrative_planets_keep_old_visible_radius();
     test_illustrative_moon_is_smaller_but_still_visible();
     test_illustrative_earth_and_moon_do_not_overlap_at_perigee();
+    test_real_scale_trail_point_uses_physical_meter_scale();
+    test_illustrative_moon_trail_uses_expanded_parent_relative_position();
     puts("test_renderer passed");
     return 0;
 }

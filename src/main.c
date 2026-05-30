@@ -1,5 +1,6 @@
 #include <raylib.h>
 
+#include "app/body_trails.h"
 #include "app/orbit_camera.h"
 #include "sim/constants.h"
 #include "sim/solar_system.h"
@@ -65,6 +66,8 @@ int main(void)
 
     OrbitCameraState orbit_camera = orbit_camera_default_state();
     SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
+    BodyTrails trails = body_trails_create();
+    body_trails_record_system(&trails, &system);
     const double time_scale = SOLAR_DAY_SECONDS;
     size_t focused_body_index = 0;
     RenderScaleMode render_mode = RENDER_SCALE_ILLUSTRATIVE;
@@ -83,6 +86,7 @@ int main(void)
         orbit_camera_apply_zoom(&orbit_camera, GetMouseWheelMove());
         orbit_camera_advance(&orbit_camera, frame_time);
         solar_system_step(&system, (double)frame_time * time_scale);
+        body_trails_record_system(&trails, &system);
         camera_target = body_camera_target(&system, focused_body_index, render_mode);
         apply_orbit_camera(&camera, &orbit_camera, camera_target);
 
@@ -95,7 +99,7 @@ int main(void)
         ClearBackground(BLACK);
 
         BeginMode3D(camera);
-        renderer_draw_solar_system(&system, render_mode);
+        renderer_draw_solar_system(&system, &trails, render_mode);
         EndMode3D();
 
         DrawText("Solar System Simulator - Milestone 5: Moon", 20, 20, 20, RAYWHITE);
@@ -109,6 +113,7 @@ int main(void)
         DrawText("Physics: SI Newtonian baseline; rendering scale: 1 AU = 10 units", 20, 225, 18, RAYWHITE);
         DrawText("Illustrative view keeps planets large and expands Moon offset; real-scale view uses physical scale", 20, 250, 18, RAYWHITE);
         DrawText("Moon starts at Earth-relative perigee with vis-viva speed", 20, 275, 18, RAYWHITE);
+        DrawText("Traces: planets and moons leave bounded motion trails", 20, 300, 18, RAYWHITE);
 
         EndDrawing();
     }

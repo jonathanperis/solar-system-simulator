@@ -21,6 +21,7 @@ Current milestone behavior:
 - Initializes the Moon at Earth-relative perigee with tangential relative velocity from the Earth-Moon vis-viva equation.
 - Advances Mercury, Venus, Earth, and the Moon with Newtonian gravity from all simulated bodies using the shared simulation integrator.
 - Supports illustrative/default and real-scale visualization modes.
+- Draws persistent motion traces for every non-star body so Mercury, Venus, Earth, and the Moon leave visible paths as they move.
 - Allows camera focus cycling across every simulated body: Sun, Mercury, Venus, Earth, and Moon.
 - Clamps mouse-wheel camera zoom while preserving the default viewing pitch, so max zoom-in does not flip or corrupt the camera orientation.
 - Displays body count, elapsed simulation days, time scale, view mode, camera focus target, camera zoom, and render scale notes.
@@ -90,6 +91,7 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 - Position scale: `1 AU = 10 render units`.
 - Physical radii remain real in simulation data.
 - Illustrative mode is the default: planets keep the previous large visible radius, while the Moon renders smaller in proportion to Earth's physical radius. The Moon's Earth-relative render offset is expanded only in illustrative mode so the large visual spheres remain readable without changing the underlying physics state.
+- Planet and Moon traces retain a bounded history of recent simulation positions and are drawn before the bodies as faint colored line segments.
 - Real-scale mode uses the same physical render scale for both positions and radii with no radius clamp. Planets may be nearly invisible in this mode; that is physically expected at solar-system scale.
 
 ## Camera model
