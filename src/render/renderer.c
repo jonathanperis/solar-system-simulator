@@ -21,9 +21,13 @@ static float body_min_visible_radius(const Body *body)
     return body->kind == BODY_KIND_STAR ? SOLAR_MIN_VISIBLE_BODY_RADIUS : SOLAR_MIN_VISIBLE_PLANET_RADIUS;
 }
 
-static float body_render_radius(const Body *body)
+static float body_render_radius(const Body *body, RenderScaleMode mode)
 {
     float scaled_radius = meters_to_render_units(body->radius_m);
+    if (mode == RENDER_SCALE_REAL) {
+        return scaled_radius;
+    }
+
     float min_radius = body_min_visible_radius(body);
     return scaled_radius < min_radius ? min_radius : scaled_radius;
 }
@@ -38,10 +42,25 @@ static Color body_render_color(const Body *body)
         return GRAY;
     }
 
+    if (body->name != NULL && strcmp(body->name, "Venus") == 0) {
+        return BEIGE;
+    }
+
     return LIGHTGRAY;
 }
 
-void renderer_draw_solar_system(const SolarSystem *system)
+const char *renderer_scale_mode_label(RenderScaleMode mode)
+{
+    switch (mode) {
+        case RENDER_SCALE_REAL:
+            return "Real scale";
+        case RENDER_SCALE_ILLUSTRATIVE:
+        default:
+            return "Illustrative";
+    }
+}
+
+void renderer_draw_solar_system(const SolarSystem *system, RenderScaleMode mode)
 {
     DrawGrid(20, 1.0f);
 
@@ -49,7 +68,7 @@ void renderer_draw_solar_system(const SolarSystem *system)
         const Body *body = &system->bodies[i];
         Color color = body_render_color(body);
         Vector3 position = body_render_position(body);
-        float radius = body_render_radius(body);
+        float radius = body_render_radius(body, mode);
 
         DrawSphere(position, radius, color);
         DrawSphereWires(position, radius, 16, 16, ORANGE);

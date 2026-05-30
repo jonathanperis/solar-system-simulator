@@ -6,18 +6,21 @@ A bare-bones 3D solar system simulator written in C with [raylib](https://www.ra
 
 This project is intentionally physics-first. The renderer exists to show the simulation, but the core work is mathematical: deterministic celestial-body state, SI-unit physics, and testable orbital mechanics foundations.
 
-## Milestone 2: Foundation + Sun + Mercury
+## Milestone 3: Foundation + Sun + Mercury + Venus
 
-The current milestone extends the foundation from a fixed Sun to the first orbiting planet: Mercury. Additional planets, moons, asteroids, dwarf planets, textures, shaders, and visual polish are intentionally deferred to later iterations.
+The current milestone extends the foundation to two orbiting planets: Mercury and Venus. Additional planets, moons, asteroids, dwarf planets, textures, shaders, and visual polish are intentionally deferred to later iterations.
 
 Current milestone behavior:
 
 - Opens a raylib 3D scene titled `Solar System Simulator`.
-- Renders exactly two celestial bodies: the Sun and Mercury.
+- Renders exactly three celestial bodies: the Sun, Mercury, and Venus.
 - Keeps the Sun fixed at the origin for a stable heliocentric baseline.
 - Initializes Mercury at perihelion on the +X axis with tangential +Z velocity from the vis-viva equation.
-- Advances Mercury with Newtonian gravity from the Sun using the shared simulation integrator.
-- Displays body count, elapsed simulation days, time scale, and render scale notes.
+- Initializes Venus at perihelion on the -X axis with tangential -Z velocity from the vis-viva equation.
+- Advances Mercury and Venus with Newtonian gravity from all simulated bodies using the shared simulation integrator.
+- Supports illustrative/default and real-scale visualization modes.
+- Allows camera focus cycling across every simulated body: Sun, Mercury, and Venus.
+- Displays body count, elapsed simulation days, time scale, view mode, camera focus target, and render scale notes.
 
 ## Physics model
 
@@ -33,7 +36,7 @@ Simulation code lives under `src/sim/` and is independent from raylib.
   - `a = G * source_mass / distance^3 * displacement`
 - Time stepping uses a velocity-Verlet / kick-drift-kick integrator.
 - The Sun is fixed for this milestone; barycentric Sun motion is deferred.
-- This is a deterministic physics baseline, not an ephemeris-accurate model. It does not include relativistic precession, J2000 state vectors, or perturbations from bodies beyond the Sun and Mercury.
+- This is a deterministic physics baseline, not an ephemeris-accurate model. It does not include relativistic precession, J2000 state vectors, or perturbations from bodies beyond the Sun, Mercury, and Venus.
 
 Current simulation data:
 
@@ -41,6 +44,7 @@ Current simulation data:
 |---|---:|---:|---|
 | Sun | `1.98847e30 kg` | `695700000 m` | fixed at origin |
 | Mercury | `3.3011e23 kg` | `2439700 m` | perihelion position and tangential speed |
+| Venus | `4.8675e24 kg` | `6051800 m` | perihelion position and tangential speed |
 
 Mercury orbital values used for initialization:
 
@@ -49,6 +53,13 @@ Mercury orbital values used for initialization:
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `46001212048.5 m`
 - perihelion speed: `58977.28405570045 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
 
+Venus orbital values used for initialization:
+
+- semi-major axis: `108208000000 m`
+- eccentricity: `0.006772`
+- perihelion distance: `semi-major axis * (1 - eccentricity)` = `107475215424.0 m`
+- perihelion speed: `35259.30808092215 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
+
 ## Rendering model
 
 Rendering code lives under `src/render/` and converts simulation state at the boundary.
@@ -56,8 +67,16 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 - raylib handles windowing, camera, 3D drawing, and overlays.
 - Physics units are isolated from rendering units.
 - Position scale: `1 AU = 10 render units`.
-- Physical radii remain real in simulation data, but rendered body radii are clamped per body class for visibility.
-- Visual size is therefore a display aid and is not the physical radius scale.
+- Physical radii remain real in simulation data.
+- Illustrative mode is the default: orbital positions use the physical render scale, while body radii are clamped per body class for visibility.
+- Real-scale mode uses the same physical render scale for both positions and radii with no radius clamp. Planets may be nearly invisible in this mode; that is physically expected at solar-system scale.
+
+## Controls
+
+- `V`: toggle visualization mode.
+  - Illustrative: physical orbital positions with clamped/enlarged visible body radii.
+  - Real scale: physical orbital positions and physical radii under the same render scale; planets may be nearly invisible.
+- `Tab` or `C`: cycle camera focus across Sun, Mercury, and Venus.
 
 ## Build prerequisites
 
@@ -95,15 +114,14 @@ tests/                  # C test binaries for simulation code
 
 Each future body should be added one iteration at a time, with physical constants, initial conditions, tests, and rendering checks scoped to that body.
 
-1. Venus
-2. Earth
-3. Moon
-4. Mars
-5. asteroid belt representatives / major asteroids
-6. Jupiter
-7. Galilean moons
-8. Saturn
-9. major Saturnian moons
-10. Uranus
-11. Neptune
-12. dwarf planets / Kuiper belt representatives
+1. Earth
+2. Moon
+3. Mars
+4. asteroid belt representatives / major asteroids
+5. Jupiter
+6. Galilean moons
+7. Saturn
+8. major Saturnian moons
+9. Uranus
+10. Neptune
+11. dwarf planets / Kuiper belt representatives
