@@ -55,6 +55,22 @@ Body solar_system_create_earth_at_perihelion(void)
     );
 }
 
+Body solar_system_create_moon_at_perigee_near_earth(const Body *earth)
+{
+    Vec3d moon_offset_m = {SOLAR_MOON_PERIGEE_M, 0.0, 0.0};
+    Vec3d moon_relative_velocity_mps = {0.0, 0.0, SOLAR_MOON_PERIGEE_SPEED_MPS};
+
+    return body_create(
+        "Moon",
+        BODY_KIND_MOON,
+        SOLAR_MOON_MASS_KG,
+        SOLAR_MOON_RADIUS_M,
+        vec3d_add(earth->position_m, moon_offset_m),
+        vec3d_add(earth->velocity_mps, moon_relative_velocity_mps),
+        false
+    );
+}
+
 SolarSystem solar_system_create_sun_only(void)
 {
     SolarSystem system = {
@@ -107,6 +123,25 @@ SolarSystem solar_system_create_sun_mercury_venus_earth(void)
             solar_system_create_earth_at_perihelion(),
         },
         .body_count = 4,
+        .elapsed_seconds = 0.0,
+    };
+
+    return system;
+}
+
+SolarSystem solar_system_create_sun_mercury_venus_earth_moon(void)
+{
+    Body earth = solar_system_create_earth_at_perihelion();
+
+    SolarSystem system = {
+        .bodies = {
+            create_sun(),
+            solar_system_create_mercury_at_perihelion(),
+            solar_system_create_venus_at_perihelion(),
+            earth,
+            solar_system_create_moon_at_perigee_near_earth(&earth),
+        },
+        .body_count = 5,
         .elapsed_seconds = 0.0,
     };
 

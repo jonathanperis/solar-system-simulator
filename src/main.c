@@ -68,7 +68,7 @@ int main(void)
     camera.projection = CAMERA_PERSPECTIVE;
 
     OrbitCameraState orbit_camera = orbit_camera_default_state();
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth();
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
     const double time_scale = SOLAR_DAY_SECONDS;
     size_t focused_body_index = 0;
     RenderScaleMode render_mode = RENDER_SCALE_ILLUSTRATIVE;
@@ -102,8 +102,8 @@ int main(void)
         renderer_draw_solar_system(&system, render_mode);
         EndMode3D();
 
-        DrawText("Solar System Simulator - Milestone 4: Earth", 20, 20, 20, RAYWHITE);
-        DrawText(TextFormat("Bodies: %zu (Sun + Mercury + Venus + Earth)", system.body_count), 20, 50, 18, RAYWHITE);
+        DrawText("Solar System Simulator - Milestone 5: Moon", 20, 20, 20, RAYWHITE);
+        DrawText(TextFormat("Bodies: %zu (Sun + Mercury + Venus + Earth + Moon)", system.body_count), 20, 50, 18, RAYWHITE);
         DrawText(TextFormat("Elapsed days: %.2f", seconds_to_days(system.elapsed_seconds)), 20, 75, 18, RAYWHITE);
         DrawText(TextFormat("Time scale: %.0f simulation seconds / real second", time_scale), 20, 100, 18, RAYWHITE);
         DrawText(TextFormat("View: %s (V to toggle)", renderer_scale_mode_label(render_mode)), 20, 125, 18, RAYWHITE);
@@ -112,7 +112,7 @@ int main(void)
         DrawText("Camera auto-orbits at fixed pitch; zoom cannot flip the angle", 20, 200, 18, RAYWHITE);
         DrawText("Physics: SI Newtonian baseline; rendering scale: 1 AU = 10 units", 20, 225, 18, RAYWHITE);
         DrawText("Illustrative view clamps radii; real-scale view uses physical radius scale", 20, 250, 18, RAYWHITE);
-        DrawText("Mercury, Venus, and Earth start at perihelion with vis-viva tangential speeds", 20, 275, 18, RAYWHITE);
+        DrawText("Moon starts at Earth-relative perigee with vis-viva speed", 20, 275, 18, RAYWHITE);
 
         EndDrawing();
     }
