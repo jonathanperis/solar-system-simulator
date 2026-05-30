@@ -17,12 +17,36 @@ static void test_sun_body_creation_preserves_fields(void)
 
     assert(strcmp(sun.name, "Sun") == 0);
     assert(sun.kind == BODY_KIND_STAR);
+    assert(sun.id == BODY_ID_UNKNOWN);
+    assert(sun.parent_id == BODY_ID_NONE);
     assert_close(sun.mass_kg, SOLAR_SUN_MASS_KG, SOLAR_SUN_MASS_KG * 1e-15);
     assert_close(sun.radius_m, SOLAR_SUN_RADIUS_M, 1e-6);
     assert(sun.fixed);
     assert_close(sun.position_m.x, 0.0, 1e-12);
     assert_close(sun.velocity_mps.x, 0.0, 1e-12);
     assert_close(sun.acceleration_mps2.x, 0.0, 1e-18);
+}
+
+static void test_current_scene_bodies_have_stable_catalog_ids_and_parents(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
+
+    assert(system.bodies[0].id == BODY_ID_SUN);
+    assert(system.bodies[0].parent_id == BODY_ID_NONE);
+    assert(system.bodies[1].id == BODY_ID_MERCURY);
+    assert(system.bodies[1].parent_id == BODY_ID_SUN);
+    assert(system.bodies[2].id == BODY_ID_VENUS);
+    assert(system.bodies[2].parent_id == BODY_ID_SUN);
+    assert(system.bodies[3].id == BODY_ID_EARTH);
+    assert(system.bodies[3].parent_id == BODY_ID_SUN);
+    assert(system.bodies[4].id == BODY_ID_MOON);
+    assert(system.bodies[4].parent_id == BODY_ID_EARTH);
+    assert(system.bodies[5].id == BODY_ID_MARS);
+    assert(system.bodies[5].parent_id == BODY_ID_SUN);
+    assert(system.bodies[6].id == BODY_ID_PHOBOS);
+    assert(system.bodies[6].parent_id == BODY_ID_MARS);
+    assert(system.bodies[7].id == BODY_ID_DEIMOS);
+    assert(system.bodies[7].parent_id == BODY_ID_MARS);
 }
 
 static void test_sun_only_system_has_one_real_sun(void)
@@ -727,6 +751,7 @@ static void test_deimos_remains_near_mars_after_one_orbit(void)
 int main(void)
 {
     test_sun_body_creation_preserves_fields();
+    test_current_scene_bodies_have_stable_catalog_ids_and_parents();
     test_sun_only_system_has_one_real_sun();
     test_sun_only_step_advances_time_and_keeps_sun_fixed();
     test_mercury_constants_are_real_si_values();

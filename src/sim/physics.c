@@ -17,6 +17,9 @@ Vec3d gravitational_acceleration_from(const Body *target, const Body *source)
     }
 
     double distance = sqrt(distance_squared);
+    /* Newtonian point-mass gravity: a = G*M*r_hat/r^2. Multiplying the
+     * displacement vector by 1/r^3 preserves the direction toward the source
+     * while producing acceleration in SI units (m/s^2). */
     double scale = SOLAR_G * source->mass_kg / (distance_squared * distance);
     return vec3d_scale(displacement, scale);
 }
@@ -39,6 +42,9 @@ void physics_step(Body *bodies, size_t body_count, double dt_seconds)
 {
     physics_compute_accelerations(bodies, body_count);
 
+    /* Velocity-Verlet: half-kick velocities, drift positions, recompute
+     * acceleration from the new positions, then finish the second half-kick.
+     * This is more orbit-friendly than explicit Euler for the same simple API. */
     for (size_t i = 0; i < body_count; ++i) {
         if (bodies[i].fixed) {
             continue;

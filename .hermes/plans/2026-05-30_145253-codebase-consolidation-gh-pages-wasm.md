@@ -13,6 +13,7 @@
 ## Planning Progress Snapshot
 
 **Planning state as of:** 2026-05-30 14:52 UTC  
+**Implementation checkpoint:** 2026-05-30 — Tasks 2-5 completed and verified locally
 **Repository:** `/opt/data/github/jonathanperis/solar-system-simulator`  
 **Branch/ref inspected:** `main @ 015eb1e`  
 **Working tree state before planning:** clean and even with `origin/main` (`0 0`)  
@@ -23,12 +24,12 @@
 |---|---:|---:|---|---:|
 | Current code audit/orientation | yes | README, Makefile, `src/sim`, `src/render`, `src/app`, tests | audit complete enough for roadmap | 100% |
 | Agent/product/design context | yes | Missing `AGENTS.md`, `PRODUCT.md`, `DESIGN.md`; Impeccable context created from repo evidence | planning/context docs created in this pass | 100% |
-| Codebase consolidation/refactor | yes | Repeated scene factories, name-based renderer parent/color logic, HUD strings, trail allocation behavior | next implementation queue | 25% |
-| Commenting/learning docs | yes | sparse source comments, README is detailed but no per-module docs site | next implementation queue | 20% |
+| Codebase consolidation/refactor | yes | Repeated scene factories, name-based renderer parent/color logic, HUD strings, trail allocation behavior | body IDs/parents, metadata-driven renderer lookup, and generated HUD labels implemented | 70% |
+| Commenting/learning docs | yes | sparse source comments, README is detailed but no per-module docs site | source comments added for physics, units, parent-relative moons, trails, renderer compromises, and substeps | 55% |
 | WASM build pipeline | yes | current Makefile has native build only; Super Mango `make web` uses Emscripten + controlled startup | roadmap with exact files | 20% |
 | GitHub Pages/Astro site | yes | no `docs/`; Super Mango uses Astro `docs/`, base path, loader, deploy workflows | roadmap with exact files | 20% |
 
-**Overall planning progress:** ~45% complete. The audit and context scaffolding are complete; implementation remains for refactors, comments, WASM build, docs site, and Actions.
+**Overall planning progress:** ~60% complete. The audit/context scaffolding and first consolidation pass are complete; implementation remains for native CI, WASM build, docs site, and Pages deployment.
 
 ---
 

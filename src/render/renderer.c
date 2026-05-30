@@ -1,8 +1,6 @@
 #include "renderer.h"
 
 #include <math.h>
-#include <raylib.h>
-#include <string.h>
 
 #include "../sim/constants.h"
 #include "../sim/units.h"
@@ -11,11 +9,6 @@
 #define SOLAR_GRID_PADDING_UNITS 2.0
 #define SOLAR_ILLUSTRATIVE_SATELLITE_GAP_UNITS 0.03
 #define SOLAR_ILLUSTRATIVE_SMALL_MOON_RADIUS 0.012f
-
-static int body_named(const Body *body, const char *name)
-{
-    return body->name != NULL && strcmp(body->name, name) == 0;
-}
 
 static Vector3 vec3d_to_raylib(Vec3d vector)
 {
@@ -28,21 +21,16 @@ static Vector3 vec3d_to_raylib(Vec3d vector)
 
 static int moon_parent_index(const SolarSystem *system, size_t body_index)
 {
+    /* Renderer-only parent lookup: physics does not need parent links, but the
+     * illustrative view uses catalog metadata to separate tiny satellites from
+     * readable planet radii without depending on fragile body-name strings. */
     const Body *body = &system->bodies[body_index];
-    const char *parent_name = NULL;
-
-    if (body_named(body, "Moon")) {
-        parent_name = "Earth";
-    } else if (body_named(body, "Phobos") || body_named(body, "Deimos")) {
-        parent_name = "Mars";
-    }
-
-    if (parent_name == NULL) {
+    if (body->parent_id == BODY_ID_NONE || body->parent_id == BODY_ID_UNKNOWN) {
         return -1;
     }
 
     for (size_t i = 0; i < system->body_count; ++i) {
-        if (body_named(&system->bodies[i], parent_name)) {
+        if (system->bodies[i].id == body->parent_id) {
             return (int)i;
         }
     }
@@ -62,6 +50,8 @@ float renderer_body_radius(const Body *body, RenderScaleMode mode)
     }
 
     if (body->kind == BODY_KIND_MOON) {
+        /* Moons remain visible but smaller than planets; this is a visual
+         * compromise only, while RENDER_SCALE_REAL keeps physical radii. */
         float moon_radius = SOLAR_ILLUSTRATIVE_PLANET_RADIUS * (float)(body->radius_m / SOLAR_EARTH_RADIUS_M);
         return moon_radius < SOLAR_ILLUSTRATIVE_SMALL_MOON_RADIUS ? SOLAR_ILLUSTRATIVE_SMALL_MOON_RADIUS : moon_radius;
     }
@@ -82,7 +72,7 @@ static Vec3d visible_satellite_position(const Body *body, const Body *parent, Ve
         renderer_body_radius(body, mode) +
         SOLAR_ILLUSTRATIVE_SATELLITE_GAP_UNITS;
 
-    if (body_named(body, "Moon")) {
+    if (body->id == BODY_ID_MOON) {
         Vec3d expanded = vec3d_scale(relative_position, SOLAR_ILLUSTRATIVE_MOON_DISTANCE_FACTOR);
         if (vec3d_length(expanded) > required_distance) {
             return vec3d_add(parent_position, expanded);
@@ -140,40 +130,34 @@ Vec3d renderer_trail_point_position(const SolarSystem *system, const BodyTrails 
     return visible_satellite_position(body, parent, position, parent_position, mode);
 }
 
-static Color body_render_color(const Body *body)
+Color renderer_body_color(const Body *body)
 {
+    switch (body->id) {
+        case BODY_ID_SUN:
+            return GOLD;
+        case BODY_ID_MERCURY:
+            return GRAY;
+        case BODY_ID_VENUS:
+            return BEIGE;
+        case BODY_ID_EARTH:
+            return BLUE;
+        case BODY_ID_MOON:
+            return RAYWHITE;
+        case BODY_ID_MARS:
+            return ORANGE;
+        case BODY_ID_PHOBOS:
+            return BROWN;
+        case BODY_ID_DEIMOS:
+            return MAROON;
+        case BODY_ID_UNKNOWN:
+        case BODY_ID_NONE:
+        default:
+            break;
+    }
+
     if (body->kind == BODY_KIND_STAR) {
         return GOLD;
     }
-
-    if (body->name != NULL && strcmp(body->name, "Mercury") == 0) {
-        return GRAY;
-    }
-
-    if (body->name != NULL && strcmp(body->name, "Venus") == 0) {
-        return BEIGE;
-    }
-
-    if (body->name != NULL && strcmp(body->name, "Earth") == 0) {
-        return BLUE;
-    }
-
-    if (body->name != NULL && strcmp(body->name, "Moon") == 0) {
-        return RAYWHITE;
-    }
-
-    if (body->name != NULL && strcmp(body->name, "Mars") == 0) {
-        return ORANGE;
-    }
-
-    if (body->name != NULL && strcmp(body->name, "Phobos") == 0) {
-        return BROWN;
-    }
-
-    if (body->name != NULL && strcmp(body->name, "Deimos") == 0) {
-        return MAROON;
-    }
-
     return LIGHTGRAY;
 }
 
@@ -226,7 +210,7 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
             continue;
         }
 
-        Color trail_color = Fade(body_render_color(body), 0.55f);
+        Color trail_color = Fade(renderer_body_color(body), 0.55f);
         for (size_t j = 1; j < point_count; ++j) {
             Vec3d start = renderer_trail_point_position(system, trails, i, j - 1, mode);
             Vec3d end = renderer_trail_point_position(system, trails, i, j, mode);
@@ -236,7 +220,7 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
 
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
-        Color color = body_render_color(body);
+        Color color = renderer_body_color(body);
         Vector3 position = vec3d_to_raylib(renderer_body_position(system, i, mode));
         float radius = renderer_body_radius(body, mode);
 

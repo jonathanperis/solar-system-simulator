@@ -5,9 +5,11 @@
 
 static Body create_sun(void)
 {
-    return body_create(
+    return body_create_identified(
         "Sun",
         BODY_KIND_STAR,
+        BODY_ID_SUN,
+        BODY_ID_NONE,
         SOLAR_SUN_MASS_KG,
         SOLAR_SUN_RADIUS_M,
         vec3d_zero(),
@@ -18,9 +20,11 @@ static Body create_sun(void)
 
 Body solar_system_create_mercury_at_perihelion(void)
 {
-    return body_create(
+    return body_create_identified(
         "Mercury",
         BODY_KIND_PLANET,
+        BODY_ID_MERCURY,
+        BODY_ID_SUN,
         SOLAR_MERCURY_MASS_KG,
         SOLAR_MERCURY_RADIUS_M,
         (Vec3d){SOLAR_MERCURY_PERIHELION_M, 0.0, 0.0},
@@ -31,9 +35,11 @@ Body solar_system_create_mercury_at_perihelion(void)
 
 Body solar_system_create_venus_at_perihelion(void)
 {
-    return body_create(
+    return body_create_identified(
         "Venus",
         BODY_KIND_PLANET,
+        BODY_ID_VENUS,
+        BODY_ID_SUN,
         SOLAR_VENUS_MASS_KG,
         SOLAR_VENUS_RADIUS_M,
         (Vec3d){-SOLAR_VENUS_PERIHELION_M, 0.0, 0.0},
@@ -44,9 +50,11 @@ Body solar_system_create_venus_at_perihelion(void)
 
 Body solar_system_create_earth_at_perihelion(void)
 {
-    return body_create(
+    return body_create_identified(
         "Earth",
         BODY_KIND_PLANET,
+        BODY_ID_EARTH,
+        BODY_ID_SUN,
         SOLAR_EARTH_MASS_KG,
         SOLAR_EARTH_RADIUS_M,
         (Vec3d){0.0, 0.0, SOLAR_EARTH_PERIHELION_M},
@@ -57,12 +65,17 @@ Body solar_system_create_earth_at_perihelion(void)
 
 Body solar_system_create_moon_at_perigee_near_earth(const Body *earth)
 {
+    /* Satellites are initialized in the same absolute frame as the rest of the
+     * N-body system, but their offset and velocity come from parent-relative
+     * orbital elements so tests can verify the intended moon/planet relation. */
     Vec3d moon_offset_m = {SOLAR_MOON_PERIGEE_M, 0.0, 0.0};
     Vec3d moon_relative_velocity_mps = {0.0, 0.0, SOLAR_MOON_PERIGEE_SPEED_MPS};
 
-    return body_create(
+    return body_create_identified(
         "Moon",
         BODY_KIND_MOON,
+        BODY_ID_MOON,
+        BODY_ID_EARTH,
         SOLAR_MOON_MASS_KG,
         SOLAR_MOON_RADIUS_M,
         vec3d_add(earth->position_m, moon_offset_m),
@@ -73,9 +86,11 @@ Body solar_system_create_moon_at_perigee_near_earth(const Body *earth)
 
 Body solar_system_create_mars_at_perihelion(void)
 {
-    return body_create(
+    return body_create_identified(
         "Mars",
         BODY_KIND_PLANET,
+        BODY_ID_MARS,
+        BODY_ID_SUN,
         SOLAR_MARS_MASS_KG,
         SOLAR_MARS_RADIUS_M,
         (Vec3d){0.0, 0.0, -SOLAR_MARS_PERIHELION_M},
@@ -86,12 +101,17 @@ Body solar_system_create_mars_at_perihelion(void)
 
 Body solar_system_create_phobos_at_periareion_near_mars(const Body *mars)
 {
+    /* Phobos and Deimos use the X/Y plane around Mars so their angular
+     * momentum direction is explicit and does not visually duplicate the
+     * Earth/Moon setup. */
     Vec3d offset_m = {SOLAR_PHOBOS_PERIAREION_M, 0.0, 0.0};
     Vec3d relative_velocity_mps = {0.0, SOLAR_PHOBOS_PERIAREION_SPEED_MPS, 0.0};
 
-    return body_create(
+    return body_create_identified(
         "Phobos",
         BODY_KIND_MOON,
+        BODY_ID_PHOBOS,
+        BODY_ID_MARS,
         SOLAR_PHOBOS_MASS_KG,
         SOLAR_PHOBOS_RADIUS_M,
         vec3d_add(mars->position_m, offset_m),
@@ -105,9 +125,11 @@ Body solar_system_create_deimos_at_periareion_near_mars(const Body *mars)
     Vec3d offset_m = {-SOLAR_DEIMOS_PERIAREION_M, 0.0, 0.0};
     Vec3d relative_velocity_mps = {0.0, -SOLAR_DEIMOS_PERIAREION_SPEED_MPS, 0.0};
 
-    return body_create(
+    return body_create_identified(
         "Deimos",
         BODY_KIND_MOON,
+        BODY_ID_DEIMOS,
+        BODY_ID_MARS,
         SOLAR_DEIMOS_MASS_KG,
         SOLAR_DEIMOS_RADIUS_M,
         vec3d_add(mars->position_m, offset_m),
