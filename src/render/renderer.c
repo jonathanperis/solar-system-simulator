@@ -1,5 +1,6 @@
 #include "renderer.h"
 
+#include <math.h>
 #include <raylib.h>
 #include <string.h>
 
@@ -16,20 +17,19 @@ static Vector3 body_render_position(const Body *body)
     };
 }
 
-static float body_min_visible_radius(const Body *body)
-{
-    return body->kind == BODY_KIND_STAR ? SOLAR_MIN_VISIBLE_BODY_RADIUS : SOLAR_MIN_VISIBLE_NON_STAR_RADIUS;
-}
-
-static float body_render_radius(const Body *body, RenderScaleMode mode)
+float renderer_body_radius(const Body *body, RenderScaleMode mode)
 {
     float scaled_radius = meters_to_render_units(body->radius_m);
     if (mode == RENDER_SCALE_REAL) {
         return scaled_radius;
     }
 
-    float min_radius = body_min_visible_radius(body);
-    return scaled_radius < min_radius ? min_radius : scaled_radius;
+    if (body->kind == BODY_KIND_STAR) {
+        return scaled_radius < SOLAR_MIN_VISIBLE_BODY_RADIUS ? SOLAR_MIN_VISIBLE_BODY_RADIUS : scaled_radius;
+    }
+
+    float illustrative_radius = sqrtf(scaled_radius) * SOLAR_ILLUSTRATIVE_NON_STAR_RADIUS_FACTOR;
+    return illustrative_radius < SOLAR_MIN_VISIBLE_NON_STAR_RADIUS ? SOLAR_MIN_VISIBLE_NON_STAR_RADIUS : illustrative_radius;
 }
 
 static Color body_render_color(const Body *body)
@@ -76,7 +76,7 @@ void renderer_draw_solar_system(const SolarSystem *system, RenderScaleMode mode)
         const Body *body = &system->bodies[i];
         Color color = body_render_color(body);
         Vector3 position = body_render_position(body);
-        float radius = body_render_radius(body, mode);
+        float radius = renderer_body_radius(body, mode);
 
         DrawSphere(position, radius, color);
         DrawSphereWires(position, radius, 16, 16, ORANGE);

@@ -111,7 +111,7 @@ int main(void)
         DrawText(TextFormat("Camera zoom: %.1f units (mouse wheel, clamped)", orbit_camera.distance), 20, 175, 18, RAYWHITE);
         DrawText("Camera auto-orbits at fixed pitch; zoom cannot flip the angle", 20, 200, 18, RAYWHITE);
         DrawText("Physics: SI Newtonian baseline; rendering scale: 1 AU = 10 units", 20, 225, 18, RAYWHITE);
-        DrawText("Illustrative view clamps radii; real-scale view uses physical radius scale", 20, 250, 18, RAYWHITE);
+        DrawText("Illustrative view compresses non-star radii; real-scale view uses physical radius scale", 20, 250, 18, RAYWHITE);
         DrawText("Moon starts at Earth-relative perigee with vis-viva speed", 20, 275, 18, RAYWHITE);
 
         EndDrawing();
