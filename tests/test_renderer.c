@@ -82,6 +82,27 @@ static void test_illustrative_earth_and_moon_do_not_overlap_at_perigee(void)
     assert(combined_radius < render_distance);
 }
 
+
+static void test_illustrative_martian_moons_are_visible_and_outside_mars(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
+    Vec3d mars_position = renderer_body_position(&system, 5, RENDER_SCALE_ILLUSTRATIVE);
+    Vec3d phobos_position = renderer_body_position(&system, 6, RENDER_SCALE_ILLUSTRATIVE);
+    Vec3d deimos_position = renderer_body_position(&system, 7, RENDER_SCALE_ILLUSTRATIVE);
+    double phobos_distance = vec3d_length(vec3d_sub(phobos_position, mars_position));
+    double deimos_distance = vec3d_length(vec3d_sub(deimos_position, mars_position));
+    double mars_radius = renderer_body_radius(&system.bodies[5], RENDER_SCALE_ILLUSTRATIVE);
+    double phobos_radius = renderer_body_radius(&system.bodies[6], RENDER_SCALE_ILLUSTRATIVE);
+    double deimos_radius = renderer_body_radius(&system.bodies[7], RENDER_SCALE_ILLUSTRATIVE);
+
+    assert(phobos_radius > 0.0);
+    assert(deimos_radius > 0.0);
+    assert(phobos_radius < mars_radius);
+    assert(deimos_radius < mars_radius);
+    assert(mars_radius + phobos_radius < phobos_distance);
+    assert(mars_radius + deimos_radius < deimos_distance);
+}
+
 static void test_real_scale_trail_point_uses_physical_meter_scale(void)
 {
     SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
@@ -112,6 +133,21 @@ static void test_illustrative_moon_trail_uses_expanded_parent_relative_position(
     assert_close(actual.z, expected.z, 1e-12);
 }
 
+
+static void test_illustrative_phobos_trail_matches_visible_body_position(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
+    BodyTrails trails = body_trails_create();
+    body_trails_record_system(&trails, &system);
+
+    Vec3d body_position = renderer_body_position(&system, 6, RENDER_SCALE_ILLUSTRATIVE);
+    Vec3d trail_position = renderer_trail_point_position(&system, &trails, 6, 0, RENDER_SCALE_ILLUSTRATIVE);
+
+    assert_close(trail_position.x, body_position.x, 1e-12);
+    assert_close(trail_position.y, body_position.y, 1e-12);
+    assert_close(trail_position.z, body_position.z, 1e-12);
+}
+
 static void test_grid_keeps_at_least_minimum_square_count_for_inner_system(void)
 {
     SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
@@ -140,8 +176,10 @@ int main(void)
     test_real_scale_mars_radius_uses_physical_meter_scale();
     test_illustrative_moon_is_smaller_but_still_visible();
     test_illustrative_earth_and_moon_do_not_overlap_at_perigee();
+    test_illustrative_martian_moons_are_visible_and_outside_mars();
     test_real_scale_trail_point_uses_physical_meter_scale();
     test_illustrative_moon_trail_uses_expanded_parent_relative_position();
+    test_illustrative_phobos_trail_matches_visible_body_position();
     test_grid_keeps_at_least_minimum_square_count_for_inner_system();
     test_grid_expands_to_cover_mars_orbit_with_padding();
     puts("test_renderer passed");

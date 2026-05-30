@@ -84,6 +84,38 @@ Body solar_system_create_mars_at_perihelion(void)
     );
 }
 
+Body solar_system_create_phobos_at_periareion_near_mars(const Body *mars)
+{
+    Vec3d offset_m = {SOLAR_PHOBOS_PERIAREION_M, 0.0, 0.0};
+    Vec3d relative_velocity_mps = {0.0, SOLAR_PHOBOS_PERIAREION_SPEED_MPS, 0.0};
+
+    return body_create(
+        "Phobos",
+        BODY_KIND_MOON,
+        SOLAR_PHOBOS_MASS_KG,
+        SOLAR_PHOBOS_RADIUS_M,
+        vec3d_add(mars->position_m, offset_m),
+        vec3d_add(mars->velocity_mps, relative_velocity_mps),
+        false
+    );
+}
+
+Body solar_system_create_deimos_at_periareion_near_mars(const Body *mars)
+{
+    Vec3d offset_m = {-SOLAR_DEIMOS_PERIAREION_M, 0.0, 0.0};
+    Vec3d relative_velocity_mps = {0.0, -SOLAR_DEIMOS_PERIAREION_SPEED_MPS, 0.0};
+
+    return body_create(
+        "Deimos",
+        BODY_KIND_MOON,
+        SOLAR_DEIMOS_MASS_KG,
+        SOLAR_DEIMOS_RADIUS_M,
+        vec3d_add(mars->position_m, offset_m),
+        vec3d_add(mars->velocity_mps, relative_velocity_mps),
+        false
+    );
+}
+
 SolarSystem solar_system_create_sun_only(void)
 {
     SolarSystem system = {
@@ -175,6 +207,29 @@ SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars(void)
             solar_system_create_mars_at_perihelion(),
         },
         .body_count = 6,
+        .elapsed_seconds = 0.0,
+    };
+
+    return system;
+}
+
+SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos(void)
+{
+    Body earth = solar_system_create_earth_at_perihelion();
+    Body mars = solar_system_create_mars_at_perihelion();
+
+    SolarSystem system = {
+        .bodies = {
+            create_sun(),
+            solar_system_create_mercury_at_perihelion(),
+            solar_system_create_venus_at_perihelion(),
+            earth,
+            solar_system_create_moon_at_perigee_near_earth(&earth),
+            mars,
+            solar_system_create_phobos_at_periareion_near_mars(&mars),
+            solar_system_create_deimos_at_periareion_near_mars(&mars),
+        },
+        .body_count = 8,
         .elapsed_seconds = 0.0,
     };
 
