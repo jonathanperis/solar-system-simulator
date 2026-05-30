@@ -1,10 +1,14 @@
 #include "renderer.h"
 
+#include <math.h>
 #include <raylib.h>
 #include <string.h>
 
 #include "../sim/constants.h"
 #include "../sim/units.h"
+
+#define SOLAR_MIN_GRID_SLICES 20
+#define SOLAR_GRID_PADDING_UNITS 2.0
 
 static int body_named(const Body *body, const char *name)
 {
@@ -126,9 +130,32 @@ const char *renderer_scale_mode_label(RenderScaleMode mode)
     }
 }
 
+int renderer_grid_slices_for_system(const SolarSystem *system, RenderScaleMode mode)
+{
+    double max_horizontal_extent = 0.0;
+
+    for (size_t i = 0; i < system->body_count; ++i) {
+        Vec3d position = renderer_body_position(system, i, mode);
+        double x_extent = fabs(position.x);
+        double z_extent = fabs(position.z);
+        max_horizontal_extent = fmax(max_horizontal_extent, fmax(x_extent, z_extent));
+    }
+
+    int slices = (int)ceil((max_horizontal_extent + SOLAR_GRID_PADDING_UNITS) * 2.0);
+    if (slices < SOLAR_MIN_GRID_SLICES) {
+        slices = SOLAR_MIN_GRID_SLICES;
+    }
+
+    if ((slices % 2) != 0) {
+        ++slices;
+    }
+
+    return slices;
+}
+
 void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode)
 {
-    DrawGrid(20, 1.0f);
+    DrawGrid(renderer_grid_slices_for_system(system, mode), 1.0f);
 
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
