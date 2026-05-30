@@ -42,6 +42,19 @@ Body solar_system_create_venus_at_perihelion(void)
     );
 }
 
+Body solar_system_create_earth_at_perihelion(void)
+{
+    return body_create(
+        "Earth",
+        BODY_KIND_PLANET,
+        SOLAR_EARTH_MASS_KG,
+        SOLAR_EARTH_RADIUS_M,
+        (Vec3d){0.0, 0.0, SOLAR_EARTH_PERIHELION_M},
+        (Vec3d){SOLAR_EARTH_PERIHELION_SPEED_MPS, 0.0, 0.0},
+        false
+    );
+}
+
 SolarSystem solar_system_create_sun_only(void)
 {
     SolarSystem system = {
@@ -78,6 +91,22 @@ SolarSystem solar_system_create_sun_mercury_venus(void)
             solar_system_create_venus_at_perihelion(),
         },
         .body_count = 3,
+        .elapsed_seconds = 0.0,
+    };
+
+    return system;
+}
+
+SolarSystem solar_system_create_sun_mercury_venus_earth(void)
+{
+    SolarSystem system = {
+        .bodies = {
+            create_sun(),
+            solar_system_create_mercury_at_perihelion(),
+            solar_system_create_venus_at_perihelion(),
+            solar_system_create_earth_at_perihelion(),
+        },
+        .body_count = 4,
         .elapsed_seconds = 0.0,
     };
 
