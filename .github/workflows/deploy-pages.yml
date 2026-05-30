@@ -41,6 +41,15 @@ jobs:
 
       - name: Prepare WebAssembly public assets
         run: |
+          mkdir -p docs/public/wasm
+          python3 - <<'PY'
+          from pathlib import Path
+          target = Path('docs/public/wasm')
+          for source in list(target.rglob('solar-system-simulator.*')):
+              destination = target / source.name
+              if source.resolve() != destination.resolve():
+                  destination.write_bytes(source.read_bytes())
+          PY
           rm -f docs/public/wasm/solar-system-simulator-wasm.zip
           python3 tools/check_wasm_artifacts.py docs/public/wasm
 
