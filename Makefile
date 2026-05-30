@@ -25,7 +25,8 @@ TEST_VEC3D := $(TEST_DIR)/test_vec3d
 TEST_PHYSICS := $(TEST_DIR)/test_physics
 TEST_SOLAR_SYSTEM := $(TEST_DIR)/test_solar_system
 TEST_ORBIT_CAMERA := $(TEST_DIR)/test_orbit_camera
-TEST_BINS := $(TEST_VEC3D) $(TEST_PHYSICS) $(TEST_SOLAR_SYSTEM) $(TEST_ORBIT_CAMERA)
+TEST_RENDERER := $(TEST_DIR)/test_renderer
+TEST_BINS := $(TEST_VEC3D) $(TEST_PHYSICS) $(TEST_SOLAR_SYSTEM) $(TEST_ORBIT_CAMERA) $(TEST_RENDERER)
 
 .PHONY: all run test clean
 
@@ -63,6 +64,10 @@ $(TEST_SOLAR_SYSTEM): tests/test_solar_system.c $(SIM_SRCS)
 $(TEST_ORBIT_CAMERA): tests/test_orbit_camera.c src/app/orbit_camera.c src/app/orbit_camera.h
 	@mkdir -p $(@D)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_orbit_camera.c src/app/orbit_camera.c $(LDLIBS) -o $@
+
+$(TEST_RENDERER): tests/test_renderer.c src/render/renderer.c src/render/renderer.h $(SIM_SRCS)
+	@mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(RAYLIB_CFLAGS) tests/test_renderer.c src/render/renderer.c $(SIM_SRCS) $(RAYLIB_LIBS) -o $@
 
 clean:
 	rm -rf build
