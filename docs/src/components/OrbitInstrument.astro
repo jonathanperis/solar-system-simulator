@@ -1,5 +1,4 @@
 ---
-import { implementedBodies } from '../lib/bodies';
 ---
 <figure class="orbit-instrument" aria-labelledby="orbit-instrument-title">
   <div class="instrument-toolbar">
@@ -20,8 +19,8 @@ import { implementedBodies } from '../lib/bodies';
     <span class="body-dot phobos" data-label="Phobos"></span>
     <span class="body-dot deimos" data-label="Deimos"></span>
     <div class="instrument-readout">
-      <h2 id="orbit-instrument-title">{implementedBodies.length} bodies under inspection</h2>
-      <p>Positions are schematic here. The simulator keeps physical state in meters and renders readability at the boundary.</p>
+      <h2 id="orbit-instrument-title">Current orbit sketch</h2>
+      <p>Not to scale. The real state lives in meters; this sketch only makes the implemented catalog visible.</p>
     </div>
   </div>
   <figcaption>

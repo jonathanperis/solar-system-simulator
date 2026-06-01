@@ -12,22 +12,22 @@ const base = normalizeBase(import.meta.env.BASE_URL);
 <BaseLayout>
   <section class="hero observatory-hero">
     <div class="hero-copy">
-      <p class="eyebrow">Physics-first C/raylib observatory</p>
-      <h1>Solar mechanics, exposed like an instrument.</h1>
+      <p class="eyebrow">C · raylib · WebAssembly</p>
+      <h1>A solar system simulator you can run and inspect.</h1>
       <p class="lede">
-        A small C11 and raylib lab for inspecting Newtonian gravity, SI-unit state, parent-relative moons,
-        and the code boundaries that keep rendering honest.
+        This is a small, physics-first C project: Newtonian gravity in SI units, parent-relative moons,
+        persistent trails, and a raylib renderer compiled to the browser.
       </p>
       <div class="actions">
-        <a class="button" href="#play">Run WebAssembly lab</a>
-        <a class="button-secondary" href={`${base}docs/`}>Open Astro docs</a>
-        <a class="button-tertiary" href={repoUrl}>Read C source</a>
+        <a class="button" href="#play">Run the simulator</a>
+        <a class="button-secondary" href={`${base}docs/`}>Read the docs</a>
+        <a class="button-tertiary" href={repoUrl}>Open the source</a>
       </div>
       <div class="status-strip" aria-label="Current simulator status">
         <span>{currentMilestone.language}</span>
         <span>{currentMilestone.rendering}</span>
         <span>{currentMilestone.integrator}</span>
-        <span>{implementedBodies.length} bodies</span>
+        <span>{implementedBodies.length} bodies now</span>
       </div>
     </div>
     <OrbitInstrument />
@@ -35,44 +35,88 @@ const base = normalizeBase(import.meta.env.BASE_URL);
 
   <TelemetryRail />
 
+  <section class="lab-section maker-note" aria-labelledby="maker-note-title">
+    <div>
+      <p class="eyebrow">Why this exists</p>
+      <h2 id="maker-note-title">A learning lab, not a fake mission-control dashboard.</h2>
+    </div>
+    <p>
+      The interesting part is the boundary between math and picture: the simulator keeps bodies in meters,
+      kilograms, seconds, and meters per second, then deliberately bends only the rendered view so planets,
+      moons, labels, and trails remain readable.
+    </p>
+  </section>
+
   <section class="lab-section split-section" id="play">
     <div class="section-heading">
-      <p class="eyebrow">Browser simulator</p>
-      <h2>Run the same C app in the public lab bench.</h2>
+      <p class="eyebrow">Simulator</p>
+      <h2>Run the actual C/raylib build in the page.</h2>
       <p>
-        The iframe below loads the Emscripten artifact published by the Build workflow. If the browser canvas is still booting,
-        use the surrounding telemetry and direct artifact links to confirm the runtime path.
+        The embedded app below is the WebAssembly artifact from the build pipeline. Use it as a working
+        lab bench, then jump into the docs when you want to see how the physics and rendering are separated.
       </p>
+      <div class="control-note" aria-label="Simulator controls">
+        <strong>Controls:</strong>
+        <span>Tab/C focus body</span>
+        <span>V scale mode</span>
+        <span>Mouse wheel zoom</span>
+      </div>
     </div>
     <figure class="wasm-card science-frame">
       <div class="wasm-status-bar">
-        <span>Artifact set: HTML + JS + WASM</span>
+        <span>Published artifact: HTML + JS + WASM</span>
         <a href={`${base}wasm/solar-system-simulator.html`}>Open full demo</a>
       </div>
       <iframe title="Solar System Simulator WebAssembly demo" src={`${base}wasm/solar-system-simulator.html`} loading="lazy"></iframe>
       <figcaption>
-        Loading should show an explicit runtime shell. A blank canvas is treated as a diagnostic state, not as acceptable site polish.
+        This is intentionally still a lab view: readable overlays and diagnostics matter more than cinematic rendering.
       </figcaption>
     </figure>
   </section>
 
-  <section class="lab-section equation-band" aria-label="Physics notes">
-    <div>
-      <p class="eyebrow">Physics notebook</p>
-      <h2>State stays physical. Views stay negotiable.</h2>
-    </div>
-    <p><code>a = G * source_mass / distance^3 * displacement</code></p>
-    <a href={`${base}docs/simulation-core/`}>Trace the simulation core</a>
+  <section class="lab-section truth-split" aria-label="Physics and rendering boundary">
+    <article>
+      <p class="eyebrow">Physics state</p>
+      <h2>What stays real</h2>
+      <p><code>a = G * source_mass / distance^3 * displacement</code></p>
+      <p>Double-precision positions, velocities, masses, and radii stay in physical units inside <code>src/sim</code>.</p>
+    </article>
+    <article>
+      <p class="eyebrow">Rendered view</p>
+      <h2>What gets bent</h2>
+      <p>Illustrative scale, moon separation, labels, camera focus, and trails are renderer choices, not changes to simulation state.</p>
+      <a href={`${base}docs/simulation-core/`}>Trace the simulation core</a>
+    </article>
   </section>
 
   <section class="lab-section body-manifest" aria-labelledby="manifest-title">
     <div class="section-heading">
-      <p class="eyebrow">Mission manifest</p>
-      <h2 id="manifest-title">Current bodies in the scene</h2>
+      <p class="eyebrow">Bodies in the scene</p>
+      <h2 id="manifest-title">Eight bodies, with parent relationships kept explicit.</h2>
+      <p>Moons are initialized relative to their parent body, then added to the same shared gravity simulation.</p>
     </div>
-    <div class="body-chip-row">
-      {implementedBodies.map((body) => <a href={`${base}body-catalog/`} class={`body-chip ${body.accent}`}>{body.name}<span>{body.kind}</span></a>)}
+    <div class="body-table" role="table" aria-label="Implemented simulator bodies">
+      {implementedBodies.map((body) => (
+        <a href={`${base}body-catalog/`} class={`body-row accent-${body.accent}`} role="row">
+          <strong role="cell">{body.name}</strong>
+          <span role="cell">{body.kind}</span>
+          <span role="cell">Parent: {body.parent}</span>
+          <em role="cell">{body.initialization}</em>
+        </a>
+      ))}
     </div>
+  </section>
+
+  <section class="lab-section rough-edges" aria-labelledby="rough-edges-title">
+    <div>
+      <p class="eyebrow">Current state</p>
+      <h2 id="rough-edges-title">Working, but honestly still early.</h2>
+    </div>
+    <ul>
+      <li>Working now: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, focus cycling, zoom, scale modes, and persistent trails.</li>
+      <li>Still intentionally missing: outer planets, textures, shaders, ephemeris-accurate state vectors, and barycentric Sun motion.</li>
+      <li>Next steps stay small: one body or rendering improvement per iteration, with tests and docs updated beside the code.</li>
+    </ul>
   </section>
 
   <EvidenceLedger />
