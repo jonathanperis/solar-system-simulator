@@ -195,6 +195,31 @@ int renderer_grid_slices_for_system(const SolarSystem *system, RenderScaleMode m
     return slices;
 }
 
+size_t renderer_trail_sample_stride(size_t point_count)
+{
+    if (point_count <= SOLAR_RENDER_MAX_TRAIL_SEGMENTS + 1) {
+        return 1;
+    }
+
+    size_t segment_count = point_count - 1;
+    return (segment_count + SOLAR_RENDER_MAX_TRAIL_SEGMENTS - 2) / (SOLAR_RENDER_MAX_TRAIL_SEGMENTS - 1);
+}
+
+size_t renderer_trail_draw_segment_count(size_t point_count)
+{
+    if (point_count < 2) {
+        return 0;
+    }
+
+    size_t stride = renderer_trail_sample_stride(point_count);
+    size_t segment_count = point_count - 1;
+    size_t drawn_segments = segment_count / stride;
+    if ((segment_count % stride) != 0) {
+        ++drawn_segments;
+    }
+    return drawn_segments;
+}
+
 void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode)
 {
     DrawGrid(renderer_grid_slices_for_system(system, mode), 1.0f);
@@ -211,9 +236,17 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
         }
 
         Color trail_color = Fade(renderer_body_color(body), 0.55f);
-        for (size_t j = 1; j < point_count; ++j) {
-            Vec3d start = renderer_trail_point_position(system, trails, i, j - 1, mode);
+        size_t stride = renderer_trail_sample_stride(point_count);
+        size_t previous_point = 0;
+        for (size_t j = stride; j < point_count; j += stride) {
+            Vec3d start = renderer_trail_point_position(system, trails, i, previous_point, mode);
             Vec3d end = renderer_trail_point_position(system, trails, i, j, mode);
+            DrawLine3D(vec3d_to_raylib(start), vec3d_to_raylib(end), trail_color);
+            previous_point = j;
+        }
+        if (previous_point + 1 < point_count) {
+            Vec3d start = renderer_trail_point_position(system, trails, i, previous_point, mode);
+            Vec3d end = renderer_trail_point_position(system, trails, i, point_count - 1, mode);
             DrawLine3D(vec3d_to_raylib(start), vec3d_to_raylib(end), trail_color);
         }
     }
