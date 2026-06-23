@@ -14,13 +14,13 @@ from pathlib import Path
 
 ROUTES: dict[str, list[str]] = {
     "index.html": [
-        "Newtonian space toys for people who read the source",
+        "Gravity, but make it a weird science poster",
         "data-footer-credits",
         "Jonathan Peris",
-        "science-fair poster, not corporate space stock",
+        "Young nerd energy, source-backed science, zero stock-space fog",
         "wasm/solar-system-simulator.html",
         "Source references",
-        "Alive, honest, and still growing",
+        "Readable, playable, unfinished on purpose",
     ],
     "physics/index.html": ["Physics stays in SI units", "docs/simulation-core/", "data-footer-credits"],
     "body-catalog/index.html": ["Stable IDs prevent duplicate knowledge", "docs/roadmap/", "Phobos", "Deimos"],
