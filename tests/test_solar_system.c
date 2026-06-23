@@ -363,8 +363,18 @@ static void test_phobos_body_starts_at_mars_relative_periareion_with_tangential_
     assert_close(mars_to_phobos.y, 0.0, 1e-12);
     assert_close(mars_to_phobos.z, 0.0, 1e-12);
     assert_close(relative_velocity.x, 0.0, 1e-12);
-    assert_close(relative_velocity.y, SOLAR_PHOBOS_PERIAREION_SPEED_MPS, 1e-9);
-    assert_close(relative_velocity.z, 0.0, 1e-12);
+    assert_close(relative_velocity.y, 0.0, 1e-12);
+    assert_close(relative_velocity.z, SOLAR_PHOBOS_PERIAREION_SPEED_MPS, 1e-9);
+}
+
+static void test_phobos_orbit_starts_in_ecliptic_render_plane(void)
+{
+    Body mars = solar_system_create_mars_at_perihelion();
+    Body phobos = solar_system_create_phobos_at_periareion_near_mars(&mars);
+    Vec3d relative_velocity = vec3d_sub(phobos.velocity_mps, mars.velocity_mps);
+
+    assert_close(relative_velocity.y, 0.0, 1e-12);
+    assert(fabs(relative_velocity.z) > 0.0);
 }
 
 static void test_deimos_body_starts_at_mars_relative_periareion_with_tangential_velocity(void)
@@ -383,8 +393,18 @@ static void test_deimos_body_starts_at_mars_relative_periareion_with_tangential_
     assert_close(mars_to_deimos.y, 0.0, 1e-12);
     assert_close(mars_to_deimos.z, 0.0, 1e-12);
     assert_close(relative_velocity.x, 0.0, 1e-12);
-    assert_close(relative_velocity.y, -SOLAR_DEIMOS_PERIAREION_SPEED_MPS, 1e-9);
-    assert_close(relative_velocity.z, 0.0, 1e-12);
+    assert_close(relative_velocity.y, 0.0, 1e-12);
+    assert_close(relative_velocity.z, -SOLAR_DEIMOS_PERIAREION_SPEED_MPS, 1e-9);
+}
+
+static void test_deimos_orbit_starts_in_ecliptic_render_plane(void)
+{
+    Body mars = solar_system_create_mars_at_perihelion();
+    Body deimos = solar_system_create_deimos_at_periareion_near_mars(&mars);
+    Vec3d relative_velocity = vec3d_sub(deimos.velocity_mps, mars.velocity_mps);
+
+    assert_close(relative_velocity.y, 0.0, 1e-12);
+    assert(fabs(relative_velocity.z) > 0.0);
 }
 
 static void test_sun_mercury_system_has_two_expected_bodies(void)
@@ -693,7 +713,7 @@ static void test_phobos_moves_prograde_relative_to_mars_after_small_step(void)
 
     Vec3d relative = vec3d_sub(system.bodies[6].position_m, system.bodies[5].position_m);
     assert(relative.x < initial_relative.x);
-    assert(relative.y > initial_relative.y);
+    assert(relative.z > initial_relative.z);
 }
 
 static void test_deimos_moves_prograde_relative_to_mars_after_small_step(void)
@@ -705,7 +725,7 @@ static void test_deimos_moves_prograde_relative_to_mars_after_small_step(void)
 
     Vec3d relative = vec3d_sub(system.bodies[7].position_m, system.bodies[5].position_m);
     assert(relative.x > initial_relative.x);
-    assert(relative.y < initial_relative.y);
+    assert(relative.z < initial_relative.z);
 }
 
 static void test_phobos_remains_near_mars_after_one_orbit(void)
@@ -785,7 +805,9 @@ int main(void)
     test_moon_body_starts_at_earth_relative_perigee_with_tangential_velocity();
     test_mars_body_starts_at_perihelion_with_tangential_velocity();
     test_phobos_body_starts_at_mars_relative_periareion_with_tangential_velocity();
+    test_phobos_orbit_starts_in_ecliptic_render_plane();
     test_deimos_body_starts_at_mars_relative_periareion_with_tangential_velocity();
+    test_deimos_orbit_starts_in_ecliptic_render_plane();
     test_sun_mercury_system_has_two_expected_bodies();
     test_sun_mercury_venus_system_has_three_expected_bodies();
     test_sun_mercury_venus_earth_system_has_four_expected_bodies();
