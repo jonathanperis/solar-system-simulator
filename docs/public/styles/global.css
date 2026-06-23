@@ -1,6 +1,6 @@
 :root {
   color-scheme: dark;
-  font-family: "Aptos", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "Atkinson Hyperlegible", "Aptos", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --space-950: oklch(9% 0.025 260);
   --space-900: oklch(13% 0.035 258);
   --space-850: oklch(17% 0.038 257);
@@ -142,6 +142,7 @@ h1,
 h2,
 h3 {
   color: var(--text);
+  font-family: "Chakra Petch", "Atkinson Hyperlegible", system-ui, sans-serif;
   line-height: 1.02;
   letter-spacing: -0.035em;
   margin: 0 0 0.75rem;
@@ -181,6 +182,7 @@ code {
 
 .eyebrow {
   color: var(--cyan);
+  font-family: "Chakra Petch", "Atkinson Hyperlegible", system-ui, sans-serif;
   font-weight: 900;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -244,6 +246,129 @@ code {
   padding: 0.42rem 0.72rem;
   color: var(--muted);
   box-shadow: none;
+}
+
+.personality-hero {
+  position: relative;
+}
+
+.personality-hero::before {
+  content: "Δv club";
+  position: absolute;
+  top: clamp(1rem, 4vw, 2.5rem);
+  left: min(54vw, 42rem);
+  rotate: -8deg;
+  border: 1px solid oklch(88% 0.16 82 / 0.62);
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  color: var(--solar);
+  background: oklch(16% 0.05 258 / 0.82);
+  box-shadow: 0 0 34px oklch(78% 0.18 82 / 0.28);
+  font-family: "Chakra Petch", "Atkinson Hyperlegible", system-ui, sans-serif;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  z-index: 1;
+}
+
+.personality-hero h1 {
+  text-shadow: 0 0 34px oklch(75% 0.14 218 / 0.22);
+}
+
+.lab-sticker-wall span,
+.control-note-young span,
+.control-note-young strong {
+  background:
+    linear-gradient(135deg, oklch(24% 0.065 258 / 0.9), oklch(16% 0.04 260 / 0.82));
+  border-color: oklch(78% 0.14 218 / 0.34);
+}
+
+.lab-sticker-wall span:nth-child(2n) {
+  border-color: oklch(84% 0.17 82 / 0.45);
+  color: oklch(89% 0.13 84);
+}
+
+.zine-note {
+  position: relative;
+  border-block: 0;
+  border: 1px solid oklch(78% 0.14 218 / 0.26);
+  border-radius: var(--radius-xl);
+  padding: clamp(1.3rem, 4vw, 2.5rem);
+  background:
+    linear-gradient(90deg, oklch(78% 0.14 218 / 0.1) 1px, transparent 1px),
+    linear-gradient(0deg, oklch(78% 0.14 218 / 0.08) 1px, transparent 1px),
+    oklch(14% 0.04 258 / 0.72);
+  background-size: 28px 28px, 28px 28px, auto;
+  box-shadow: var(--shadow);
+}
+
+.zine-note::after {
+  content: "source-backed ✦ not a render farm";
+  position: absolute;
+  right: 1rem;
+  top: -0.85rem;
+  rotate: 2deg;
+  border: 1px solid oklch(82% 0.16 82 / 0.48);
+  border-radius: 0.7rem;
+  padding: 0.3rem 0.55rem;
+  color: oklch(92% 0.14 84);
+  background: oklch(16% 0.05 258);
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.field-console-copy p {
+  color: oklch(82% 0.07 238);
+}
+
+.browser-bench {
+  border-color: oklch(84% 0.16 82 / 0.32);
+  background:
+    radial-gradient(circle at 12% 8%, oklch(84% 0.18 82 / 0.1), transparent 14rem),
+    var(--panel);
+}
+
+.proof-pair article {
+  border: 1px solid oklch(78% 0.14 218 / 0.24);
+  border-radius: var(--radius-lg);
+  padding: clamp(1rem, 2vw, 1.35rem);
+  background: oklch(15% 0.04 258 / 0.7);
+}
+
+.equation-tape {
+  border: 1px dashed oklch(84% 0.17 82 / 0.42);
+  border-radius: var(--radius-xl);
+  padding: clamp(1.2rem, 3vw, 2rem);
+  background:
+    linear-gradient(135deg, oklch(84% 0.18 82 / 0.08), transparent 34%),
+    oklch(13% 0.04 258 / 0.75);
+}
+
+.equation-tape h2 { max-width: 19ch; }
+
+.scribble-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.scribble-grid span {
+  border: 1px solid oklch(78% 0.14 218 / 0.28);
+  border-radius: 1rem;
+  padding: 0.85rem;
+  color: var(--text);
+  background: oklch(18% 0.045 258 / 0.7);
+  font-weight: 800;
+}
+
+.body-table-personality .body-row {
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.body-table-personality .body-row:hover {
+  transform: translateX(0.35rem);
+  background: oklch(20% 0.05 258 / 0.82);
 }
 
 .orbit-instrument {
@@ -605,6 +730,8 @@ tr:last-child td { border-bottom: 0; }
     grid-template-columns: 1fr;
   }
   .telemetry-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .scribble-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .personality-hero::before { left: auto; right: 1rem; }
   .telemetry-cell:nth-child(2n) { border-right: 0; }
   .body-row { grid-template-columns: minmax(7rem, 0.35fr) minmax(5rem, 0.2fr) minmax(0, 1fr); }
   .body-row em { grid-column: 1 / -1; }
@@ -620,7 +747,8 @@ tr:last-child td { border-bottom: 0; }
   h1 { font-size: clamp(2.6rem, 18vw, 4.4rem); }
   .telemetry-rail,
   .grid,
-  .feature-grid { grid-template-columns: 1fr; }
+  .feature-grid,
+  .scribble-grid { grid-template-columns: 1fr; }
   .telemetry-cell { border-right: 0; border-bottom: 1px solid var(--line); }
   .telemetry-cell:last-child { border-bottom: 0; }
   .body-row,
