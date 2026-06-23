@@ -196,6 +196,16 @@ static void test_grid_expands_to_cover_mars_orbit_with_padding(void)
     assert(((double)slices / 2.0) >= required_half_width);
 }
 
+static void test_trail_rendering_keeps_long_runs_bounded(void)
+{
+    size_t points_after_500_days = 1 + (size_t)500 * 288;
+    size_t rendered_segments = renderer_trail_draw_segment_count(points_after_500_days);
+
+    assert(rendered_segments <= SOLAR_RENDER_MAX_TRAIL_SEGMENTS);
+    assert(renderer_trail_sample_stride(points_after_500_days) > 1);
+    assert(renderer_trail_draw_segment_count(2) == 1);
+}
+
 int main(void)
 {
     test_real_scale_radius_uses_physical_meter_scale();
@@ -212,6 +222,7 @@ int main(void)
     test_body_color_uses_catalog_id_not_name();
     test_grid_keeps_at_least_minimum_square_count_for_inner_system();
     test_grid_expands_to_cover_mars_orbit_with_padding();
+    test_trail_rendering_keeps_long_runs_bounded();
     puts("test_renderer passed");
     return 0;
 }
