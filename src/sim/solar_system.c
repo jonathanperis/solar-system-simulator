@@ -101,11 +101,11 @@ Body solar_system_create_mars_at_perihelion(void)
 
 Body solar_system_create_phobos_at_periareion_near_mars(const Body *mars)
 {
-    /* Phobos and Deimos use the X/Y plane around Mars so their angular
-     * momentum direction is explicit and does not visually duplicate the
-     * Earth/Moon setup. */
+    /* Keep Mars-relative satellite motion in the same X/Z ecliptic plane as
+     * the planet orbits. Visual inclinations can be modeled later, but the
+     * default no-inclination scene should not draw vertical moon trails. */
     Vec3d offset_m = {SOLAR_PHOBOS_PERIAREION_M, 0.0, 0.0};
-    Vec3d relative_velocity_mps = {0.0, SOLAR_PHOBOS_PERIAREION_SPEED_MPS, 0.0};
+    Vec3d relative_velocity_mps = {0.0, 0.0, SOLAR_PHOBOS_PERIAREION_SPEED_MPS};
 
     return body_create_identified(
         "Phobos",
@@ -123,7 +123,7 @@ Body solar_system_create_phobos_at_periareion_near_mars(const Body *mars)
 Body solar_system_create_deimos_at_periareion_near_mars(const Body *mars)
 {
     Vec3d offset_m = {-SOLAR_DEIMOS_PERIAREION_M, 0.0, 0.0};
-    Vec3d relative_velocity_mps = {0.0, -SOLAR_DEIMOS_PERIAREION_SPEED_MPS, 0.0};
+    Vec3d relative_velocity_mps = {0.0, 0.0, -SOLAR_DEIMOS_PERIAREION_SPEED_MPS};
 
     return body_create_identified(
         "Deimos",
