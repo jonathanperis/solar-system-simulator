@@ -25,7 +25,7 @@ SIM_SRCS := \
     src/sim/physics.c \
     src/sim/solar_system.c
 
-APP_SRCS := src/main.c src/app/orbit_camera.c src/app/body_trails.c src/app/body_labels.c src/render/renderer.c $(SIM_SRCS)
+APP_SRCS := src/main.c src/app/orbit_camera.c src/app/body_trails.c src/app/body_labels.c src/app/simulation_step.c src/render/renderer.c $(SIM_SRCS)
 APP_OBJS := $(APP_SRCS:%.c=build/%.o)
 
 TEST_VEC3D := $(TEST_DIR)/test_vec3d
@@ -33,9 +33,10 @@ TEST_PHYSICS := $(TEST_DIR)/test_physics
 TEST_SOLAR_SYSTEM := $(TEST_DIR)/test_solar_system
 TEST_ORBIT_CAMERA := $(TEST_DIR)/test_orbit_camera
 TEST_BODY_TRAILS := $(TEST_DIR)/test_body_trails
+TEST_SIMULATION_STEP := $(TEST_DIR)/test_simulation_step
 TEST_BODY_LABELS := $(TEST_DIR)/test_body_labels
 TEST_RENDERER := $(TEST_DIR)/test_renderer
-TEST_BINS := $(TEST_VEC3D) $(TEST_PHYSICS) $(TEST_SOLAR_SYSTEM) $(TEST_ORBIT_CAMERA) $(TEST_BODY_TRAILS) $(TEST_BODY_LABELS) $(TEST_RENDERER)
+TEST_BINS := $(TEST_VEC3D) $(TEST_PHYSICS) $(TEST_SOLAR_SYSTEM) $(TEST_ORBIT_CAMERA) $(TEST_BODY_TRAILS) $(TEST_SIMULATION_STEP) $(TEST_BODY_LABELS) $(TEST_RENDERER)
 
 .PHONY: all run test web raylib-web dist-wasm docs-check clean
 
@@ -98,6 +99,10 @@ $(TEST_ORBIT_CAMERA): tests/test_orbit_camera.c src/app/orbit_camera.c src/app/o
 $(TEST_BODY_TRAILS): tests/test_body_trails.c src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
 	@mkdir -p $(@D)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_body_trails.c src/app/body_trails.c $(SIM_SRCS) $(LDLIBS) -o $@
+
+$(TEST_SIMULATION_STEP): tests/test_simulation_step.c src/app/simulation_step.c src/app/simulation_step.h src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
+	@mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_simulation_step.c src/app/simulation_step.c src/app/body_trails.c $(SIM_SRCS) $(LDLIBS) -o $@
 
 $(TEST_BODY_LABELS): tests/test_body_labels.c src/app/body_labels.c src/app/body_labels.h $(SIM_SRCS)
 	@mkdir -p $(@D)
