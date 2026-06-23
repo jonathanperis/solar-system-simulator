@@ -7,12 +7,11 @@
 #include "app/body_labels.h"
 #include "app/body_trails.h"
 #include "app/orbit_camera.h"
+#include "app/simulation_step.h"
 #include "sim/constants.h"
 #include "sim/solar_system.h"
 #include "sim/units.h"
 #include "render/renderer.h"
-
-#define SOLAR_APP_MAX_PHYSICS_STEP_SECONDS (5.0 * 60.0)
 
 typedef struct SolarApp {
     Camera3D camera;
@@ -59,20 +58,6 @@ static RenderScaleMode next_render_scale_mode(RenderScaleMode mode)
     return mode == RENDER_SCALE_ILLUSTRATIVE ? RENDER_SCALE_REAL : RENDER_SCALE_ILLUSTRATIVE;
 }
 
-static void step_system_with_substeps(SolarSystem *system, double dt_seconds)
-{
-    /* The renderer may deliver long frames; clamp physics updates into smaller
-     * SI-second chunks so close moons do not receive one huge unstable step. */
-    while (dt_seconds > SOLAR_APP_MAX_PHYSICS_STEP_SECONDS) {
-        solar_system_step(system, SOLAR_APP_MAX_PHYSICS_STEP_SECONDS);
-        dt_seconds -= SOLAR_APP_MAX_PHYSICS_STEP_SECONDS;
-    }
-
-    if (dt_seconds > 0.0) {
-        solar_system_step(system, dt_seconds);
-    }
-}
-
 static void apply_orbit_camera(Camera3D *camera, const OrbitCameraState *state, Vector3 target)
 {
     OrbitCameraVec3 orbit_target = raylib_vec3_to_orbit_camera(target);
@@ -97,8 +82,12 @@ static void solar_app_update_draw(void *user_data)
     Vector3 camera_target = body_camera_target(&app->system, app->focused_body_index, app->render_mode);
     orbit_camera_apply_zoom(&app->orbit_camera, GetMouseWheelMove());
     orbit_camera_advance(&app->orbit_camera, frame_time);
-    step_system_with_substeps(&app->system, (double)frame_time * app->time_scale);
-    body_trails_record_system(&app->trails, &app->system);
+    solar_app_step_system_with_trails(
+        &app->system,
+        &app->trails,
+        (double)frame_time * app->time_scale,
+        SOLAR_APP_MAX_PHYSICS_STEP_SECONDS
+    );
     camera_target = body_camera_target(&app->system, app->focused_body_index, app->render_mode);
     apply_orbit_camera(&app->camera, &app->orbit_camera, camera_target);
 
