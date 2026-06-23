@@ -10,24 +10,25 @@ import { implementedBodies } from '../lib/bodies';
 const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 <BaseLayout>
-  <section class="hero observatory-hero">
+  <section class="hero observatory-hero personality-hero">
     <div class="hero-copy">
-      <p class="eyebrow">C · raylib · WebAssembly</p>
-      <h1>A solar system simulator you can run and inspect.</h1>
+      <p class="eyebrow">C lab notebook · orbital mechanics · tiny moons</p>
+      <h1>Newtonian space toys for people who read the source.</h1>
       <p class="lede">
-        This is a small, physics-first C project: Newtonian gravity in SI units, parent-relative moons,
-        persistent trails, and a raylib renderer compiled to the browser.
+        A young, nerdy solar-system lab where the fun part is visible: SI units, kick-drift-kick stepping,
+        parent-relative moons, readable trails, and a C/raylib build that boots in the browser.
       </p>
       <div class="actions">
-        <a class="button" href="#play">Run the simulator</a>
-        <a class="button-secondary" href={`${base}docs/`}>Read the docs</a>
-        <a class="button-tertiary" href={repoUrl}>Open the source</a>
+        <a class="button" href="#play">Boot the lab</a>
+        <a class="button-secondary" href={`${base}docs/`}>Open the field notes</a>
+        <a class="button-tertiary" href={repoUrl}>Inspect the C</a>
       </div>
-      <div class="status-strip" aria-label="Current simulator status">
+      <div class="status-strip lab-sticker-wall" aria-label="Current simulator status">
         <span>{currentMilestone.language}</span>
         <span>{currentMilestone.rendering}</span>
         <span>{currentMilestone.integrator}</span>
         <span>{implementedBodies.length} bodies now</span>
+        <span>no magic numbers without receipts</span>
       </div>
     </div>
     <OrbitInstrument />
@@ -35,67 +36,80 @@ const base = normalizeBase(import.meta.env.BASE_URL);
 
   <TelemetryRail />
 
-  <section class="lab-section maker-note" aria-labelledby="maker-note-title">
+  <section class="lab-section maker-note zine-note" aria-labelledby="maker-note-title">
     <div>
       <p class="eyebrow">Why this exists</p>
-      <h2 id="maker-note-title">A learning lab, not a fake mission-control dashboard.</h2>
+      <h2 id="maker-note-title">For the kid who paused a space video to ask, “but what is it calculating?”</h2>
     </div>
     <p>
-      The interesting part is the boundary between math and picture: the simulator keeps bodies in meters,
-      kilograms, seconds, and meters per second, then deliberately bends only the rendered view so planets,
-      moons, labels, and trails remain readable.
+      The simulator keeps the physical state boring and honest: meters, kilograms, seconds, vectors,
+      accelerations. The page gets to be weirder. It labels the compromises, shows the artifacts,
+      and turns the codebase into a public science notebook instead of a sleepy project README.
     </p>
   </section>
 
   <section class="lab-section split-section" id="play">
-    <div class="section-heading">
-      <p class="eyebrow">Simulator</p>
-      <h2>Run the actual C/raylib build in the page.</h2>
+    <div class="section-heading field-console-copy">
+      <p class="eyebrow">Browser bench</p>
+      <h2>Run the actual C/raylib build, then poke the knobs.</h2>
       <p>
-        The embedded app below is the WebAssembly artifact from the build pipeline. Use it as a working
-        lab bench, then jump into the docs when you want to see how the physics and rendering are separated.
+        The embedded app is the WebAssembly artifact from the pipeline. Use it like a desktop planetarium
+        hacked into a school lab cart: switch scale modes, focus bodies, zoom, and compare the visible view
+        with the docs that explain what the renderer is bending.
       </p>
-      <div class="control-note" aria-label="Simulator controls">
-        <strong>Controls:</strong>
+      <div class="control-note control-note-young" aria-label="Simulator controls">
+        <strong>Lab controls</strong>
         <span>Tab/C focus body</span>
         <span>V scale mode</span>
         <span>Mouse wheel zoom</span>
+        <span>Trails stay awake</span>
       </div>
     </div>
-    <figure class="wasm-card science-frame">
+    <figure class="wasm-card science-frame browser-bench">
       <div class="wasm-status-bar">
-        <span>Published artifact: HTML + JS + WASM</span>
+        <span>Artifact manifest: HTML + JS + WASM</span>
         <a href={`${base}wasm/solar-system-simulator.html`}>Open full demo</a>
       </div>
       <iframe title="Solar System Simulator WebAssembly demo" src={`${base}wasm/solar-system-simulator.html`} loading="lazy"></iframe>
       <figcaption>
-        This is intentionally still a lab view: readable overlays and diagnostics matter more than cinematic rendering.
+        Not a movie. A readable instrument with debug-friendly overlays, source-backed controls, and browser-safe boot checks.
       </figcaption>
     </figure>
   </section>
 
-  <section class="lab-section truth-split" aria-label="Physics and rendering boundary">
+  <section class="lab-section truth-split proof-pair" aria-label="Physics and rendering boundary">
     <article>
       <p class="eyebrow">Physics state</p>
-      <h2>What stays real</h2>
+      <h2>Reality stays in the sim core</h2>
       <p><code>a = G * source_mass / distance^3 * displacement</code></p>
       <p>Double-precision positions, velocities, masses, and radii stay in physical units inside <code>src/sim</code>.</p>
     </article>
     <article>
       <p class="eyebrow">Rendered view</p>
-      <h2>What gets bent</h2>
+      <h2>The picture gets artist privileges</h2>
       <p>Illustrative scale, moon separation, labels, camera focus, and trails are renderer choices, not changes to simulation state.</p>
       <a href={`${base}docs/simulation-core/`}>Trace the simulation core</a>
     </article>
   </section>
 
+  <section class="lab-section equation-tape" aria-labelledby="equation-tape-title">
+    <p class="eyebrow">Desk scribbles</p>
+    <h2 id="equation-tape-title">The vibe is science-fair poster, not corporate space stock.</h2>
+    <div class="scribble-grid" aria-label="Scientific design notes">
+      <span>Δt stays explicit</span>
+      <span>Moon orbits parent first</span>
+      <span>Renderer lies only for readability</span>
+      <span>Tests guard the math</span>
+    </div>
+  </section>
+
   <section class="lab-section body-manifest" aria-labelledby="manifest-title">
     <div class="section-heading">
-      <p class="eyebrow">Bodies in the scene</p>
-      <h2 id="manifest-title">Eight bodies, with parent relationships kept explicit.</h2>
-      <p>Moons are initialized relative to their parent body, then added to the same shared gravity simulation.</p>
+      <p class="eyebrow">Body manifest</p>
+      <h2 id="manifest-title">Eight bodies in the jar, each with a parent tag.</h2>
+      <p>Moons are initialized relative to their parent body, then released into the same shared gravity simulation.</p>
     </div>
-    <div class="body-table" role="table" aria-label="Implemented simulator bodies">
+    <div class="body-table body-table-personality" role="table" aria-label="Implemented simulator bodies">
       {implementedBodies.map((body) => (
         <a href={`${base}body-catalog/`} class={`body-row accent-${body.accent}`} role="row">
           <strong role="cell">{body.name}</strong>
@@ -107,10 +121,10 @@ const base = normalizeBase(import.meta.env.BASE_URL);
     </div>
   </section>
 
-  <section class="lab-section rough-edges" aria-labelledby="rough-edges-title">
+  <section class="lab-section rough-edges zine-note" aria-labelledby="rough-edges-title">
     <div>
       <p class="eyebrow">Current state</p>
-      <h2 id="rough-edges-title">Working, but honestly still early.</h2>
+      <h2 id="rough-edges-title">Alive, honest, and still growing.</h2>
     </div>
     <ul>
       <li>Working now: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, focus cycling, zoom, scale modes, and persistent trails.</li>
