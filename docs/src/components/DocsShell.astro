@@ -1,18 +1,54 @@
 ---
-import { docsRoutes, withBase } from '../lib/site';
+import { docsManualGroups, docsRoutes, repoUrl, withBase } from '../lib/site';
 import { normalizeBase } from '../lib/base';
 
 const rawBase = import.meta.env.BASE_URL;
 const base = normalizeBase(rawBase);
-const { title, eyebrow = 'Astro docs', lede } = Astro.props;
+const { title, eyebrow = 'Orbit manual', lede } = Astro.props;
+const currentPath = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
+const hrefFor = (href: string) => withBase(base, href);
+const isActive = (href: string) => currentPath === hrefFor(href) || currentPath.endsWith(`/${href}`);
 ---
 <section class="docs-layout">
   <aside class="docs-sidebar" aria-label="Docs navigation">
-    <p class="eyebrow">Docs section</p>
-    <nav>
-      {docsRoutes.map((route) => <a href={withBase(base, route.href)}>{route.label}</a>)}
+    <a class="docs-manual-brand" href={hrefFor('docs/')}>
+      <span>SS</span>
+      <strong>ORBIT MANUAL</strong>
+    </a>
+    <p class="docs-sidebar-copy">Filter the cartoon cockpit manual: physics, rendering, controls, web build, and next bodies without one giant scroll.</p>
+
+    <label class="docs-filter-label" for="docs-route-filter">Filter pages</label>
+    <input id="docs-route-filter" class="docs-filter" type="search" placeholder={`Filter all ${docsRoutes.length} orbit routes`} data-doc-filter />
+    <p class="docs-route-count" data-doc-count>{docsRoutes.length} routes ready</p>
+
+    <nav aria-label="Documentation sections">
+      {docsManualGroups.map((group) => (
+        <section class="docs-nav-group" data-doc-group>
+          <p>{group.title}</p>
+          <div>
+            {group.routes.map((route) => (
+              <a
+                class={`docs-nav-link${isActive(route.href) ? ' is-active' : ''}`}
+                href={hrefFor(route.href)}
+                aria-current={isActive(route.href) ? 'page' : undefined}
+                data-doc-route={`${route.code} ${route.label} ${route.summary} ${group.title}`}
+              >
+                <span>{route.code}</span>
+                {route.label}
+              </a>
+            ))}
+          </div>
+        </section>
+      ))}
     </nav>
+
+    <div class="docs-sidebar-actions" aria-label="Manual utility links">
+      <a href={hrefFor('')}>← Cartoon lab</a>
+      <a href={hrefFor('wasm/solar-system-simulator.html')}>Launch WASM</a>
+      <a href={repoUrl}>GitHub source</a>
+    </div>
   </aside>
+
   <article class="docs-article">
     <header class="docs-hero">
       <p class="eyebrow">{eyebrow}</p>
@@ -22,3 +58,34 @@ const { title, eyebrow = 'Astro docs', lede } = Astro.props;
     <slot />
   </article>
 </section>
+<script is:inline>
+  (() => {
+    const input = document.querySelector('[data-doc-filter]');
+    const count = document.querySelector('[data-doc-count]');
+    const routeItems = Array.from(document.querySelectorAll('[data-doc-route]'));
+    const groups = Array.from(document.querySelectorAll('[data-doc-group]'));
+    if (!input || !count || routeItems.length === 0) return;
+
+    const applyFilter = () => {
+      const query = input.value.trim().toLowerCase();
+      let visible = 0;
+      routeItems.forEach((item) => {
+        const haystack = (item.getAttribute('data-doc-route') || item.textContent || '').toLowerCase();
+        const match = !query || haystack.includes(query);
+        item.hidden = !match;
+        if (match && item.classList.contains('manual-index-row')) visible += 1;
+      });
+      if (!document.querySelector('.manual-index-row')) {
+        visible = routeItems.filter((item) => !item.hidden && item.classList.contains('docs-nav-link')).length;
+      }
+      groups.forEach((group) => {
+        const children = Array.from(group.querySelectorAll('[data-doc-route]'));
+        group.hidden = children.length > 0 && children.every((child) => child.hidden);
+      });
+      count.textContent = query ? `${visible} matching routes` : `${visible} routes ready`;
+    };
+
+    input.addEventListener('input', applyFilter);
+    applyFilter();
+  })();
+</script>

@@ -26,7 +26,7 @@ ROUTES: dict[str, list[str]] = {
     "body-catalog/index.html": ["Stable IDs prevent duplicate knowledge", "docs/roadmap/", "Phobos", "Deimos"],
     "source-atlas/index.html": ["The code separates physics from presentation", "docs/architecture/", "src/sim/"],
     "pipeline/index.html": ["Native tests feed a Pages lab bench", "docs/build-and-web/", "make web"],
-    "docs/index.html": ["Astro docs for the C solar-system lab", "Code explainer index", "docs/architecture/"],
+    "docs/index.html": ["Trace every orbit wire without one giant scroll", "Solar manual routes", "Every orbit manual page", "docs/architecture/"],
     "docs/architecture/index.html": ["Architecture keeps physics testable", "src/sim/", "src/render/", "src/main.c", "tests/"],
     "docs/simulation-core/index.html": ["Simulation state uses physical units first", "src/sim/physics.c", "src/sim/solar_system.c", "src/sim/vec3d.c"],
     "docs/rendering/index.html": ["Rendering adapts physics for human eyes", "src/render/renderer.c", "src/app/body_labels.c", "src/app/body_trails.c"],
@@ -68,6 +68,12 @@ def main(argv: list[str]) -> int:
     wasm = dist / "wasm" / "solar-system-simulator.html"
     if not wasm.is_file():
         fail("missing copied WebAssembly HTML artifact")
+
+    wasm_markers = ["Cartoon cockpit runtime", "Launch-ready C/raylib canvas", "Controls expose real simulator state"]
+    wasm_html = wasm.read_text(encoding="utf-8", errors="replace")
+    for marker in wasm_markers:
+        if marker not in wasm_html:
+            fail(f"copied WebAssembly HTML artifact missing marker: {marker}")
 
     print(f"Docs routes OK in {dist}")
     return 0

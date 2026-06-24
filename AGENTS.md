@@ -11,7 +11,7 @@ A physics-first 3D solar system simulator written in C11 with raylib. This repos
 - **Architecture:** deterministic SI-unit simulation isolated from rendering.
 - **Current scene:** Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos.
 - **Primary goal:** teach and verify orbital mechanics foundations before visual polish.
-- **Current public-site direction:** cartoon cosmic cockpit, source-backed and playful, with friendly planet art wrapped around SI-unit physics.
+- **Current public-site direction:** cartoon cosmic cockpit, source-backed and playful, with friendly planet art wrapped around SI-unit physics. The docs hub uses a service-manual structure, and the standalone WASM page should feel like the same cockpit rather than a raw generated shell.
 
 ---
 
