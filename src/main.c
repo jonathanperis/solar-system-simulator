@@ -2,7 +2,6 @@
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
-#include <emscripten/html5.h>
 #endif
 
 #include "app/body_trails.h"
@@ -83,33 +82,6 @@ static void solar_app_ensure_scene_texture(SolarApp *app, int width, int height)
     app->scene_texture = LoadRenderTexture(width, height);
 }
 
-#if defined(PLATFORM_WEB)
-static int rounded_positive_css_px(double value)
-{
-    if (value < 1.0) {
-        return 1;
-    }
-    return (int)(value + 0.5);
-}
-
-static void sync_web_canvas_size(SolarApp *app)
-{
-    double css_width = 0.0;
-    double css_height = 0.0;
-    if (emscripten_get_element_css_size("#canvas", &css_width, &css_height) != EMSCRIPTEN_RESULT_SUCCESS) {
-        return;
-    }
-
-    int canvas_width = rounded_positive_css_px(css_width);
-    int canvas_height = rounded_positive_css_px(css_height);
-    if (canvas_width != GetScreenWidth() || canvas_height != GetScreenHeight()) {
-        emscripten_set_canvas_element_size("#canvas", canvas_width, canvas_height);
-        SetWindowSize(canvas_width, canvas_height);
-    }
-    solar_app_ensure_scene_texture(app, canvas_width, canvas_height);
-}
-#endif
-
 static void draw_scene_to_texture(SolarApp *app, int screen_width, int screen_height)
 {
     BeginTextureMode(app->scene_texture);
@@ -137,10 +109,6 @@ static void draw_scene_texture(const SolarApp *app, int screen_width, int screen
 static void solar_app_update_draw(void *user_data)
 {
     SolarApp *app = user_data;
-
-#if defined(PLATFORM_WEB)
-    sync_web_canvas_size(app);
-#endif
 
     if (IsKeyPressed(KEY_TAB) || IsKeyPressed(KEY_C)) {
         app->focused_body_index = next_body_index(app->focused_body_index, &app->system);
