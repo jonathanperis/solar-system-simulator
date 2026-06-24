@@ -7,81 +7,366 @@
     <style>
       :root {
         color-scheme: dark;
-        background: #030712;
-        color: #e5f4ff;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family: "Nunito", "Trebuchet MS", system-ui, sans-serif;
+        --space: oklch(13% 0.07 277);
+        --space-deep: oklch(8% 0.055 278);
+        --space-soft: oklch(20% 0.075 284 / 0.92);
+        --cream: oklch(96% 0.022 88);
+        --muted: oklch(82% 0.045 266);
+        --muted-dim: oklch(70% 0.055 272);
+        --comic-ink: oklch(13% 0.06 276);
+        --sun: oklch(86% 0.18 80);
+        --orange: oklch(73% 0.19 47);
+        --pink: oklch(68% 0.24 342);
+        --cyan: oklch(82% 0.16 198);
+        --mint: oklch(82% 0.16 154);
+        --outline: oklch(96% 0.022 88 / 0.86);
+        --outline-soft: oklch(96% 0.022 88 / 0.34);
+        --shadow-pop: 0 1.2rem 0 oklch(8% 0.055 278 / 0.5);
       }
 
+      * { box-sizing: border-box; }
+      html { min-height: 100%; }
       body {
         margin: 0;
         min-height: 100vh;
+        color: var(--cream);
+        background:
+          radial-gradient(circle at 12% 18%, oklch(86% 0.18 80 / 0.18), transparent 16rem),
+          radial-gradient(circle at 88% 8%, oklch(82% 0.16 198 / 0.18), transparent 18rem),
+          linear-gradient(150deg, oklch(56% 0.18 289), oklch(62% 0.17 248) 54%, oklch(30% 0.14 276));
+        overflow-x: hidden;
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(circle, oklch(96% 0.03 88 / 0.35) 1px, transparent 1.8px),
+          radial-gradient(circle, oklch(86% 0.18 80 / 0.32) 1.3px, transparent 2.3px),
+          radial-gradient(circle at 50% 110%, oklch(8% 0.055 278 / 0.48), transparent 42rem);
+        background-size: 64px 64px, 143px 143px, auto;
+        mix-blend-mode: screen;
+      }
+      a { color: inherit; }
+      .runtime-shell {
+        position: relative;
+        z-index: 1;
+        width: min(1460px, calc(100vw - 1.4rem));
+        margin: 0 auto;
+        padding: clamp(0.7rem, 2vw, 1.4rem) 0;
+      }
+      .runtime-frame {
+        display: grid;
+        gap: 1rem;
+        border: 3px solid var(--outline);
+        border-radius: 2rem;
+        background:
+          radial-gradient(circle at 8% 0%, oklch(86% 0.18 80 / 0.24), transparent 18rem),
+          linear-gradient(145deg, oklch(14% 0.08 278 / 0.96), oklch(24% 0.13 300 / 0.96));
+        box-shadow: var(--shadow-pop), 0 2.8rem 6rem oklch(8% 0.055 278 / 0.42);
+        padding: clamp(0.85rem, 2vw, 1.35rem);
+        overflow: hidden;
+      }
+      .runtime-topbar,
+      .runtime-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.9rem;
+        flex-wrap: wrap;
+      }
+      .runtime-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.7rem;
+        text-decoration: none;
+        font-family: "Trebuchet MS", system-ui, sans-serif;
+        font-weight: 900;
+        letter-spacing: 0.02em;
+      }
+      .runtime-brand span {
         display: grid;
         place-items: center;
+        width: 2.8rem;
+        height: 2.8rem;
+        border: 2px solid var(--comic-ink);
+        border-radius: 1rem;
+        color: var(--comic-ink);
+        background: var(--sun);
+        box-shadow: 0 0.45rem 0 oklch(8% 0.055 278 / 0.42);
+      }
+      .runtime-links,
+      .runtime-chip-row,
+      .runtime-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+      }
+      .runtime-links a,
+      .runtime-chip-row span,
+      .runtime-controls span,
+      .runtime-status {
+        border: 2px solid var(--outline-soft);
+        border-radius: 999px;
+        background: oklch(10% 0.06 278 / 0.58);
+        padding: 0.48rem 0.72rem;
+        font-family: "Courier New", monospace;
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-decoration: none;
+        text-transform: uppercase;
+      }
+      .runtime-links a:hover { color: var(--sun); border-color: var(--sun); }
+      .runtime-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 0.85fr) minmax(16rem, 0.42fr);
+        gap: 1rem;
+        align-items: stretch;
+      }
+      .runtime-copy,
+      .runtime-panel,
+      .runtime-canvas-card,
+      .runtime-log {
+        border: 2px solid var(--comic-ink);
+        border-radius: 1.45rem;
+        background: oklch(96% 0.022 88 / 0.12);
+        box-shadow: 0 0.65rem 0 oklch(8% 0.055 278 / 0.42);
+      }
+      .runtime-copy,
+      .runtime-panel { padding: clamp(0.9rem, 2vw, 1.2rem); }
+      .eyebrow {
+        margin: 0 0 0.5rem;
+        color: var(--sun);
+        font-family: "Courier New", monospace;
+        font-size: 0.76rem;
+        font-weight: 900;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+      }
+      h1 {
+        max-width: 11ch;
+        margin: 0;
+        font-family: "Trebuchet MS", system-ui, sans-serif;
+        font-size: clamp(2.7rem, 7vw, 6.6rem);
+        line-height: 0.86;
+        letter-spacing: -0.06em;
+      }
+      .runtime-copy > p:not(.eyebrow) {
+        max-width: 64ch;
+        color: var(--muted);
+        font-size: clamp(1rem, 2vw, 1.18rem);
+        line-height: 1.65;
+      }
+      .runtime-actions { display: flex; gap: 0.7rem; flex-wrap: wrap; margin-top: 1rem; }
+      .runtime-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2.7rem;
+        border: 2px solid var(--comic-ink);
+        border-radius: 999px;
+        background: var(--sun);
+        color: var(--comic-ink);
+        padding: 0.72rem 1rem;
+        font-weight: 900;
+        text-decoration: none;
+        box-shadow: 0 0.45rem 0 oklch(8% 0.055 278 / 0.42);
+      }
+      .runtime-button.secondary { background: var(--cyan); }
+      .runtime-panel strong {
+        display: block;
+        color: var(--sun);
+        font-family: "Courier New", monospace;
+        font-size: clamp(2.8rem, 9vw, 5.5rem);
+        line-height: 0.9;
+      }
+      .runtime-panel dl {
+        display: grid;
+        grid-template-columns: auto auto;
+        gap: 0.4rem 0.85rem;
+        margin: 0.8rem 0 0;
+        font-family: "Courier New", monospace;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+      }
+      .runtime-panel dt { color: var(--muted-dim); }
+      .runtime-panel dd { margin: 0; color: var(--cream); font-weight: 900; text-align: right; }
+      .runtime-canvas-card { overflow: hidden; }
+      .runtime-statusbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.7rem;
+        border-bottom: 2px solid var(--outline-soft);
+        background: oklch(10% 0.06 278 / 0.74);
+        padding: 0.75rem 0.9rem;
+      }
+      .runtime-status {
+        color: var(--sun);
+        border-color: var(--sun);
+      }
+      .canvas-wrap {
+        position: relative;
         background:
-          radial-gradient(circle at 20% 10%, rgba(56, 189, 248, 0.18), transparent 28rem),
-          radial-gradient(circle at 80% 20%, rgba(251, 191, 36, 0.10), transparent 22rem),
-          #030712;
+          linear-gradient(90deg, oklch(96% 0.022 88 / 0.05) 1px, transparent 1px),
+          linear-gradient(oklch(96% 0.022 88 / 0.05) 1px, transparent 1px),
+          var(--space-deep);
+        background-size: 38px 38px;
       }
-
-      main {
-        width: min(100vw - 2rem, 1320px);
-      }
-
-      .frame {
-        border: 1px solid rgba(148, 163, 184, 0.35);
-        border-radius: 18px;
-        overflow: hidden;
-        background: rgba(15, 23, 42, 0.82);
-        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
-      }
-
-      .status {
-        padding: 0.85rem 1rem;
-        color: #bae6fd;
-        font-size: 0.95rem;
-        border-bottom: 1px solid rgba(148, 163, 184, 0.22);
-      }
-
       canvas.emscripten {
         display: block;
         width: 100%;
         aspect-ratio: 16 / 9;
-        background: #000;
+        background: oklch(8% 0.055 278);
+        outline: none;
+      }
+      .runtime-log {
+        display: grid;
+        gap: 0.4rem;
+        padding: 0.8rem 0.9rem;
+        color: var(--muted);
+        font-family: "Courier New", monospace;
+        font-size: 0.82rem;
+        min-height: 4.5rem;
+      }
+      .runtime-log strong { color: var(--cream); }
+      .runtime-footer p { margin: 0; color: var(--muted); }
+      .runtime-footer a { color: var(--sun); font-weight: 900; }
+      @media (max-width: 960px) {
+        .runtime-hero { grid-template-columns: 1fr; }
+        h1 { max-width: 13ch; }
+      }
+      @media (max-width: 640px) {
+        .runtime-shell { width: min(100vw - 0.7rem, 1460px); }
+        .runtime-frame { border-radius: 1.2rem; }
+        .runtime-topbar,
+        .runtime-footer,
+        .runtime-statusbar { align-items: flex-start; flex-direction: column; }
       }
     </style>
   </head>
   <body>
-    <main>
-      <section class="frame" aria-label="Solar System Simulator WebAssembly runtime">
-        <div id="status" class="status">Downloading simulator…</div>
-        <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
+    <main class="runtime-shell">
+      <section class="runtime-frame" aria-label="Solar System Simulator WebAssembly runtime">
+        <header class="runtime-topbar">
+          <a class="runtime-brand" href="../" aria-label="Back to Solar System Simulator home">
+            <span>SS</span>
+            <strong>Cartoon cockpit runtime</strong>
+          </a>
+          <nav class="runtime-links" aria-label="Runtime navigation">
+            <a href="../">Lab</a>
+            <a href="../docs/controls/">Controls</a>
+            <a href="../docs/build-and-web/">Build notes</a>
+            <a href="https://github.com/jonathanperis/solar-system-simulator">Source</a>
+          </nav>
+        </header>
+
+        <section class="runtime-hero">
+          <div class="runtime-copy">
+            <p class="eyebrow">WASM cockpit / C11 physics</p>
+            <h1>Run the real orbit loop.</h1>
+            <p>This standalone page now shares the cartoon cockpit aesthetic, but the canvas below is still the checked Emscripten artifact produced by <code>make web</code>. Cute frame, serious gravity.</p>
+            <div class="runtime-chip-row" aria-label="Runtime facts">
+              <span>C11 + raylib</span>
+              <span>SI units</span>
+              <span>8 bodies</span>
+              <span>WASM artifact</span>
+            </div>
+            <div class="runtime-actions">
+              <a class="runtime-button" href="#canvas">Focus canvas</a>
+              <a class="runtime-button secondary" href="../docs/controls/">Read controls</a>
+            </div>
+          </div>
+          <aside class="runtime-panel" aria-label="Runtime diagnostic summary">
+            <p class="eyebrow">Launch-ready C/raylib canvas</p>
+            <strong>60</strong>
+            <span>target frames per second</span>
+            <dl>
+              <dt>Tab / C</dt><dd>focus body</dd>
+              <dt>V</dt><dd>scale mode</dd>
+              <dt>Wheel</dt><dd>zoom</dd>
+              <dt>Trails</dt><dd>full run</dd>
+            </dl>
+          </aside>
+        </section>
+
+        <section class="runtime-canvas-card">
+          <div class="runtime-statusbar">
+            <div id="status" class="runtime-status">Downloading simulator…</div>
+            <div class="runtime-controls" aria-label="Controls expose real simulator state">
+              <span>Tab/C focus</span>
+              <span>V scale</span>
+              <span>Mouse wheel zoom</span>
+            </div>
+          </div>
+          <div class="canvas-wrap">
+            <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex="0" aria-label="Solar System Simulator WebAssembly canvas"></canvas>
+          </div>
+        </section>
+
+        <section class="runtime-log" aria-label="Runtime log">
+          <strong>Runtime log</strong>
+          <span id="runtime-log-line">Waiting for WebAssembly artifact.</span>
+        </section>
+
+        <footer class="runtime-footer">
+          <p>Standalone lab bench for the browser artifact. Rendering is playful; physics state remains source-backed.</p>
+          <a href="../docs/build-and-web/">How this artifact is built →</a>
+        </footer>
       </section>
     </main>
 
     <script>
       const statusElement = document.getElementById('status');
+      const runtimeLogLine = document.getElementById('runtime-log-line');
+      const canvasElement = document.getElementById('canvas');
+      const setRuntimeStatus = (text) => {
+        const message = text || 'Running physics simulation';
+        statusElement.textContent = message;
+        runtimeLogLine.textContent = message;
+      };
+      const supportsWebGL = (() => {
+        try {
+          const probe = document.createElement('canvas');
+          return Boolean(probe.getContext('webgl') || probe.getContext('experimental-webgl'));
+        } catch (_error) {
+          return false;
+        }
+      })();
+      if (!supportsWebGL) {
+        setRuntimeStatus('WebGL unavailable: the browser cannot draw the raylib canvas.');
+      }
       var Module = {
-        canvas: document.getElementById('canvas'),
+        canvas: canvasElement,
         print(text) {
           console.log(text);
         },
         printErr(text) {
           console.error(text);
-          statusElement.textContent = text;
+          setRuntimeStatus(text);
         },
         setStatus(text) {
-          statusElement.textContent = text || 'Running physics simulation';
+          setRuntimeStatus(text || 'Running physics simulation');
         },
         monitorRunDependencies(left) {
           if (left > 0) {
-            statusElement.textContent = `Preparing simulator (${left} files remaining)…`;
+            setRuntimeStatus(`Preparing simulator (${left} files remaining)…`);
           } else {
-            statusElement.textContent = 'Starting simulator…';
+            setRuntimeStatus('Starting simulator…');
           }
+        },
+        onRuntimeInitialized() {
+          setRuntimeStatus('Runtime initialized. Starting physics simulation…');
         }
       };
       window.onerror = function(message) {
-        statusElement.textContent = `Runtime error: ${message}`;
+        setRuntimeStatus(`Runtime error: ${message}`);
+      };
+      window.onunhandledrejection = function(event) {
+        setRuntimeStatus(`Runtime promise error: ${event.reason}`);
       };
     </script>
     {{{ SCRIPT }}}

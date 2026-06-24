@@ -1,36 +1,98 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import DocsShell from '../../components/DocsShell.astro';
-import { docsRoutes, withBase } from '../../lib/site';
+import { currentMilestone, docsManualGroups, docsRoutes, repoUrl, withBase } from '../../lib/site';
 import { normalizeBase } from '../../lib/base';
 
 const base = normalizeBase(import.meta.env.BASE_URL);
-const paths = [
-  ['Learner', 'Start with Simulation core, then Controls, then run the WebAssembly lab.'],
-  ['C maintainer', 'Read Architecture, Rendering, and Build and web before changing source boundaries.'],
-  ['Physics reviewer', 'Compare Simulation core with Body catalog and source tests.'],
-  ['Deployment reviewer', 'Use Build and web, Pipeline, and the WASM smoke checks.']
-];
+const totalRoutes = docsRoutes.length;
+const firstRoute = docsRoutes.find((route) => route.href === 'docs/architecture/') ?? docsRoutes[0];
+const wasmRoute = withBase(base, 'wasm/solar-system-simulator.html');
 ---
-<BaseLayout title="Astro docs">
+<BaseLayout title="Orbit manual">
   <DocsShell
-    title="Astro docs for the C solar-system lab."
-    lede="This section is the maintained code atlas: architecture, physics, rendering, controls, build pipeline, and roadmap in one navigable surface."
+    eyebrow="Orbit manual / cartoon cockpit"
+    title="Trace every orbit wire without one giant scroll."
+    lede="Use the docs like a service bay for the cartoon cockpit: start with source boundaries, inspect gravity and rendering, then verify controls, WebAssembly, and the roadmap."
   >
-    <section class="doc-panel">
-      <h2>Choose a reading path</h2>
-      <div class="doc-card-grid">
-        {paths.map(([label, copy]) => <article><h3>{label}</h3><p>{copy}</p></article>)}
+    <section class="manual-hero" aria-label="Orbit manual summary">
+      <div class="manual-hero-copy">
+        <p class="eyebrow">SERVICE MANUAL / SCIENCE CLUB BACKPLANE</p>
+        <h2>Open the simulator like a cabinet.</h2>
+        <p>
+          Every route answers one maintainer question: where the physics lives, what the renderer bends for readability, how the browser bundle is produced, and what work is still intentionally unfinished.
+        </p>
+        <div class="manual-chip-row" aria-label="Manual diagnostics">
+          <span>{totalRoutes} focused orbit routes</span>
+          <span>{currentMilestone.language} + raylib</span>
+          <span>{currentMilestone.units}</span>
+          <span>WASM lab bench</span>
+        </div>
+        <div class="manual-actions" aria-label="Primary manual actions">
+          <a class="button" href={withBase(base, firstRoute.href)}>Start with architecture</a>
+          <a class="button button-secondary" href={wasmRoute}>Launch WASM cockpit</a>
+        </div>
+      </div>
+      <aside class="manual-stats" aria-label="Documentation stats">
+        <p>ROUTES</p>
+        <strong>{totalRoutes}</strong>
+        <span>FOCUSED MANUAL PAGES</span>
+        <dl>
+          {docsManualGroups.map((group) => (
+            <>
+              <dt>{group.title}</dt>
+              <dd>{group.routes.length}</dd>
+            </>
+          ))}
+        </dl>
+      </aside>
+    </section>
+
+    <section class="manual-routes" aria-labelledby="manual-routes-title">
+      <p class="eyebrow">Solar manual routes</p>
+      <h2 id="manual-routes-title">Pick a route by job, not by scroll depth.</h2>
+      <div class="manual-route-grid">
+        {docsManualGroups.map((group) => (
+          <article class="manual-route-card" data-doc-group>
+            <p>{group.id}</p>
+            <h3>{group.title}</h3>
+            <span class="manual-card-rule" aria-hidden="true"></span>
+            <p>{group.description}</p>
+            <div class="manual-route-links">
+              {group.routes.map((route) => (
+                <a
+                  class="manual-route-link"
+                  href={withBase(base, route.href)}
+                  data-doc-route={`${route.code} ${route.label} ${route.summary} ${group.title}`}
+                >
+                  <span>{route.code}</span>
+                  <strong>{route.label}</strong>
+                </a>
+              ))}
+            </div>
+          </article>
+        ))}
       </div>
     </section>
 
-    <section class="doc-panel">
-      <h2>Code explainer index</h2>
-      <div class="route-list">
-        {docsRoutes.slice(1).map((route) => (
-          <a href={withBase(base, route.href)}>
+    <section class="manual-index" aria-labelledby="manual-index-title">
+      <div class="manual-index-heading">
+        <div>
+          <p class="eyebrow">Full index</p>
+          <h2 id="manual-index-title">Every orbit manual page</h2>
+        </div>
+        <a href={repoUrl}>Open source →</a>
+      </div>
+      <div class="manual-index-list">
+        {docsRoutes.map((route, index) => (
+          <a
+            class="manual-index-row"
+            href={withBase(base, route.href)}
+            data-doc-route={`${route.code} ${route.label} ${route.summary}`}
+          >
+            <span>{String(index + 1).padStart(2, '0')}</span>
             <strong>{route.label}</strong>
-            <span>{route.summary}</span>
+            <em>{route.summary}</em>
           </a>
         ))}
       </div>

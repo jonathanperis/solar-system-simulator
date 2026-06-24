@@ -34,11 +34,16 @@ This is a full-palette cartoon science identity, not the rejected technical-inst
    - Inline SVG illustration with chunky Sun, planets, orbit paths, sparkles, and a tiny astronaut mechanic.
    - Must state that it is a playful map, not a physical scale poster.
 
-3. **WASM viewport**
+3. **WASM viewport and standalone runtime**
    - Embedded canvas with boot status, full-demo link, and control summary.
+   - The standalone `/wasm/solar-system-simulator.html` page should share the cartoon cockpit frame, show runtime diagnostics, expose controls, and link back to docs/source instead of looking like an unstyled generated shell.
    - Base-path-safe asset loading for GitHub Pages (`/solar-system-simulator/`).
 
-4. **Physics boundary panels**
+4. **Docs manual structure**
+   - `/docs/` should behave like a compact orbit manual: sticky sidebar, filterable route list, grouped manual cards, route counts, and a full index.
+   - Keep Super Mango's service-manual information architecture idea, but translate it into the cartoon cosmic cockpit palette and physics wording.
+
+5. **Physics boundary panels**
    - Pair the serious physics engine with the playful cartoon layer.
    - Keep source paths and formulas visible so the design does not become decorative fluff.
 

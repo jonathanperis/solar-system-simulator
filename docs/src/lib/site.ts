@@ -34,14 +34,49 @@ export const primaryRoutes = [
   { label: 'Pipeline', href: 'pipeline/' }
 ];
 
-export const docsRoutes = [
-  { label: 'Docs hub', href: 'docs/', summary: 'Choose a reading path through the simulator.' },
-  { label: 'Architecture', href: 'docs/architecture/', summary: 'The source boundaries that keep physics testable.' },
-  { label: 'Simulation core', href: 'docs/simulation-core/', summary: 'Vectors, bodies, gravity, units, and integration.' },
-  { label: 'Rendering', href: 'docs/rendering/', summary: 'raylib conversion, scale modes, labels, trails, and grids.' },
-  { label: 'Controls', href: 'docs/controls/', summary: 'Camera focus, zoom, view modes, and runtime keys.' },
-  { label: 'Build and web', href: 'docs/build-and-web/', summary: 'Native tests, WASM artifacts, Astro, and Pages deployment.' },
-  { label: 'Roadmap', href: 'docs/roadmap/', summary: 'The one-body-at-a-time expansion model.' }
+export interface DocsRoute {
+  label: string;
+  href: string;
+  summary: string;
+  code: string;
+}
+
+export interface DocsManualGroup {
+  id: string;
+  title: string;
+  description: string;
+  routes: DocsRoute[];
+}
+
+export const docsRoutes: DocsRoute[] = [
+  { label: 'Docs hub', href: 'docs/', summary: 'Choose a reading path through the simulator.', code: 'MAP' },
+  { label: 'Architecture', href: 'docs/architecture/', summary: 'The source boundaries that keep physics testable.', code: 'ARCH' },
+  { label: 'Simulation core', href: 'docs/simulation-core/', summary: 'Vectors, bodies, gravity, units, and integration.', code: 'SIM' },
+  { label: 'Rendering', href: 'docs/rendering/', summary: 'raylib conversion, scale modes, labels, trails, and grids.', code: 'VIEW' },
+  { label: 'Controls', href: 'docs/controls/', summary: 'Camera focus, zoom, view modes, and runtime keys.', code: 'KEYS' },
+  { label: 'Build and web', href: 'docs/build-and-web/', summary: 'Native tests, WASM artifacts, Astro, and Pages deployment.', code: 'WASM' },
+  { label: 'Roadmap', href: 'docs/roadmap/', summary: 'The one-body-at-a-time expansion model.', code: 'NEXT' }
+];
+
+export const docsManualGroups: DocsManualGroup[] = [
+  {
+    id: 'MANUAL_01',
+    title: 'Start here',
+    description: 'Orient the repo, source boundaries, controls, and first simulator run.',
+    routes: [docsRoutes[0], docsRoutes[1], docsRoutes[4]]
+  },
+  {
+    id: 'MANUAL_02',
+    title: 'Physics & view',
+    description: 'Trace SI-unit state through integration, rendering scale, labels, and trails.',
+    routes: [docsRoutes[2], docsRoutes[3]]
+  },
+  {
+    id: 'MANUAL_03',
+    title: 'Build & roadmap',
+    description: 'Verify native tests, WebAssembly artifacts, Pages deployment, and next bodies.',
+    routes: [docsRoutes[5], docsRoutes[6]]
+  }
 ];
 
 export const footerLinks = [
