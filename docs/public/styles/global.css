@@ -649,6 +649,35 @@ a { transition: color 160ms ease-out, border-color 160ms ease-out, background 16
   margin: 0;
   background: oklch(10% 0.075 278);
 }
+.runtime-launch-card {
+  align-self: stretch;
+}
+.runtime-launch-body {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1.05rem, 3vw, 2rem);
+}
+.runtime-launch-body h3 {
+  max-width: 16ch;
+  font-size: clamp(1.45rem, 2.5vw, 2.35rem);
+}
+.runtime-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+.runtime-proof-grid span {
+  border: 1px solid var(--outline-soft);
+  border-radius: 0.85rem;
+  background: oklch(96% 0.022 88 / 0.11);
+  color: var(--cream);
+  padding: 0.7rem;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.runtime-launch-body .button { width: fit-content; }
 .wasm-card iframe {
   display: block;
   width: 100%;
@@ -835,15 +864,18 @@ tr:last-child td { border-bottom: 0; }
 .docs-layout {
   display: grid;
   grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr);
-  gap: 1.2rem;
+  gap: clamp(1.35rem, 2.4vw, 2rem);
   align-items: start;
+  margin-top: clamp(1rem, 2.2vw, 1.8rem);
   margin-bottom: 4rem;
 }
 .docs-sidebar {
   position: sticky;
-  top: 1rem;
+  top: 1.25rem;
   display: grid;
   gap: 1rem;
+  max-height: calc(100vh - 2.5rem);
+  overflow-y: auto;
   background:
     radial-gradient(circle at 0% 0%, oklch(82% 0.135 82 / 0.18), transparent 12rem),
     linear-gradient(145deg, oklch(15% 0.08 278 / 0.97), oklch(24% 0.13 300 / 0.97));
@@ -949,11 +981,25 @@ tr:last-child td { border-bottom: 0; }
     radial-gradient(circle at 86% 0%, oklch(78% 0.115 198 / 0.16), transparent 17rem),
     linear-gradient(145deg, oklch(14% 0.08 278 / 0.96), oklch(24% 0.13 300 / 0.96));
   box-shadow: 0 0.36rem 0 oklch(8% 0.055 278 / 0.32), var(--shadow-soft);
-  margin-bottom: 1.5rem;
-  padding: clamp(1.1rem, 3vw, 2rem);
+  margin-bottom: clamp(1.6rem, 2.6vw, 2.25rem);
+  padding: clamp(1.15rem, 3vw, 2rem);
 }
-.docs-hero h1 { max-width: 14ch; }
-.docs-article { min-width: 0; }
+.docs-hero h1 {
+  max-width: 16ch;
+  font-size: clamp(2.35rem, 5vw, 4.8rem);
+  line-height: 1.06;
+}
+.docs-article {
+  display: grid;
+  gap: clamp(1.6rem, 2.6vw, 2.25rem);
+  min-width: 0;
+}
+.docs-article > * { margin-block: 0; }
+.docs-article .docs-hero { margin-bottom: 0; }
+.doc-panel,
+.manual-routes,
+.manual-index,
+.manual-hero { margin-block: 0; }
 .manual-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(14rem, 0.34fr);
@@ -1028,7 +1074,7 @@ tr:last-child td { border-bottom: 0; }
 .manual-stats dt { color: var(--muted-dim); }
 .manual-stats dd { margin: 0; color: var(--cream); font-weight: 900; }
 .manual-routes,
-.manual-index { margin-top: 1.4rem; }
+.manual-index { margin-top: 0; }
 .manual-route-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1218,6 +1264,7 @@ tr:last-child td { border-bottom: 0; }
   .telemetry-rail,
   .grid,
   .feature-grid,
+  .runtime-proof-grid,
   .scribble-grid { grid-template-columns: 1fr; }
   .body-row,
   .ledger-row,

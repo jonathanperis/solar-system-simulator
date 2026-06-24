@@ -45,32 +45,42 @@ const base = normalizeBase(import.meta.env.BASE_URL);
     </p>
   </section>
 
-  <section class="lab-section split-section" id="play">
+  <section class="lab-section split-section runtime-handoff" id="play">
     <div class="section-heading field-console-copy">
-      <p class="eyebrow">Playable artifact</p>
-      <h2>Run the real C/raylib simulator inside the orbit cockpit.</h2>
+      <p class="eyebrow">WASM lab</p>
+      <h2>Open the simulator in its own runtime page.</h2>
       <p>
-        This iframe is the checked WebAssembly build from the pipeline. Toggle scale, chase bodies, zoom the camera,
-        and compare every visual shortcut with the docs that name the compromise.
+        The homepage no longer nests a full browser page inside another page. It now hands off to the dedicated
+        WebAssembly cockpit, where the live canvas, controls, and renderer notes have enough room to breathe.
       </p>
-      <div class="control-note field-controls" aria-label="Simulator controls">
-        <strong>Control keys</strong>
-        <span>Tab/C focus body</span>
-        <span>V scale mode</span>
-        <span>Mouse wheel zoom</span>
-        <span>Full-run trails</span>
+      <div class="control-note field-controls" aria-label="Dedicated runtime highlights">
+        <strong>Runtime page</strong>
+        <span>Live C/raylib canvas</span>
+        <span>Static notes outside the renderer</span>
+        <span>Controls next to the artifact</span>
+        <span>Build proof in docs</span>
       </div>
     </div>
-    <figure class="wasm-card science-frame browser-bench">
+    <article class="wasm-card science-frame runtime-launch-card">
       <div class="wasm-status-bar">
-        <span>Browser bundle: HTML + JS + WASM</span>
-        <a href={`${base}wasm/solar-system-simulator.html`}>Open full demo</a>
+        <span>Dedicated WASM cockpit</span>
+        <a href={`${base}wasm/solar-system-simulator.html`}>Open runtime page</a>
       </div>
-      <iframe title="Solar System Simulator WebAssembly demo" src={`${base}wasm/solar-system-simulator.html`} loading="lazy"></iframe>
-      <figcaption>
-        A browser-safe lab toy with source-backed controls, explicit boot artifacts, and trails that keep recording during long runs.
-      </figcaption>
-    </figure>
+      <div class="runtime-launch-body">
+        <p class="eyebrow">HTML + JS + WASM</p>
+        <h3>One page for the live loop, one page for the story.</h3>
+        <p>
+          Use the standalone page when you want the real simulator. Use the homepage as the source-backed map that explains what the canvas is showing.
+        </p>
+        <div class="runtime-proof-grid" aria-label="Runtime facts moved out of the nested bundle">
+          <span>8 bodies</span>
+          <span>{currentMilestone.units}</span>
+          <span>{currentMilestone.integrator}</span>
+          <span>Full-run trails</span>
+        </div>
+        <a class="button" href={`${base}wasm/solar-system-simulator.html`}>Launch WASM cockpit</a>
+      </div>
+    </article>
   </section>
 
   <section class="lab-section truth-split proof-pair" aria-label="Physics and rendering boundary">
