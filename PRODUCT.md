@@ -2,7 +2,7 @@
 
 ## Product promise
 
-Solar System Simulator is a learning-first, physics-first C11 + raylib project that makes orbital mechanics inspectable. The app should feel like a scientific instrument: the visuals exist to reveal Newtonian motion, not to hide the math behind cinematic effects.
+Solar System Simulator is a learning-first, physics-first C11 + raylib project that makes orbital mechanics inspectable. The public site can be playful and cartoonish, but the product truth stays scientific: visuals invite exploration while source files, SI units, and tests explain the model.
 
 ## Primary audience
 
@@ -35,9 +35,9 @@ Solar System Simulator is a learning-first, physics-first C11 + raylib project t
 ## Tone and voice
 
 - Precise, patient, educational, and scientifically playful.
-- Use laboratory, instrument, orbit-trace, and source-atlas language when it clarifies the physics boundary.
+- The current public-site voice is cartoon cosmic cockpit: friendly, adventurous, and science-club curious.
+- Use playful labels when they clarify navigation, then ground claims in source-backed facts.
 - Prefer grounded explanations over hype.
-- Use source-backed facts for physical constants and build behavior.
 
 ## Anti-references
 
@@ -45,7 +45,7 @@ Solar System Simulator is a learning-first, physics-first C11 + raylib project t
 - Do not hide physics compromises behind vague wording.
 - Do not create large frameworks or generic engines before the body-by-body roadmap needs them.
 - Do not duplicate Super Mango code blindly; borrow the structure, CI patterns, and browser-hosting lessons while keeping this repo C11 + raylib + physics-first.
-- Do not use generic space stock, corporate galaxy fog, or decorative sci-fi panels that do not explain source-backed behavior.
+- Do not use generic space stock, corporate galaxy fog, stale rejected visual language, or decorative sci-fi panels that do not explain source-backed behavior.
 
 ## Current verified state
 

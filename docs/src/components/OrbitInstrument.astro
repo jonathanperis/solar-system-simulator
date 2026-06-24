@@ -1,34 +1,100 @@
 ---
 ---
-<figure class="orbit-instrument" aria-labelledby="orbit-instrument-title">
+<figure class="orbit-instrument cosmic-playground" aria-labelledby="orbit-instrument-title">
   <div class="instrument-toolbar">
-    <p class="eyebrow">Spectral orbit plate</p>
-    <span>Projection layer, not physical scale</span>
+    <p class="eyebrow">Solar playground</p>
+    <span>Cartoon map, SI physics</span>
   </div>
-  <div class="orbit-stage" role="img" aria-label="Spectral orbit trace plate of the Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, and Deimos">
-    <span class="field-contour contour-a"></span>
-    <span class="field-contour contour-b"></span>
-    <span class="field-contour contour-c"></span>
-    <span class="orbit-ring ring-mercury"></span>
-    <span class="orbit-ring ring-venus"></span>
-    <span class="orbit-ring ring-earth"></span>
-    <span class="orbit-ring ring-mars"></span>
-    <span class="gravity-vector vector-earth"></span>
-    <span class="gravity-vector vector-mars"></span>
-    <span class="body-dot sun" data-label="Sun"></span>
-    <span class="body-dot mercury" data-label="Mercury"></span>
-    <span class="body-dot venus" data-label="Venus"></span>
-    <span class="body-dot earth" data-label="Earth"></span>
-    <span class="body-dot moon" data-label="Moon"></span>
-    <span class="body-dot mars" data-label="Mars"></span>
-    <span class="body-dot phobos" data-label="Phobos"></span>
-    <span class="body-dot deimos" data-label="Deimos"></span>
+  <div class="orbit-stage" role="img" aria-label="Cartoon solar playground showing the Sun, inner planets, moons, orbit paths, and a tiny astronaut mechanic">
+    <svg class="space-cartoon" viewBox="0 0 720 560" aria-hidden="true">
+      <defs>
+        <radialGradient id="sunGlow" cx="48%" cy="42%" r="58%">
+          <stop offset="0%" stop-color="oklch(95% 0.18 88)" />
+          <stop offset="48%" stop-color="oklch(82% 0.19 70)" />
+          <stop offset="100%" stop-color="oklch(62% 0.2 42)" />
+        </radialGradient>
+        <linearGradient id="helmetGlow" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stop-color="oklch(91% 0.09 178)" />
+          <stop offset="100%" stop-color="oklch(66% 0.18 287)" />
+        </linearGradient>
+        <linearGradient id="moonCheese" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stop-color="oklch(90% 0.17 86)" />
+          <stop offset="100%" stop-color="oklch(67% 0.19 52)" />
+        </linearGradient>
+      </defs>
+
+      <path class="swirl swirl-one" d="M22 390C142 244 306 180 516 198" />
+      <path class="swirl swirl-two" d="M58 438C220 268 432 246 680 334" />
+      <path class="swirl swirl-three" d="M76 172C236 78 474 74 650 160" />
+
+      <g class="sparkles">
+        <path d="M108 92l9 19 20 5-18 10-2 21-14-16-21 5 11-18-11-18 21 5z" />
+        <path d="M572 74l7 15 16 4-14 8-2 17-11-13-17 4 9-15-9-14 17 3z" />
+        <path d="M626 226l8 17 18 4-16 9-2 19-12-14-19 4 10-16-10-16 19 4z" />
+        <circle cx="185" cy="126" r="4" />
+        <circle cx="236" cy="82" r="3" />
+        <circle cx="548" cy="146" r="3" />
+        <circle cx="604" cy="404" r="5" />
+        <circle cx="132" cy="466" r="3" />
+      </g>
+
+      <g class="orbits">
+        <ellipse cx="378" cy="306" rx="266" ry="96" />
+        <ellipse cx="378" cy="306" rx="190" ry="70" />
+        <ellipse cx="378" cy="306" rx="122" ry="44" />
+      </g>
+
+      <g class="sun-cluster">
+        <circle class="big-sun" cx="546" cy="326" r="82" />
+        <circle class="sun-crater" cx="514" cy="292" r="10" />
+        <circle class="sun-crater" cx="578" cy="334" r="15" />
+        <circle class="sun-crater" cx="536" cy="372" r="7" />
+      </g>
+
+      <g class="planet planet-venus">
+        <circle cx="198" cy="334" r="43" />
+        <path d="M164 326c28 14 58 13 82-4" />
+        <path d="M168 350c22 10 50 11 72 0" />
+      </g>
+      <g class="planet planet-earth">
+        <circle cx="338" cy="230" r="36" />
+        <path d="M314 222c18-16 34-14 51 2" />
+        <path d="M318 244c18 8 32 6 49-4" />
+        <circle cx="382" cy="204" r="8" />
+      </g>
+      <g class="planet planet-mars">
+        <circle cx="450" cy="416" r="30" />
+        <path d="M428 410c16 8 32 8 48-2" />
+      </g>
+
+      <g class="astronaut" transform="translate(190 176) rotate(-12)">
+        <path class="tether" d="M80 134C142 152 192 132 234 98" />
+        <path class="moon-seat" d="M68 152c58 16 114-16 134-72-48 36-96 36-144 2 2 28 6 50 10 70z" />
+        <circle class="moon-crater" cx="108" cy="120" r="8" />
+        <circle class="moon-crater" cx="146" cy="106" r="12" />
+        <g class="astro-body">
+          <path class="leg" d="M70 126l-28 34 18 12 34-36" />
+          <path class="leg" d="M112 130l28 38 20-10-20-42" />
+          <path class="arm" d="M63 80l-28-18-10 16 31 25" />
+          <path class="arm" d="M124 78l34-34 14 14-30 38" />
+          <rect class="suit" x="58" y="62" width="74" height="74" rx="26" />
+          <circle class="helmet" cx="95" cy="46" r="38" />
+          <circle class="visor" cx="105" cy="42" r="21" />
+          <circle class="joint" cx="45" cy="63" r="10" />
+          <circle class="joint" cx="164" cy="50" r="10" />
+          <circle class="joint" cx="52" cy="164" r="10" />
+          <circle class="joint" cx="154" cy="160" r="10" />
+        </g>
+      </g>
+
+    </svg>
+
     <div class="instrument-readout">
-      <h2 id="orbit-instrument-title">Trace plate for eight simulated bodies</h2>
-      <p>Real state lives in meters. This plate is an index of current catalog coverage and renderer responsibilities.</p>
+      <h2 id="orbit-instrument-title">Cartoon orbit playground for eight simulated bodies</h2>
+      <p>Real state lives in meters. This sticker-bright map is a friendly index of catalog coverage and renderer responsibilities.</p>
     </div>
   </div>
   <figcaption>
-    A measurement diagram, not a planet poster: labels, visible orbits, and projection cues make the physics/rendering boundary inspectable.
+    A playful map, not a scale poster: thick outlines, visible orbits, and source notes keep the physics/rendering boundary inspectable.
   </figcaption>
 </figure>

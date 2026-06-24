@@ -10,25 +10,25 @@ import { implementedBodies } from '../lib/bodies';
 const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 <BaseLayout>
-  <section class="hero gravimetry-hero">
+  <section class="hero cartoon-hero">
     <div class="hero-copy">
-      <p class="eyebrow">Spectral orbit laboratory · C11 · SI-state under glass</p>
-      <h1>Gravity as a measured signal.</h1>
+      <p class="eyebrow">Cartoon orbit lab · C11 physics · real WASM</p>
+      <h1>Discover the solar system in motion.</h1>
       <p class="lede">
-        A spectral orbit darkroom for people who want the constants, vectors, source files,
-        and browser artifact in the same field of view.
+        A playful cosmic cockpit wrapped around the real C/raylib simulator. The worlds are chunky,
+        bright, and friendly; the physics underneath stays SI units, tests, and source files.
       </p>
       <div class="actions">
-        <a class="button" href="#play">Run orbit chamber</a>
-        <a class="button-secondary" href={`${base}docs/`}>Open source atlas</a>
-        <a class="button-tertiary" href={repoUrl}>Inspect the C code</a>
+        <a class="button" href="#play">Launch simulator</a>
+        <a class="button-secondary" href={`${base}docs/`}>Read field guide</a>
+        <a class="button-tertiary" href={repoUrl}>View source</a>
       </div>
-      <div class="status-strip spectral-status" aria-label="Current simulator status">
+      <div class="status-strip mission-tags" aria-label="Current simulator status">
         <span>{currentMilestone.language} physics core</span>
         <span>{currentMilestone.integrator}</span>
         <span>{currentMilestone.units}</span>
-        <span>{implementedBodies.length} traced bodies</span>
-        <span>rendering is projection</span>
+        <span>{implementedBodies.length} playable worlds</span>
+        <span>cartoon map, real state</span>
       </div>
     </div>
     <OrbitInstrument />
@@ -39,25 +39,24 @@ const base = normalizeBase(import.meta.env.BASE_URL);
   <section class="lab-section maker-note field-principle" aria-labelledby="maker-note-title">
     <div>
       <p class="eyebrow">Core principle</p>
-      <h2 id="maker-note-title">The math is a specimen. The visuals are the microscope.</h2>
+      <h2 id="maker-note-title">Cute planets, serious gravity.</h2>
     </div>
     <p>
-      Physics state stays in meters, kilograms, seconds, vectors, acceleration, and tests. The site now behaves
-      like a darkroom for orbital data: spectral traces, specimen ledgers, control notes, and source citations
-      reveal where the renderer starts interpreting the model for human eyes.
+      The site now behaves like a space cartoon built by a science club. Big colors and thick outlines make the simulator approachable,
+      while every claim still points back to meters, kilograms, seconds, vectors, acceleration, and tests.
     </p>
   </section>
 
   <section class="lab-section split-section" id="play">
     <div class="section-heading field-console-copy">
       <p class="eyebrow">Playable artifact</p>
-      <h2>Run the real C/raylib chamber, then interrogate the projection.</h2>
+      <h2>Run the real C/raylib simulator inside the cartoon cockpit.</h2>
       <p>
-        This iframe is not a mock display. It is the checked WebAssembly build from the pipeline. Toggle scale,
-        chase bodies, zoom the camera, and compare every readable visual decision with the docs that name the compromise.
+        This iframe is the checked WebAssembly build from the pipeline. Toggle scale, chase bodies, zoom the camera,
+        and compare every visual shortcut with the docs that name the compromise.
       </p>
       <div class="control-note field-controls" aria-label="Simulator controls">
-        <strong>Control register</strong>
+        <strong>Control stickers</strong>
         <span>Tab/C focus body</span>
         <span>V scale mode</span>
         <span>Mouse wheel zoom</span>
@@ -66,46 +65,46 @@ const base = normalizeBase(import.meta.env.BASE_URL);
     </div>
     <figure class="wasm-card science-frame browser-bench">
       <div class="wasm-status-bar">
-        <span>Artifact manifest: HTML + JS + WASM</span>
+        <span>Browser bundle: HTML + JS + WASM</span>
         <a href={`${base}wasm/solar-system-simulator.html`}>Open full demo</a>
       </div>
       <iframe title="Solar System Simulator WebAssembly demo" src={`${base}wasm/solar-system-simulator.html`} loading="lazy"></iframe>
       <figcaption>
-        A browser-safe lab instrument with source-backed controls, explicit boot artifacts, and trails that keep recording during long runs.
+        A browser-safe lab toy with source-backed controls, explicit boot artifacts, and trails that keep recording during long runs.
       </figcaption>
     </figure>
   </section>
 
   <section class="lab-section truth-split proof-pair" aria-label="Physics and rendering boundary">
     <article>
-      <p class="eyebrow">Specimen state</p>
+      <p class="eyebrow">Physics engine</p>
       <h2>Reality lives in <code>src/sim</code></h2>
       <p><code>a = G * source_mass / distance^3 * displacement</code></p>
-      <p>Double-precision positions, velocities, masses, and radii stay in physical units. The math gets tests before it gets a glow.</p>
+      <p>Double-precision positions, velocities, masses, and radii stay in physical units. The math gets tests before it gets a smile.</p>
     </article>
     <article>
-      <p class="eyebrow">Projection optics</p>
-      <h2>The renderer is a calibrated interpretation</h2>
-      <p>Illustrative scale, readable moon separation, labels, focus, and sampled trails are visual grammar, not physics mutations.</p>
+      <p class="eyebrow">Cartoon layer</p>
+      <h2>The renderer paints a sticker sheet</h2>
+      <p>Illustrative scale, readable moon spacing, labels, focus, and sampled trails are visual grammar, not physics mutations.</p>
       <a href={`${base}docs/simulation-core/`}>Trace the simulation core</a>
     </article>
   </section>
 
   <section class="lab-section equation-tape" aria-labelledby="equation-tape-title">
     <p class="eyebrow">Lab rules</p>
-    <h2 id="equation-tape-title">Source-backed orbital data, spectral traces, no galaxy wallpaper.</h2>
+    <h2 id="equation-tape-title">Cartoon worlds, source-backed orbits, no fake capabilities.</h2>
     <div class="scribble-grid" aria-label="Scientific design notes">
       <span>Δt stays visible</span>
       <span>Moons keep parents</span>
-      <span>Projection admits scale</span>
+      <span>Scale is labeled</span>
       <span>Tests guard orbit math</span>
     </div>
   </section>
 
   <section class="lab-section body-manifest" aria-labelledby="manifest-title">
     <div class="section-heading">
-      <p class="eyebrow">Specimen register</p>
-      <h2 id="manifest-title">Eight bodies traced as source-backed records.</h2>
+      <p class="eyebrow">Planet sticker book</p>
+      <h2 id="manifest-title">Eight implemented bodies, drawn loud and documented calmly.</h2>
       <p>Each implemented body carries identity and parent metadata so docs, renderer, labels, and tests talk about the same simulated object.</p>
     </div>
     <div class="body-table body-table-specimens" role="table" aria-label="Implemented simulator bodies">
@@ -123,7 +122,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
   <section class="lab-section rough-edges field-principle" aria-labelledby="rough-edges-title">
     <div>
       <p class="eyebrow">Field log</p>
-      <h2 id="rough-edges-title">Precise, playable, unfinished in public.</h2>
+      <h2 id="rough-edges-title">Precise, playful, unfinished in public.</h2>
     </div>
     <ul>
       <li>Working now: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, focus cycling, zoom, scale modes, and full-run trail history.</li>
