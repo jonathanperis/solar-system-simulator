@@ -298,7 +298,7 @@
           <div class="runtime-copy">
             <p class="eyebrow">WASM cockpit / C11 physics</p>
             <h1>Run the real orbit loop.</h1>
-            <p>This page holds the static scene notes beside the canvas so the renderer can focus on live state. The checked Emscripten artifact is still produced by <code>make web</code>.</p>
+            <p>This page holds the static scene notes beside the canvas so the renderer can focus on live state, starfield depth, sun glow, and fading trails. The checked Emscripten artifact is still produced by <code>make web</code>.</p>
             <div class="runtime-chip-row" aria-label="Runtime facts">
               <span>C11 + raylib</span>
               <span>SI units</span>
@@ -318,7 +318,7 @@
               <dt>Tab / C</dt><dd>focus body</dd>
               <dt>V</dt><dd>scale mode</dd>
               <dt>Wheel</dt><dd>zoom</dd>
-              <dt>Trails</dt><dd>full run</dd>
+              <dt>Trails</dt><dd>fading full run</dd>
             </dl>
           </aside>
         </section>
@@ -346,7 +346,11 @@
           </article>
           <article class="runtime-fact wide">
             <strong>Renderer behavior</strong>
-            <p>The grid expands to the farthest rendered orbit. Planet and moon trails keep their full motion history.</p>
+            <p>The grid expands to the farthest rendered orbit. Planet and moon trails keep their full motion history with an age fade.</p>
+          </article>
+          <article class="runtime-fact wide">
+            <strong>Visual pass</strong>
+            <p>Starfield backdrop, sun glow, styled bodies, smoothed focus, and a soft render-texture bloom stay outside the physics core.</p>
           </article>
         </section>
 

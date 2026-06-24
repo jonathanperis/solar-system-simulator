@@ -19,6 +19,7 @@ typedef struct OrbitCameraState {
 
 OrbitCameraState orbit_camera_default_state(void);
 OrbitCameraVec3 orbit_camera_position(OrbitCameraVec3 target, const OrbitCameraState *state);
+OrbitCameraVec3 orbit_camera_smooth_target(OrbitCameraVec3 current, OrbitCameraVec3 desired, float dt_seconds);
 void orbit_camera_apply_zoom(OrbitCameraState *state, float wheel_move);
 void orbit_camera_advance(OrbitCameraState *state, float dt_seconds);
 

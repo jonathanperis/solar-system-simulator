@@ -35,8 +35,8 @@ This is a full-palette illustrated science identity, not the rejected technical-
    - Must state that it is a playful map, not a physical scale poster.
 
 3. **WASM viewport and standalone runtime**
-   - Embedded canvas with boot status, full-demo link, and control summary.
-   - The standalone `/wasm/solar-system-simulator.html` page should share the cosmic cockpit frame, show runtime diagnostics, expose controls, and link back to docs/source instead of looking like an unstyled generated shell.
+   - Dedicated canvas page with boot status, full-demo link, control summary, starfield backdrop, sun glow, styled bodies, fading trails, and a soft render-texture bloom pass.
+   - The standalone `/wasm/solar-system-simulator.html` page should share the cosmic cockpit frame, keep static notes outside the canvas, show runtime diagnostics, expose controls, and link back to docs/source instead of looking like an unstyled generated shell.
    - Base-path-safe asset loading for GitHub Pages (`/solar-system-simulator/`).
 
 4. **Docs manual structure**

@@ -176,6 +176,46 @@ static void test_body_color_uses_catalog_id_not_name(void)
     assert(color.a == ORANGE.a);
 }
 
+static void test_body_style_adds_visual_identity_without_name_lookup(void)
+{
+    Body earth = solar_system_create_earth_at_perihelion();
+    Body sun = solar_system_create_sun_only().bodies[0];
+    earth.name = "Blue Marble";
+
+    RendererBodyStyle earth_style = renderer_body_style(&earth);
+    RendererBodyStyle sun_style = renderer_body_style(&sun);
+
+    assert(earth_style.base.r != earth_style.accent.r || earth_style.base.g != earth_style.accent.g || earth_style.base.b != earth_style.accent.b);
+    assert(earth_style.halo_layers == 0);
+    assert(sun_style.halo_layers >= 3);
+    assert(sun_style.glow.a > earth_style.glow.a);
+}
+
+static void test_trail_alpha_fades_from_history_to_current_position(void)
+{
+    float early_alpha = renderer_trail_segment_alpha(0, 12);
+    float late_alpha = renderer_trail_segment_alpha(11, 12);
+
+    assert(early_alpha >= 0.10f);
+    assert(late_alpha <= 0.82f);
+    assert(late_alpha > early_alpha);
+    assert_close(renderer_trail_segment_alpha(0, 1), renderer_trail_segment_alpha(8, 0), 1e-6);
+}
+
+static void test_starfield_samples_are_bounded_and_twinkle_only_in_alpha(void)
+{
+    RendererStar star_a = renderer_starfield_star(17, 0.0);
+    RendererStar star_b = renderer_starfield_star(17, 90.0);
+
+    assert(star_a.x_norm >= 0.0f && star_a.x_norm <= 1.0f);
+    assert(star_a.y_norm >= 0.0f && star_a.y_norm <= 1.0f);
+    assert(star_a.radius >= 0.6f && star_a.radius <= 2.1f);
+    assert(star_a.alpha >= 0.15f && star_a.alpha <= 0.95f);
+    assert(star_b.alpha >= 0.15f && star_b.alpha <= 0.95f);
+    assert_close(star_a.x_norm, star_b.x_norm, 1e-6);
+    assert_close(star_a.y_norm, star_b.y_norm, 1e-6);
+}
+
 static void test_grid_keeps_at_least_minimum_square_count_for_inner_system(void)
 {
     SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
@@ -220,6 +260,9 @@ int main(void)
     test_illustrative_phobos_trail_matches_visible_body_position();
     test_illustrative_satellite_position_uses_parent_metadata_not_name();
     test_body_color_uses_catalog_id_not_name();
+    test_body_style_adds_visual_identity_without_name_lookup();
+    test_trail_alpha_fades_from_history_to_current_position();
+    test_starfield_samples_are_bounded_and_twinkle_only_in_alpha();
     test_grid_keeps_at_least_minimum_square_count_for_inner_system();
     test_grid_expands_to_cover_mars_orbit_with_padding();
     test_trail_rendering_keeps_long_runs_bounded();

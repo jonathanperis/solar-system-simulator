@@ -34,6 +34,7 @@ def main() -> int:
         "Launch-ready C/raylib canvas",
         "Static renderer notes now shown on the page",
         "Renderer behavior",
+        "Visual pass",
         f"{stem}.js",
     ]
     for marker in expected_html:

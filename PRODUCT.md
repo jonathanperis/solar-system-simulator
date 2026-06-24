@@ -52,5 +52,5 @@ Solar System Simulator is a learning-first, physics-first C11 + raylib project t
 - Native app: C11 + raylib, built by `Makefile`.
 - Simulation: Newtonian N-body baseline with velocity-Verlet / kick-drift-kick stepping.
 - Bodies: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos.
-- Tests: C test binaries for vector math, physics, scene initialization, orbit camera, trails, and renderer helpers.
+- Tests: C test binaries for vector math, physics, scene initialization, smoothed orbit camera, trails, and renderer helpers.
 - Public site: Astro static GitHub Pages docs with a base-path-safe illustrated WebAssembly cockpit, Super-Mango-inspired orbit manual docs hub, source atlas, physics notes, body catalog, pipeline docs, footer credits, and route smoke checks.

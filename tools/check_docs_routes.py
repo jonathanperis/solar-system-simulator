@@ -31,7 +31,7 @@ ROUTES: dict[str, list[str]] = {
     "docs/index.html": ["Trace every orbit wire without one giant scroll", "Solar manual routes", "Every orbit manual page", "docs/architecture/"],
     "docs/architecture/index.html": ["Architecture keeps physics testable", "src/sim/", "src/render/", "src/main.c", "tests/"],
     "docs/simulation-core/index.html": ["Simulation state uses physical units first", "src/sim/physics.c", "src/sim/solar_system.c", "src/sim/vec3d.c"],
-    "docs/rendering/index.html": ["Rendering adapts physics for human eyes", "src/render/renderer.c", "src/app/body_labels.c", "src/app/body_trails.c"],
+    "docs/rendering/index.html": ["Rendering adapts physics for human eyes", "src/render/renderer.c", "src/app/body_labels.c", "src/app/body_trails.c", "Beauty pass"],
     "docs/controls/index.html": ["Controls expose the current physics scene", "Tab", "V", "Mouse wheel", "orbit_camera"],
     "docs/build-and-web/index.html": ["Native checks feed the public WebAssembly lab", "make test", "make web", "make dist-wasm", ".github/workflows/build.yml", ".github/workflows/deploy-pages.yml"],
     "docs/roadmap/index.html": ["Expansion stays one body at a time", "Implemented now", "Planned sequence", "Jupiter", "Kuiper belt"],
@@ -86,6 +86,7 @@ def main(argv: list[str]) -> int:
         "Launch-ready C/raylib canvas",
         "Static renderer notes now shown on the page",
         "Renderer behavior",
+        "Visual pass",
         "Controls expose real simulator state",
     ]
     wasm_html = wasm.read_text(encoding="utf-8", errors="replace")
