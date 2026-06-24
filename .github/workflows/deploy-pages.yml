@@ -66,6 +66,8 @@ jobs:
 
       - name: Build docs site
         working-directory: docs
+        env:
+          PUBLIC_GA_ID: G-WPC2ZGVDD0
         run: npm run build
 
       - name: Smoke-check docs routes

@@ -1,4 +1,5 @@
 ---
+import Analytics from '../components/Analytics.astro';
 import FooterCredits from '../components/FooterCredits.astro';
 import { primaryRoutes, siteName, withBase } from '../lib/site';
 import { normalizeBase } from '../lib/base';
@@ -15,10 +16,13 @@ const description = 'A physics-first C and raylib solar-system lab with a browse
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="icon" href={`${base}favicon.ico`} sizes="any" />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href={`${base}styles/global.css`} />
+    <Analytics />
   </head>
   <body>
     <div class="stars" aria-hidden="true"></div>

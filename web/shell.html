@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Solar System Simulator WASM</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" />
     <style>
       :root {
         color-scheme: dark;
@@ -194,6 +195,32 @@
       }
       .runtime-panel dt { color: var(--muted-dim); }
       .runtime-panel dd { margin: 0; color: var(--cream); font-weight: 900; text-align: right; }
+      .runtime-fact-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.75rem;
+      }
+      .runtime-fact {
+        border: 1px solid var(--outline-soft);
+        border-radius: 1rem;
+        background: oklch(8% 0.055 278 / 0.48);
+        padding: 0.8rem;
+      }
+      .runtime-fact strong {
+        display: block;
+        color: var(--sun);
+        font-family: "Courier New", monospace;
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .runtime-fact p {
+        margin: 0.45rem 0 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.48;
+      }
+      .runtime-fact.wide { grid-column: span 2; }
       .runtime-canvas-card { overflow: hidden; }
       .runtime-statusbar {
         display: flex;
@@ -237,11 +264,14 @@
       .runtime-footer a { color: var(--sun); font-weight: 900; }
       @media (max-width: 960px) {
         .runtime-hero { grid-template-columns: 1fr; }
+        .runtime-fact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         h1 { max-width: 13ch; }
       }
       @media (max-width: 640px) {
         .runtime-shell { width: min(100vw - 0.7rem, 1460px); }
         .runtime-frame { border-radius: 1.2rem; }
+        .runtime-fact-grid { grid-template-columns: 1fr; }
+        .runtime-fact.wide { grid-column: auto; }
         .runtime-topbar,
         .runtime-footer,
         .runtime-statusbar { align-items: flex-start; flex-direction: column; }
@@ -268,7 +298,7 @@
           <div class="runtime-copy">
             <p class="eyebrow">WASM cockpit / C11 physics</p>
             <h1>Run the real orbit loop.</h1>
-            <p>This standalone page now shares the cosmic cockpit frame, but the canvas below is still the checked Emscripten artifact produced by <code>make web</code>. Friendly frame, serious gravity.</p>
+            <p>This page holds the static scene notes beside the canvas so the renderer can focus on live state. The checked Emscripten artifact is still produced by <code>make web</code>.</p>
             <div class="runtime-chip-row" aria-label="Runtime facts">
               <span>C11 + raylib</span>
               <span>SI units</span>
@@ -293,6 +323,33 @@
           </aside>
         </section>
 
+        <section class="runtime-fact-grid" aria-label="Static renderer notes now shown on the page">
+          <article class="runtime-fact wide">
+            <strong>Scene</strong>
+            <p>Milestone 7 renders Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, and Deimos.</p>
+          </article>
+          <article class="runtime-fact">
+            <strong>Time scale</strong>
+            <p>86400 simulation seconds for each real second.</p>
+          </article>
+          <article class="runtime-fact">
+            <strong>Physics</strong>
+            <p>SI Newtonian baseline. Rendering scale maps 1 AU to 10 units.</p>
+          </article>
+          <article class="runtime-fact">
+            <strong>Illustrative view</strong>
+            <p>Planets stay readable and parent-relative moons get visual separation.</p>
+          </article>
+          <article class="runtime-fact">
+            <strong>Initial states</strong>
+            <p>Moon starts at Earth perigee. Mars, Phobos, and Deimos start from periapsis states with vis-viva speed.</p>
+          </article>
+          <article class="runtime-fact wide">
+            <strong>Renderer behavior</strong>
+            <p>The grid expands to the farthest rendered orbit. Planet and moon trails keep their full motion history.</p>
+          </article>
+        </section>
+
         <section class="runtime-canvas-card">
           <div class="runtime-statusbar">
             <div id="status" class="runtime-status">Downloading simulator…</div>
@@ -313,7 +370,7 @@
         </section>
 
         <footer class="runtime-footer">
-          <p>Standalone lab bench for the browser artifact. Rendering is playful; physics state remains source-backed.</p>
+          <p>Standalone lab bench for the browser artifact. Static notes live in the page; the canvas stays focused on the running simulation.</p>
           <a href="../docs/build-and-web/">How this artifact is built →</a>
         </footer>
       </section>

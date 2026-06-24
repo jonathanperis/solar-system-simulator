@@ -4,7 +4,6 @@
 #include <emscripten/emscripten.h>
 #endif
 
-#include "app/body_labels.h"
 #include "app/body_trails.h"
 #include "app/orbit_camera.h"
 #include "app/simulation_step.h"
@@ -21,7 +20,6 @@ typedef struct SolarApp {
     double time_scale;
     size_t focused_body_index;
     RenderScaleMode render_mode;
-    char body_list_label[160];
 } SolarApp;
 
 static size_t next_body_index(size_t current, const SolarSystem *system)
@@ -103,21 +101,11 @@ static void solar_app_update_draw(void *user_data)
     renderer_draw_solar_system(&app->system, &app->trails, app->render_mode);
     EndMode3D();
 
-    DrawText("Solar System Simulator - Milestone 7: Phobos + Deimos", 20, 20, 20, RAYWHITE);
-    DrawText(TextFormat("Bodies: %zu (%s)", app->system.body_count, app->body_list_label), 20, 50, 18, RAYWHITE);
-    DrawText(TextFormat("Elapsed days: %.2f", seconds_to_days(app->system.elapsed_seconds)), 20, 75, 18, RAYWHITE);
-    DrawText(TextFormat("Time scale: %.0f simulation seconds / real second", app->time_scale), 20, 100, 18, RAYWHITE);
-    DrawText(TextFormat("View: %s (V to toggle)", renderer_scale_mode_label(app->render_mode)), 20, 125, 18, RAYWHITE);
-    DrawText(TextFormat("Camera focus: %s (Tab/C to cycle)", focused_body_name), 20, 150, 18, RAYWHITE);
-    DrawText(TextFormat("Camera zoom: %.1f units (mouse wheel, clamped)", app->orbit_camera.distance), 20, 175, 18, RAYWHITE);
-    DrawText("Camera auto-orbits at fixed pitch; zoom cannot flip the angle", 20, 200, 18, RAYWHITE);
-    DrawText("Physics: SI Newtonian baseline; rendering scale: 1 AU = 10 units", 20, 225, 18, RAYWHITE);
-    DrawText("Illustrative view keeps planets large and separates parent-relative moons", 20, 250, 18, RAYWHITE);
-    DrawText("Moon starts at Earth-relative perigee with vis-viva speed", 20, 275, 18, RAYWHITE);
-    DrawText("Mars starts at heliocentric perihelion with vis-viva speed", 20, 300, 18, RAYWHITE);
-    DrawText("Phobos and Deimos start at Mars-relative periareion with vis-viva speed", 20, 325, 18, RAYWHITE);
-    DrawText("Grid expands to cover the farthest rendered orbit", 20, 350, 18, RAYWHITE);
-    DrawText("Traces: planets and moons keep their full motion history", 20, 375, 18, RAYWHITE);
+    DrawText("Solar System Simulator", 20, 20, 20, RAYWHITE);
+    DrawText(TextFormat("Elapsed days: %.2f", seconds_to_days(app->system.elapsed_seconds)), 20, 50, 18, RAYWHITE);
+    DrawText(TextFormat("Focus: %s", focused_body_name), 20, 75, 18, RAYWHITE);
+    DrawText(TextFormat("View: %s | Zoom: %.1f", renderer_scale_mode_label(app->render_mode), app->orbit_camera.distance), 20, 100, 18, RAYWHITE);
+    DrawText("Tab/C: focus | V: scale | Wheel: zoom", 20, 125, 18, RAYWHITE);
 
     EndDrawing();
 }
@@ -141,7 +129,6 @@ int main(void)
     app.trails = body_trails_create();
     app.time_scale = SOLAR_DAY_SECONDS;
     app.render_mode = RENDER_SCALE_ILLUSTRATIVE;
-    solar_app_body_list_label(&app.system, app.body_list_label, sizeof(app.body_list_label));
     body_trails_record_system(&app.trails, &app.system);
 
 #if defined(PLATFORM_WEB)

@@ -15,10 +15,12 @@ from pathlib import Path
 ROUTES: dict[str, list[str]] = {
     "index.html": [
         "Discover the solar system in motion",
+        "favicon.ico",
         "data-footer-credits",
         "Jonathan Peris",
         "Illustrated worlds, source-backed orbits, no fake capabilities",
         "wasm/solar-system-simulator.html",
+        "Dedicated WASM cockpit",
         "Source references",
         "Precise, playful, unfinished in public",
     ],
@@ -55,6 +57,12 @@ def main(argv: list[str]) -> int:
     if not dist.is_dir():
         fail(f"dist directory not found: {dist}")
 
+    favicon = dist / "favicon.ico"
+    if not favicon.is_file():
+        fail("missing favicon.ico")
+    if not favicon.read_bytes().startswith(b"\x00\x00\x01\x00"):
+        fail("favicon.ico is not a valid ICO file")
+
     for route, markers in ROUTES.items():
         html = read_route(dist, route)
         for marker in markers:
@@ -64,12 +72,22 @@ def main(argv: list[str]) -> int:
             for marker in FOOTER_MARKERS:
                 if marker not in html:
                     fail(f"{route} missing footer marker: {marker}")
+        if route in {"index.html", "docs/index.html", "docs/controls/index.html"}:
+            for marker in ["G-WPC2ZGVDD0", "https://www.googletagmanager.com/gtag/js?id=G-WPC2ZGVDD0"]:
+                if marker not in html:
+                    fail(f"{route} missing analytics marker: {marker}")
 
     wasm = dist / "wasm" / "solar-system-simulator.html"
     if not wasm.is_file():
         fail("missing copied WebAssembly HTML artifact")
 
-    wasm_markers = ["Orbit cockpit runtime", "Launch-ready C/raylib canvas", "Controls expose real simulator state"]
+    wasm_markers = [
+        "Orbit cockpit runtime",
+        "Launch-ready C/raylib canvas",
+        "Static renderer notes now shown on the page",
+        "Renderer behavior",
+        "Controls expose real simulator state",
+    ]
     wasm_html = wasm.read_text(encoding="utf-8", errors="replace")
     for marker in wasm_markers:
         if marker not in wasm_html:

@@ -30,7 +30,10 @@ def main() -> int:
     expected_html = [
         "Orbit cockpit runtime",
         "Solar System Simulator WebAssembly runtime",
+        "favicon.ico",
         "Launch-ready C/raylib canvas",
+        "Static renderer notes now shown on the page",
+        "Renderer behavior",
         f"{stem}.js",
     ]
     for marker in expected_html:
