@@ -35,7 +35,7 @@ def main() -> int:
         "Static renderer notes now shown on the page",
         "Renderer behavior",
         "Visual pass",
-        "viewport-matched rendering",
+        "frame-filled canvas",
         f"{stem}.js",
     ]
     for marker in expected_html:
