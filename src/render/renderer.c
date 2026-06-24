@@ -194,26 +194,25 @@ RendererBodyStyle renderer_body_style(const Body *body)
     switch (body->id) {
         case BODY_ID_SUN:
             return (RendererBodyStyle){
-                .base = GOLD,
+                .base = color_rgba(255, 205, 88, 255),
                 .accent = color_rgba(255, 237, 168, 255),
                 .rim = color_rgba(255, 142, 43, 255),
-                .glow = color_rgba(255, 185, 65, 150),
-                .halo_layers = 4,
+                .glow = color_rgba(255, 190, 76, 120),
             };
         case BODY_ID_MERCURY:
-            return (RendererBodyStyle){GRAY, color_rgba(205, 196, 178, 255), color_rgba(116, 108, 102, 255), color_rgba(170, 160, 145, 26), 0};
+            return (RendererBodyStyle){GRAY, color_rgba(205, 196, 178, 255), color_rgba(116, 108, 102, 255), color_rgba(170, 160, 145, 26)};
         case BODY_ID_VENUS:
-            return (RendererBodyStyle){BEIGE, color_rgba(255, 226, 145, 255), color_rgba(184, 122, 65, 255), color_rgba(244, 195, 92, 32), 0};
+            return (RendererBodyStyle){BEIGE, color_rgba(255, 226, 145, 255), color_rgba(184, 122, 65, 255), color_rgba(244, 195, 92, 32)};
         case BODY_ID_EARTH:
-            return (RendererBodyStyle){BLUE, color_rgba(71, 210, 164, 255), color_rgba(141, 221, 255, 255), color_rgba(82, 169, 255, 36), 0};
+            return (RendererBodyStyle){BLUE, color_rgba(71, 210, 164, 255), color_rgba(141, 221, 255, 255), color_rgba(82, 169, 255, 36)};
         case BODY_ID_MOON:
-            return (RendererBodyStyle){RAYWHITE, color_rgba(176, 181, 191, 255), color_rgba(224, 224, 218, 255), color_rgba(224, 224, 218, 22), 0};
+            return (RendererBodyStyle){RAYWHITE, color_rgba(176, 181, 191, 255), color_rgba(224, 224, 218, 255), color_rgba(224, 224, 218, 22)};
         case BODY_ID_MARS:
-            return (RendererBodyStyle){ORANGE, color_rgba(255, 197, 111, 255), color_rgba(160, 65, 48, 255), color_rgba(255, 119, 70, 34), 0};
+            return (RendererBodyStyle){ORANGE, color_rgba(255, 197, 111, 255), color_rgba(160, 65, 48, 255), color_rgba(255, 119, 70, 34)};
         case BODY_ID_PHOBOS:
-            return (RendererBodyStyle){BROWN, color_rgba(150, 118, 86, 255), color_rgba(88, 61, 50, 255), color_rgba(139, 96, 64, 24), 0};
+            return (RendererBodyStyle){BROWN, color_rgba(150, 118, 86, 255), color_rgba(88, 61, 50, 255), color_rgba(139, 96, 64, 24)};
         case BODY_ID_DEIMOS:
-            return (RendererBodyStyle){MAROON, color_rgba(174, 105, 91, 255), color_rgba(94, 55, 65, 255), color_rgba(146, 76, 82, 22), 0};
+            return (RendererBodyStyle){MAROON, color_rgba(174, 105, 91, 255), color_rgba(94, 55, 65, 255), color_rgba(146, 76, 82, 22)};
         case BODY_ID_UNKNOWN:
         case BODY_ID_NONE:
         default:
@@ -221,9 +220,9 @@ RendererBodyStyle renderer_body_style(const Body *body)
     }
 
     if (body->kind == BODY_KIND_STAR) {
-        return (RendererBodyStyle){GOLD, color_rgba(255, 237, 168, 255), ORANGE, color_rgba(255, 185, 65, 140), 4};
+        return (RendererBodyStyle){color_rgba(255, 205, 88, 255), color_rgba(255, 237, 168, 255), ORANGE, color_rgba(255, 185, 65, 120)};
     }
-    return (RendererBodyStyle){LIGHTGRAY, RAYWHITE, GRAY, color_rgba(180, 180, 180, 20), 0};
+    return (RendererBodyStyle){LIGHTGRAY, RAYWHITE, GRAY, color_rgba(180, 180, 180, 20)};
 }
 
 Color renderer_body_color(const Body *body)
@@ -317,22 +316,9 @@ size_t renderer_trail_draw_segment_count(size_t point_count)
 
 void renderer_draw_backdrop(int screen_width, int screen_height, double elapsed_seconds)
 {
-    Color top = color_rgba(9, 10, 32, 255);
-    Color bottom = color_rgba(27, 16, 62, 255);
+    Color top = color_rgba(10, 12, 34, 255);
+    Color bottom = color_rgba(18, 15, 46, 255);
     DrawRectangleGradientV(0, 0, screen_width, screen_height, top, bottom);
-
-    DrawCircleGradient(
-        (Vector2){(float)screen_width * 0.77f, (float)screen_height * 0.20f},
-        (float)screen_width * 0.23f,
-        color_rgba(255, 188, 71, 30),
-        color_rgba(255, 188, 71, 0)
-    );
-    DrawCircleGradient(
-        (Vector2){(float)screen_width * 0.18f, (float)screen_height * 0.76f},
-        (float)screen_width * 0.18f,
-        color_rgba(89, 207, 255, 22),
-        color_rgba(89, 207, 255, 0)
-    );
 
     for (size_t i = 0; i < SOLAR_RENDER_STAR_COUNT; ++i) {
         RendererStar star = renderer_starfield_star(i, elapsed_seconds);
@@ -373,15 +359,6 @@ static Vector3 sun_position_for_light(const SolarSystem *system)
     return (Vector3){0.0f, 0.0f, 0.0f};
 }
 
-static void draw_body_glow(Vector3 position, float radius, RendererBodyStyle style)
-{
-    for (int layer = style.halo_layers; layer >= 1; --layer) {
-        float layer_scale = 1.0f + (float)layer * 0.62f;
-        float alpha = 0.11f / (float)layer;
-        DrawSphere(position, radius * layer_scale, Fade(style.glow, alpha));
-    }
-}
-
 static void draw_body_surface(const SolarSystem *system, const Body *body, Vector3 position, float radius)
 {
     RendererBodyStyle style = renderer_body_style(body);
@@ -389,25 +366,23 @@ static void draw_body_surface(const SolarSystem *system, const Body *body, Vecto
     Vector3 light_direction = vector3_normalize_or(vector3_subtract(sun_position_for_light(system), position), fallback_light);
 
     if (body->kind == BODY_KIND_STAR) {
-        draw_body_glow(position, radius, style);
-        DrawSphere(position, radius * 1.03f, style.rim);
-        DrawSphere(position, radius * 0.88f, style.base);
-        DrawSphere(position, radius * 0.42f, style.accent);
-        DrawSphereWires(position, radius * 1.08f, 24, 24, Fade(style.accent, 0.60f));
+        /* Keep the Sun emissive and solid. Transparent 3D halo spheres wrote
+         * depth before the core and made the live Sun read like a dark target. */
+        DrawSphereEx(position, radius, 32, 32, style.base);
+        DrawSphereWires(position, radius * 1.04f, 24, 24, Fade(style.accent, 0.82f));
+        DrawSphereWires(position, radius * 1.24f, 24, 24, Fade(style.rim, 0.34f));
         return;
     }
 
-    DrawSphere(position, radius * 1.08f, Fade(style.glow, 0.30f));
-    DrawSphere(position, radius * 1.02f, Fade(style.rim, 0.46f));
-    DrawSphere(position, radius, style.base);
+    DrawSphereEx(position, radius, 18, 18, style.base);
 
-    Vector3 highlight = vector3_add(position, vector3_scale(light_direction, radius * 0.54f));
-    highlight.y += radius * 0.16f;
-    DrawSphere(highlight, radius * SOLAR_BODY_HIGHLIGHT_RATIO, Fade(style.accent, 0.82f));
+    Vector3 highlight = vector3_add(position, vector3_scale(light_direction, radius * 0.64f));
+    highlight.y += radius * 0.12f;
+    DrawSphereEx(highlight, radius * (SOLAR_BODY_HIGHLIGHT_RATIO * 0.78f), 10, 10, Fade(style.accent, 0.78f));
 
-    Vector3 shadow = vector3_add(position, vector3_scale(light_direction, -radius * 0.38f));
-    DrawSphere(shadow, radius * 0.38f, Fade(color_rgba(13, 11, 31, 255), 0.23f));
-    DrawSphereWires(position, radius * 1.03f, 14, 14, Fade(style.rim, 0.52f));
+    Vector3 shadow = vector3_add(position, vector3_scale(light_direction, -radius * 0.36f));
+    DrawSphereEx(shadow, radius * 0.24f, 10, 10, Fade(color_rgba(13, 11, 31, 255), 0.18f));
+    DrawSphereWires(position, radius * 1.02f, 14, 14, Fade(style.rim, 0.44f));
 }
 
 void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode)

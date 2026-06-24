@@ -87,6 +87,7 @@ def main(argv: list[str]) -> int:
         "Static renderer notes now shown on the page",
         "Renderer behavior",
         "Visual pass",
+        "viewport-matched rendering",
         "Controls expose real simulator state",
     ]
     wasm_html = wasm.read_text(encoding="utf-8", errors="replace")

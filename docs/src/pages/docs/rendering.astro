@@ -11,7 +11,7 @@ import DocsShell from '../../components/DocsShell.astro';
     <section class="doc-panel">
       <h2>Boundary files</h2>
       <ul class="check-list">
-        <li><code>src/render/renderer.c</code> owns raylib drawing, render-scale conversion, body styles, starfield samples, trail fading, sun glow, and grid sizing.</li>
+        <li><code>src/render/renderer.c</code> owns raylib drawing, render-scale conversion, body styles, starfield samples, trail fading, solid Sun styling, and grid sizing.</li>
         <li><code>src/app/body_labels.c</code> formats HUD labels and body names outside the physics model.</li>
         <li><code>src/app/body_trails.c</code> records persistent SI-unit trail history for non-star bodies.</li>
       </ul>
@@ -30,7 +30,7 @@ import DocsShell from '../../components/DocsShell.astro';
 
     <section class="doc-panel">
       <h2>Beauty pass</h2>
-      <p>The renderer now draws a deterministic starfield, soft Sun halo, styled planet surfaces, lit highlights, fading trails, and a gentle render-texture bloom pass in <code>src/main.c</code>. These effects stay at the presentation boundary and do not feed back into simulation state.</p>
+      <p>The renderer now draws a deterministic starfield, solid Sun treatment, styled planet surfaces, lit highlights, fading trails, and a viewport-matched render texture in <code>src/main.c</code>. These effects stay at the presentation boundary and do not feed back into simulation state.</p>
     </section>
   </DocsShell>
 </BaseLayout>

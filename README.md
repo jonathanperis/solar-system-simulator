@@ -120,7 +120,7 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 - Illustrative mode is the default: planets keep the previous large visible radius, while moons render smaller in proportion to Earth's physical radius with a small visible floor for tiny moons. Parent-relative moon offsets are expanded only in illustrative mode as needed so the large visual spheres remain readable without changing the underlying physics state.
 - Planet and moon traces keep every simulation position recorded during the run and are drawn before the bodies as age-faded colored line segments, so trails never extinguish while the app is running.
 - The ground grid keeps a minimum readable square count and expands from the farthest rendered body, so Mars and later outer planets do not outgrow the visible reference grid.
-- The backdrop, starfield, sun halo, body surface accents, lit highlights, and soft render-texture bloom are presentation effects in `src/render/renderer.c` and `src/main.c`; they never feed back into SI-unit body state.
+- The backdrop, starfield, solid Sun styling, body surface accents, lit highlights, and viewport-matched render texture are presentation effects in `src/render/renderer.c` and `src/main.c`; they never feed back into SI-unit body state.
 - Real-scale mode uses the same physical render scale for both positions and radii with no radius clamp. Planets may be nearly invisible in this mode; that is physically expected at solar-system scale.
 
 ## Camera model

@@ -2,6 +2,7 @@
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
 #endif
 
 #include "app/body_trails.h"
@@ -66,6 +67,49 @@ static void apply_orbit_camera(Camera3D *camera, const OrbitCameraState *state, 
     camera->position = orbit_camera_vec3_to_raylib(orbit_camera_position(orbit_target, state));
 }
 
+static void solar_app_ensure_scene_texture(SolarApp *app, int width, int height)
+{
+    if (width < 1 || height < 1) {
+        return;
+    }
+
+    if (app->scene_texture.id != 0 && app->scene_texture.texture.width == width && app->scene_texture.texture.height == height) {
+        return;
+    }
+
+    if (app->scene_texture.id != 0) {
+        UnloadRenderTexture(app->scene_texture);
+    }
+    app->scene_texture = LoadRenderTexture(width, height);
+}
+
+#if defined(PLATFORM_WEB)
+static int rounded_positive_css_px(double value)
+{
+    if (value < 1.0) {
+        return 1;
+    }
+    return (int)(value + 0.5);
+}
+
+static void sync_web_canvas_size(SolarApp *app)
+{
+    double css_width = 0.0;
+    double css_height = 0.0;
+    if (emscripten_get_element_css_size("#canvas", &css_width, &css_height) != EMSCRIPTEN_RESULT_SUCCESS) {
+        return;
+    }
+
+    int canvas_width = rounded_positive_css_px(css_width);
+    int canvas_height = rounded_positive_css_px(css_height);
+    if (canvas_width != GetScreenWidth() || canvas_height != GetScreenHeight()) {
+        emscripten_set_canvas_element_size("#canvas", canvas_width, canvas_height);
+        SetWindowSize(canvas_width, canvas_height);
+    }
+    solar_app_ensure_scene_texture(app, canvas_width, canvas_height);
+}
+#endif
+
 static void draw_scene_to_texture(SolarApp *app, int screen_width, int screen_height)
 {
     BeginTextureMode(app->scene_texture);
@@ -77,7 +121,7 @@ static void draw_scene_to_texture(SolarApp *app, int screen_width, int screen_he
     EndTextureMode();
 }
 
-static void draw_scene_texture_with_soft_bloom(const SolarApp *app, int screen_width, int screen_height)
+static void draw_scene_texture(const SolarApp *app, int screen_width, int screen_height)
 {
     Rectangle source = {
         0.0f,
@@ -86,15 +130,17 @@ static void draw_scene_texture_with_soft_bloom(const SolarApp *app, int screen_w
         -(float)app->scene_texture.texture.height,
     };
     Rectangle destination = {0.0f, 0.0f, (float)screen_width, (float)screen_height};
-    Rectangle glow_destination = {-5.0f, -5.0f, (float)screen_width + 10.0f, (float)screen_height + 10.0f};
 
-    DrawTexturePro(app->scene_texture.texture, source, glow_destination, (Vector2){0.0f, 0.0f}, 0.0f, Fade(GOLD, 0.09f));
     DrawTexturePro(app->scene_texture.texture, source, destination, (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
 }
 
 static void solar_app_update_draw(void *user_data)
 {
     SolarApp *app = user_data;
+
+#if defined(PLATFORM_WEB)
+    sync_web_canvas_size(app);
+#endif
 
     if (IsKeyPressed(KEY_TAB) || IsKeyPressed(KEY_C)) {
         app->focused_body_index = next_body_index(app->focused_body_index, &app->system);
@@ -130,11 +176,12 @@ static void solar_app_update_draw(void *user_data)
 
     int screen_width = GetScreenWidth();
     int screen_height = GetScreenHeight();
+    solar_app_ensure_scene_texture(app, screen_width, screen_height);
     draw_scene_to_texture(app, screen_width, screen_height);
 
     BeginDrawing();
     ClearBackground((Color){8, 9, 26, 255});
-    draw_scene_texture_with_soft_bloom(app, screen_width, screen_height);
+    draw_scene_texture(app, screen_width, screen_height);
 
     DrawText("Solar System Simulator", 20, 20, 20, RAYWHITE);
     DrawText(TextFormat("Elapsed days: %.2f", seconds_to_days(app->system.elapsed_seconds)), 20, 50, 18, RAYWHITE);

@@ -23,7 +23,6 @@ typedef struct RendererBodyStyle {
     Color accent;
     Color rim;
     Color glow;
-    int halo_layers;
 } RendererBodyStyle;
 
 typedef enum RenderScaleMode {
