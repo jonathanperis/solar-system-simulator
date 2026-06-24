@@ -2,14 +2,19 @@
 ---
 <figure class="orbit-instrument" aria-labelledby="orbit-instrument-title">
   <div class="instrument-toolbar">
-    <p class="eyebrow">Specimen orbit print</p>
-    <span>Not to scale, absolutely on purpose</span>
+    <p class="eyebrow">Spectral orbit plate</p>
+    <span>Projection layer, not physical scale</span>
   </div>
-  <div class="orbit-stage" role="img" aria-label="Risograph-style orbit map of the Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, and Deimos">
+  <div class="orbit-stage" role="img" aria-label="Spectral orbit trace plate of the Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, and Deimos">
+    <span class="field-contour contour-a"></span>
+    <span class="field-contour contour-b"></span>
+    <span class="field-contour contour-c"></span>
     <span class="orbit-ring ring-mercury"></span>
     <span class="orbit-ring ring-venus"></span>
     <span class="orbit-ring ring-earth"></span>
     <span class="orbit-ring ring-mars"></span>
+    <span class="gravity-vector vector-earth"></span>
+    <span class="gravity-vector vector-mars"></span>
     <span class="body-dot sun" data-label="Sun"></span>
     <span class="body-dot mercury" data-label="Mercury"></span>
     <span class="body-dot venus" data-label="Venus"></span>
@@ -19,11 +24,11 @@
     <span class="body-dot phobos" data-label="Phobos"></span>
     <span class="body-dot deimos" data-label="Deimos"></span>
     <div class="instrument-readout">
-      <h2 id="orbit-instrument-title">Pocket planetarium print</h2>
-      <p>Real state lives in meters. This diagram is a loud index of what the catalog can currently simulate.</p>
+      <h2 id="orbit-instrument-title">Trace plate for eight simulated bodies</h2>
+      <p>Real state lives in meters. This plate is an index of current catalog coverage and renderer responsibilities.</p>
     </div>
   </div>
   <figcaption>
-    The sketch is a navigation artifact: readable body labels, visible orbits, and a reminder that the renderer has different duties than the integrator.
+    A measurement diagram, not a planet poster: labels, visible orbits, and projection cues make the physics/rendering boundary inspectable.
   </figcaption>
 </figure>

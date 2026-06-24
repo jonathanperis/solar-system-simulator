@@ -2,7 +2,7 @@
 
 ## Product promise
 
-Solar System Simulator is a learning-first, physics-first C11 + raylib project that makes orbital mechanics inspectable. The app should feel like a small observatory instrument: the visuals exist to reveal Newtonian motion, not to hide the math behind cinematic effects.
+Solar System Simulator is a learning-first, physics-first C11 + raylib project that makes orbital mechanics inspectable. The app should feel like a scientific instrument: the visuals exist to reveal Newtonian motion, not to hide the math behind cinematic effects.
 
 ## Primary audience
 
@@ -21,7 +21,7 @@ Solar System Simulator is a learning-first, physics-first C11 + raylib project t
    - Avoid jumping to ephemerides, textures, shaders, or catalogs before the current body is physically grounded.
 
 3. **Learning by inspection**
-   - Code, docs, and the future GitHub Pages site should explain why each formula, constant, and transform exists.
+   - Code, docs, and the GitHub Pages site should explain why each formula, constant, and transform exists.
    - Comments should document intent, units, assumptions, and tradeoffs; they should not narrate obvious C syntax.
 
 4. **Testable without a window**
@@ -29,13 +29,13 @@ Solar System Simulator is a learning-first, physics-first C11 + raylib project t
    - raylib stays at the boundary in `src/render/` and `src/main.c`.
 
 5. **Web demo as public lab bench**
-   - GitHub Pages should host both documentation and a WebAssembly build so visitors can run the simulator in the browser.
+   - GitHub Pages hosts both documentation and a WebAssembly build so visitors can run the simulator in the browser.
    - The site should expose controls, physics notes, source links, and build provenance instead of being only a marketing page.
 
 ## Tone and voice
 
-- Precise, patient, and educational.
-- Use observatory / mission-control language sparingly when it helps orientation.
+- Precise, patient, educational, and scientifically playful.
+- Use laboratory, instrument, orbit-trace, and source-atlas language when it clarifies the physics boundary.
 - Prefer grounded explanations over hype.
 - Use source-backed facts for physical constants and build behavior.
 
@@ -45,6 +45,7 @@ Solar System Simulator is a learning-first, physics-first C11 + raylib project t
 - Do not hide physics compromises behind vague wording.
 - Do not create large frameworks or generic engines before the body-by-body roadmap needs them.
 - Do not duplicate Super Mango code blindly; borrow the structure, CI patterns, and browser-hosting lessons while keeping this repo C11 + raylib + physics-first.
+- Do not use generic space stock, corporate galaxy fog, or decorative sci-fi panels that do not explain source-backed behavior.
 
 ## Current verified state
 
@@ -52,4 +53,4 @@ Solar System Simulator is a learning-first, physics-first C11 + raylib project t
 - Simulation: Newtonian N-body baseline with velocity-Verlet / kick-drift-kick stepping.
 - Bodies: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos.
 - Tests: C test binaries for vector math, physics, scene initialization, orbit camera, trails, and renderer helpers.
-- No docs site, WebAssembly target, GitHub workflows, `AGENTS.md`, `PRODUCT.md`, or `DESIGN.md` existed before this planning pass.
+- Public site: Astro static GitHub Pages docs with a base-path-safe WebAssembly demo artifact, source atlas, physics notes, body catalog, pipeline docs, footer credits, and route smoke checks.
