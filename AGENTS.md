@@ -85,8 +85,9 @@ solar-system-simulator/
 - Time stepping uses velocity-Verlet / kick-drift-kick.
 - The Sun remains fixed at the origin for the current heliocentric baseline.
 - The app currently caps physics substeps at five simulation minutes to keep short-period moons stable under frame-scaled time.
-- Trails are app-owned dynamic arrays and intentionally keep the full recorded motion history for a run.
+- Trails are app-owned dynamic arrays and intentionally keep the full recorded motion history for a run; the renderer fades older trail segments visually.
 - Illustrative render mode enlarges bodies and separates close moons visually without changing simulation data.
+- Renderer polish lives at the boundary: starfield samples, sun glow, body styles, lit highlights, smooth focus, and soft render-texture bloom must not mutate physics state.
 
 ---
 

@@ -56,9 +56,9 @@ const base = normalizeBase(import.meta.env.BASE_URL);
       <div class="control-note field-controls" aria-label="Dedicated runtime highlights">
         <strong>Runtime page</strong>
         <span>Live C/raylib canvas</span>
+        <span>Starfield, sun glow, styled bodies</span>
         <span>Static notes outside the renderer</span>
-        <span>Controls next to the artifact</span>
-        <span>Build proof in docs</span>
+        <span>Soft post-process pass</span>
       </div>
     </div>
     <article class="wasm-card science-frame runtime-launch-card">
@@ -76,7 +76,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
           <span>8 bodies</span>
           <span>{currentMilestone.units}</span>
           <span>{currentMilestone.integrator}</span>
-          <span>Full-run trails</span>
+          <span>Fading full-run trails</span>
         </div>
         <a class="button" href={`${base}wasm/solar-system-simulator.html`}>Launch WASM cockpit</a>
       </div>
@@ -93,7 +93,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
     <article>
       <p class="eyebrow">Illustration layer</p>
       <h2>The renderer paints a readable map</h2>
-      <p>Illustrative scale, readable moon spacing, labels, focus, and sampled trails are visual grammar, not physics mutations.</p>
+      <p>Starfield backdrop, sun glow, styled body surfaces, fading trails, and smoothed focus are visual grammar, not physics mutations.</p>
       <a href={`${base}docs/simulation-core/`}>Trace the simulation core</a>
     </article>
   </section>
@@ -133,7 +133,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
       <h2 id="rough-edges-title">Precise, playful, unfinished in public.</h2>
     </div>
     <ul>
-      <li>Working now: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, focus cycling, zoom, scale modes, and full-run trail history.</li>
+      <li>Working now: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, smooth focus cycling, zoom, scale modes, starfield backdrop, sun glow, styled bodies, and fading full-run trail history.</li>
       <li>Still missing by choice: outer planets, textures, shaders, ephemeris-accurate state vectors, and barycentric Sun motion.</li>
       <li>Next additions stay scientific: one body or rendering improvement per iteration, with tests and docs updated beside the code.</li>
     </ul>

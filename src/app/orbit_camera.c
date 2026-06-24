@@ -40,6 +40,21 @@ OrbitCameraVec3 orbit_camera_position(OrbitCameraVec3 target, const OrbitCameraS
     };
 }
 
+OrbitCameraVec3 orbit_camera_smooth_target(OrbitCameraVec3 current, OrbitCameraVec3 desired, float dt_seconds)
+{
+    if (dt_seconds >= 1.0f) {
+        return desired;
+    }
+
+    float alpha = 1.0f - expf(-6.5f * dt_seconds);
+    alpha = clamp_float(alpha, 0.0f, 1.0f);
+    return (OrbitCameraVec3){
+        .x = current.x + (desired.x - current.x) * alpha,
+        .y = current.y + (desired.y - current.y) * alpha,
+        .z = current.z + (desired.z - current.z) * alpha,
+    };
+}
+
 void orbit_camera_apply_zoom(OrbitCameraState *state, float wheel_move)
 {
     state->distance = clamp_float(
