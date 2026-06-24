@@ -28,7 +28,7 @@ def main() -> int:
     js_text = js.read_text(encoding="utf-8", errors="replace")
 
     expected_html = [
-        "Cartoon cockpit runtime",
+        "Orbit cockpit runtime",
         "Solar System Simulator WebAssembly runtime",
         "Launch-ready C/raylib canvas",
         f"{stem}.js",
