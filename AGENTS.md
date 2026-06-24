@@ -11,6 +11,7 @@ A physics-first 3D solar system simulator written in C11 with raylib. This repos
 - **Architecture:** deterministic SI-unit simulation isolated from rendering.
 - **Current scene:** Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos.
 - **Primary goal:** teach and verify orbital mechanics foundations before visual polish.
+- **Current public-site direction:** spectral orbit darkroom, source-backed and scientific, with rendering framed as a projection layer over SI-unit physics.
 
 ---
 
@@ -33,7 +34,7 @@ Use `make test` for every simulation/app/render-helper change. For bigger milest
 solar-system-simulator/
 ├── AGENTS.md              # maintainer/agent guide
 ├── PRODUCT.md             # product and learning context for Impeccable/design work
-├── DESIGN.md              # space-themed visual direction for future GitHub Pages work
+├── DESIGN.md              # spectral darkroom visual direction for current GitHub Pages work
 ├── Makefile               # native build/test entrypoint
 ├── README.md              # user-facing project status and physics notes
 ├── .hermes/plans/         # committed implementation plans for this repo
@@ -102,11 +103,11 @@ Do **not** comment obvious C syntax such as `++i`, simple assignments, or includ
 
 ---
 
-## Planned GitHub Pages direction
+## Current GitHub Pages direction
 
-The future Pages site should be inspired by `jonathanperis/super-mango-editor` but adapted to this project:
+The Pages site is live and should preserve the spectral darkroom direction unless Jonathan asks for another pivot:
 
-- `docs/` Astro static site with a space / observatory aesthetic.
+- `docs/` Astro static site with dark scientific instrument styling, spectral traces, and low-glare measurement panels.
 - WebAssembly build artifacts copied into the Pages output.
 - Base-path-safe loader for `https://jonathanperis.github.io/solar-system-simulator/`.
 - Docs section that explains the source modules, physics, tests, build pipeline, and future body roadmap.

@@ -2,59 +2,58 @@
 
 ## Visual direction
 
-Theme the public site as a **space observatory / mission-control lab** rather than an arcade cabinet. The experience should feel precise, dark, mathematical, and inviting: orbital gridlines, star fields, instrument panels, code readouts, and annotated diagrams.
+Theme the public site as a **spectral orbit darkroom**: a late-night scientific instrument wall where simulator state is projected as traces, specimen ledgers, coordinate plates, and source-backed field notes. The aesthetic is nerdish and experimental, but the information hierarchy stays disciplined. Physics remains the source of truth; the website makes the measurement boundary visible.
+
+Physical scene: a learner and C programmer are in a dim lab at 1 a.m., reading orbital traces on a black optical table while the browser runs the actual WebAssembly artifact beside the source atlas.
 
 ## Palette
 
-- Deep space: `#030712`, `#07111f`, `#0b1020`
-- Observatory panels: `#111827`, `#172033`, `#1f2937`
-- Star text: `#f8fafc`, `#cbd5e1`, `#94a3b8`
-- Solar accent: `#facc15`, `#f97316`
-- Scientific cyan: `#22d3ee`, `#38bdf8`
-- Orbital violet: `#8b5cf6`, `#a78bfa`
-- Mars / rock accent: `#fb923c`, `#b45309`
+Use OKLCH tokens in CSS rather than raw hex for the site surface.
 
-Use high contrast and subtle glow; avoid rainbow palettes that weaken the physics-lab identity.
+- Void neutrals: tinted blue-black, graphite, and low-glare slate.
+- Trace colors: spectral cyan, comet green, solar amber, Mars vermilion, and violet ultraviolet.
+- Supporting text: warm off-white and muted blue-gray, never pure white.
+- Lines: translucent instrument grid strokes and measured outlines, not heavy comic borders.
+
+This is a full-palette scientific instrument system, not the previous bright paper-collage palette and not generic neon cyberpunk.
 
 ## Typography
 
-- Headings: a strong geometric sans-serif or system fallback with generous letter spacing for mission labels.
-- Body: readable sans-serif, optimized for long technical notes.
-- Code/math: monospace with clear `0`, `1`, and unit symbols.
+- Headings: compressed technical sans with sharp scale contrast, suitable for lab labels and instrument titles.
+- Body: highly readable humanist sans for explanatory notes.
+- Measurements/code: a deliberate mono face for formulas, file paths, constants, and telemetry, used because the surface is literally about measured program state.
 
-## Components to plan for GitHub Pages
+## Components for GitHub Pages
 
-1. **Hero / Observatory deck**
-   - Project name, physics-first promise, primary "Run Web Demo" action, secondary "Read the Code" action.
-   - Small status chips: C11, raylib, SI units, velocity-Verlet, WebAssembly.
+1. **Hero / Spectral chamber**
+   - Project name, physics-first promise, primary "Run orbit chamber" action, docs/source actions.
+   - Status chips: C11 physics core, SI units, velocity-Verlet, 8 bodies, WebAssembly artifact.
 
-2. **WASM viewport**
-   - Embedded canvas with boot status, normal/debug run buttons, and clear fallback errors.
+2. **Orbit trace plate**
+   - Abstract diagram of current implemented bodies as a measurement plate.
+   - Must clearly state it is not to scale and that render projections do not mutate simulation state.
+
+3. **WASM viewport**
+   - Embedded canvas with boot status, full-demo link, and control summary.
    - Base-path-safe asset loading for GitHub Pages (`/solar-system-simulator/`).
-   - Console/status rail that explains when `.js`, `.wasm`, and optional `.data` assets load.
 
-3. **Physics notebook**
-   - Explain constants, units, vectors, acceleration, vis-viva initialization, and integrator assumptions.
-   - Link each concept to source files and tests.
+4. **Physics boundary panels**
+   - Pair simulation state with projection layer: meters/kilograms/seconds in `src/sim`, labels/trails/scale modes in renderer/app code.
 
-4. **Body catalog / mission manifest**
-   - One card per simulated body with mass, radius, initial state, and current milestone status.
-   - Future bodies marked as planned, not implemented.
+5. **Body specimen register**
+   - A compact table-like register for implemented bodies with source-backed parent and initialization metadata.
 
-5. **Source atlas**
-   - Docs pages organized by module: `src/sim`, `src/render`, `src/app`, `src/main.c`, tests, build pipeline.
-   - Each page should explain responsibility, key APIs, units, and verification.
-
-6. **Pipeline observatory**
-   - Document native build, tests, WASM build, docs build, Pages deploy, and smoke checks.
-   - Mirror the Super Mango separation between build/artifact workflow and Pages deployment.
+6. **Source evidence ledger**
+   - Link every major claim to docs or source paths.
+   - Prefer proof rows and route matrices over generic feature cards.
 
 ## Interaction principles
 
-- The site should teach while it runs: controls, equations, and source links should be near the canvas.
-- Prefer cards, panels, and route matrices over long undifferentiated markdown pages.
+- The site should teach while it runs: controls, equations, and source links stay near the canvas.
+- Decorative traces must support scientific reading, not hide content.
+- Motion is subtle: trace glow or pulse only, with reduced-motion respected.
 - Make loading states explicit; a blank canvas is a bug.
-- Keep reduced-motion users in mind: decorative star/parallax effects must not be required to understand content.
+- Preserve accessible contrast on dark backgrounds.
 
 ## Comment and documentation style
 
