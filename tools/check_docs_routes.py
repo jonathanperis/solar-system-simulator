@@ -17,7 +17,7 @@ ROUTES: dict[str, list[str]] = {
         "Discover the solar system in motion",
         "data-footer-credits",
         "Jonathan Peris",
-        "Cartoon worlds, source-backed orbits, no fake capabilities",
+        "Illustrated worlds, source-backed orbits, no fake capabilities",
         "wasm/solar-system-simulator.html",
         "Source references",
         "Precise, playful, unfinished in public",
@@ -69,7 +69,7 @@ def main(argv: list[str]) -> int:
     if not wasm.is_file():
         fail("missing copied WebAssembly HTML artifact")
 
-    wasm_markers = ["Cartoon cockpit runtime", "Launch-ready C/raylib canvas", "Controls expose real simulator state"]
+    wasm_markers = ["Orbit cockpit runtime", "Launch-ready C/raylib canvas", "Controls expose real simulator state"]
     wasm_html = wasm.read_text(encoding="utf-8", errors="replace")
     for marker in wasm_markers:
         if marker not in wasm_html:

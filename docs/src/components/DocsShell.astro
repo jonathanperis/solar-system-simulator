@@ -15,7 +15,7 @@ const isActive = (href: string) => currentPath === hrefFor(href) || currentPath.
       <span>SS</span>
       <strong>ORBIT MANUAL</strong>
     </a>
-    <p class="docs-sidebar-copy">Filter the cartoon cockpit manual: physics, rendering, controls, web build, and next bodies without one giant scroll.</p>
+    <p class="docs-sidebar-copy">Filter the orbit cockpit manual: physics, rendering, controls, web build, and next bodies without one giant scroll.</p>
 
     <label class="docs-filter-label" for="docs-route-filter">Filter pages</label>
     <input id="docs-route-filter" class="docs-filter" type="search" placeholder={`Filter all ${docsRoutes.length} orbit routes`} data-doc-filter />
@@ -43,7 +43,7 @@ const isActive = (href: string) => currentPath === hrefFor(href) || currentPath.
     </nav>
 
     <div class="docs-sidebar-actions" aria-label="Manual utility links">
-      <a href={hrefFor('')}>← Cartoon lab</a>
+      <a href={hrefFor('')}>← Lab home</a>
       <a href={hrefFor('wasm/solar-system-simulator.html')}>Launch WASM</a>
       <a href={repoUrl}>GitHub source</a>
     </div>

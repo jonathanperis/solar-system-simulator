@@ -10,13 +10,12 @@ import { implementedBodies } from '../lib/bodies';
 const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 <BaseLayout>
-  <section class="hero cartoon-hero">
+  <section class="hero cosmic-hero">
     <div class="hero-copy">
-      <p class="eyebrow">Cartoon orbit lab · C11 physics · real WASM</p>
+      <p class="eyebrow">Cosmic orbit lab · C11 physics · real WASM</p>
       <h1>Discover the solar system in motion.</h1>
       <p class="lede">
-        A playful cosmic cockpit wrapped around the real C/raylib simulator. The worlds are chunky,
-        bright, and friendly; the physics underneath stays SI units, tests, and source files.
+        An illustrated cosmic cockpit wrapped around the real C/raylib simulator. The worlds stay bright and friendly; the physics underneath stays SI units, tests, and source files.
       </p>
       <div class="actions">
         <a class="button" href="#play">Launch simulator</a>
@@ -27,8 +26,8 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         <span>{currentMilestone.language} physics core</span>
         <span>{currentMilestone.integrator}</span>
         <span>{currentMilestone.units}</span>
-        <span>{implementedBodies.length} playable worlds</span>
-        <span>cartoon map, real state</span>
+        <span>{implementedBodies.length} modeled bodies</span>
+        <span>illustrated map, real state</span>
       </div>
     </div>
     <OrbitInstrument />
@@ -39,24 +38,23 @@ const base = normalizeBase(import.meta.env.BASE_URL);
   <section class="lab-section maker-note field-principle" aria-labelledby="maker-note-title">
     <div>
       <p class="eyebrow">Core principle</p>
-      <h2 id="maker-note-title">Cute planets, serious gravity.</h2>
+      <h2 id="maker-note-title">Friendly planets, serious gravity.</h2>
     </div>
     <p>
-      The site now behaves like a space cartoon built by a science club. Big colors and thick outlines make the simulator approachable,
-      while every claim still points back to meters, kilograms, seconds, vectors, acceleration, and tests.
+      The site now behaves like an illustrated science-club cockpit. Color and friendly geometry make the simulator approachable, while every claim still points back to meters, kilograms, seconds, vectors, acceleration, and tests.
     </p>
   </section>
 
   <section class="lab-section split-section" id="play">
     <div class="section-heading field-console-copy">
       <p class="eyebrow">Playable artifact</p>
-      <h2>Run the real C/raylib simulator inside the cartoon cockpit.</h2>
+      <h2>Run the real C/raylib simulator inside the orbit cockpit.</h2>
       <p>
         This iframe is the checked WebAssembly build from the pipeline. Toggle scale, chase bodies, zoom the camera,
         and compare every visual shortcut with the docs that name the compromise.
       </p>
       <div class="control-note field-controls" aria-label="Simulator controls">
-        <strong>Control stickers</strong>
+        <strong>Control keys</strong>
         <span>Tab/C focus body</span>
         <span>V scale mode</span>
         <span>Mouse wheel zoom</span>
@@ -83,8 +81,8 @@ const base = normalizeBase(import.meta.env.BASE_URL);
       <p>Double-precision positions, velocities, masses, and radii stay in physical units. The math gets tests before it gets a smile.</p>
     </article>
     <article>
-      <p class="eyebrow">Cartoon layer</p>
-      <h2>The renderer paints a sticker sheet</h2>
+      <p class="eyebrow">Illustration layer</p>
+      <h2>The renderer paints a readable map</h2>
       <p>Illustrative scale, readable moon spacing, labels, focus, and sampled trails are visual grammar, not physics mutations.</p>
       <a href={`${base}docs/simulation-core/`}>Trace the simulation core</a>
     </article>
@@ -92,7 +90,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
 
   <section class="lab-section equation-tape" aria-labelledby="equation-tape-title">
     <p class="eyebrow">Lab rules</p>
-    <h2 id="equation-tape-title">Cartoon worlds, source-backed orbits, no fake capabilities.</h2>
+    <h2 id="equation-tape-title">Illustrated worlds, source-backed orbits, no fake capabilities.</h2>
     <div class="scribble-grid" aria-label="Scientific design notes">
       <span>Δt stays visible</span>
       <span>Moons keep parents</span>
@@ -103,8 +101,8 @@ const base = normalizeBase(import.meta.env.BASE_URL);
 
   <section class="lab-section body-manifest" aria-labelledby="manifest-title">
     <div class="section-heading">
-      <p class="eyebrow">Planet sticker book</p>
-      <h2 id="manifest-title">Eight implemented bodies, drawn loud and documented calmly.</h2>
+      <p class="eyebrow">Planet field guide</p>
+      <h2 id="manifest-title">Eight implemented bodies, drawn clearly and documented calmly.</h2>
       <p>Each implemented body carries identity and parent metadata so docs, renderer, labels, and tests talk about the same simulated object.</p>
     </div>
     <div class="body-table body-table-specimens" role="table" aria-label="Implemented simulator bodies">

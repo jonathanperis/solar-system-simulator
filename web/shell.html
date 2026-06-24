@@ -15,14 +15,14 @@
         --muted: oklch(82% 0.045 266);
         --muted-dim: oklch(70% 0.055 272);
         --comic-ink: oklch(13% 0.06 276);
-        --sun: oklch(86% 0.18 80);
-        --orange: oklch(73% 0.19 47);
-        --pink: oklch(68% 0.24 342);
-        --cyan: oklch(82% 0.16 198);
-        --mint: oklch(82% 0.16 154);
+        --sun: oklch(82% 0.135 82);
+        --orange: oklch(70% 0.14 47);
+        --pink: oklch(64% 0.16 342);
+        --cyan: oklch(78% 0.115 198);
+        --mint: oklch(78% 0.12 154);
         --outline: oklch(96% 0.022 88 / 0.86);
         --outline-soft: oklch(96% 0.022 88 / 0.34);
-        --shadow-pop: 0 1.2rem 0 oklch(8% 0.055 278 / 0.5);
+        --shadow-pop: 0 0.55rem 0 oklch(8% 0.055 278 / 0.38);
       }
 
       * { box-sizing: border-box; }
@@ -60,12 +60,12 @@
       .runtime-frame {
         display: grid;
         gap: 1rem;
-        border: 3px solid var(--outline);
-        border-radius: 2rem;
+        border: 2px solid var(--outline);
+        border-radius: 1.35rem;
         background:
           radial-gradient(circle at 8% 0%, oklch(86% 0.18 80 / 0.24), transparent 18rem),
           linear-gradient(145deg, oklch(14% 0.08 278 / 0.96), oklch(24% 0.13 300 / 0.96));
-        box-shadow: var(--shadow-pop), 0 2.8rem 6rem oklch(8% 0.055 278 / 0.42);
+        box-shadow: var(--shadow-pop), 0 1.4rem 3.2rem oklch(8% 0.055 278 / 0.3);
         padding: clamp(0.85rem, 2vw, 1.35rem);
         overflow: hidden;
       }
@@ -82,20 +82,20 @@
         align-items: center;
         gap: 0.7rem;
         text-decoration: none;
-        font-family: "Trebuchet MS", system-ui, sans-serif;
-        font-weight: 900;
+        font-family: "Nunito", system-ui, sans-serif;
+        font-weight: 800;
         letter-spacing: 0.02em;
       }
       .runtime-brand span {
         display: grid;
         place-items: center;
-        width: 2.8rem;
-        height: 2.8rem;
-        border: 2px solid var(--comic-ink);
+        width: 2.35rem;
+        height: 2.35rem;
+        border: 1.5px solid var(--comic-ink);
         border-radius: 1rem;
         color: var(--comic-ink);
         background: var(--sun);
-        box-shadow: 0 0.45rem 0 oklch(8% 0.055 278 / 0.42);
+        box-shadow: 0 0.22rem 0 oklch(8% 0.055 278 / 0.34);
       }
       .runtime-links,
       .runtime-chip-row,
@@ -109,7 +109,7 @@
       .runtime-chip-row span,
       .runtime-controls span,
       .runtime-status {
-        border: 2px solid var(--outline-soft);
+        border: 1px solid var(--outline-soft);
         border-radius: 999px;
         background: oklch(10% 0.06 278 / 0.58);
         padding: 0.48rem 0.72rem;
@@ -130,10 +130,10 @@
       .runtime-panel,
       .runtime-canvas-card,
       .runtime-log {
-        border: 2px solid var(--comic-ink);
-        border-radius: 1.45rem;
+        border: 1.5px solid var(--comic-ink);
+        border-radius: 1.1rem;
         background: oklch(96% 0.022 88 / 0.12);
-        box-shadow: 0 0.65rem 0 oklch(8% 0.055 278 / 0.42);
+        box-shadow: 0 0.32rem 0 oklch(8% 0.055 278 / 0.34);
       }
       .runtime-copy,
       .runtime-panel { padding: clamp(0.9rem, 2vw, 1.2rem); }
@@ -150,14 +150,14 @@
         max-width: 11ch;
         margin: 0;
         font-family: "Trebuchet MS", system-ui, sans-serif;
-        font-size: clamp(2.7rem, 7vw, 6.6rem);
-        line-height: 0.86;
+        font-size: clamp(2.25rem, 5.2vw, 4.8rem);
+        line-height: 1;
         letter-spacing: -0.06em;
       }
       .runtime-copy > p:not(.eyebrow) {
         max-width: 64ch;
         color: var(--muted);
-        font-size: clamp(1rem, 2vw, 1.18rem);
+        font-size: clamp(0.98rem, 1.5vw, 1.08rem);
         line-height: 1.65;
       }
       .runtime-actions { display: flex; gap: 0.7rem; flex-wrap: wrap; margin-top: 1rem; }
@@ -165,22 +165,22 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-height: 2.7rem;
-        border: 2px solid var(--comic-ink);
+        min-height: 2.45rem;
+        border: 1.5px solid var(--comic-ink);
         border-radius: 999px;
         background: var(--sun);
         color: var(--comic-ink);
-        padding: 0.72rem 1rem;
+        padding: 0.58rem 0.86rem;
         font-weight: 900;
         text-decoration: none;
-        box-shadow: 0 0.45rem 0 oklch(8% 0.055 278 / 0.42);
+        box-shadow: 0 0.22rem 0 oklch(8% 0.055 278 / 0.34);
       }
       .runtime-button.secondary { background: var(--cyan); }
       .runtime-panel strong {
         display: block;
         color: var(--sun);
         font-family: "Courier New", monospace;
-        font-size: clamp(2.8rem, 9vw, 5.5rem);
+        font-size: clamp(2.4rem, 5.8vw, 4.2rem);
         line-height: 0.9;
       }
       .runtime-panel dl {
@@ -200,7 +200,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 0.7rem;
-        border-bottom: 2px solid var(--outline-soft);
+        border-bottom: 1px solid var(--outline-soft);
         background: oklch(10% 0.06 278 / 0.74);
         padding: 0.75rem 0.9rem;
       }
@@ -230,7 +230,7 @@
         color: var(--muted);
         font-family: "Courier New", monospace;
         font-size: 0.82rem;
-        min-height: 4.5rem;
+        min-height: 3.4rem;
       }
       .runtime-log strong { color: var(--cream); }
       .runtime-footer p { margin: 0; color: var(--muted); }
@@ -254,7 +254,7 @@
         <header class="runtime-topbar">
           <a class="runtime-brand" href="../" aria-label="Back to Solar System Simulator home">
             <span>SS</span>
-            <strong>Cartoon cockpit runtime</strong>
+            <strong>Orbit cockpit runtime</strong>
           </a>
           <nav class="runtime-links" aria-label="Runtime navigation">
             <a href="../">Lab</a>
@@ -268,7 +268,7 @@
           <div class="runtime-copy">
             <p class="eyebrow">WASM cockpit / C11 physics</p>
             <h1>Run the real orbit loop.</h1>
-            <p>This standalone page now shares the cartoon cockpit aesthetic, but the canvas below is still the checked Emscripten artifact produced by <code>make web</code>. Cute frame, serious gravity.</p>
+            <p>This standalone page now shares the cosmic cockpit frame, but the canvas below is still the checked Emscripten artifact produced by <code>make web</code>. Friendly frame, serious gravity.</p>
             <div class="runtime-chip-row" aria-label="Runtime facts">
               <span>C11 + raylib</span>
               <span>SI units</span>

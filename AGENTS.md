@@ -11,7 +11,7 @@ A physics-first 3D solar system simulator written in C11 with raylib. This repos
 - **Architecture:** deterministic SI-unit simulation isolated from rendering.
 - **Current scene:** Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos.
 - **Primary goal:** teach and verify orbital mechanics foundations before visual polish.
-- **Current public-site direction:** cartoon cosmic cockpit, source-backed and playful, with friendly planet art wrapped around SI-unit physics. The docs hub uses a service-manual structure, and the standalone WASM page should feel like the same cockpit rather than a raw generated shell.
+- **Current public-site direction:** softened illustrated cosmic cockpit, source-backed and playful, with friendly planet art wrapped around SI-unit physics. The docs hub uses a service-manual structure, and the standalone WASM page should feel like the same cockpit rather than a raw generated shell.
 
 ---
 
@@ -34,7 +34,7 @@ Use `make test` for every simulation/app/render-helper change. For bigger milest
 solar-system-simulator/
 ├── AGENTS.md              # maintainer/agent guide
 ├── PRODUCT.md             # product and learning context for Impeccable/design work
-├── DESIGN.md              # cartoon cosmic cockpit visual direction for current GitHub Pages work
+├── DESIGN.md              # softened illustrated cosmic cockpit visual direction for current GitHub Pages work
 ├── Makefile               # native build/test entrypoint
 ├── README.md              # user-facing project status and physics notes
 ├── .hermes/plans/         # committed implementation plans for this repo
@@ -105,9 +105,9 @@ Do **not** comment obvious C syntax such as `++i`, simple assignments, or includ
 
 ## Current GitHub Pages direction
 
-The Pages site is live and should preserve the cartoon cosmic cockpit direction unless Jonathan asks for another pivot:
+The Pages site is live and should preserve the softened illustrated cosmic cockpit direction unless Jonathan asks for another pivot:
 
-- `docs/` Astro static site with saturated purple/blue space surfaces, thick cartoon outlines, playful planet art, and source-backed physics copy.
+- `docs/` Astro static site with softened purple/blue space surfaces, slimmer illustrated outlines, friendly planet art, and source-backed physics copy.
 - WebAssembly build artifacts copied into the Pages output.
 - Base-path-safe loader for `https://jonathanperis.github.io/solar-system-simulator/`.
 - Docs section that explains the source modules, physics, tests, build pipeline, and future body roadmap.
