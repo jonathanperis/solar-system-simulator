@@ -186,8 +186,8 @@ static void test_body_style_adds_visual_identity_without_name_lookup(void)
     RendererBodyStyle sun_style = renderer_body_style(&sun);
 
     assert(earth_style.base.r != earth_style.accent.r || earth_style.base.g != earth_style.accent.g || earth_style.base.b != earth_style.accent.b);
-    assert(earth_style.halo_layers == 0);
-    assert(sun_style.halo_layers >= 3);
+    assert(sun_style.base.r >= sun_style.rim.r);
+    assert(sun_style.base.g > sun_style.rim.g);
     assert(sun_style.glow.a > earth_style.glow.a);
 }
 
