@@ -51,6 +51,13 @@ def main() -> int:
         if marker not in main_text:
             raise SystemExit(f"src/main.c must use {marker} so WebGL buffers wider than 1280px do not leave gutters")
 
+    for marker in ("solar_web_initial_canvas_width", "solar_web_initial_canvas_height"):
+        if marker not in main_text:
+            raise SystemExit(f"src/main.c must use {marker} before InitWindow() so the WebGL window starts at the served frame size")
+
+    if "const int screen_width = 1280" in main_text or "const int screen_height = 720" in main_text:
+        raise SystemExit("src/main.c must not hardcode the web InitWindow() size to 1280x720")
+
     print(f"WASM artifacts OK in {web_dir}")
     return 0
 
