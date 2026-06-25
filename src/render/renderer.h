@@ -9,7 +9,7 @@
 #include "../sim/solar_system.h"
 
 #define SOLAR_RENDER_MAX_TRAIL_SEGMENTS 4096
-#define SOLAR_RENDER_STAR_COUNT 96
+#define SOLAR_RENDER_STAR_COUNT 180
 
 typedef struct RendererStar {
     float x_norm;

@@ -12,7 +12,7 @@ Apply the renderer beautification sequence Jonathan approved, one step at a time
 4. Add sun-lit highlights as presentation-only geometry.
 5. Fade trail segments by age while preserving full trail history.
 6. Smooth camera focus transitions using the existing orbit camera helper layer.
-7. Keep the browser canvas visually filled inside the visible frame without resizing WebGL in a way that risks context loss.
+7. Use render-buffer dimensions when painting so browser frames wider than 1280px do not leave right-side gutters, without resizing WebGL in a way that risks context loss.
 8. Update README, docs, and runtime shell copy so the site explains the new visual pass honestly.
 9. Verify native tests, WASM build, docs build, and browser runtime.
 

@@ -87,7 +87,7 @@ solar-system-simulator/
 - The app currently caps physics substeps at five simulation minutes to keep short-period moons stable under frame-scaled time.
 - Trails are app-owned dynamic arrays and intentionally keep the full recorded motion history for a run; the renderer fades older trail segments visually.
 - Illustrative render mode enlarges bodies and separates close moons visually without changing simulation data.
-- Renderer polish lives at the boundary: starfield samples, solid Sun styling, body styles, lit highlights, smooth focus, and frame-filled canvas layout must not mutate physics state.
+- Renderer polish lives at the boundary: denser starfield samples, brighter grid lines, closer default camera, solid Sun styling, body styles, lit highlights, smooth focus, and frame-filled canvas layout must not mutate physics state.
 
 ---
 

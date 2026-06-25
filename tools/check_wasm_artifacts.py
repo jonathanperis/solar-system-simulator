@@ -26,6 +26,8 @@ def main() -> int:
 
     html_text = html.read_text(encoding="utf-8")
     js_text = js.read_text(encoding="utf-8", errors="replace")
+    repo_root = Path(__file__).resolve().parents[1]
+    main_text = (repo_root / "src" / "main.c").read_text(encoding="utf-8")
 
     expected_html = [
         "Orbit cockpit runtime",
@@ -44,6 +46,10 @@ def main() -> int:
 
     if f"{stem}.wasm" not in js_text:
         raise SystemExit(f"{js} does not reference {stem}.wasm")
+
+    for marker in ("GetRenderWidth()", "GetRenderHeight()"):
+        if marker not in main_text:
+            raise SystemExit(f"src/main.c must use {marker} so WebGL buffers wider than 1280px do not leave gutters")
 
     print(f"WASM artifacts OK in {web_dir}")
     return 0
