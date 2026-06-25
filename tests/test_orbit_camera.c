@@ -16,8 +16,8 @@ static void test_default_orbit_camera_matches_initial_view_angle(void)
     OrbitCameraVec3 position = orbit_camera_position(target, &state);
 
     assert_close_float(position.x, 0.0f, 1e-5f);
-    assert_close_float(position.y, 8.0f, 1e-5f);
-    assert_close_float(position.z, 18.0f, 1e-5f);
+    assert_close_float(position.y, 6.0f, 1e-5f);
+    assert_close_float(position.z, 14.0f, 1e-5f);
 }
 
 static void test_orbit_camera_position_offsets_from_focused_target(void)
@@ -27,8 +27,8 @@ static void test_orbit_camera_position_offsets_from_focused_target(void)
     OrbitCameraVec3 position = orbit_camera_position(target, &state);
 
     assert_close_float(position.x, 2.5f, 1e-5f);
-    assert_close_float(position.y, 7.0f, 1e-5f);
-    assert_close_float(position.z, 22.0f, 1e-5f);
+    assert_close_float(position.y, 5.0f, 1e-5f);
+    assert_close_float(position.z, 18.0f, 1e-5f);
 }
 
 static void test_orbit_camera_advances_yaw_without_changing_pitch_or_distance(void)

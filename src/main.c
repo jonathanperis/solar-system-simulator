@@ -142,8 +142,12 @@ static void solar_app_update_draw(void *user_data)
         focused_body_name = app->system.bodies[app->focused_body_index].name;
     }
 
-    int screen_width = GetScreenWidth();
-    int screen_height = GetScreenHeight();
+    int screen_width = GetRenderWidth();
+    int screen_height = GetRenderHeight();
+    if (screen_width <= 0 || screen_height <= 0) {
+        screen_width = GetScreenWidth();
+        screen_height = GetScreenHeight();
+    }
     solar_app_ensure_scene_texture(app, screen_width, screen_height);
     draw_scene_to_texture(app, screen_width, screen_height);
 

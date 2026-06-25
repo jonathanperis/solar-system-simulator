@@ -233,16 +233,16 @@ Color renderer_body_color(const Body *body)
 RendererStar renderer_starfield_star(size_t index, double elapsed_seconds)
 {
     float x_norm = 0.02f + hash_unit(index, 11u) * 0.96f;
-    float y_norm = 0.02f + hash_unit(index, 23u) * 0.82f;
-    float radius = 0.6f + hash_unit(index, 37u) * 1.5f;
-    float base_alpha = 0.28f + hash_unit(index, 41u) * 0.42f;
-    float twinkle = sinf((float)elapsed_seconds * 0.35f + hash_unit(index, 53u) * 6.2831853f) * 0.17f;
+    float y_norm = 0.02f + hash_unit(index, 23u) * 0.94f;
+    float radius = 0.8f + hash_unit(index, 37u) * 1.6f;
+    float base_alpha = 0.44f + hash_unit(index, 41u) * 0.44f;
+    float twinkle = sinf((float)elapsed_seconds * 0.35f + hash_unit(index, 53u) * 6.2831853f) * 0.14f;
 
     return (RendererStar){
         .x_norm = x_norm,
         .y_norm = y_norm,
         .radius = radius,
-        .alpha = clamp_float(base_alpha + twinkle, 0.15f, 0.95f),
+        .alpha = clamp_float(base_alpha + twinkle, 0.28f, 1.0f),
     };
 }
 
@@ -253,7 +253,7 @@ float renderer_trail_segment_alpha(size_t segment_index, size_t segment_count)
     }
 
     float progress = (float)(segment_index + 1) / (float)segment_count;
-    return clamp_float(0.11f + 0.60f * sqrtf(progress), 0.10f, 0.82f);
+    return clamp_float(0.18f + 0.68f * sqrtf(progress), 0.16f, 0.90f);
 }
 
 const char *renderer_scale_mode_label(RenderScaleMode mode)
@@ -316,8 +316,8 @@ size_t renderer_trail_draw_segment_count(size_t point_count)
 
 void renderer_draw_backdrop(int screen_width, int screen_height, double elapsed_seconds)
 {
-    Color top = color_rgba(10, 12, 34, 255);
-    Color bottom = color_rgba(18, 15, 46, 255);
+    Color top = color_rgba(14, 17, 48, 255);
+    Color bottom = color_rgba(24, 22, 66, 255);
     DrawRectangleGradientV(0, 0, screen_width, screen_height, top, bottom);
 
     for (size_t i = 0; i < SOLAR_RENDER_STAR_COUNT; ++i) {
@@ -331,17 +331,17 @@ static void draw_orbit_grid(int slices)
 {
     int half_slices = slices / 2;
     float half_width = (float)half_slices * SOLAR_GRID_SPACING_UNITS;
-    Color minor = color_rgba(84, 112, 156, 255);
-    Color major = color_rgba(126, 166, 218, 255);
-    Color axis = color_rgba(255, 190, 86, 255);
+    Color minor = color_rgba(105, 141, 196, 255);
+    Color major = color_rgba(151, 191, 244, 255);
+    Color axis = color_rgba(255, 201, 105, 255);
 
     for (int i = -half_slices; i <= half_slices; ++i) {
         float offset = (float)i * SOLAR_GRID_SPACING_UNITS;
-        Color line_color = Fade(minor, 0.13f);
+        Color line_color = Fade(minor, 0.22f);
         if (i == 0) {
-            line_color = Fade(axis, 0.45f);
+            line_color = Fade(axis, 0.62f);
         } else if ((i % 5) == 0) {
-            line_color = Fade(major, 0.23f);
+            line_color = Fade(major, 0.34f);
         }
 
         DrawLine3D((Vector3){offset, 0.0f, -half_width}, (Vector3){offset, 0.0f, half_width}, line_color);

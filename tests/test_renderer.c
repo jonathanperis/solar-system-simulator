@@ -196,8 +196,8 @@ static void test_trail_alpha_fades_from_history_to_current_position(void)
     float early_alpha = renderer_trail_segment_alpha(0, 12);
     float late_alpha = renderer_trail_segment_alpha(11, 12);
 
-    assert(early_alpha >= 0.10f);
-    assert(late_alpha <= 0.82f);
+    assert(early_alpha >= 0.16f);
+    assert(late_alpha <= 0.90f);
     assert(late_alpha > early_alpha);
     assert_close(renderer_trail_segment_alpha(0, 1), renderer_trail_segment_alpha(8, 0), 1e-6);
 }
@@ -207,11 +207,12 @@ static void test_starfield_samples_are_bounded_and_twinkle_only_in_alpha(void)
     RendererStar star_a = renderer_starfield_star(17, 0.0);
     RendererStar star_b = renderer_starfield_star(17, 90.0);
 
+    assert(SOLAR_RENDER_STAR_COUNT >= 160);
     assert(star_a.x_norm >= 0.0f && star_a.x_norm <= 1.0f);
     assert(star_a.y_norm >= 0.0f && star_a.y_norm <= 1.0f);
-    assert(star_a.radius >= 0.6f && star_a.radius <= 2.1f);
-    assert(star_a.alpha >= 0.15f && star_a.alpha <= 0.95f);
-    assert(star_b.alpha >= 0.15f && star_b.alpha <= 0.95f);
+    assert(star_a.radius >= 0.8f && star_a.radius <= 2.4f);
+    assert(star_a.alpha >= 0.28f && star_a.alpha <= 1.0f);
+    assert(star_b.alpha >= 0.28f && star_b.alpha <= 1.0f);
     assert_close(star_a.x_norm, star_b.x_norm, 1e-6);
     assert_close(star_a.y_norm, star_b.y_norm, 1e-6);
 }

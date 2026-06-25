@@ -15,8 +15,8 @@ static float clamp_float(float value, float min_value, float max_value)
 
 OrbitCameraState orbit_camera_default_state(void)
 {
-    const float initial_height = 8.0f;
-    const float initial_depth = 18.0f;
+    const float initial_height = 6.0f;
+    const float initial_depth = 14.0f;
 
     return (OrbitCameraState){
         .yaw_radians = 0.0f,
