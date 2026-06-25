@@ -36,8 +36,7 @@ def main() -> int:
         "Launch-ready C/raylib canvas",
         "Static renderer notes now shown on the page",
         "Renderer behavior",
-        "Visual pass",
-        "frame-filled canvas",
+        "Responsive frame",
         f"{stem}.js",
     ]
     for marker in expected_html:
@@ -46,10 +45,6 @@ def main() -> int:
 
     if f"{stem}.wasm" not in js_text:
         raise SystemExit(f"{js} does not reference {stem}.wasm")
-
-    for marker in ("GetRenderWidth()", "GetRenderHeight()"):
-        if marker not in main_text:
-            raise SystemExit(f"src/main.c must use {marker} so WebGL buffers wider than 1280px do not leave gutters")
 
     for marker in ("solar_web_initial_canvas_width", "solar_web_initial_canvas_height"):
         if marker not in main_text:

@@ -300,7 +300,7 @@
           <div class="runtime-copy">
             <p class="eyebrow">WASM cockpit / C11 physics</p>
             <h1>Run the real orbit loop.</h1>
-            <p>This page holds the static scene notes beside the canvas so the renderer can focus on live state, a full-frame viewport, brighter stars, a closer camera, and a solid Sun. The checked Emscripten artifact is still produced by <code>make web</code>.</p>
+            <p>This page holds the static scene notes beside the canvas so the renderer can focus on live state. The checked Emscripten artifact is still produced by <code>make web</code>, with the browser frame and raylib window initialized to the same responsive size.</p>
             <div class="runtime-chip-row" aria-label="Runtime facts">
               <span>C11 + raylib</span>
               <span>SI units</span>
@@ -320,7 +320,7 @@
               <dt>Tab / C</dt><dd>focus body</dd>
               <dt>V</dt><dd>scale mode</dd>
               <dt>Wheel</dt><dd>zoom</dd>
-              <dt>Trails</dt><dd>fading full run</dd>
+              <dt>Trails</dt><dd>full run</dd>
             </dl>
           </aside>
         </section>
@@ -348,11 +348,11 @@
           </article>
           <article class="runtime-fact wide">
             <strong>Renderer behavior</strong>
-            <p>The grid expands to the farthest rendered orbit. Planet and moon trails keep their full motion history with an age fade.</p>
+            <p>The grid expands to the farthest rendered orbit. Planet and moon trails keep their full motion history.</p>
           </article>
           <article class="runtime-fact wide">
-            <strong>Visual pass</strong>
-            <p>Denser starfield, brighter grid, solid Sun styling, closer default camera, and frame-filled canvas layout stay outside the physics core.</p>
+            <strong>Responsive frame</strong>
+            <p>The page frame and raylib WebAssembly window start from the same measured canvas size, without changing the renderer's physics boundary.</p>
           </article>
         </section>
 

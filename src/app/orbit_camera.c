@@ -15,8 +15,8 @@ static float clamp_float(float value, float min_value, float max_value)
 
 OrbitCameraState orbit_camera_default_state(void)
 {
-    const float initial_height = 6.0f;
-    const float initial_depth = 14.0f;
+    const float initial_height = 8.0f;
+    const float initial_depth = 18.0f;
 
     return (OrbitCameraState){
         .yaw_radians = 0.0f,
@@ -37,21 +37,6 @@ OrbitCameraVec3 orbit_camera_position(OrbitCameraVec3 target, const OrbitCameraS
         .x = target.x + state->distance * sinf(state->yaw_radians) * cos_pitch,
         .y = target.y + state->distance * sinf(state->pitch_radians),
         .z = target.z + state->distance * cosf(state->yaw_radians) * cos_pitch,
-    };
-}
-
-OrbitCameraVec3 orbit_camera_smooth_target(OrbitCameraVec3 current, OrbitCameraVec3 desired, float dt_seconds)
-{
-    if (dt_seconds >= 1.0f) {
-        return desired;
-    }
-
-    float alpha = 1.0f - expf(-6.5f * dt_seconds);
-    alpha = clamp_float(alpha, 0.0f, 1.0f);
-    return (OrbitCameraVec3){
-        .x = current.x + (desired.x - current.x) * alpha,
-        .y = current.y + (desired.y - current.y) * alpha,
-        .z = current.z + (desired.z - current.z) * alpha,
     };
 }
 
