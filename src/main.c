@@ -2,6 +2,22 @@
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
+
+EM_JS(int, solar_web_initial_canvas_width, (void), {
+    const wrap = document.querySelector('.canvas-wrap');
+    const canvas = Module.canvas;
+    const rect = (wrap || canvas).getBoundingClientRect();
+    const value = Math.round(rect.width || canvas.clientWidth || canvas.width || 1280);
+    return Math.max(1, value);
+})
+
+EM_JS(int, solar_web_initial_canvas_height, (void), {
+    const wrap = document.querySelector('.canvas-wrap');
+    const canvas = Module.canvas;
+    const rect = (wrap || canvas).getBoundingClientRect();
+    const value = Math.round(rect.height || canvas.clientHeight || canvas.height || 720);
+    return Math.max(1, value);
+})
 #endif
 
 #include "app/body_trails.h"
@@ -166,8 +182,13 @@ static void solar_app_update_draw(void *user_data)
 
 int main(void)
 {
-    const int screen_width = 1280;
-    const int screen_height = 720;
+    int screen_width = 1280;
+    int screen_height = 720;
+
+#if defined(PLATFORM_WEB)
+    screen_width = solar_web_initial_canvas_width();
+    screen_height = solar_web_initial_canvas_height();
+#endif
 
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(screen_width, screen_height, "Solar System Simulator");
