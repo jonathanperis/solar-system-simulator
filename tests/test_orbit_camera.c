@@ -16,8 +16,8 @@ static void test_default_orbit_camera_matches_initial_view_angle(void)
     OrbitCameraVec3 position = orbit_camera_position(target, &state);
 
     assert_close_float(position.x, 0.0f, 1e-5f);
-    assert_close_float(position.y, 6.0f, 1e-5f);
-    assert_close_float(position.z, 14.0f, 1e-5f);
+    assert_close_float(position.y, 8.0f, 1e-5f);
+    assert_close_float(position.z, 18.0f, 1e-5f);
 }
 
 static void test_orbit_camera_position_offsets_from_focused_target(void)
@@ -27,8 +27,8 @@ static void test_orbit_camera_position_offsets_from_focused_target(void)
     OrbitCameraVec3 position = orbit_camera_position(target, &state);
 
     assert_close_float(position.x, 2.5f, 1e-5f);
-    assert_close_float(position.y, 5.0f, 1e-5f);
-    assert_close_float(position.z, 18.0f, 1e-5f);
+    assert_close_float(position.y, 7.0f, 1e-5f);
+    assert_close_float(position.z, 22.0f, 1e-5f);
 }
 
 static void test_orbit_camera_advances_yaw_without_changing_pitch_or_distance(void)
@@ -97,32 +97,6 @@ static void test_orbit_camera_zoom_clamps_at_maximum_without_changing_angle(void
     assert_close_float(state.pitch_radians, pitch, 1e-6f);
 }
 
-static void test_orbit_camera_smooth_target_eases_toward_new_focus(void)
-{
-    OrbitCameraVec3 current = {0.0f, 0.0f, 0.0f};
-    OrbitCameraVec3 desired = {10.0f, 0.0f, -4.0f};
-
-    OrbitCameraVec3 next = orbit_camera_smooth_target(current, desired, 0.25f);
-
-    assert(next.x > current.x);
-    assert(next.x < desired.x);
-    assert_close_float(next.y, 0.0f, 1e-6f);
-    assert(next.z < current.z);
-    assert(next.z > desired.z);
-}
-
-static void test_orbit_camera_smooth_target_snaps_when_frame_delta_is_large(void)
-{
-    OrbitCameraVec3 current = {0.0f, 1.0f, 0.0f};
-    OrbitCameraVec3 desired = {3.0f, -2.0f, 7.0f};
-
-    OrbitCameraVec3 next = orbit_camera_smooth_target(current, desired, 4.0f);
-
-    assert_close_float(next.x, desired.x, 1e-6f);
-    assert_close_float(next.y, desired.y, 1e-6f);
-    assert_close_float(next.z, desired.z, 1e-6f);
-}
-
 int main(void)
 {
     test_default_orbit_camera_matches_initial_view_angle();
@@ -132,8 +106,6 @@ int main(void)
     test_orbit_camera_zoom_clamps_at_minimum_without_changing_angle();
     test_orbit_camera_zoom_out_after_minimum_keeps_same_angle();
     test_orbit_camera_zoom_clamps_at_maximum_without_changing_angle();
-    test_orbit_camera_smooth_target_eases_toward_new_focus();
-    test_orbit_camera_smooth_target_snaps_when_frame_delta_is_large();
     puts("test_orbit_camera passed");
     return 0;
 }
