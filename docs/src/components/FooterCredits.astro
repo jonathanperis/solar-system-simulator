@@ -1,5 +1,5 @@
 ---
-import { authorName, currentMilestone, footerLinks, techStack } from '../lib/site';
+import { authorName, buildRevision, currentMilestone, footerLinks, techStack } from '../lib/site';
 import { implementedBodies } from '../lib/bodies';
 ---
 <footer class="site-footer" data-footer-credits>
@@ -16,6 +16,8 @@ import { implementedBodies } from '../lib/bodies';
     <section class="footer-credit-block">
       <p class="eyebrow">Current milestone</p>
       <p><strong>{currentMilestone.shortLabel}:</strong> {implementedBodies.length} implemented bodies, {currentMilestone.integrator}, and {currentMilestone.units}.</p>
+      <p class="fine-print">Build revision: <code>{buildRevision}</code></p>
+      <p class="fine-print">Usage analytics run only on deployed Pages when configured.</p>
       <p class="fine-print">{currentMilestone.disclaimer}</p>
     </section>
 

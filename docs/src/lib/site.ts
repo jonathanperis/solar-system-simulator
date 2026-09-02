@@ -2,6 +2,7 @@ export const siteName = 'Solar System Simulator';
 export const authorName = 'Jonathan Peris';
 export const repoUrl = 'https://github.com/jonathanperis/solar-system-simulator';
 export const liveUrl = 'https://jonathanperis.github.io/solar-system-simulator/';
+export const buildRevision = import.meta.env.PUBLIC_BUILD_SHA || 'local build';
 
 export const currentMilestone = {
   label: 'Foundation, Sun, inner planets, Earth Moon system, Mars moons',

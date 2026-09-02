@@ -8,7 +8,7 @@
 #include "../app/body_trails.h"
 #include "../sim/solar_system.h"
 
-#define SOLAR_RENDER_MAX_TRAIL_SEGMENTS 4096
+#define SOLAR_RENDER_MAX_TRAIL_SEGMENTS 1024
 
 typedef enum RenderScaleMode {
     RENDER_SCALE_ILLUSTRATIVE,

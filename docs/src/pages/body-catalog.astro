@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { implementedBodies } from '../lib/bodies';
 import { normalizeBase } from '../lib/base';
+import { repoUrl } from '../lib/site';
 const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 <BaseLayout title="Body catalog">
@@ -9,7 +10,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
     <div>
       <p class="eyebrow">Catalog state</p>
       <h1>Stable IDs prevent duplicate knowledge.</h1>
-      <p class="lede">The simulator gives each current body a stable <code>BodyId</code> and parent relationship. Renderer colors, moon separation, and HUD labels derive from that state instead of hardcoded display strings.</p>
+      <p class="lede">The simulator gives each current body a stable <code>BodyId</code> and parent relationship. Renderer colors and moon separation derive from that metadata rather than body-name matching.</p>
       <div class="actions"><a class="button-secondary" href={`${base}docs/roadmap/`}>Read body-by-body roadmap</a></div>
     </div>
   </section>
@@ -25,5 +26,10 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         ))}
       </tbody>
     </table>
+  </section>
+
+  <section class="panel">
+    <h2>Data provenance</h2>
+    <p>Current constants are educational baseline values, not epoch state vectors. Planet values follow the <a href="https://nssdc.gsfc.nasa.gov/planetary/factsheet/">NASA Planetary Fact Sheet</a>; satellite values use <a href="https://ssd.jpl.nasa.gov/sats/phys_par/">JPL Solar System Dynamics physical parameters</a>. Derived periapsis distances and vis-viva speeds remain in <a href={`${repoUrl}/blob/main/src/sim/constants.h`}>the source constants</a>.</p>
   </section>
 </BaseLayout>

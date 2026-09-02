@@ -15,18 +15,19 @@ import DocsShell from '../../components/DocsShell.astro';
         <article><code>make test</code><p>Run C test binaries for simulation, app, and renderer helpers.</p></article>
         <article><code>make web</code><p>Compile the browser target with Emscripten.</p></article>
         <article><code>make dist-wasm</code><p>Package the generated HTML, JS, and WASM artifact.</p></article>
+        <article><code>npm run check --prefix docs</code><p>Type-check Astro source before static output.</p></article>
       </div>
     </section>
 
     <section class="doc-panel">
       <h2>Artifact checks</h2>
-      <p><code>tools/check_wasm_artifacts.py</code> confirms the generated <code>solar-system-simulator.html</code>, <code>.js</code>, and <code>.wasm</code> files exist and contain expected markers. The WebAssembly binary is checked for valid magic bytes.</p>
+      <p><code>tools/check_wasm_artifacts.py</code> confirms generated <code>solar-system-simulator.html</code>, <code>.js</code>, and <code>.wasm</code> files exist, checks their expected links and markers, and verifies <code>\0asm\1\0\0\0</code> WebAssembly header bytes.</p>
       <p><code>web/shell.html</code> is the Emscripten shell that gives the browser runtime a stable status surface.</p>
     </section>
 
     <section class="doc-panel">
       <h2>GitHub workflows</h2>
-      <p><code>.github/workflows/build.yml</code> builds native and WebAssembly lanes. <code>.github/workflows/deploy-pages.yml</code> runs after a successful Build workflow on <code>main</code>, normalizes downloaded artifact paths, builds Astro, and publishes to GitHub Pages.</p>
+      <p><code>.github/workflows/build.yml</code> builds native, WebAssembly, and Astro/link-check lanes before merge. <code>.github/workflows/deploy-pages.yml</code> runs after a successful Build workflow on <code>main</code>, normalizes downloaded artifact paths, builds Astro, and publishes to GitHub Pages with its source revision.</p>
     </section>
   </DocsShell>
 </BaseLayout>

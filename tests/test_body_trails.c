@@ -82,12 +82,35 @@ static void test_trails_keep_every_recorded_point_beyond_initial_capacity(void)
     body_trails_destroy(&trails);
 }
 
+static void test_trails_keep_full_run_endpoints_with_bounded_storage(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
+    BodyTrails trails = body_trails_create();
+    const size_t sample_count = SOLAR_TRAIL_MAX_POINTS * 3 + 7;
+
+    for (size_t i = 0; i < sample_count; ++i) {
+        system.bodies[3].position_m = (Vec3d){(double)i, 0.0, 0.0};
+        body_trails_record_system(&trails, &system);
+    }
+
+    assert(body_trails_point_count(&trails, 3) <= SOLAR_TRAIL_MAX_POINTS);
+    assert_vec3d_equal(body_trails_point_at(&trails, 3, 0), (Vec3d){0.0, 0.0, 0.0});
+    assert_vec3d_equal(
+        body_trails_point_at(&trails, 3, body_trails_point_count(&trails, 3) - 1),
+        (Vec3d){(double)(sample_count - 1), 0.0, 0.0}
+    );
+    assert(!body_trails_recording_failed(&trails));
+
+    body_trails_destroy(&trails);
+}
+
 int main(void)
 {
     test_trails_start_empty_for_all_body_slots();
     test_trails_record_planets_and_moons_but_not_stars();
     test_trails_append_new_positions_after_motion();
     test_trails_keep_every_recorded_point_beyond_initial_capacity();
+    test_trails_keep_full_run_endpoints_with_bounded_storage();
     puts("test_body_trails passed");
     return 0;
 }

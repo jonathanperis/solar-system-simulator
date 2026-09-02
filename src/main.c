@@ -122,6 +122,9 @@ static void solar_app_update_draw(void *user_data)
     DrawText(TextFormat("Focus: %s", focused_body_name), 20, 75, 18, RAYWHITE);
     DrawText(TextFormat("View: %s | Zoom: %.1f", renderer_scale_mode_label(app->render_mode), app->orbit_camera.distance), 20, 100, 18, RAYWHITE);
     DrawText("Tab/C: focus | V: scale | Wheel: zoom", 20, 125, 18, RAYWHITE);
+    if (body_trails_recording_failed(&app->trails)) {
+        DrawText("Trail recording paused: memory unavailable.", 20, 150, 18, RED);
+    }
 
     EndDrawing();
 }

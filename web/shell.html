@@ -250,7 +250,10 @@
         width: 100% !important;
         height: 100% !important;
         background: oklch(8% 0.055 278);
-        outline: none;
+      }
+      canvas.emscripten:focus-visible {
+        outline: 3px solid var(--sun);
+        outline-offset: -3px;
       }
       .runtime-log {
         display: grid;
@@ -358,7 +361,7 @@
 
         <section class="runtime-canvas-card">
           <div class="runtime-statusbar">
-            <div id="status" class="runtime-status">Downloading simulator…</div>
+            <div id="status" class="runtime-status" role="status" aria-live="polite">Downloading simulator…</div>
             <div class="runtime-controls" aria-label="Controls expose real simulator state">
               <span>Tab/C focus</span>
               <span>V scale</span>

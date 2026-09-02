@@ -93,7 +93,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
     <article>
       <p class="eyebrow">Illustration layer</p>
       <h2>The renderer paints a readable map</h2>
-      <p>Illustrative scale, readable moon spacing, labels, focus, and sampled trails are visual grammar, not physics mutations.</p>
+      <p>Illustrative scale, readable moon spacing, focus, and sampled trails are visual grammar, not physics mutations.</p>
       <a href={`${base}docs/simulation-core/`}>Trace the simulation core</a>
     </article>
   </section>
@@ -113,15 +113,15 @@ const base = normalizeBase(import.meta.env.BASE_URL);
     <div class="section-heading">
       <p class="eyebrow">Planet field guide</p>
       <h2 id="manifest-title">Eight implemented bodies, drawn clearly and documented calmly.</h2>
-      <p>Each implemented body carries identity and parent metadata so docs, renderer, labels, and tests talk about the same simulated object.</p>
+      <p>Each implemented body carries identity and parent metadata so docs, renderer, and tests talk about the same simulated object.</p>
     </div>
-    <div class="body-table body-table-specimens" role="table" aria-label="Implemented simulator bodies">
+    <div class="body-table body-table-specimens" aria-label="Implemented simulator bodies">
       {implementedBodies.map((body) => (
-        <a href={`${base}body-catalog/`} class={`body-row accent-${body.accent}`} role="row">
-          <strong role="cell">{body.name}</strong>
-          <span role="cell">{body.kind}</span>
-          <span role="cell">Parent: {body.parent}</span>
-          <em role="cell">{body.initialization}</em>
+        <a href={`${base}body-catalog/`} class={`body-row accent-${body.accent}`}>
+          <strong>{body.name}</strong>
+          <span>{body.kind}</span>
+          <span>Parent: {body.parent}</span>
+          <em>{body.initialization}</em>
         </a>
       ))}
     </div>
@@ -133,7 +133,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
       <h2 id="rough-edges-title">Precise, playful, unfinished in public.</h2>
     </div>
     <ul>
-      <li>Working now: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, focus cycling, zoom, scale modes, and full-run trail history.</li>
+      <li>Working now: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, focus cycling, zoom, scale modes, and bounded full-run trails.</li>
       <li>Still missing by choice: outer planets, textures, shaders, ephemeris-accurate state vectors, and barycentric Sun motion.</li>
       <li>Next additions stay scientific: one body or rendering improvement per iteration, with tests and docs updated beside the code.</li>
     </ul>

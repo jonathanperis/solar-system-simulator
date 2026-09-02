@@ -12,7 +12,6 @@ import DocsShell from '../../components/DocsShell.astro';
       <h2>Boundary files</h2>
       <ul class="check-list">
         <li><code>src/render/renderer.c</code> owns raylib drawing, render-scale conversion, body colors, and grid sizing.</li>
-        <li><code>src/app/body_labels.c</code> formats HUD labels and body names outside the physics model.</li>
         <li><code>src/app/body_trails.c</code> records persistent SI-unit trail history for non-star bodies.</li>
       </ul>
     </section>
@@ -25,7 +24,7 @@ import DocsShell from '../../components/DocsShell.astro';
 
     <section class="doc-panel">
       <h2>Reference grid and trails</h2>
-      <p>The ground grid expands from the farthest rendered body so later outer planets do not leave the reference frame behind. Trails are drawn as faint line segments before bodies, preserving motion history for the whole run.</p>
+      <p>The ground grid expands from the farthest rendered body so later outer planets do not leave the reference frame behind. Trails preserve their full-run visual span through bounded historical decimation and draw as faint line segments before bodies.</p>
     </section>
   </DocsShell>
 </BaseLayout>

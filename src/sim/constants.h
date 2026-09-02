@@ -3,6 +3,10 @@
 
 #include <math.h>
 
+/* Baseline physical values: NASA Planetary Fact Sheet and JPL Solar System
+ * Dynamics satellite parameters. They seed an educational model, not dated
+ * ephemerides; periapsis distances and vis-viva speeds below are derived. */
+
 #define SOLAR_G 6.67430e-11
 #define SOLAR_AU_METERS 149597870700.0
 #define SOLAR_DAY_SECONDS 86400.0

@@ -8,7 +8,7 @@ This project is intentionally physics-first. The renderer exists to show the sim
 
 ## Milestone 7: Foundation + Sun + Mercury + Venus + Earth + Moon + Mars + Phobos + Deimos
 
-The current milestone extends Mars with Phobos and Deimos as Mars-relative natural satellites. Additional planets, asteroids, dwarf planets, textures, shaders, labels, and visual polish are intentionally deferred to later iterations.
+The current milestone extends Mars with Phobos and Deimos as Mars-relative natural satellites. Additional planets, asteroids, dwarf planets, textures, shaders, and visual polish are intentionally deferred to later iterations.
 
 Current milestone behavior:
 
@@ -23,10 +23,10 @@ Current milestone behavior:
 - Initializes Phobos and Deimos at Mars-relative periareion with tangential relative velocities from the Mars-moon vis-viva equations.
 - Advances Mercury, Venus, Earth, the Moon, Mars, Phobos, and Deimos with Newtonian gravity from all simulated bodies using the shared simulation integrator.
 - Supports illustrative/default and real-scale visualization modes.
-- Draws persistent motion traces for every non-star body so Mercury, Venus, Earth, the Moon, Mars, Phobos, and Deimos leave visible paths as they move.
+- Draws bounded, persistent motion traces for every non-star body. Historical samples decimate as needed while preserving full-run visual span.
 - Allows camera focus cycling across every simulated body: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, and Deimos.
 - Clamps mouse-wheel camera zoom while preserving the default viewing pitch, so max zoom-in does not flip or corrupt the camera orientation.
-- Displays body count, elapsed simulation days, time scale, view mode, camera focus target, camera zoom, and render scale notes.
+- Displays elapsed simulation days, view mode, camera focus target, camera zoom, and controls.
 
 ## Physics model
 
@@ -118,7 +118,8 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 - Position scale: `1 AU = 10 render units`.
 - Physical radii remain real in simulation data.
 - Illustrative mode is the default: planets keep the previous large visible radius, while moons render smaller in proportion to Earth's physical radius with a small visible floor for tiny moons. Parent-relative moon offsets are expanded only in illustrative mode as needed so the large visual spheres remain readable without changing the underlying physics state.
-- Planet and moon traces keep every simulation position recorded during the run and are drawn before the bodies as faint colored line segments, so trails never extinguish while the app is running.
+- Planet and moon traces retain a decimated full-run span and are drawn before bodies as faint colored line segments.
+- Trail memory remains bounded: oldest samples are decimated when a trail reaches its point budget, preserving the first and newest points plus the full-run visual span.
 - The ground grid keeps a minimum readable square count and expands from the farthest rendered body, so Mars and later outer planets do not outgrow the visible reference grid.
 - Real-scale mode uses the same physical render scale for both positions and radii with no radius clamp. Planets may be nearly invisible in this mode; that is physically expected at solar-system scale.
 
