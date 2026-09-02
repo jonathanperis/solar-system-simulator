@@ -1,0 +1,272 @@
+---
+import { implementedBodies } from '../lib/bodies';
+import { normalizeBase } from '../lib/base';
+
+const base = normalizeBase(import.meta.env.BASE_URL);
+const plates = [
+  { id: 'heliocentric', label: 'Heliocentric', detail: 'Sun-centered reference plate' },
+  { id: 'earth', label: 'Earth system', detail: 'Earth-relative reference plate' },
+  { id: 'mars', label: 'Mars system', detail: 'Mars-relative reference plate' }
+] as const;
+
+const chartPosition = (angle: number, radius: number) => {
+  const radians = (angle - 90) * Math.PI / 180;
+  const distance = radius * 0.43;
+  return `left: ${50 + Math.cos(radians) * distance}%; top: ${50 + Math.sin(radians) * distance}%;`;
+};
+---
+<section class="orbital-atlas" aria-labelledby="atlas-title" data-orbital-atlas data-base={base}>
+  <div class="atlas-copy">
+    <p class="eyebrow">Field plate 01 / illustrative index</p>
+    <h1 id="atlas-title">A solar system, drawn for inspection.</h1>
+    <p>
+      Nine implemented bodies. Select a marker to read its model note, then open the real C11/raylib runtime for live motion.
+    </p>
+    <p class="atlas-hint">Select a body. Drag chart. Use <kbd>Left</kbd> <kbd>Right</kbd> to step markers.</p>
+  </div>
+
+  <div class="atlas-tools" aria-label="Atlas actions">
+    <a class="atlas-launch" href={`${base}wasm/solar-system-simulator.html`}>Run live simulator</a>
+    <a class="atlas-source" href={`${base}source-atlas/`}>Read source atlas</a>
+  </div>
+
+  <div class="atlas-plate-tabs" role="group" aria-label="Reference plates">
+    {plates.map((plate, index) => (
+      <button
+        type="button"
+        class="atlas-plate-tab"
+        data-atlas-plate-tab={plate.id}
+        aria-pressed={index === 0 ? 'true' : 'false'}
+      >
+        <span>{String(index + 1).padStart(2, '0')}</span>{plate.label}
+      </button>
+    ))}
+  </div>
+
+  <div class="atlas-stage" data-atlas-stage tabindex="0" aria-label="Interactive illustrative solar-system chart">
+    <div class="atlas-engraving" aria-hidden="true">
+      <span class="atlas-coordinate atlas-coordinate-x">right ascension</span>
+      <span class="atlas-coordinate atlas-coordinate-y">declination</span>
+      <span class="atlas-figure">fig. i / scale and positions illustrative</span>
+    </div>
+
+    {plates.map((plate) => (
+      <section class="atlas-plate" data-atlas-plate={plate.id} hidden={plate.id !== 'heliocentric'} aria-label={plate.detail}>
+        <svg class="atlas-orbits" viewBox="0 0 1000 1000" aria-hidden="true">
+          <g class="atlas-grid-lines">
+            <path d="M0 500H1000M500 0V1000" />
+            <path d="M90 90L910 910M910 90L90 910" />
+          </g>
+          <g class="atlas-orbit-lines">
+            {plate.id === 'heliocentric' && <>
+              <ellipse cx="500" cy="500" rx="122" ry="98" />
+              <ellipse cx="500" cy="500" rx="210" ry="167" />
+              <ellipse cx="500" cy="500" rx="304" ry="240" />
+              <ellipse cx="500" cy="500" rx="386" ry="306" />
+              <ellipse cx="500" cy="500" rx="456" ry="359" />
+            </>}
+            {plate.id === 'earth' && <>
+              <circle cx="500" cy="500" r="196" />
+              <circle cx="500" cy="500" r="314" stroke-dasharray="3 12" />
+            </>}
+            {plate.id === 'mars' && <>
+              <ellipse cx="500" cy="500" rx="140" ry="116" />
+              <ellipse cx="500" cy="500" rx="286" ry="236" />
+              <circle cx="500" cy="500" r="392" stroke-dasharray="3 12" />
+            </>}
+          </g>
+          <g class="atlas-plate-labels">
+            <text x="500" y="78" text-anchor="middle">{plate.detail}</text>
+            <text x="500" y="942" text-anchor="middle">positions are a readable chart index, not an ephemeris</text>
+          </g>
+        </svg>
+
+        <div class="atlas-arm" aria-hidden="true" data-atlas-arm>
+          <span></span>
+          <i></i>
+        </div>
+
+        {implementedBodies.filter((body) => body.chart.plate === plate.id).map((body) => (
+          <a
+            class={`atlas-body atlas-body-${body.accent}`}
+            href={`${base}body-catalog/#${body.slug}`}
+            style={chartPosition(body.chart.angle, body.chart.radius)}
+            data-atlas-body
+            data-slug={body.slug}
+            data-plate={body.chart.plate}
+            data-angle={body.chart.angle}
+            aria-controls="atlas-note"
+            aria-current={body.slug === 'sun' ? 'true' : undefined}
+          >
+            <span class="atlas-body-orb"></span>
+            <span class="atlas-body-label">{body.name}</span>
+          </a>
+        ))}
+      </section>
+    ))}
+  </div>
+
+  <div class="atlas-bearing-control">
+    <label for="atlas-bearing">Observation bearing</label>
+    <input id="atlas-bearing" data-atlas-bearing type="range" min="0" max="359" value="0" />
+    <output data-atlas-bearing-output>000 degrees</output>
+  </div>
+
+  <noscript>
+    <nav class="atlas-nojs" aria-label="Implemented body catalog">
+      <strong>Implemented bodies</strong>
+      {implementedBodies.map((body) => <a href={`${base}body-catalog/#${body.slug}`}>{body.name}</a>)}
+    </nav>
+  </noscript>
+
+  <aside id="atlas-note" class="atlas-note" data-atlas-note hidden aria-live="polite" aria-label="Selected body detail">
+    <button type="button" class="atlas-note-close" data-atlas-close aria-label="Close body detail">Close</button>
+    <p class="eyebrow" data-atlas-kind></p>
+    <h2 data-atlas-name></h2>
+    <p class="atlas-note-summary" data-atlas-summary></p>
+    <dl>
+      <div><dt>Parent</dt><dd data-atlas-parent></dd></div>
+      <div><dt>Milestone</dt><dd data-atlas-milestone></dd></div>
+      <div><dt>Seed state</dt><dd data-atlas-initialization></dd></div>
+      <div><dt>Source</dt><dd><code data-atlas-source></code></dd></div>
+    </dl>
+    <div class="atlas-note-actions">
+      <a data-atlas-catalog href={`${base}body-catalog/`}>Open catalog</a>
+      <button type="button" data-atlas-previous>Previous</button>
+      <button type="button" data-atlas-next>Next</button>
+    </div>
+  </aside>
+
+  <p class="atlas-status" role="status" aria-live="polite" data-atlas-status>Heliocentric plate. Sun selected.</p>
+</section>
+
+<script>
+  import { cycleIndex, nearestBodyIndex } from '../lib/orbitalAtlas';
+  import { implementedBodies, type ImplementedBody } from '../lib/bodies';
+
+  type Plate = ImplementedBody['chart']['plate'];
+  const atlas = document.querySelector<HTMLElement>('[data-orbital-atlas]');
+
+  if (atlas) {
+    const stage = atlas.querySelector<HTMLElement>('[data-atlas-stage]')!;
+    const note = atlas.querySelector<HTMLElement>('[data-atlas-note]')!;
+    const bodyLinks = [...atlas.querySelectorAll<HTMLAnchorElement>('[data-atlas-body]')];
+    const plates = [...atlas.querySelectorAll<HTMLElement>('[data-atlas-plate]')];
+    const plateTabs = [...atlas.querySelectorAll<HTMLButtonElement>('[data-atlas-plate-tab]')];
+    const bearingInput = atlas.querySelector<HTMLInputElement>('[data-atlas-bearing]')!;
+    const bearingOutput = atlas.querySelector<HTMLOutputElement>('[data-atlas-bearing-output]')!;
+    const status = atlas.querySelector<HTMLElement>('[data-atlas-status]')!;
+    const fields = {
+      kind: atlas.querySelector<HTMLElement>('[data-atlas-kind]')!,
+      name: atlas.querySelector<HTMLElement>('[data-atlas-name]')!,
+      summary: atlas.querySelector<HTMLElement>('[data-atlas-summary]')!,
+      parent: atlas.querySelector<HTMLElement>('[data-atlas-parent]')!,
+      milestone: atlas.querySelector<HTMLElement>('[data-atlas-milestone]')!,
+      initialization: atlas.querySelector<HTMLElement>('[data-atlas-initialization]')!,
+      source: atlas.querySelector<HTMLElement>('[data-atlas-source]')!,
+      catalog: atlas.querySelector<HTMLAnchorElement>('[data-atlas-catalog]')!
+    };
+    let activePlate: Plate = 'heliocentric';
+    let selectedSlug = 'sun';
+    let invokingLink: HTMLAnchorElement | null = null;
+    let dragging = false;
+
+    const currentBodies = (): ImplementedBody[] => implementedBodies.filter((body) => body.chart.plate === activePlate);
+    const selectedBody = (): ImplementedBody => implementedBodies.find((body) => body.slug === selectedSlug) ?? implementedBodies[0];
+    const bodyLink = (slug: string): HTMLAnchorElement | undefined => bodyLinks.find((link) => link.dataset.slug === slug);
+    const restoreFocus = (): void => (invokingLink ?? bodyLink(selectedSlug))?.focus();
+
+    const setBearing = (value: number | string): void => {
+      const bearing = Math.round(Number(value));
+      atlas.style.setProperty('--atlas-bearing', `${bearing}deg`);
+      bearingInput.value = String(bearing);
+      bearingOutput.value = `${String(bearing).padStart(3, '0')} degrees`;
+      bearingOutput.textContent = bearingOutput.value;
+    };
+
+    const populateNote = (body: ImplementedBody): void => {
+      fields.kind.textContent = `${body.kind} / ${body.parent === 'None' ? 'origin anchor' : `${body.parent}-relative catalog`}`;
+      fields.name.textContent = body.name;
+      fields.summary.textContent = body.summary;
+      fields.parent.textContent = body.parent;
+      fields.milestone.textContent = body.milestone;
+      fields.initialization.textContent = body.initialization;
+      fields.source.textContent = body.source;
+      fields.catalog.href = `${atlas.dataset.base}body-catalog/#${body.slug}`;
+    };
+
+    const selectBody = (slug: string, openNote = true, focusBody = false): void => {
+      const body = implementedBodies.find((item) => item.slug === slug);
+      if (!body) return;
+      if (body.chart.plate !== activePlate) setPlate(body.chart.plate, false);
+      selectedSlug = body.slug;
+      bodyLinks.forEach((link) => link.removeAttribute('aria-current'));
+      const link = bodyLink(body.slug);
+      link?.setAttribute('aria-current', 'true');
+      setBearing(body.chart.angle);
+      populateNote(body);
+      note.hidden = !openNote;
+      status.textContent = `${body.name} selected. ${body.summary}`;
+      if (focusBody) link?.focus();
+    };
+
+    const setPlate = (plate: Plate, retainSelection = true): void => {
+      activePlate = plate;
+      plates.forEach((element) => { element.hidden = element.dataset.atlasPlate !== plate; });
+      plateTabs.forEach((tab) => { tab.setAttribute('aria-pressed', String(tab.dataset.atlasPlateTab === plate)); });
+      const current = selectedBody();
+      if (!retainSelection || current.chart.plate !== plate) selectBody(currentBodies()[0].slug, false);
+      status.textContent = `${plateTabs.find((tab) => tab.dataset.atlasPlateTab === plate)?.textContent?.trim()} plate selected.`;
+    };
+
+    const stepBody = (direction: number): void => {
+      const bodies = currentBodies();
+      const index = bodies.findIndex((body) => body.slug === selectedSlug);
+      selectBody(bodies[cycleIndex(index, direction, bodies.length)].slug, true, true);
+    };
+
+    const selectNearestAtPointer = (event: PointerEvent): void => {
+      const rect = stage.getBoundingClientRect();
+      const degrees = Math.atan2(event.clientY - rect.top - rect.height / 2, event.clientX - rect.left - rect.width / 2) * 180 / Math.PI + 90;
+      const bodies = currentBodies();
+      const index = nearestBodyIndex(bodies.map((body) => ({ chartAngle: body.chart.angle })), degrees);
+      setBearing(degrees);
+      selectBody(bodies[index].slug, true);
+    };
+
+    bodyLinks.forEach((link) => link.addEventListener('click', (event) => {
+      event.preventDefault();
+      invokingLink = link;
+      selectBody(link.dataset.slug!, true);
+    }));
+    plateTabs.forEach((tab) => tab.addEventListener('click', () => setPlate(tab.dataset.atlasPlateTab as Plate, false)));
+    bearingInput.addEventListener('input', () => {
+      setBearing(bearingInput.value);
+      const bodies = currentBodies();
+      selectBody(bodies[nearestBodyIndex(bodies.map((body) => ({ chartAngle: body.chart.angle })), Number(bearingInput.value))].slug, true);
+    });
+    stage.addEventListener('pointerdown', (event) => { dragging = true; stage.setPointerCapture(event.pointerId); selectNearestAtPointer(event); });
+    stage.addEventListener('pointermove', (event) => { if (dragging) selectNearestAtPointer(event); });
+    stage.addEventListener('pointerup', () => { dragging = false; });
+    stage.addEventListener('wheel', (event) => {
+      event.preventDefault();
+      const index = plates.findIndex((plate) => plate.dataset.atlasPlate === activePlate);
+      const direction = event.deltaY > 0 ? 1 : -1;
+      setPlate(plates[cycleIndex(index, direction, plates.length)].dataset.atlasPlate as Plate, false);
+    }, { passive: false });
+    stage.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        stepBody(event.key === 'ArrowRight' ? 1 : -1);
+      }
+      if (event.key === 'Escape' && !note.hidden) {
+        note.hidden = true;
+        restoreFocus();
+      }
+    });
+    atlas.querySelector<HTMLButtonElement>('[data-atlas-close]')!.addEventListener('click', () => { note.hidden = true; restoreFocus(); });
+    atlas.querySelector<HTMLButtonElement>('[data-atlas-previous]')!.addEventListener('click', () => stepBody(-1));
+    atlas.querySelector<HTMLButtonElement>('[data-atlas-next]')!.addEventListener('click', () => stepBody(1));
+    selectBody('sun', false);
+  }
+</script>

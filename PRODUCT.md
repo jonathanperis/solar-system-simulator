@@ -35,7 +35,7 @@ Solar System Simulator is a learning-first, physics-first C11 + raylib project t
 ## Tone and voice
 
 - Precise, patient, educational, and scientifically playful.
-- The current public-site voice is a calmer illustrated cosmic cockpit: friendly, adventurous, and science-club curious without oversized toy-like weight.
+- Public-site voice is archival, precise, and quietly playful: an illustrated solar chart that points learners to inspectable source and SI physics.
 - Use playful labels when they clarify navigation, then ground claims in source-backed facts.
 - Prefer grounded explanations over hype.
 
@@ -53,4 +53,4 @@ Solar System Simulator is a learning-first, physics-first C11 + raylib project t
 - Simulation: Newtonian N-body baseline with velocity-Verlet / kick-drift-kick stepping.
 - Bodies: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta.
 - Tests: C test binaries for vector math, physics, scene initialization, orbit camera, trails, and renderer helpers.
-- Public site: Astro static GitHub Pages docs with a base-path-safe illustrated WebAssembly cockpit, Super-Mango-inspired orbit manual docs hub, source atlas, physics notes, body catalog, pipeline docs, footer credits, and route smoke checks.
+- Public site: Astro static GitHub Pages atlas with a base-path-safe WebAssembly runtime, field-guide docs, source atlas, physics notes, body catalog, pipeline docs, footer credits, and route smoke checks.

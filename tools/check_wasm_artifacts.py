@@ -30,13 +30,14 @@ def main() -> int:
     main_text = (repo_root / "src" / "main.c").read_text(encoding="utf-8")
 
     expected_html = [
-        "Orbit cockpit runtime",
+        "Orbital atlas runtime",
         "Solar System Simulator WebAssembly runtime",
         "favicon.ico",
         "Launch-ready C/raylib canvas",
         "Static renderer notes now shown on the page",
         "Renderer behavior",
         "Responsive frame",
+        "full-run visual span through bounded historical decimation",
         "role=\"status\"",
         "aria-live=\"polite\"",
         "canvas.emscripten:focus-visible",

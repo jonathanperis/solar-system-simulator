@@ -21,15 +21,16 @@ BASE_PATH = "/solar-system-simulator/"
 
 ROUTES: dict[str, list[str]] = {
     "index.html": [
-        "Discover the solar system in motion",
+        "A solar system, drawn for inspection",
         "favicon.ico",
         "data-footer-credits",
         "Jonathan Peris",
-        "Illustrated worlds, source-backed orbits, no fake capabilities",
+        "data-orbital-atlas",
+        "Heliocentric",
+        "Earth system",
+        "Mars system",
         "wasm/solar-system-simulator.html",
-        "Dedicated WASM cockpit",
-        "Source references",
-        "Precise, playful, unfinished in public",
+        "Run live simulator",
     ],
     "physics/index.html": ["Physics stays in SI units", "docs/simulation-core/", "data-footer-credits"],
     "body-catalog/index.html": ["Stable IDs prevent duplicate knowledge", "docs/roadmap/", "Phobos", "Deimos", "Vesta", "JPL SBDB solution 36"],
@@ -45,6 +46,7 @@ ROUTES: dict[str, list[str]] = {
 }
 
 FOOTER_MARKERS = ["data-footer-credits", "Jonathan Peris", "raylib", "Emscripten", "Astro", "GitHub Pages"]
+ATLAS_BODY_ANCHORS = ["sun", "mercury", "venus", "earth", "moon", "mars", "phobos", "deimos", "vesta"]
 
 
 class ReferenceParser(HTMLParser):
@@ -126,6 +128,10 @@ def main(argv: list[str]) -> int:
             fail(f"{route} missing keyboard skip link")
         if route == "index.html" and "role=\"table\"" in html:
             fail("index.html uses invalid presentational table roles")
+        if route == "index.html":
+            for slug in ATLAS_BODY_ANCHORS:
+                if f"body-catalog/#{slug}" not in html:
+                    fail(f"index.html missing no-JS body catalog fallback: {slug}")
         if analytics_id and analytics_id not in html:
             fail(f"{route} missing configured analytics ID")
         if not analytics_id and "googletagmanager.com/gtag/js" in html:
@@ -139,11 +145,12 @@ def main(argv: list[str]) -> int:
         fail("missing copied WebAssembly HTML artifact")
 
     wasm_markers = [
-        "Orbit cockpit runtime",
+        "Orbital atlas runtime",
         "Launch-ready C/raylib canvas",
         "Static renderer notes now shown on the page",
         "Renderer behavior",
         "Controls expose real simulator state",
+        "full-run visual span through bounded historical decimation",
     ]
     wasm_html = wasm.read_text(encoding="utf-8", errors="replace")
     for marker in wasm_markers:

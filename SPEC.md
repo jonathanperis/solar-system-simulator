@@ -20,7 +20,7 @@ C6: new behavior tests RED before implementation.
 
 C7: GitHub Pages static output under `/solar-system-simulator/`; no SSR-only surface.
 
-C8: public site follows softened illustrated cosmic cockpit direction in `DESIGN.md`.
+C8: public site follows archival solar-chart direction in `DESIGN.md`.
 
 C9: current renderer baseline stays simple after beauty-pass rollback; no resurrection without explicit task.
 
@@ -39,6 +39,8 @@ I.web: `make web` → checked HTML + JS + WASM
 I.dist: `make dist-wasm` → WASM zip
 
 I.docs: `make docs-check` → generated route checks
+
+I.atlas: homepage static SVG/DOM atlas; plate/body selection reachable by pointer, keyboard, touch
 
 I.sim: `SolarSystem`, `Body`, `solar_system_create_*`, `solar_system_step`
 
@@ -99,6 +101,10 @@ V18: keyboard focus always visible; runtime status announces changes; interactiv
 
 V19: checked WASM begins `\0asm\1\0\0\0`; docs checker resolves all internal routes/assets under configured base path.
 
+V20: atlas visual scale/positions are explicitly illustrative; body names, parents, initialization, sources derive from `implementedBodies`; live motion claims link only to WASM runtime.
+
+V21: atlas selection works without pointer; body controls expose selected state, drawer closes on `Escape`, focus returns to invoking body, reduced-motion suppresses ornamental motion.
+
 ## §T
 
 id|status|task|cites
@@ -128,6 +134,7 @@ T23|x|align README/site claims with runtime; remove dead label surface; add cons
 T24|x|harden docs/WASM checks + premerge docs gate; add build provenance|V13,V14,V16,V19,I.docs,I.ci
 T25|x|fix docs/runtime accessibility, metadata, deploy-only analytics disclosure|C7,C8,V17,V18
 T26|x|refresh docs dependency tree; add Dependabot coverage|C7,V16,I.ci
+T27|x|ship archival solar-chart atlas: full-screen accessible homepage plates, source-backed body drawer, engraved route system, matched WASM frame, route/check coverage|C7,C8,V13,V16,V18,V20,V21,I.atlas,I.pages,I.web
 
 ## §B
 
@@ -139,3 +146,5 @@ B4|2026-06-25|CSS canvas frame ≠ hardcoded `InitWindow(1280,720)` → gutters|
 B5|2026-06-25|renderer beauty pass broke expected scene/viewport → rollback|V10,V12
 B6|2026-09-02|unbounded full-sample trails + draw cap too high → long-run memory/frame-cost growth|V9
 B7|2026-09-02|public docs claimed easing, HUD labels, WASM magic check absent from code|V16,V19
+B8|2026-09-02|WASM copy claimed unbounded trail history despite bounded decimation|V9,V16
+B9|2026-09-02|atlas client selectors lacked typed DOM bindings|V21
