@@ -32,7 +32,7 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Download WebAssembly artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: solar-system-simulator-wasm
           path: docs/public/wasm
