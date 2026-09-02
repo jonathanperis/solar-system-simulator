@@ -36,7 +36,7 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://jonathanperis.github.i
     <link rel="stylesheet" href={`${base}styles/global.css`} />
     <Analytics />
   </head>
-  <body>
+  <body class={pageTitle ? 'secondary-page' : undefined}>
     <a class="skip-link" href="#main-content">Skip to content</a>
     <div class="stars" aria-hidden="true"></div>
     <div class="orbital-grid" aria-hidden="true"></div>
