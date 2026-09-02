@@ -4,7 +4,7 @@ import { normalizeBase } from '../lib/base';
 
 const rawBase = import.meta.env.BASE_URL;
 const base = normalizeBase(rawBase);
-const { title, eyebrow = 'Orbit manual', lede } = Astro.props;
+const { title, eyebrow = 'Orbital field guide', lede } = Astro.props;
 const currentPath = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
 const hrefFor = (href: string) => withBase(base, href);
 const isActive = (href: string) => currentPath === hrefFor(href) || currentPath.endsWith(`/${href}`);
@@ -15,7 +15,7 @@ const isActive = (href: string) => currentPath === hrefFor(href) || currentPath.
       <span>SS</span>
       <strong>ORBIT MANUAL</strong>
     </a>
-    <p class="docs-sidebar-copy">Filter the orbit cockpit manual: physics, rendering, controls, web build, and next bodies without one giant scroll.</p>
+    <p class="docs-sidebar-copy">Filter the orbital field guide: physics, rendering, controls, web build, and next bodies.</p>
 
     <label class="docs-filter-label" for="docs-route-filter">Filter pages</label>
     <input id="docs-route-filter" class="docs-filter" type="search" placeholder={`Filter all ${docsRoutes.length} orbit routes`} data-doc-filter />

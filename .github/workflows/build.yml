@@ -125,6 +125,10 @@ jobs:
         working-directory: docs
         run: npm ci
 
+      - name: Run atlas interaction tests
+        working-directory: docs
+        run: npm run test
+
       - name: Build docs site
         working-directory: docs
         env:

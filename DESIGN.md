@@ -2,68 +2,55 @@
 
 ## Visual direction
 
-Theme the public site as a **softened illustrated cosmic cockpit**: a bright, rounded space playground wrapped around the real C11 + raylib simulator, now lowered from toy-like weight into a calmer science-club interface. The art direction keeps illustrated planets, orbit cards, friendly astronauts, and purple/blue/gold/cyan color, but uses slimmer outlines, smaller type, quieter shadows, and fewer decal effects.
+Public site is an **archival solar chart**: cream paper, ink navy, brass rules, engraved orbit geometry, editorial serif type. It feels like a maintained astronomical atlas, not a cockpit, dashboard, or space screensaver.
 
-Physical scene: a curious learner opens a weekend science-club web toy on a laptop. It feels like an illustrated space lab, but every panel still points back to source files, SI units, tests, and the browser WebAssembly artifact.
+Homepage is a full-screen interactive orrery. It indexes real catalog metadata with illustrative position and scale. Live motion belongs only to browser WASM runtime.
 
 ## Palette
 
-Use OKLCH tokens in CSS rather than raw hex for the site surface.
-
-- Outer world: vibrant but softened purple-to-blue page gradient.
-- Hero shell: deep violet space card with softened cream outlines and compact shadows.
-- Action accents: solar gold, moon orange, orbital cyan, mint green, star pink, and Mars red.
-- Text: warm cream and pale lavender; never pure white.
-- Lines: restrained illustrated outlines on primary cards and buttons, softer cream orbit rings in the background.
-
-This is a full-palette illustrated science identity, not the rejected technical-instrument direction and not a generic NASA dashboard.
+- Paper: warm cream with faint grain and chart grid.
+- Ink: near-black navy for text, rules, and orbit lines.
+- Brass: selected body, controls, measurement marks, and action emphasis.
+- Planet color: restrained mineral pigments; no neon or generic galaxy fog.
+- Use OKLCH tokens in CSS.
 
 ## Typography
 
-- Headings: friendly rounded sans, currently Nunito, sized large but no longer poster-scale.
-- Body: friendly readable sans, currently Nunito, for explanatory notes.
-- Measurements/code: JetBrains Mono for formulas, file paths, constants, and telemetry because those values are actual program facts.
+- Headings/body: editorial serif, Cormorant Garamond fallback Georgia.
+- Measurements/code: JetBrains Mono fallback monospace.
+- Labels: small caps or spaced mono only when information-dense.
 
-## Components for GitHub Pages
+## Components
 
-1. **Hero / cosmic cockpit**
-   - Project promise, “Launch simulator” action, docs/source actions, and status chips.
-   - The hero should feel like a self-contained illustrated poster inside a rounded app window.
+1. **Orbital atlas**
+   - Full-screen SVG/DOM chart with heliocentric, Earth-relative, Mars-relative plates.
+   - Each body is a semantic button and supports pointer, keyboard, touch, and no-JS catalog fallback.
+   - Brass observation arm may select nearest body. It never claims physical orbital state.
 
-2. **Illustrated orbit playground**
-   - Inline SVG illustration with clean Sun, planets, orbit paths, sparkles, and a tiny astronaut mechanic.
-   - Must state that it is a playful map, not a physical scale poster.
+2. **Liner-note drawer**
+   - Selected body: kind, parent, initialization, milestone, source path, catalog route.
+   - Desktop side drawer; mobile bottom sheet.
 
-3. **WASM viewport and standalone runtime**
-   - Embedded canvas with boot status, full-demo link, and control summary.
-   - The standalone `/wasm/solar-system-simulator.html` page should share the cosmic cockpit frame, show runtime diagnostics, expose controls, and link back to docs/source instead of looking like an unstyled generated shell.
-   - Base-path-safe asset loading for GitHub Pages (`/solar-system-simulator/`).
+3. **Field-guide routes**
+   - Existing routes stay static and scrollable.
+   - Docs are readable field sheets. Physics, source, bodies, and pipeline retain source-backed claims.
 
-4. **Docs manual structure**
-   - `/docs/` should behave like a compact orbit manual: sticky sidebar, filterable route list, grouped manual cards, route counts, and a full index.
-   - Keep Super Mango's service-manual information architecture idea, but translate it into the illustrated cosmic cockpit palette and physics wording.
-
-5. **Physics boundary panels**
-   - Pair the serious physics engine with the illustrated presentation layer.
-   - Keep source paths and formulas visible so the design does not become decorative fluff.
-
-6. **Planet field guide**
-   - Implemented bodies appear as colorful, clickable rows with parent and initialization metadata.
-
-7. **Source evidence ledger**
-   - Link every major claim to docs or source paths.
-   - Prefer proof rows and route matrices over generic feature claims.
+4. **WASM runtime**
+   - Archival frame and real loading/error state around unchanged raylib canvas.
+   - Canvas remains dark renderer output; no page CSS mutates physics or renderer behavior.
 
 ## Interaction principles
 
-- The site should feel clickable and joyful before it explains every detail.
-- Illustrated visuals must invite exploration, then nearby copy must name the real physics boundary.
-- Motion is light and floaty: stars twinkle, planets drift, astronaut floats, reduced-motion respected.
-- Loading states stay explicit; a blank canvas is a bug.
-- Preserve accessible contrast on saturated dark backgrounds.
+- Body selection: click/tap, `Left`/`Right`, previous/next controls.
+- Plate selection: visible buttons; wheel changes plate only while atlas focused.
+- `Escape` closes detail drawer and restores focus to invoking body.
+- `prefers-reduced-motion` removes ornamental transitions/rotation.
+- Empty canvas/loading state never unexplained.
+- Decorative SVG is `aria-hidden`; interaction uses valid buttons and linked fallbacks.
 
-## Comment and documentation style
+## Boundaries
 
-- Comments should answer: **what physical idea is this implementing? what units are expected? what approximation is being made?**
-- Avoid line-by-line comments for obvious assignments.
-- Public docs can be more explanatory than source comments; code comments should stay maintainable and close to tricky logic.
+- Chart scale, positions, orbit geometry, and body pigments are illustrative; label this in UI.
+- Names, kinds, parents, initialization, milestone, source derive from `docs/src/lib/bodies.ts`.
+- SI state, integrator, renderer transforms, and runtime controls remain source-backed.
+- Do not add Three.js, p5.js, GSAP, shaders, textures, or asset system for site atlas.

@@ -9,11 +9,11 @@ const totalRoutes = docsRoutes.length;
 const firstRoute = docsRoutes.find((route) => route.href === 'docs/architecture/') ?? docsRoutes[0];
 const wasmRoute = withBase(base, 'wasm/solar-system-simulator.html');
 ---
-<BaseLayout title="Orbit manual">
+<BaseLayout title="Orbital field guide">
   <DocsShell
-    eyebrow="Orbit manual / cosmic cockpit"
+    eyebrow="Orbital field guide / source atlas"
     title="Trace every orbit wire without one giant scroll."
-    lede="Use the docs like a service bay for the simulator cockpit: start with source boundaries, inspect gravity and rendering, then verify controls, WebAssembly, and the roadmap."
+    lede="Read the atlas as a field guide: start with source boundaries, inspect gravity and rendering, then verify controls, WebAssembly, and the roadmap."
   >
     <section class="manual-hero" aria-label="Orbit manual summary">
       <div class="manual-hero-copy">
@@ -30,7 +30,7 @@ const wasmRoute = withBase(base, 'wasm/solar-system-simulator.html');
         </div>
         <div class="manual-actions" aria-label="Primary manual actions">
           <a class="button" href={withBase(base, firstRoute.href)}>Start with architecture</a>
-          <a class="button button-secondary" href={wasmRoute}>Launch WASM cockpit</a>
+          <a class="button button-secondary" href={wasmRoute}>Open WASM field station</a>
         </div>
       </div>
       <aside class="manual-stats" aria-label="Documentation stats">

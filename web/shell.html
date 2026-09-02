@@ -7,23 +7,24 @@
     <link rel="icon" href="../favicon.ico" sizes="any" />
     <style>
       :root {
-        color-scheme: dark;
-        font-family: "Nunito", "Trebuchet MS", system-ui, sans-serif;
-        --space: oklch(13% 0.07 277);
-        --space-deep: oklch(8% 0.055 278);
-        --space-soft: oklch(20% 0.075 284 / 0.92);
-        --cream: oklch(96% 0.022 88);
-        --muted: oklch(82% 0.045 266);
-        --muted-dim: oklch(70% 0.055 272);
-        --comic-ink: oklch(13% 0.06 276);
-        --sun: oklch(82% 0.135 82);
-        --orange: oklch(70% 0.14 47);
-        --pink: oklch(64% 0.16 342);
-        --cyan: oklch(78% 0.115 198);
-        --mint: oklch(78% 0.12 154);
-        --outline: oklch(96% 0.022 88 / 0.86);
-        --outline-soft: oklch(96% 0.022 88 / 0.34);
-        --shadow-pop: 0 0.55rem 0 oklch(8% 0.055 278 / 0.38);
+        color-scheme: light;
+        font-family: Georgia, serif;
+        --space: oklch(22% 0.055 258);
+        --space-deep: oklch(15% 0.045 258);
+        --space-soft: oklch(25% 0.05 258 / 0.92);
+        --cream: oklch(96% 0.018 88);
+        --paper: oklch(91% 0.028 83);
+        --muted: oklch(36% 0.04 257);
+        --muted-dim: oklch(46% 0.038 257);
+        --comic-ink: oklch(22% 0.055 258);
+        --sun: oklch(63% 0.085 76);
+        --orange: oklch(67% 0.075 76);
+        --pink: oklch(48% 0.06 258);
+        --cyan: oklch(72% 0.05 82);
+        --mint: oklch(78% 0.04 92);
+        --outline: oklch(22% 0.055 258 / 0.55);
+        --outline-soft: oklch(22% 0.055 258 / 0.22);
+        --shadow-pop: 0 0.4rem 0 oklch(30% 0.035 258 / 0.18);
       }
 
       * { box-sizing: border-box; }
@@ -31,11 +32,12 @@
       body {
         margin: 0;
         min-height: 100vh;
-        color: var(--cream);
+        color: var(--comic-ink);
         background:
-          radial-gradient(circle at 12% 18%, oklch(86% 0.18 80 / 0.18), transparent 16rem),
-          radial-gradient(circle at 88% 8%, oklch(82% 0.16 198 / 0.18), transparent 18rem),
-          linear-gradient(150deg, oklch(56% 0.18 289), oklch(62% 0.17 248) 54%, oklch(30% 0.14 276));
+          linear-gradient(oklch(22% 0.055 258 / 0.1) 1px, transparent 1px),
+          linear-gradient(90deg, oklch(22% 0.055 258 / 0.1) 1px, transparent 1px),
+          var(--paper);
+        background-size: 3rem 3rem, 3rem 3rem, auto;
         overflow-x: hidden;
       }
       body::before {
@@ -44,11 +46,9 @@
         inset: 0;
         pointer-events: none;
         background:
-          radial-gradient(circle, oklch(96% 0.03 88 / 0.35) 1px, transparent 1.8px),
-          radial-gradient(circle, oklch(86% 0.18 80 / 0.32) 1.3px, transparent 2.3px),
-          radial-gradient(circle at 50% 110%, oklch(8% 0.055 278 / 0.48), transparent 42rem);
-        background-size: 64px 64px, 143px 143px, auto;
-        mix-blend-mode: screen;
+          radial-gradient(circle, oklch(22% 0.055 258 / 0.12) 0.65px, transparent 0.8px),
+          radial-gradient(circle at 50% 110%, oklch(63% 0.085 76 / 0.13), transparent 42rem);
+        background-size: 0.34rem 0.34rem, auto;
       }
       a { color: inherit; }
       .runtime-shell {
@@ -61,11 +61,11 @@
       .runtime-frame {
         display: grid;
         gap: 1rem;
-        border: 2px solid var(--outline);
-        border-radius: 1.35rem;
+        border: 1px solid var(--outline);
+        border-radius: 0;
         background:
-          radial-gradient(circle at 8% 0%, oklch(86% 0.18 80 / 0.24), transparent 18rem),
-          linear-gradient(145deg, oklch(14% 0.08 278 / 0.96), oklch(24% 0.13 300 / 0.96));
+          radial-gradient(circle at 8% 0%, oklch(63% 0.085 76 / 0.12), transparent 18rem),
+          oklch(96% 0.018 88 / 0.68);
         box-shadow: var(--shadow-pop), 0 1.4rem 3.2rem oklch(8% 0.055 278 / 0.3);
         padding: clamp(0.85rem, 2vw, 1.35rem);
         overflow: hidden;
@@ -83,7 +83,7 @@
         align-items: center;
         gap: 0.7rem;
         text-decoration: none;
-        font-family: "Nunito", system-ui, sans-serif;
+        font-family: Georgia, serif;
         font-weight: 800;
         letter-spacing: 0.02em;
       }
@@ -112,9 +112,9 @@
       .runtime-status {
         border: 1px solid var(--outline-soft);
         border-radius: 999px;
-        background: oklch(10% 0.06 278 / 0.58);
+        background: oklch(96% 0.018 88 / 0.6);
         padding: 0.48rem 0.72rem;
-        font-family: "Courier New", monospace;
+        font-family: "JetBrains Mono", "Courier New", monospace;
         font-size: 0.78rem;
         font-weight: 800;
         text-decoration: none;
@@ -132,8 +132,8 @@
       .runtime-canvas-card,
       .runtime-log {
         border: 1.5px solid var(--comic-ink);
-        border-radius: 1.1rem;
-        background: oklch(96% 0.022 88 / 0.12);
+        border-radius: 0;
+        background: oklch(96% 0.018 88 / 0.72);
         box-shadow: 0 0.32rem 0 oklch(8% 0.055 278 / 0.34);
       }
       .runtime-copy,
@@ -141,7 +141,7 @@
       .eyebrow {
         margin: 0 0 0.5rem;
         color: var(--sun);
-        font-family: "Courier New", monospace;
+        font-family: "JetBrains Mono", "Courier New", monospace;
         font-size: 0.76rem;
         font-weight: 900;
         letter-spacing: 0.09em;
@@ -150,7 +150,7 @@
       h1 {
         max-width: 11ch;
         margin: 0;
-        font-family: "Trebuchet MS", system-ui, sans-serif;
+        font-family: Georgia, serif;
         font-size: clamp(2.25rem, 5.2vw, 4.8rem);
         line-height: 1;
         letter-spacing: -0.06em;
@@ -180,7 +180,7 @@
       .runtime-panel strong {
         display: block;
         color: var(--sun);
-        font-family: "Courier New", monospace;
+        font-family: "JetBrains Mono", "Courier New", monospace;
         font-size: clamp(2.4rem, 5.8vw, 4.2rem);
         line-height: 0.9;
       }
@@ -189,7 +189,7 @@
         grid-template-columns: auto auto;
         gap: 0.4rem 0.85rem;
         margin: 0.8rem 0 0;
-        font-family: "Courier New", monospace;
+        font-family: "JetBrains Mono", "Courier New", monospace;
         font-size: 0.78rem;
         text-transform: uppercase;
       }
@@ -203,13 +203,13 @@
       .runtime-fact {
         border: 1px solid var(--outline-soft);
         border-radius: 1rem;
-        background: oklch(8% 0.055 278 / 0.48);
+        background: oklch(91% 0.028 83 / 0.52);
         padding: 0.8rem;
       }
       .runtime-fact strong {
         display: block;
         color: var(--sun);
-        font-family: "Courier New", monospace;
+        font-family: "JetBrains Mono", "Courier New", monospace;
         font-size: 0.75rem;
         letter-spacing: 0.08em;
         text-transform: uppercase;
@@ -228,7 +228,7 @@
         justify-content: space-between;
         gap: 0.7rem;
         border-bottom: 1px solid var(--outline-soft);
-        background: oklch(10% 0.06 278 / 0.74);
+        background: oklch(91% 0.028 83 / 0.72);
         padding: 0.75rem 0.9rem;
       }
       .runtime-status {
@@ -240,8 +240,8 @@
         aspect-ratio: 16 / 9;
         overflow: hidden;
         background:
-          linear-gradient(90deg, oklch(96% 0.022 88 / 0.05) 1px, transparent 1px),
-          linear-gradient(oklch(96% 0.022 88 / 0.05) 1px, transparent 1px),
+           linear-gradient(90deg, oklch(96% 0.018 88 / 0.08) 1px, transparent 1px),
+           linear-gradient(oklch(96% 0.018 88 / 0.08) 1px, transparent 1px),
           var(--space-deep);
         background-size: 38px 38px;
       }
@@ -249,7 +249,7 @@
         display: block;
         width: 100% !important;
         height: 100% !important;
-        background: oklch(8% 0.055 278);
+        background: var(--space-deep);
       }
       canvas.emscripten:focus-visible {
         outline: 3px solid var(--sun);
@@ -260,7 +260,7 @@
         gap: 0.4rem;
         padding: 0.8rem 0.9rem;
         color: var(--muted);
-        font-family: "Courier New", monospace;
+        font-family: "JetBrains Mono", "Courier New", monospace;
         font-size: 0.82rem;
         min-height: 3.4rem;
       }
@@ -289,7 +289,7 @@
         <header class="runtime-topbar">
           <a class="runtime-brand" href="../" aria-label="Back to Solar System Simulator home">
             <span>SS</span>
-            <strong>Orbit cockpit runtime</strong>
+            <strong>Orbital atlas runtime</strong>
           </a>
           <nav class="runtime-links" aria-label="Runtime navigation">
             <a href="../">Lab</a>
@@ -301,9 +301,9 @@
 
         <section class="runtime-hero">
           <div class="runtime-copy">
-            <p class="eyebrow">WASM cockpit / C11 physics</p>
+            <p class="eyebrow">WASM field station / C11 physics</p>
             <h1>Run the real orbit loop.</h1>
-            <p>This page holds the static scene notes beside the canvas so the renderer can focus on live state. The checked Emscripten artifact is still produced by <code>make web</code>, with the browser frame and raylib window initialized to the same responsive size.</p>
+            <p>This field station holds source-backed notes beside the canvas so the renderer can focus on live state. The checked Emscripten artifact is produced by <code>make web</code>, with browser frame and raylib window initialized to the same responsive size.</p>
             <div class="runtime-chip-row" aria-label="Runtime facts">
               <span>C11 + raylib</span>
               <span>SI units</span>
@@ -351,7 +351,7 @@
           </article>
           <article class="runtime-fact wide">
             <strong>Renderer behavior</strong>
-            <p>The grid expands to the farthest rendered orbit. Every non-star trail keeps its full motion history.</p>
+            <p>The grid expands to the farthest rendered orbit. Every non-star trail preserves full-run visual span through bounded historical decimation.</p>
           </article>
           <article class="runtime-fact wide">
             <strong>Responsive frame</strong>
