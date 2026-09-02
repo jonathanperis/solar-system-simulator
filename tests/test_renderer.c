@@ -203,6 +203,7 @@ static void test_trail_rendering_keeps_long_runs_bounded(void)
 
     assert(rendered_segments <= SOLAR_RENDER_MAX_TRAIL_SEGMENTS);
     assert(renderer_trail_sample_stride(points_after_500_days) > 1);
+    assert(renderer_trail_draw_segment_count(SOLAR_TRAIL_MAX_POINTS) <= SOLAR_RENDER_MAX_TRAIL_SEGMENTS);
     assert(renderer_trail_draw_segment_count(2) == 1);
 }
 

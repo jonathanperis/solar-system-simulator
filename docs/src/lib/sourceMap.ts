@@ -7,6 +7,12 @@ export type SourceSection = {
 
 export const sourceSections: SourceSection[] = [
   {
+    label: 'Project spec',
+    path: 'SPEC.md',
+    responsibility: 'Current goals, constraints, interfaces, invariants, tasks, and bug history.',
+    verification: 'Review before an implementation task; check drift after verification.'
+  },
+  {
     label: 'Simulation core',
     path: 'src/sim/',
     responsibility: 'raylib-independent bodies, constants, Vec3d math, Newtonian acceleration, Verlet stepping, and scene factories.',
@@ -15,8 +21,8 @@ export const sourceSections: SourceSection[] = [
   {
     label: 'Application helpers',
     path: 'src/app/',
-    responsibility: 'orbit camera state, body trails, labels, and other window-independent app helpers.',
-    verification: 'C tests exercise camera focus, zoom clamps, labels, and trail history.'
+    responsibility: 'orbit camera state, bounded full-run trails, and other window-independent app helpers.',
+    verification: 'C tests exercise zoom clamps, trail history endpoints, and bounded trail storage.'
   },
   {
     label: 'Rendering boundary',
@@ -28,7 +34,7 @@ export const sourceSections: SourceSection[] = [
     label: 'Runtime loop',
     path: 'src/main.c',
     responsibility: 'native window loop, Emscripten callback loop, input handling, simulation stepping, and draw orchestration.',
-    verification: 'Native build, web build, and smoke checks prove both loop targets compile.'
+    verification: 'Native and WebAssembly builds compile both loop targets; artifact checks validate generated files.'
   },
   {
     label: 'Test binaries',
@@ -46,7 +52,7 @@ export const sourceSections: SourceSection[] = [
     label: 'Web shell',
     path: 'web/shell.html',
     responsibility: 'Emscripten HTML shell that hosts the C/raylib WebAssembly artifact.',
-    verification: 'Checked by tools/check_wasm_artifacts.py and live Pages smoke tests.'
+    verification: 'Checked by tools/check_wasm_artifacts.py during WebAssembly builds.'
   },
   {
     label: 'Automation',

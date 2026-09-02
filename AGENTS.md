@@ -33,11 +33,11 @@ Use `make test` for every simulation/app/render-helper change. For bigger milest
 ```text
 solar-system-simulator/
 ├── AGENTS.md              # maintainer/agent guide
+├── SPEC.md                # current goals, constraints, invariants, tasks, bug history
 ├── PRODUCT.md             # product and learning context for Impeccable/design work
 ├── DESIGN.md              # softened illustrated cosmic cockpit visual direction for current GitHub Pages work
 ├── Makefile               # native build/test entrypoint
 ├── README.md              # user-facing project status and physics notes
-├── .hermes/plans/         # committed implementation plans for this repo
 ├── src/
 │   ├── main.c             # raylib app loop, camera controls, overlays, simulation stepping
 │   ├── app/               # app-owned helpers testable without opening a window
@@ -117,7 +117,7 @@ The Pages site is live and should preserve the softened illustrated cosmic cockp
 
 ## Git workflow for this repo
 
-- Keep plans under `.hermes/plans/` and commit them when they guide future implementation.
+- `SPEC.md` owns current goals, constraints, interfaces, invariants, tasks, and bug history. Update it through spec-driven workflow; do not create replacement plan files.
 - Before edits, verify path, remote, branch, and status.
 - After completing an iteration, run focused verification, commit, and push `main` unless Jonathan requests a PR workflow.
 - Never preserve secrets; replace any encountered secret value with `[REDACTED]`.

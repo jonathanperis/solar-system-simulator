@@ -15,7 +15,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
   </section>
 
   <section class="grid feature-grid">
-    {sourceSections.slice(0, 5).map((section) => (
+    {sourceSections.map((section) => (
       <article class="card">
         <h2><code>{section.path}</code></h2>
         <p>{section.responsibility}</p>

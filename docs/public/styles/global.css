@@ -209,6 +209,27 @@ code {
 
 a { transition: color 160ms ease-out, border-color 160ms ease-out, background 160ms ease-out, transform 160ms ease-out; }
 
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 10;
+  transform: translateY(-200%);
+  border: 1.5px solid var(--comic-ink);
+  border-radius: 999px;
+  background: var(--sun);
+  box-shadow: 0 0.18rem 0 var(--comic-ink);
+  color: var(--comic-ink);
+  font-weight: 800;
+  padding: 0.58rem 0.84rem;
+  text-decoration: none;
+}
+.skip-link:focus { transform: translateY(0); }
+:focus-visible {
+  outline: 3px solid var(--sun);
+  outline-offset: 3px;
+}
+
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);

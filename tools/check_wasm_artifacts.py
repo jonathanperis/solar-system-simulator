@@ -37,6 +37,9 @@ def main() -> int:
         "Static renderer notes now shown on the page",
         "Renderer behavior",
         "Responsive frame",
+        "role=\"status\"",
+        "aria-live=\"polite\"",
+        "canvas.emscripten:focus-visible",
         f"{stem}.js",
     ]
     for marker in expected_html:
@@ -45,6 +48,9 @@ def main() -> int:
 
     if f"{stem}.wasm" not in js_text:
         raise SystemExit(f"{js} does not reference {stem}.wasm")
+
+    if wasm.read_bytes()[:8] != b"\x00asm\x01\x00\x00\x00":
+        raise SystemExit(f"{wasm} does not start with the WebAssembly magic and version bytes")
 
     for marker in ("solar_web_initial_canvas_width", "solar_web_initial_canvas_height"):
         if marker not in main_text:

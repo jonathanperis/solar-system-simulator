@@ -68,9 +68,12 @@ jobs:
         working-directory: docs
         env:
           PUBLIC_GA_ID: G-WPC2ZGVDD0
+          PUBLIC_BUILD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: npm run build
 
       - name: Smoke-check docs routes
+        env:
+          PUBLIC_GA_ID: G-WPC2ZGVDD0
         run: python3 tools/check_docs_routes.py docs/dist
 
       - name: Upload Pages artifact
