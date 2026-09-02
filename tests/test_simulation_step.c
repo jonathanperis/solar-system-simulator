@@ -15,7 +15,7 @@ static void assert_vec3d_equal(Vec3d actual, Vec3d expected)
 
 static void test_long_frame_records_trails_for_each_physics_substep(void)
 {
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();
     BodyTrails trails = body_trails_create();
 
     body_trails_record_system(&trails, &system);
@@ -27,8 +27,10 @@ static void test_long_frame_records_trails_for_each_physics_substep(void)
     assert(body_trails_point_count(&trails, 5) == 1 + 288);
     assert(body_trails_point_count(&trails, 6) == 1 + 288);
     assert(body_trails_point_count(&trails, 7) == 1 + 288);
+    assert(body_trails_point_count(&trails, 8) == 1 + 288);
     assert_vec3d_equal(body_trails_point_at(&trails, 6, body_trails_point_count(&trails, 6) - 1), system.bodies[6].position_m);
     assert_vec3d_equal(body_trails_point_at(&trails, 7, body_trails_point_count(&trails, 7) - 1), system.bodies[7].position_m);
+    assert_vec3d_equal(body_trails_point_at(&trails, 8, body_trails_point_count(&trails, 8) - 1), system.bodies[8].position_m);
 
     body_trails_destroy(&trails);
 }

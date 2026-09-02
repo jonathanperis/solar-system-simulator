@@ -32,7 +32,7 @@ ROUTES: dict[str, list[str]] = {
         "Precise, playful, unfinished in public",
     ],
     "physics/index.html": ["Physics stays in SI units", "docs/simulation-core/", "data-footer-credits"],
-    "body-catalog/index.html": ["Stable IDs prevent duplicate knowledge", "docs/roadmap/", "Phobos", "Deimos"],
+    "body-catalog/index.html": ["Stable IDs prevent duplicate knowledge", "docs/roadmap/", "Phobos", "Deimos", "Vesta", "JPL SBDB solution 36"],
     "source-atlas/index.html": ["The code separates physics from presentation", "docs/architecture/", "src/sim/"],
     "pipeline/index.html": ["Native tests feed a Pages lab bench", "docs/build-and-web/", "make web"],
     "docs/index.html": ["Trace every orbit wire without one giant scroll", "Solar manual routes", "Every orbit manual page", "docs/architecture/"],

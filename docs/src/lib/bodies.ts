@@ -1,11 +1,11 @@
 export type ImplementedBody = {
   name: string;
-  kind: 'Star' | 'Planet' | 'Moon';
+  kind: 'Star' | 'Planet' | 'Moon' | 'Asteroid';
   parent: string;
   milestone: string;
   initialization: string;
   source: string;
-  accent: 'solar' | 'cyan' | 'earth' | 'moon' | 'mars';
+  accent: 'solar' | 'cyan' | 'earth' | 'moon' | 'mars' | 'asteroid';
 };
 
 export const implementedBodies: ImplementedBody[] = [
@@ -80,11 +80,19 @@ export const implementedBodies: ImplementedBody[] = [
     initialization: 'Mars-relative periareion state added to Mars absolute state.',
     source: 'src/sim/solar_system.c',
     accent: 'mars'
+  },
+  {
+    name: 'Vesta',
+    kind: 'Asteroid',
+    parent: 'Sun',
+    milestone: 'Asteroid pass',
+    initialization: 'Planar heliocentric perihelion position with vis-viva tangential speed.',
+    source: 'src/sim/solar_system.c',
+    accent: 'asteroid'
   }
 ];
 
 export const plannedBodies = [
-  'asteroid belt representatives / major asteroids',
   'Jupiter',
   'Galilean moons',
   'Saturn',

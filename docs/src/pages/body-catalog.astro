@@ -30,6 +30,6 @@ const base = normalizeBase(import.meta.env.BASE_URL);
 
   <section class="panel">
     <h2>Data provenance</h2>
-    <p>Current constants are educational baseline values, not epoch state vectors. Planet values follow the <a href="https://nssdc.gsfc.nasa.gov/planetary/factsheet/">NASA Planetary Fact Sheet</a>; satellite values use <a href="https://ssd.jpl.nasa.gov/sats/phys_par/">JPL Solar System Dynamics physical parameters</a>. Derived periapsis distances and vis-viva speeds remain in <a href={`${repoUrl}/blob/main/src/sim/constants.h`}>the source constants</a>.</p>
+    <p>Current constants are educational baseline values, not epoch state vectors. Planet values follow the <a href="https://nssdc.gsfc.nasa.gov/planetary/factsheet/">NASA Planetary Fact Sheet</a>; satellite values use <a href="https://ssd.jpl.nasa.gov/sats/phys_par/">JPL Solar System Dynamics physical parameters</a>; Vesta uses <a href="https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1">JPL SBDB solution 36</a>. Derived periapsis distances and vis-viva speeds remain in <a href={`${repoUrl}/blob/main/src/sim/constants.h`}>the source constants</a>.</p>
   </section>
 </BaseLayout>

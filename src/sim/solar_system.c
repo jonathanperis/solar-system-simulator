@@ -138,6 +138,23 @@ Body solar_system_create_deimos_at_periareion_near_mars(const Body *mars)
     );
 }
 
+Body solar_system_create_vesta_at_perihelion(void)
+{
+    /* Vesta's measured inclination is intentionally omitted until a dedicated
+     * orbital-geometry milestone. This preserves the default X/Z scene plane. */
+    return body_create_identified(
+        "Vesta",
+        BODY_KIND_ASTEROID,
+        BODY_ID_VESTA,
+        BODY_ID_SUN,
+        SOLAR_VESTA_MASS_KG,
+        SOLAR_VESTA_RADIUS_M,
+        (Vec3d){SOLAR_VESTA_PERIHELION_M, 0.0, 0.0},
+        (Vec3d){0.0, 0.0, SOLAR_VESTA_PERIHELION_SPEED_MPS},
+        false
+    );
+}
+
 SolarSystem solar_system_create_sun_only(void)
 {
     SolarSystem system = {
@@ -157,6 +174,20 @@ SolarSystem solar_system_create_sun_mercury(void)
         .bodies = {
             create_sun(),
             solar_system_create_mercury_at_perihelion(),
+        },
+        .body_count = 2,
+        .elapsed_seconds = 0.0,
+    };
+
+    return system;
+}
+
+SolarSystem solar_system_create_sun_vesta(void)
+{
+    SolarSystem system = {
+        .bodies = {
+            create_sun(),
+            solar_system_create_vesta_at_perihelion(),
         },
         .body_count = 2,
         .elapsed_seconds = 0.0,
@@ -255,6 +286,15 @@ SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos(
         .elapsed_seconds = 0.0,
     };
 
+    return system;
+}
+
+SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
+
+    system.bodies[system.body_count] = solar_system_create_vesta_at_perihelion();
+    ++system.body_count;
     return system;
 }
 
