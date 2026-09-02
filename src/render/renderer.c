@@ -56,6 +56,10 @@ float renderer_body_radius(const Body *body, RenderScaleMode mode)
         return moon_radius < SOLAR_ILLUSTRATIVE_SMALL_MOON_RADIUS ? SOLAR_ILLUSTRATIVE_SMALL_MOON_RADIUS : moon_radius;
     }
 
+    if (body->kind == BODY_KIND_ASTEROID) {
+        return SOLAR_ILLUSTRATIVE_ASTEROID_RADIUS;
+    }
+
     return SOLAR_ILLUSTRATIVE_PLANET_RADIUS;
 }
 
@@ -149,6 +153,8 @@ Color renderer_body_color(const Body *body)
             return BROWN;
         case BODY_ID_DEIMOS:
             return MAROON;
+        case BODY_ID_VESTA:
+            return LIGHTGRAY;
         case BODY_ID_UNKNOWN:
         case BODY_ID_NONE:
         default:

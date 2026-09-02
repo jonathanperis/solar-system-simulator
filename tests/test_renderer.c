@@ -54,6 +54,15 @@ static void test_real_scale_mars_radius_uses_physical_meter_scale(void)
     assert_close(renderer_body_radius(&mars, RENDER_SCALE_REAL), meters_to_render_units(SOLAR_MARS_RADIUS_M), 1e-12);
 }
 
+static void test_vesta_uses_physical_radius_in_real_scale_and_distinct_illustrative_radius(void)
+{
+    Body vesta = solar_system_create_vesta_at_perihelion();
+
+    assert_close(renderer_body_radius(&vesta, RENDER_SCALE_REAL), meters_to_render_units(SOLAR_VESTA_RADIUS_M), 1e-12);
+    assert_close(renderer_body_radius(&vesta, RENDER_SCALE_ILLUSTRATIVE), SOLAR_ILLUSTRATIVE_ASTEROID_RADIUS, 1e-6);
+    assert(renderer_body_radius(&vesta, RENDER_SCALE_ILLUSTRATIVE) < SOLAR_ILLUSTRATIVE_PLANET_RADIUS);
+}
+
 static void test_illustrative_moon_is_smaller_but_still_visible(void)
 {
     Body earth = solar_system_create_earth_at_perihelion();
@@ -176,6 +185,19 @@ static void test_body_color_uses_catalog_id_not_name(void)
     assert(color.a == ORANGE.a);
 }
 
+static void test_vesta_color_uses_catalog_id_not_name(void)
+{
+    Body vesta = solar_system_create_vesta_at_perihelion();
+    vesta.name = "Main Belt Target";
+
+    Color color = renderer_body_color(&vesta);
+
+    assert(color.r == LIGHTGRAY.r);
+    assert(color.g == LIGHTGRAY.g);
+    assert(color.b == LIGHTGRAY.b);
+    assert(color.a == LIGHTGRAY.a);
+}
+
 static void test_grid_keeps_at_least_minimum_square_count_for_inner_system(void)
 {
     SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
@@ -196,6 +218,16 @@ static void test_grid_expands_to_cover_mars_orbit_with_padding(void)
     assert(((double)slices / 2.0) >= required_half_width);
 }
 
+static void test_grid_expands_to_cover_vesta_orbit_with_padding(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();
+    Vec3d vesta_position = renderer_body_position(&system, 8, RENDER_SCALE_ILLUSTRATIVE);
+    double required_half_width = fabs(vesta_position.x) + 2.0;
+    int slices = renderer_grid_slices_for_system(&system, RENDER_SCALE_ILLUSTRATIVE);
+
+    assert(((double)slices / 2.0) >= required_half_width);
+}
+
 static void test_trail_rendering_keeps_long_runs_bounded(void)
 {
     size_t points_after_500_days = 1 + (size_t)500 * 288;
@@ -213,6 +245,7 @@ int main(void)
     test_real_scale_position_uses_physical_meter_scale();
     test_illustrative_planets_keep_old_visible_radius();
     test_real_scale_mars_radius_uses_physical_meter_scale();
+    test_vesta_uses_physical_radius_in_real_scale_and_distinct_illustrative_radius();
     test_illustrative_moon_is_smaller_but_still_visible();
     test_illustrative_earth_and_moon_do_not_overlap_at_perigee();
     test_illustrative_martian_moons_are_visible_and_outside_mars();
@@ -221,8 +254,10 @@ int main(void)
     test_illustrative_phobos_trail_matches_visible_body_position();
     test_illustrative_satellite_position_uses_parent_metadata_not_name();
     test_body_color_uses_catalog_id_not_name();
+    test_vesta_color_uses_catalog_id_not_name();
     test_grid_keeps_at_least_minimum_square_count_for_inner_system();
     test_grid_expands_to_cover_mars_orbit_with_padding();
+    test_grid_expands_to_cover_vesta_orbit_with_padding();
     test_trail_rendering_keeps_long_runs_bounded();
     puts("test_renderer passed");
     return 0;

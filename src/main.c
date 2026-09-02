@@ -149,7 +149,7 @@ int main(void)
     app.camera.fovy = 45.0f;
     app.camera.projection = CAMERA_PERSPECTIVE;
     app.orbit_camera = orbit_camera_default_state();
-    app.system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
+    app.system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();
     app.trails = body_trails_create();
     app.time_scale = SOLAR_DAY_SECONDS;
     app.render_mode = RENDER_SCALE_ILLUSTRATIVE;

@@ -804,6 +804,7 @@ a { transition: color 160ms ease-out, border-color 160ms ease-out, background 16
 .body-row.accent-mars { background: linear-gradient(145deg, oklch(45% 0.18 36), oklch(18% 0.1 278)); }
 .body-row.accent-moon { background: linear-gradient(145deg, oklch(45% 0.06 260), oklch(18% 0.1 278)); }
 .body-row.accent-cyan { background: linear-gradient(145deg, oklch(45% 0.14 197), oklch(18% 0.1 278)); }
+.body-row.accent-asteroid { background: linear-gradient(145deg, oklch(45% 0.04 76), oklch(18% 0.1 278)); }
 
 .evidence-ledger { margin: clamp(3rem, 7vw, 6.3rem) 0; }
 .ledger-table {

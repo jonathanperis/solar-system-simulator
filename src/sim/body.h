@@ -23,7 +23,8 @@ typedef enum BodyId {
     BODY_ID_MOON,
     BODY_ID_MARS,
     BODY_ID_PHOBOS,
-    BODY_ID_DEIMOS
+    BODY_ID_DEIMOS,
+    BODY_ID_VESTA
 } BodyId;
 
 /*

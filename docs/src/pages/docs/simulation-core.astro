@@ -20,14 +20,14 @@ import DocsShell from '../../components/DocsShell.astro';
         <li><code>src/sim/vec3d.c</code> provides double-precision vector operations.</li>
         <li><code>src/sim/body.c</code> stores mass, radius, position, velocity, and acceleration in SI units.</li>
         <li><code>src/sim/physics.c</code> computes Newtonian point-mass acceleration.</li>
-        <li><code>src/sim/solar_system.c</code> initializes the Sun, planets, Moon, Phobos, and Deimos with parent-aware states.</li>
+        <li><code>src/sim/solar_system.c</code> initializes the Sun, planets, moons, and Vesta with parent-aware states.</li>
         <li>The integrator is velocity-Verlet / kick-drift-kick, not Euler stepping.</li>
       </ul>
     </section>
 
     <section class="doc-panel">
       <h2>Known approximations</h2>
-      <p>The Sun remains fixed for the current milestone. The project does not claim relativistic precession, J2000 state vectors, barycentric Earth-Moon initialization, or ephemeris accuracy.</p>
+      <p>The Sun remains fixed for the current milestone. The project does not claim relativistic precession, J2000 state vectors, Vesta inclination, barycentric Earth-Moon initialization, or ephemeris accuracy.</p>
       <p>That limitation is intentional for the foundation: the goal is inspectable orbital mechanics before catalog scale.</p>
     </section>
   </DocsShell>

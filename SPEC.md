@@ -52,6 +52,13 @@ I.pages: `/`, `/docs/`, `/docs/architecture/`, `/docs/simulation-core/`, `/docs/
 
 I.ci: `Build` → native tests + WASM artifact; `Deploy Pages` consumes successful artifact
 
+## §R
+
+R1|4 Vesta class|numbered Main-belt Asteroid|https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1
+R2|4 Vesta orbit|a=`2.361365965127599 AU`; e=`0.09020374382834395`; i=`7.143925545058711 deg`|https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1
+R3|4 Vesta physical|GM=`17.2882844 km^3/s^2`; effective diameter=`522.77 km`|https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1
+R4|target rationale|Vesta second-most-massive main-belt body; Ceres dwarf planet|https://science.nasa.gov/solar-system/asteroids/4-vesta/
+
 ## §V
 
 V1: `src/sim/**` ∉ raylib headers, `Vector3`, draw/window APIs.
@@ -62,9 +69,9 @@ V3: gravity = `G * source_mass / distance^3 * displacement`; self | zero-distanc
 
 V4: stepping = velocity-Verlet kick-drift-kick; fixed bodies contribute gravity but never move.
 
-V5: shipped scene order = Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos; stable IDs + parents match catalog.
+V5: shipped scene order = Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta; stable IDs + parents match catalog.
 
-V6: planets start heliocentric perihelion; Moon starts Earth-relative perigee; Phobos/Deimos start Mars-relative periareion; speeds use vis-viva.
+V6: planets + Vesta start heliocentric perihelion; Moon starts Earth-relative perigee; Phobos/Deimos start Mars-relative periareion; speeds use vis-viva.
 
 V7: default no-inclination orbital motion ∈ X/Z plane; parent-relative Y position/velocity=0.
 
@@ -72,7 +79,7 @@ V8: app physics step ≤300 simulated seconds; trail sample recorded after each 
 
 V9: trails retain full-run visual span in bounded memory; at point cap older samples decimate; renderer draws ≤1024 trail segments/body.
 
-V10: illustrative transforms affect render output only; real-scale uses same physical scale for positions + radii with no radius clamp.
+V10: illustrative transforms affect render output only; asteroid radius=`0.03` render units; real-scale uses same physical scale for positions + radii with no radius clamp.
 
 V11: camera focus covers ∀ bodies; wheel changes clamped distance only; pitch preserved.
 
@@ -108,7 +115,7 @@ T10|x|upgrade static docs to Astro 7|C7,I.pages
 T11|x|fix moon planes + substep trail sampling + bounded trail drawing|V7,V8,V9
 T12|x|ship softened cockpit site + docs manual + WASM shell|C8,V13,V16
 T13|x|revert renderer overhaul; retain responsive WASM frame|C9,V10,V12
-T14|.|add asteroid-belt representative milestone; select sourced target(s), amend scene invariant, update full acceptance surface|C5,C6,V15
+T14|x|add 4 Vesta asteroid milestone: sourced constants, planar heliocentric perihelion state, nine-body scene, distinct render visibility, full docs/test surface|C5,C6,V5,V6,V7,V10,V15,V16
 T15|.|add Jupiter milestone|C5,C6,V15
 T16|.|add Galilean moons milestone|C5,C6,V15
 T17|.|add Saturn milestone|C5,C6,V15

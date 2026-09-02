@@ -6,14 +6,14 @@ A bare-bones 3D solar system simulator written in C with [raylib](https://www.ra
 
 This project is intentionally physics-first. The renderer exists to show the simulation, but the core work is mathematical: deterministic celestial-body state, SI-unit physics, and testable orbital mechanics foundations.
 
-## Milestone 7: Foundation + Sun + Mercury + Venus + Earth + Moon + Mars + Phobos + Deimos
+## Milestone 8: Foundation + Sun + Mercury + Venus + Earth + Moon + Mars + Phobos + Deimos + Vesta
 
-The current milestone extends Mars with Phobos and Deimos as Mars-relative natural satellites. Additional planets, asteroids, dwarf planets, textures, shaders, and visual polish are intentionally deferred to later iterations.
+The current milestone adds 4 Vesta as one sourced main-belt asteroid representative. Additional planets, asteroid populations, dwarf planets, textures, shaders, and visual polish remain deferred to later iterations.
 
 Current milestone behavior:
 
 - Opens a raylib 3D scene titled `Solar System Simulator`.
-- Renders exactly eight celestial bodies: the Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, and Deimos.
+- Renders exactly nine celestial bodies: the Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, and Vesta.
 - Keeps the Sun fixed at the origin for a stable heliocentric baseline.
 - Initializes Mercury at perihelion on the +X axis with tangential +Z velocity from the vis-viva equation.
 - Initializes Venus at perihelion on the -X axis with tangential -Z velocity from the vis-viva equation.
@@ -21,10 +21,11 @@ Current milestone behavior:
 - Initializes the Moon at Earth-relative perigee with tangential relative velocity from the Earth-Moon vis-viva equation.
 - Initializes Mars at heliocentric perihelion on the -Z axis with tangential +X velocity from the vis-viva equation.
 - Initializes Phobos and Deimos at Mars-relative periareion with tangential relative velocities from the Mars-moon vis-viva equations.
-- Advances Mercury, Venus, Earth, the Moon, Mars, Phobos, and Deimos with Newtonian gravity from all simulated bodies using the shared simulation integrator.
+- Initializes Vesta at heliocentric perihelion on the +X axis with tangential +Z velocity from the vis-viva equation.
+- Advances Mercury, Venus, Earth, the Moon, Mars, Phobos, Deimos, and Vesta with Newtonian gravity from all simulated bodies using the shared simulation integrator.
 - Supports illustrative/default and real-scale visualization modes.
 - Draws bounded, persistent motion traces for every non-star body. Historical samples decimate as needed while preserving full-run visual span.
-- Allows camera focus cycling across every simulated body: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, and Deimos.
+- Allows camera focus cycling across every simulated body: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, and Vesta.
 - Clamps mouse-wheel camera zoom while preserving the default viewing pitch, so max zoom-in does not flip or corrupt the camera orientation.
 - Displays elapsed simulation days, view mode, camera focus target, camera zoom, and controls.
 
@@ -42,9 +43,11 @@ Simulation code lives under `src/sim/` and is independent from raylib.
   - `a = G * source_mass / distance^3 * displacement`
 - Time stepping uses a velocity-Verlet / kick-drift-kick integrator.
 - The Sun is fixed for this milestone; barycentric Sun motion is deferred.
-- This is a deterministic physics baseline, not an ephemeris-accurate model. It does not include relativistic precession, J2000 state vectors, barycentric Earth-Moon initialization, or perturbations from bodies beyond the Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, and Deimos.
+- This is a deterministic physics baseline, not an ephemeris-accurate model. It does not include relativistic precession, J2000 state vectors, Vesta's measured inclination, barycentric Earth-Moon initialization, or perturbations from bodies beyond the modeled nine-body scene.
 
 Current simulation data:
+
+Baseline planet values follow NASA Planetary Fact Sheet data; satellite values follow JPL Solar System Dynamics. Vesta's physical values and osculating elements use [JPL SBDB solution 36](https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1). Derived periapsis distances and vis-viva speeds are calculated in `src/sim/constants.h`.
 
 | Body | Mass | Radius | Initial state |
 |---|---:|---:|---|
@@ -56,6 +59,7 @@ Current simulation data:
 | Mars | `6.419e23 kg` | `3390000 m` | perihelion position and tangential speed |
 | Phobos | `1.061834199841182e16 kg` | `11080 m` | Mars-relative periareion offset and tangential relative speed |
 | Deimos | `1.441349654645431e15 kg` | `6200 m` | Mars-relative periareion offset and tangential relative speed |
+| Vesta | `2.590276793071933e20 kg` | `261385 m` | heliocentric perihelion position and tangential speed |
 
 Mercury orbital values used for initialization:
 
@@ -109,6 +113,16 @@ Martian moon orbital values used for initialization around Mars:
 - Deimos periareion relative speed: `1351.8106494404324 m/s`, computed from `sqrt(G * (MarsMass + DeimosMass) * (2 / periareion - 1 / semiMajorAxis))`
 - absolute Phobos/Deimos state: Mars heliocentric state plus each moon's Mars-relative periareion offset and relative tangential velocity
 
+Vesta orbital values used for initialization:
+
+- JPL GM: `17288284400 m^3/s^2`; mass derives from `GM / G`
+- effective diameter: `522770 m`; spherical radius: `261385 m`
+- semi-major axis: `353255320326.53925 m`
+- eccentricity: `0.09020374382834395`
+- perihelion distance: `semi-major axis * (1 - eccentricity)` = `321390367905.8045 m`
+- perihelion speed: `21217.7725508384 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
+- Vesta remains in the default X/Z plane. Its measured inclination is deliberately deferred until a dedicated orbital-geometry milestone.
+
 ## Rendering model
 
 Rendering code lives under `src/render/` and converts simulation state at the boundary.
@@ -117,10 +131,10 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 - Physics units are isolated from rendering units.
 - Position scale: `1 AU = 10 render units`.
 - Physical radii remain real in simulation data.
-- Illustrative mode is the default: planets keep the previous large visible radius, while moons render smaller in proportion to Earth's physical radius with a small visible floor for tiny moons. Parent-relative moon offsets are expanded only in illustrative mode as needed so the large visual spheres remain readable without changing the underlying physics state.
+- Illustrative mode is the default: planets keep the previous large visible radius, asteroids use a distinct `0.03` render-unit radius, and moons render smaller in proportion to Earth's physical radius with a small visible floor for tiny moons. Parent-relative moon offsets are expanded only in illustrative mode as needed so the large visual spheres remain readable without changing the underlying physics state.
 - Planet and moon traces retain a decimated full-run span and are drawn before bodies as faint colored line segments.
 - Trail memory remains bounded: oldest samples are decimated when a trail reaches its point budget, preserving the first and newest points plus the full-run visual span.
-- The ground grid keeps a minimum readable square count and expands from the farthest rendered body, so Mars and later outer planets do not outgrow the visible reference grid.
+- The ground grid keeps a minimum readable square count and expands from the farthest rendered body, so Vesta and later outer planets do not outgrow the visible reference grid.
 - Real-scale mode uses the same physical render scale for both positions and radii with no radius clamp. Planets may be nearly invisible in this mode; that is physically expected at solar-system scale.
 
 ## Camera model
@@ -138,7 +152,7 @@ The app uses a small stable orbit camera instead of raylib's automatic orbital h
 - `V`: toggle visualization mode.
   - Illustrative: physical planetary positions with large visible planet radii, smaller moon radii, and expanded parent-moon visual separation.
   - Real scale: physical orbital positions and physical radii under the same render scale; planets may be nearly invisible.
-- `Tab` or `C`: cycle camera focus across Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, and Deimos.
+- `Tab` or `C`: cycle camera focus across Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, and Vesta.
 - Mouse wheel: zoom camera in/out around the focused body.
   - Zoom distance is clamped.
   - The viewing pitch remains fixed so max zoom-in does not flip or corrupt the camera orientation.
@@ -180,11 +194,10 @@ tests/                 # C test binaries for simulation and app math
 
 Each future body should be added one iteration at a time, with physical constants, initial conditions, tests, and rendering checks scoped to that body.
 
-1. asteroid belt representatives / major asteroids
-2. Jupiter
-3. Galilean moons
-4. Saturn
-5. major Saturnian moons
-6. Uranus
-7. Neptune
-8. dwarf planets / Kuiper belt representatives
+1. Jupiter
+2. Galilean moons
+3. Saturn
+4. major Saturnian moons
+5. Uranus
+6. Neptune
+7. dwarf planets / Kuiper belt representatives

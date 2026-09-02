@@ -29,7 +29,7 @@ static void test_sun_body_creation_preserves_fields(void)
 
 static void test_current_scene_bodies_have_stable_catalog_ids_and_parents(void)
 {
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();
 
     assert(system.bodies[0].id == BODY_ID_SUN);
     assert(system.bodies[0].parent_id == BODY_ID_NONE);
@@ -47,6 +47,8 @@ static void test_current_scene_bodies_have_stable_catalog_ids_and_parents(void)
     assert(system.bodies[6].parent_id == BODY_ID_MARS);
     assert(system.bodies[7].id == BODY_ID_DEIMOS);
     assert(system.bodies[7].parent_id == BODY_ID_MARS);
+    assert(system.bodies[8].id == BODY_ID_VESTA);
+    assert(system.bodies[8].parent_id == BODY_ID_SUN);
 }
 
 static void test_sun_only_system_has_one_real_sun(void)
@@ -253,9 +255,31 @@ static void test_deimos_periareion_speed_matches_mars_deimos_vis_viva(void)
     assert_close(SOLAR_DEIMOS_PERIAREION_SPEED_MPS, expected, 1e-9);
 }
 
-static void test_solar_system_capacity_supports_sun_mercury_venus_earth_moon_mars_phobos_and_deimos(void)
+static void test_vesta_constants_are_real_si_values(void)
 {
-    assert(SOLAR_SYSTEM_BODY_CAPACITY == 8);
+    assert_close(SOLAR_VESTA_MASS_KG, 2.590276793071933e20, 2.590276793071933e20 * 1e-12);
+    assert_close(SOLAR_VESTA_RADIUS_M, 261385.0, 1e-6);
+    assert_close(SOLAR_VESTA_SEMI_MAJOR_AXIS_M, 353255320326.53925, 1e-3);
+    assert_close(SOLAR_VESTA_ECCENTRICITY, 0.09020374382834395, 1e-15);
+}
+
+static void test_vesta_perihelion_distance_is_derived_from_orbital_elements(void)
+{
+    double expected = SOLAR_VESTA_SEMI_MAJOR_AXIS_M * (1.0 - SOLAR_VESTA_ECCENTRICITY);
+
+    assert_close(SOLAR_VESTA_PERIHELION_M, expected, 1e-3);
+}
+
+static void test_vesta_perihelion_speed_matches_vis_viva(void)
+{
+    double expected = sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * ((2.0 / SOLAR_VESTA_PERIHELION_M) - (1.0 / SOLAR_VESTA_SEMI_MAJOR_AXIS_M)));
+
+    assert_close(SOLAR_VESTA_PERIHELION_SPEED_MPS, expected, 1e-6);
+}
+
+static void test_solar_system_capacity_supports_nine_body_scene(void)
+{
+    assert(SOLAR_SYSTEM_BODY_CAPACITY == 9);
 }
 
 static void test_mercury_body_starts_at_perihelion_with_tangential_velocity(void)
@@ -407,6 +431,25 @@ static void test_deimos_orbit_starts_in_ecliptic_render_plane(void)
     assert(fabs(relative_velocity.z) > 0.0);
 }
 
+static void test_vesta_body_starts_at_perihelion_with_tangential_velocity(void)
+{
+    Body vesta = solar_system_create_vesta_at_perihelion();
+
+    assert(strcmp(vesta.name, "Vesta") == 0);
+    assert(vesta.kind == BODY_KIND_ASTEROID);
+    assert(vesta.id == BODY_ID_VESTA);
+    assert(vesta.parent_id == BODY_ID_SUN);
+    assert(!vesta.fixed);
+    assert_close(vesta.mass_kg, SOLAR_VESTA_MASS_KG, SOLAR_VESTA_MASS_KG * 1e-12);
+    assert_close(vesta.radius_m, SOLAR_VESTA_RADIUS_M, 1e-6);
+    assert_close(vesta.position_m.x, SOLAR_VESTA_PERIHELION_M, 1e-3);
+    assert_close(vesta.position_m.y, 0.0, 1e-12);
+    assert_close(vesta.position_m.z, 0.0, 1e-12);
+    assert_close(vesta.velocity_mps.x, 0.0, 1e-12);
+    assert_close(vesta.velocity_mps.y, 0.0, 1e-12);
+    assert_close(vesta.velocity_mps.z, SOLAR_VESTA_PERIHELION_SPEED_MPS, 1e-6);
+}
+
 static void test_sun_mercury_system_has_two_expected_bodies(void)
 {
     SolarSystem system = solar_system_create_sun_mercury();
@@ -499,6 +542,16 @@ static void test_sun_mercury_venus_earth_moon_mars_phobos_deimos_system_has_eigh
     assert(!system.bodies[7].fixed);
     assert(system.bodies[6].kind == BODY_KIND_MOON);
     assert(system.bodies[7].kind == BODY_KIND_MOON);
+}
+
+static void test_current_scene_has_nine_expected_bodies(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();
+
+    assert(system.body_count == 9);
+    assert(strcmp(system.bodies[8].name, "Vesta") == 0);
+    assert(!system.bodies[8].fixed);
+    assert(system.bodies[8].kind == BODY_KIND_ASTEROID);
 }
 
 static void test_mercury_acceleration_points_toward_sun_at_perihelion(void)
@@ -768,6 +821,50 @@ static void test_deimos_remains_near_mars_after_one_orbit(void)
     assert(distance < 1.30 * SOLAR_DEIMOS_APOAREION_M);
 }
 
+static void test_vesta_acceleration_points_toward_sun_at_perihelion(void)
+{
+    SolarSystem system = solar_system_create_sun_vesta();
+
+    solar_system_step(&system, 0.0);
+
+    assert(system.bodies[1].acceleration_mps2.x < 0.0);
+    assert_close(system.bodies[1].acceleration_mps2.y, 0.0, 1e-18);
+    assert_close(system.bodies[1].acceleration_mps2.z, 0.0, 1e-18);
+}
+
+static void test_vesta_moves_after_one_day_while_sun_stays_fixed(void)
+{
+    SolarSystem system = solar_system_create_sun_vesta();
+    Vec3d initial_vesta_position = system.bodies[1].position_m;
+
+    solar_system_step(&system, SOLAR_DAY_SECONDS);
+
+    assert_close(system.bodies[0].position_m.x, 0.0, 1e-12);
+    assert_close(system.bodies[0].position_m.y, 0.0, 1e-12);
+    assert_close(system.bodies[0].position_m.z, 0.0, 1e-12);
+    assert(system.bodies[1].position_m.x < initial_vesta_position.x);
+    assert(system.bodies[1].position_m.z > initial_vesta_position.z);
+}
+
+static void test_vesta_roughly_returns_after_one_orbit(void)
+{
+    SolarSystem system = solar_system_create_sun_vesta();
+    Vec3d initial = system.bodies[1].position_m;
+    const double dt_seconds = SOLAR_DAY_SECONDS;
+    const double vesta_period_seconds = 2.0 * acos(-1.0) * sqrt(
+        (SOLAR_VESTA_SEMI_MAJOR_AXIS_M * SOLAR_VESTA_SEMI_MAJOR_AXIS_M * SOLAR_VESTA_SEMI_MAJOR_AXIS_M) /
+        (SOLAR_G * SOLAR_SUN_MASS_KG)
+    );
+    const int steps = (int)(vesta_period_seconds / dt_seconds);
+
+    for (int i = 0; i < steps; ++i) {
+        solar_system_step(&system, dt_seconds);
+    }
+
+    double distance_from_initial = vec3d_length(vec3d_sub(system.bodies[1].position_m, initial));
+    assert(distance_from_initial < 0.12 * SOLAR_AU_METERS);
+}
+
 int main(void)
 {
     test_sun_body_creation_preserves_fields();
@@ -798,7 +895,10 @@ int main(void)
     test_deimos_apoareion_distance_is_derived_from_orbital_elements();
     test_phobos_periareion_speed_matches_mars_phobos_vis_viva();
     test_deimos_periareion_speed_matches_mars_deimos_vis_viva();
-    test_solar_system_capacity_supports_sun_mercury_venus_earth_moon_mars_phobos_and_deimos();
+    test_vesta_constants_are_real_si_values();
+    test_vesta_perihelion_distance_is_derived_from_orbital_elements();
+    test_vesta_perihelion_speed_matches_vis_viva();
+    test_solar_system_capacity_supports_nine_body_scene();
     test_mercury_body_starts_at_perihelion_with_tangential_velocity();
     test_venus_body_starts_at_perihelion_with_tangential_velocity();
     test_earth_body_starts_at_perihelion_with_tangential_velocity();
@@ -808,12 +908,14 @@ int main(void)
     test_phobos_orbit_starts_in_ecliptic_render_plane();
     test_deimos_body_starts_at_mars_relative_periareion_with_tangential_velocity();
     test_deimos_orbit_starts_in_ecliptic_render_plane();
+    test_vesta_body_starts_at_perihelion_with_tangential_velocity();
     test_sun_mercury_system_has_two_expected_bodies();
     test_sun_mercury_venus_system_has_three_expected_bodies();
     test_sun_mercury_venus_earth_system_has_four_expected_bodies();
     test_sun_mercury_venus_earth_moon_system_has_five_expected_bodies();
     test_sun_mercury_venus_earth_moon_mars_system_has_six_expected_bodies();
     test_sun_mercury_venus_earth_moon_mars_phobos_deimos_system_has_eight_expected_bodies();
+    test_current_scene_has_nine_expected_bodies();
     test_mercury_acceleration_points_toward_sun_at_perihelion();
     test_mercury_moves_after_one_day_while_sun_stays_fixed();
     test_mercury_roughly_returns_after_one_orbit();
@@ -832,6 +934,9 @@ int main(void)
     test_deimos_moves_prograde_relative_to_mars_after_small_step();
     test_phobos_remains_near_mars_after_one_orbit();
     test_deimos_remains_near_mars_after_one_orbit();
+    test_vesta_acceleration_points_toward_sun_at_perihelion();
+    test_vesta_moves_after_one_day_while_sun_stays_fixed();
+    test_vesta_roughly_returns_after_one_orbit();
     puts("test_solar_system passed");
     return 0;
 }
