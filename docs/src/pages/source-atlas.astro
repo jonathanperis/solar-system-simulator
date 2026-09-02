@@ -14,11 +14,16 @@ const base = normalizeBase(import.meta.env.BASE_URL);
     </div>
   </section>
 
-  <section class="grid feature-grid">
-    {sourceSections.map((section) => (
-      <article class="card">
+  <section class="source-atlas-grid" aria-label="Repository ownership map">
+    {sourceSections.map((section, index) => (
+      <article class="source-atlas-card">
+        <p class="source-atlas-kicker">{String(index + 1).padStart(2, '0')} / {section.label}</p>
         <h2><code>{section.path}</code></h2>
-        <p>{section.responsibility}</p>
+        <p class="source-atlas-purpose">{section.responsibility}</p>
+        <div class="source-atlas-verification">
+          <span>Verify</span>
+          <p>{section.verification}</p>
+        </div>
       </article>
     ))}
   </section>

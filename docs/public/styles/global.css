@@ -861,6 +861,95 @@ a { transition: color 160ms ease-out, border-color 160ms ease-out, background 16
 .route-list a,
 .doc-card-grid a { color: var(--sun); font-weight: 800; }
 .table-wrap { overflow-x: auto; }
+
+.source-atlas-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 2rem;
+}
+.source-atlas-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 17rem;
+  overflow: hidden;
+  border: 1.5px solid var(--comic-ink);
+  border-radius: var(--radius-xl);
+  padding: clamp(1rem, 2vw, 1.45rem);
+  background:
+    radial-gradient(circle at 100% 0%, oklch(82% 0.135 82 / 0.16), transparent 11rem),
+    linear-gradient(145deg, oklch(20% 0.105 289), oklch(11% 0.065 278));
+  box-shadow: 0 0.42rem 0 oklch(8% 0.055 278 / 0.46), var(--shadow-soft);
+}
+.source-atlas-card::after {
+  content: "";
+  position: absolute;
+  width: 5rem;
+  height: 5rem;
+  right: -2.5rem;
+  bottom: -2.5rem;
+  border: 1.5px solid oklch(96% 0.022 88 / 0.25);
+  border-radius: 50%;
+}
+.source-atlas-card:nth-child(3n + 2) {
+  background:
+    radial-gradient(circle at 100% 0%, oklch(78% 0.115 198 / 0.22), transparent 11rem),
+    linear-gradient(145deg, oklch(19% 0.1 267), oklch(11% 0.065 278));
+}
+.source-atlas-card:nth-child(3n) {
+  background:
+    radial-gradient(circle at 100% 0%, oklch(73% 0.17 34 / 0.2), transparent 11rem),
+    linear-gradient(145deg, oklch(22% 0.11 306), oklch(11% 0.065 278));
+}
+.source-atlas-kicker {
+  margin: 0 0 0.62rem;
+  color: var(--sun);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.source-atlas-card h2 {
+  margin: 0;
+  color: var(--cream);
+  font-size: clamp(1.55rem, 2.5vw, 2.35rem);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+.source-atlas-purpose {
+  margin: 0.82rem 0 1rem;
+  color: var(--cream-soft);
+  line-height: 1.58;
+}
+.source-atlas-verification {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: start;
+  margin-top: auto;
+  padding-top: 0.82rem;
+  border-top: 1px solid var(--outline-soft);
+}
+.source-atlas-verification span {
+  border: 1px solid var(--comic-ink);
+  border-radius: 999px;
+  padding: 0.18rem 0.38rem;
+  color: var(--comic-ink);
+  background: var(--mint);
+  box-shadow: 0 0.08rem 0 var(--comic-ink);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.source-atlas-verification p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
 table {
   width: 100%;
   border-collapse: collapse;
@@ -1212,7 +1301,7 @@ tr:last-child td { border-bottom: 0; }
 .fine-print { color: var(--muted-dim); font-size: 0.92rem; }
 [hidden] { display: none !important; }
 
-.site-footer { padding: 4rem 0 3rem; }
+.site-footer { padding: 2rem 0 3rem; }
 .footer-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr) 13rem;
@@ -1269,6 +1358,7 @@ tr:last-child td { border-bottom: 0; }
   .manual-hero,
   .manual-route-grid,
   .footer-grid { grid-template-columns: 1fr; }
+  .source-atlas-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .telemetry-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .scribble-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cosmic-hero { min-height: auto; }
@@ -1286,6 +1376,7 @@ tr:last-child td { border-bottom: 0; }
   .telemetry-rail,
   .grid,
   .feature-grid,
+  .source-atlas-grid,
   .runtime-proof-grid,
   .scribble-grid { grid-template-columns: 1fr; }
   .body-row,
