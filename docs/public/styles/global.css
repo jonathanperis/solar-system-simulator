@@ -280,6 +280,36 @@ a { transition: color 160ms ease-out, border-color 160ms ease-out, background 16
   border-radius: var(--radius-xxl);
 }
 .page-hero h1 { max-width: 14ch; }
+.secondary-page .page-hero h1,
+.secondary-page .docs-hero h1,
+.secondary-page .panel > h2,
+.secondary-page .doc-panel > h2 {
+  color: var(--sun);
+}
+.secondary-page .page-hero h1,
+.secondary-page .docs-hero h1,
+.secondary-page .panel > h2,
+.secondary-page .doc-panel > h2 {
+  position: relative;
+  width: fit-content;
+}
+.secondary-page .page-hero h1::after,
+.secondary-page .docs-hero h1::after,
+.secondary-page .panel > h2::after,
+.secondary-page .doc-panel > h2::after {
+  content: "";
+  display: block;
+  width: 3.35rem;
+  height: 0.3rem;
+  margin-top: 0.45rem;
+  border-radius: 999px;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--sun) 0 0.4rem,
+    var(--sun-hot) 0.4rem 0.65rem
+  );
+  box-shadow: 0 0.1rem 0 var(--comic-ink);
+}
 
 .eyebrow {
   display: inline-flex;
