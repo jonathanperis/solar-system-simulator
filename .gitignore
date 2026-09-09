@@ -4,6 +4,8 @@ docs/dist/
 docs/.astro/
 docs/node_modules/
 docs/public/wasm/
+playwright-evidence/
+.playwright-cli/
 
 # Prerequisites
 *.d

@@ -18,6 +18,12 @@ EM_JS(int, solar_web_initial_canvas_height, (void), {
     const value = Math.round(rect.height || canvas.clientHeight || canvas.height || 720);
     return Math.max(1, value);
 })
+
+EM_JS(void, solar_web_report_control_state, (const char *focused_body_name, const char *view_mode), {
+    if (typeof Module.reportControlState === 'function') {
+        Module.reportControlState(UTF8ToString(focused_body_name), UTF8ToString(view_mode));
+    }
+})
 #endif
 
 #include "app/body_trails.h"
@@ -83,13 +89,16 @@ static void apply_orbit_camera(Camera3D *camera, const OrbitCameraState *state, 
 static void solar_app_update_draw(void *user_data)
 {
     SolarApp *app = user_data;
+    int control_state_changed = 0;
 
     if (IsKeyPressed(KEY_TAB) || IsKeyPressed(KEY_C)) {
         app->focused_body_index = next_body_index(app->focused_body_index, &app->system);
+        control_state_changed = 1;
     }
 
     if (IsKeyPressed(KEY_V)) {
         app->render_mode = next_render_scale_mode(app->render_mode);
+        control_state_changed = 1;
     }
 
     float frame_time = GetFrameTime();
@@ -109,6 +118,14 @@ static void solar_app_update_draw(void *user_data)
     if (app->system.body_count > 0 && app->focused_body_index < app->system.body_count) {
         focused_body_name = app->system.bodies[app->focused_body_index].name;
     }
+
+#if defined(PLATFORM_WEB)
+    if (control_state_changed) {
+        solar_web_report_control_state(focused_body_name, renderer_scale_mode_label(app->render_mode));
+    }
+#else
+    (void)control_state_changed;
+#endif
 
     BeginDrawing();
     ClearBackground(BLACK);
@@ -160,6 +177,10 @@ int main(void)
      * callback never points at a stack frame that returned. */
     static SolarApp web_app;
     web_app = app;
+    solar_web_report_control_state(
+        web_app.system.body_count > 0 ? web_app.system.bodies[web_app.focused_body_index].name : "None",
+        renderer_scale_mode_label(web_app.render_mode)
+    );
     emscripten_set_main_loop_arg(solar_app_update_draw, &web_app, 0, 1);
 #else
     while (!WindowShouldClose()) {
