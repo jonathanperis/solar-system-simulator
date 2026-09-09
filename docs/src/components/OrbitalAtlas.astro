@@ -87,20 +87,21 @@ const chartPosition = (angle: number, radius: number) => {
         </div>
 
         {implementedBodies.filter((body) => body.chart.plate === plate.id).map((body) => (
-          <a
+          <button
+            type="button"
             class={`atlas-body atlas-body-${body.accent}`}
-            href={`${base}body-catalog/#${body.slug}`}
             style={chartPosition(body.chart.angle, body.chart.radius)}
             data-atlas-body
             data-slug={body.slug}
             data-plate={body.chart.plate}
             data-angle={body.chart.angle}
             aria-controls="atlas-note"
-            aria-current={body.slug === 'sun' ? 'true' : undefined}
+            aria-pressed={body.slug === 'sun' ? 'true' : 'false'}
+            aria-expanded="false"
           >
             <span class="atlas-body-orb"></span>
             <span class="atlas-body-label">{body.name}</span>
-          </a>
+          </button>
         ))}
       </section>
     ))}
@@ -109,7 +110,7 @@ const chartPosition = (angle: number, radius: number) => {
   <div class="atlas-bearing-control">
     <label for="atlas-bearing">Observation bearing</label>
     <input id="atlas-bearing" data-atlas-bearing type="range" min="0" max="359" value="0" />
-    <output data-atlas-bearing-output>000 degrees</output>
+    <output for="atlas-bearing" data-atlas-bearing-output>000 degrees</output>
   </div>
 
   <noscript>
@@ -141,7 +142,7 @@ const chartPosition = (angle: number, radius: number) => {
 </section>
 
 <script>
-  import { cycleIndex, nearestBodyIndex } from '../lib/orbitalAtlas';
+  import { cycleIndex, nearestBodyIndex, normalizeDegrees } from '../lib/orbitalAtlas';
   import { implementedBodies, type ImplementedBody } from '../lib/bodies';
 
   type Plate = ImplementedBody['chart']['plate'];
@@ -150,7 +151,7 @@ const chartPosition = (angle: number, radius: number) => {
   if (atlas) {
     const stage = atlas.querySelector<HTMLElement>('[data-atlas-stage]')!;
     const note = atlas.querySelector<HTMLElement>('[data-atlas-note]')!;
-    const bodyLinks = [...atlas.querySelectorAll<HTMLAnchorElement>('[data-atlas-body]')];
+    const bodyControls = [...atlas.querySelectorAll<HTMLButtonElement>('[data-atlas-body]')];
     const plates = [...atlas.querySelectorAll<HTMLElement>('[data-atlas-plate]')];
     const plateTabs = [...atlas.querySelectorAll<HTMLButtonElement>('[data-atlas-plate-tab]')];
     const bearingInput = atlas.querySelector<HTMLInputElement>('[data-atlas-bearing]')!;
@@ -168,16 +169,16 @@ const chartPosition = (angle: number, radius: number) => {
     };
     let activePlate: Plate = 'heliocentric';
     let selectedSlug = 'sun';
-    let invokingLink: HTMLAnchorElement | null = null;
+    let invokingControl: HTMLElement | null = null;
     let dragging = false;
 
     const currentBodies = (): ImplementedBody[] => implementedBodies.filter((body) => body.chart.plate === activePlate);
     const selectedBody = (): ImplementedBody => implementedBodies.find((body) => body.slug === selectedSlug) ?? implementedBodies[0];
-    const bodyLink = (slug: string): HTMLAnchorElement | undefined => bodyLinks.find((link) => link.dataset.slug === slug);
-    const restoreFocus = (): void => (invokingLink ?? bodyLink(selectedSlug))?.focus();
+    const bodyControl = (slug: string): HTMLButtonElement | undefined => bodyControls.find((control) => control.dataset.slug === slug);
+    const restoreFocus = (): void => (invokingControl ?? bodyControl(selectedSlug))?.focus();
 
     const setBearing = (value: number | string): void => {
-      const bearing = Math.round(Number(value));
+      const bearing = normalizeDegrees(Math.round(Number(value)));
       atlas.style.setProperty('--atlas-bearing', `${bearing}deg`);
       bearingInput.value = String(bearing);
       bearingOutput.value = `${String(bearing).padStart(3, '0')} degrees`;
@@ -200,14 +201,18 @@ const chartPosition = (angle: number, radius: number) => {
       if (!body) return;
       if (body.chart.plate !== activePlate) setPlate(body.chart.plate, false);
       selectedSlug = body.slug;
-      bodyLinks.forEach((link) => link.removeAttribute('aria-current'));
-      const link = bodyLink(body.slug);
-      link?.setAttribute('aria-current', 'true');
+      bodyControls.forEach((control) => {
+        control.setAttribute('aria-pressed', 'false');
+        control.setAttribute('aria-expanded', 'false');
+      });
+      const control = bodyControl(body.slug);
+      control?.setAttribute('aria-pressed', 'true');
+      control?.setAttribute('aria-expanded', String(openNote));
       setBearing(body.chart.angle);
       populateNote(body);
       note.hidden = !openNote;
       status.textContent = `${body.name} selected. ${body.summary}`;
-      if (focusBody) link?.focus();
+      if (focusBody) control?.focus();
     };
 
     const setPlate = (plate: Plate, retainSelection = true): void => {
@@ -219,10 +224,10 @@ const chartPosition = (angle: number, radius: number) => {
       status.textContent = `${plateTabs.find((tab) => tab.dataset.atlasPlateTab === plate)?.textContent?.trim()} plate selected.`;
     };
 
-    const stepBody = (direction: number): void => {
+    const stepBody = (direction: number, focusBody = false): void => {
       const bodies = currentBodies();
       const index = bodies.findIndex((body) => body.slug === selectedSlug);
-      selectBody(bodies[cycleIndex(index, direction, bodies.length)].slug, true, true);
+      selectBody(bodies[cycleIndex(index, direction, bodies.length)].slug, true, focusBody);
     };
 
     const selectNearestAtPointer = (event: PointerEvent): void => {
@@ -234,21 +239,37 @@ const chartPosition = (angle: number, radius: number) => {
       selectBody(bodies[index].slug, true);
     };
 
-    bodyLinks.forEach((link) => link.addEventListener('click', (event) => {
-      event.preventDefault();
-      invokingLink = link;
-      selectBody(link.dataset.slug!, true);
+    const closeNote = (): void => {
+      note.hidden = true;
+      bodyControl(selectedSlug)?.setAttribute('aria-expanded', 'false');
+      restoreFocus();
+    };
+
+    bodyControls.forEach((control) => control.addEventListener('click', () => {
+      invokingControl = control;
+      selectBody(control.dataset.slug!, true);
     }));
     plateTabs.forEach((tab) => tab.addEventListener('click', () => setPlate(tab.dataset.atlasPlateTab as Plate, false)));
     bearingInput.addEventListener('input', () => {
+      invokingControl = bearingInput;
       setBearing(bearingInput.value);
       const bodies = currentBodies();
       selectBody(bodies[nearestBodyIndex(bodies.map((body) => ({ chartAngle: body.chart.angle })), Number(bearingInput.value))].slug, true);
     });
-    stage.addEventListener('pointerdown', (event) => { dragging = true; stage.setPointerCapture(event.pointerId); selectNearestAtPointer(event); });
+    stage.addEventListener('pointerdown', (event) => {
+      if (event.target instanceof Element && event.target.closest('[data-atlas-body]')) return;
+      dragging = true;
+      invokingControl = stage;
+      stage.focus({ preventScroll: true });
+      stage.setPointerCapture(event.pointerId);
+      selectNearestAtPointer(event);
+    });
     stage.addEventListener('pointermove', (event) => { if (dragging) selectNearestAtPointer(event); });
     stage.addEventListener('pointerup', () => { dragging = false; });
+    stage.addEventListener('pointercancel', () => { dragging = false; });
+    stage.addEventListener('lostpointercapture', () => { dragging = false; });
     stage.addEventListener('wheel', (event) => {
+      if (document.activeElement !== stage) return;
       event.preventDefault();
       const index = plates.findIndex((plate) => plate.dataset.atlasPlate === activePlate);
       const direction = event.deltaY > 0 ? 1 : -1;
@@ -257,14 +278,13 @@ const chartPosition = (angle: number, radius: number) => {
     stage.addEventListener('keydown', (event) => {
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault();
-        stepBody(event.key === 'ArrowRight' ? 1 : -1);
-      }
-      if (event.key === 'Escape' && !note.hidden) {
-        note.hidden = true;
-        restoreFocus();
+        stepBody(event.key === 'ArrowRight' ? 1 : -1, true);
       }
     });
-    atlas.querySelector<HTMLButtonElement>('[data-atlas-close]')!.addEventListener('click', () => { note.hidden = true; restoreFocus(); });
+    atlas.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !note.hidden) closeNote();
+    });
+    atlas.querySelector<HTMLButtonElement>('[data-atlas-close]')!.addEventListener('click', closeNote);
     atlas.querySelector<HTMLButtonElement>('[data-atlas-previous]')!.addEventListener('click', () => stepBody(-1));
     atlas.querySelector<HTMLButtonElement>('[data-atlas-next]')!.addEventListener('click', () => stepBody(1));
     selectBody('sun', false);

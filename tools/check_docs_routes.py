@@ -53,8 +53,10 @@ class ReferenceParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.references: list[str] = []
+        self.elements: list[tuple[str, dict[str, str | None]]] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.elements.append((tag, dict(attrs)))
         for name, value in attrs:
             if name in {"href", "src"} and value:
                 self.references.append(value)
@@ -122,6 +124,17 @@ def main(argv: list[str]) -> int:
             if marker not in html:
                 fail(f"{route} missing marker: {marker}")
         check_internal_references(dist, route, html)
+        parser = ReferenceParser()
+        parser.feed(html)
+        primary_links = [
+            attrs
+            for tag, attrs in parser.elements
+            if tag == "a" and "data-primary-nav-link" in attrs
+        ]
+        if len(primary_links) != 6:
+            fail(f"{route} must expose all six primary navigation links")
+        if sum(attrs.get("aria-current") == "page" for attrs in primary_links) != 1:
+            fail(f"{route} must identify exactly one current primary navigation link")
         if "rel=\"canonical\"" not in html:
             fail(f"{route} missing canonical URL")
         if "Skip to content" not in html:
@@ -129,13 +142,22 @@ def main(argv: list[str]) -> int:
         if route == "index.html" and "role=\"table\"" in html:
             fail("index.html uses invalid presentational table roles")
         if route == "index.html":
+            body_controls = [
+                (tag, attrs)
+                for tag, attrs in parser.elements
+                if "data-atlas-body" in attrs
+            ]
+            if len(body_controls) != len(ATLAS_BODY_ANCHORS):
+                fail("index.html must expose one control for each atlas body")
+            if any(tag != "button" or "aria-pressed" not in attrs for tag, attrs in body_controls):
+                fail("index.html atlas bodies must be semantic toggle buttons")
             for slug in ATLAS_BODY_ANCHORS:
                 if f"body-catalog/#{slug}" not in html:
                     fail(f"index.html missing no-JS body catalog fallback: {slug}")
         if analytics_id and analytics_id not in html:
             fail(f"{route} missing configured analytics ID")
-        if not analytics_id and "googletagmanager.com/gtag/js" in html:
-            fail(f"{route} includes analytics without PUBLIC_GA_ID")
+        if not analytics_id and "googletagmanager.com" in html:
+            fail(f"{route} contacts Google Tag Manager without PUBLIC_GA_ID")
         if route in {"index.html", "docs/index.html", "docs/build-and-web/index.html"}:
             for marker in FOOTER_MARKERS:
                 if marker not in html:
@@ -150,12 +172,16 @@ def main(argv: list[str]) -> int:
         "Static renderer notes now shown on the page",
         "Renderer behavior",
         "Controls expose real simulator state",
+        "runtime-control-state",
         "full-run visual span through bounded historical decimation",
     ]
     wasm_html = wasm.read_text(encoding="utf-8", errors="replace")
     for marker in wasm_markers:
         if marker not in wasm_html:
             fail(f"copied WebAssembly HTML artifact missing marker: {marker}")
+    for marker in ("Skip to simulator", "rel=\"canonical\"", "fonts.googleapis.com"):
+        if marker not in wasm_html:
+            fail(f"copied WebAssembly HTML artifact missing shared page chrome: {marker}")
     check_internal_references(dist, "wasm/solar-system-simulator.html", wasm_html)
 
     print(f"Docs routes OK in {dist}")

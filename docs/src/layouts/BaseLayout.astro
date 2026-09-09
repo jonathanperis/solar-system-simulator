@@ -11,6 +11,11 @@ const title = pageTitle ? `${pageTitle} · ${siteName}` : siteName;
 const defaultDescription = 'A physics-first C and raylib solar-system lab with a browser WebAssembly demo and source-backed Astro docs.';
 const description = Astro.props.description || (pageTitle ? `${pageTitle}. ${defaultDescription}` : defaultDescription);
 const canonicalUrl = new URL(Astro.url.pathname, 'https://jonathanperis.github.io').href;
+const currentPath = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
+const isPrimaryRouteActive = (href: string) => {
+  const routePath = withBase(base, href);
+  return href ? currentPath.startsWith(routePath) : currentPath === routePath;
+};
 ---
 <!doctype html>
 <html lang="en">
@@ -29,7 +34,6 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://jonathanperis.github.i
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <link rel="icon" href={`${base}favicon.ico`} sizes="any" />
-    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
@@ -44,7 +48,15 @@ const canonicalUrl = new URL(Astro.url.pathname, 'https://jonathanperis.github.i
         <span>{siteName}</span>
       </a>
       <nav class="primary-nav" aria-label="Main navigation">
-        {primaryRoutes.map((route) => <a href={withBase(base, route.href)}>{route.label}</a>)}
+        {primaryRoutes.map((route) => (
+          <a
+            href={withBase(base, route.href)}
+            aria-current={isPrimaryRouteActive(route.href) ? 'page' : undefined}
+            data-primary-nav-link
+          >
+            {route.label}
+          </a>
+        ))}
       </nav>
     </header>
     <main id="main-content">

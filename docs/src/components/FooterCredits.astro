@@ -4,22 +4,22 @@ import { implementedBodies } from '../lib/bodies';
 ---
 <footer class="site-footer" data-footer-credits>
   <div class="footer-grid">
-    <section class="footer-credit-block">
+    <div class="footer-credit-block">
       <p class="eyebrow">Credits and scope</p>
       <h2>Designed as a physics learning instrument by {authorName}.</h2>
       <p>
         Built with {techStack.slice(0, 5).join(', ')}. The C simulation remains the source of truth;
         Astro publishes the source atlas around it.
       </p>
-    </section>
+    </div>
 
-    <section class="footer-credit-block">
+    <div class="footer-credit-block">
       <p class="eyebrow">Current milestone</p>
       <p><strong>{currentMilestone.shortLabel}:</strong> {implementedBodies.length} implemented bodies, {currentMilestone.integrator}, and {currentMilestone.units}.</p>
       <p class="fine-print">Build revision: <code>{buildRevision}</code></p>
       <p class="fine-print">Usage analytics run only on deployed Pages when configured.</p>
       <p class="fine-print">{currentMilestone.disclaimer}</p>
-    </section>
+    </div>
 
     <nav class="footer-links" aria-label="Footer links">
       {footerLinks.map((link) => <a href={link.href}>{link.label}</a>)}

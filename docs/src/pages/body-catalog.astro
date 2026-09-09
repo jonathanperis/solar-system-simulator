@@ -16,13 +16,19 @@ const base = normalizeBase(import.meta.env.BASE_URL);
   </section>
 
   <section class="panel table-wrap science-table">
-    <table>
+    <table aria-label="Implemented body initialization catalog">
       <thead>
         <tr><th>Body</th><th>Kind</th><th>Parent</th><th>Milestone</th><th>Initialization note</th></tr>
       </thead>
       <tbody>
         {implementedBodies.map((body) => (
-          <tr id={body.slug}><td>{body.name}</td><td>{body.kind}</td><td>{body.parent}</td><td>{body.milestone}</td><td>{body.initialization}</td></tr>
+          <tr id={body.slug}>
+            <td data-label="Body">{body.name}</td>
+            <td data-label="Kind">{body.kind}</td>
+            <td data-label="Parent">{body.parent}</td>
+            <td data-label="Milestone">{body.milestone}</td>
+            <td data-label="Initialization note">{body.initialization}</td>
+          </tr>
         ))}
       </tbody>
     </table>

@@ -8,7 +8,7 @@
   --ink-soft: oklch(36% 0.04 257);
   --navy: oklch(22% 0.055 258);
   --navy-deep: oklch(15% 0.045 258);
-  --brass: oklch(63% 0.085 76);
+  --brass: oklch(50% 0.085 76);
   --brass-light: oklch(76% 0.08 80);
   --rule: oklch(28% 0.045 258 / 0.34);
   --rule-soft: oklch(28% 0.045 258 / 0.14);
@@ -78,7 +78,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .primary-nav, .footer-links, .actions, .status-strip, .body-chip-row { display: flex; flex-wrap: wrap; gap: 0.85rem; }
 .primary-nav { justify-content: flex-end; }
 .primary-nav a { color: var(--ink-soft); font-family: "JetBrains Mono", monospace; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-decoration: none; text-transform: uppercase; }
-.primary-nav a:hover { color: var(--brass); }
+.primary-nav a:hover, .primary-nav a[aria-current="page"] { color: var(--navy); text-decoration: underline; text-decoration-color: var(--brass); }
 
 h1, h2, h3, p { margin-top: 0; }
 h1, h2, h3 { color: var(--navy); font-weight: 500; line-height: 0.95; letter-spacing: -0.025em; text-wrap: balance; }
@@ -122,9 +122,9 @@ kbd { border: 1px solid var(--rule); padding: 0.08em 0.35em; background: var(--p
   text-transform: uppercase;
 }
 .button, .atlas-launch { background: var(--navy); color: var(--paper-light); }
-.button-secondary { border-color: var(--brass); background: var(--brass); }
+.button-secondary { border-color: var(--brass); background: var(--brass-light); }
 .button-tertiary, .atlas-source { background: transparent; }
-.button:hover, .atlas-launch:hover { background: var(--brass); color: var(--navy); border-color: var(--brass); }
+.button:hover, .atlas-launch:hover { background: var(--brass-light); color: var(--navy); border-color: var(--brass); }
 .button-secondary:hover, .button-tertiary:hover, .atlas-source:hover { background: var(--paper-light); color: var(--navy); }
 
 /* Homepage atlas */
@@ -164,10 +164,10 @@ kbd { border: 1px solid var(--rule); padding: 0.08em 0.35em; background: var(--p
 .atlas-arm { position: absolute; inset: 0; pointer-events: none; transform: rotate(var(--atlas-bearing, 0deg)); transform-origin: 50% 50%; }
 .atlas-arm span { position: absolute; left: 50%; top: 11%; bottom: 50%; width: 1px; background: var(--brass); transform: translateX(-50%); }
 .atlas-arm i { position: absolute; left: calc(50% - 0.36rem); top: calc(11% - 0.36rem); width: 0.72rem; height: 0.72rem; border: 1px solid var(--brass); border-radius: 50%; background: var(--paper-light); }
-.atlas-body { position: absolute; z-index: 2; display: grid; justify-items: center; gap: 0.3rem; min-width: 3rem; transform: translate(-50%, -50%); color: var(--navy); text-decoration: none; }
+.atlas-body { position: absolute; z-index: 2; display: grid; justify-items: center; gap: 0.3rem; min-width: 3rem; min-height: 2.75rem; border: 0; padding: 0; transform: translate(-50%, -50%); background: transparent; color: var(--navy); cursor: pointer; text-decoration: none; }
 .atlas-body-orb { width: 1.05rem; height: 1.05rem; border: 1px solid var(--navy); border-radius: 50%; background: var(--body-color, var(--moon)); box-shadow: 0 0 0 0.18rem var(--paper); }
 .atlas-body-label { padding: 0.1rem 0.25rem; background: var(--paper); font-family: "JetBrains Mono", monospace; font-size: 0.57rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
-.atlas-body:hover .atlas-body-orb, .atlas-body[aria-current="true"] .atlas-body-orb { width: 1.35rem; height: 1.35rem; border-color: var(--brass); box-shadow: 0 0 0 0.22rem var(--paper), 0 0 0 0.3rem var(--brass); }
+.atlas-body:hover .atlas-body-orb, .atlas-body[aria-pressed="true"] .atlas-body-orb { width: 1.35rem; height: 1.35rem; border-color: var(--brass); box-shadow: 0 0 0 0.22rem var(--paper), 0 0 0 0.3rem var(--brass); }
 .atlas-body-solar { --body-color: var(--brass-light); }
 .atlas-body-solar .atlas-body-orb { width: 3.8rem; height: 3.8rem; border-width: 2px; background: radial-gradient(circle at 35% 35%, var(--paper-light), var(--brass-light) 35%, var(--brass)); }
 .atlas-body-earth { --body-color: var(--earth); }
@@ -219,6 +219,7 @@ kbd { border: 1px solid var(--rule); padding: 0.08em 0.35em; background: var(--p
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 0.75rem; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
 th { color: var(--brass); }
+.science-table tr:target { background: oklch(76% 0.08 80 / 0.28); }
 
 .source-atlas-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 2rem 0; }
 .source-atlas-card { display: flex; flex-direction: column; min-height: 15rem; padding: 1.2rem; border-top: 3px double var(--brass); }
@@ -233,6 +234,7 @@ th { color: var(--brass); }
 .docs-manual-brand { display: flex; gap: 0.6rem; align-items: center; color: var(--navy); font-family: "JetBrains Mono", monospace; font-size: 0.73rem; letter-spacing: 0.07em; text-decoration: none; }
 .docs-manual-brand span { display: grid; place-items: center; width: 2rem; height: 2rem; border: 1px solid var(--brass); border-radius: 50%; color: var(--brass); }
 .docs-sidebar-copy, .docs-route-count { font-size: 0.9rem; line-height: 1.35; }
+.docs-menu summary { display: none; }
 .docs-filter-label, .docs-nav-group > p { display: block; margin: 1rem 0 0.35rem; color: var(--brass); font-family: "JetBrains Mono", monospace; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .docs-filter { width: 100%; border: 1px solid var(--rule); padding: 0.5rem; background: var(--paper-light); color: var(--navy); }
 .docs-sidebar nav, .docs-nav-group, .docs-nav-group > div, .docs-sidebar-actions, .manual-route-links, .manual-index-list, .route-list, .source-map-list { display: grid; gap: 0.45rem; }
@@ -269,6 +271,10 @@ th { color: var(--brass); }
   .atlas-note { transition: opacity 180ms ease, transform 220ms ease; }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
 @media (max-width: 980px) {
   .atlas-copy { width: min(29rem, 52vw); }
   .atlas-plate, .atlas-engraving::before { width: min(76vw, 78vh); height: min(76vw, 78vh); right: -5vw; }
@@ -277,6 +283,8 @@ th { color: var(--brass); }
   .source-atlas-grid, .manual-route-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .docs-layout, .split-section, .maker-note, .rough-edges, .footer-grid, .manual-hero { grid-template-columns: 1fr; }
   .docs-sidebar { position: static; }
+  .docs-menu summary { display: flex; align-items: center; min-height: 2.75rem; border-block: 1px solid var(--rule); color: var(--navy); cursor: pointer; font-family: "JetBrains Mono", monospace; font-size: 0.67rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .docs-menu[open] summary { margin-bottom: 0.8rem; }
 }
 
 @media (max-width: 680px) {
@@ -309,4 +317,39 @@ th { color: var(--brass); }
   .ledger-row, .manual-index-row { grid-template-columns: 1fr; gap: 0.35rem; }
   .docs-layout { margin-top: 1.5rem; }
   .docs-sidebar { padding: 0.8rem; }
+}
+
+@media (max-width: 760px) {
+  .primary-nav a, .docs-nav-link, .docs-sidebar-actions a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+  .home-page { overflow: auto; }
+  .home-page .site-header { position: relative; inset: auto; width: var(--measure); background: none; }
+  .home-page main { width: 100%; }
+  .home-page .site-footer { position: relative; inset: auto; display: block; width: var(--measure); padding: 2rem 0 3rem; pointer-events: auto; }
+  .home-page .footer-grid { display: grid; padding-top: 1.5rem; }
+  .home-page .footer-credit-block { display: block; }
+  .home-page .footer-links { display: flex; }
+  .home-page .footer-grid::after { content: none; }
+  .orbital-atlas { display: flex; flex-direction: column; gap: 1rem; width: var(--measure); min-height: 0; margin-inline: auto; padding: 1.5rem 0 0.5rem; overflow: visible; }
+  .atlas-copy { position: relative; top: auto; left: auto; order: 1; width: auto; }
+  .atlas-copy > p:not(.eyebrow) { max-width: 34ch; }
+  .atlas-tools { position: static; order: 2; flex-wrap: wrap; }
+  .atlas-plate-tabs { position: static; order: 3; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  .atlas-plate-tab { justify-content: center; min-height: 2.75rem; padding: 0.45rem 0.3rem; border: 0; border-bottom: 2px solid transparent; text-align: center; }
+  .atlas-plate-tab[aria-pressed="true"] { border-bottom-color: var(--brass); }
+  .atlas-stage { position: relative; inset: auto; order: 4; width: 100%; aspect-ratio: 1; overflow: hidden; border-block: 1px solid var(--rule); }
+  .atlas-plate, .atlas-engraving::before { top: 50%; right: 0; width: 100%; height: 100%; }
+  .atlas-engraving::after { top: 50%; right: -8%; width: 116%; height: 116%; }
+  .atlas-figure, .atlas-coordinate { display: none; }
+  .atlas-bearing-control { position: static; order: 5; display: grid; grid-template-columns: minmax(0, 1fr) auto; width: 100%; }
+  .atlas-bearing-control label { grid-column: 1 / -1; }
+  .atlas-note { position: fixed; z-index: 12; inset: auto 0 0; width: 100%; max-height: 60dvh; overflow: auto; border-inline: 0; box-shadow: none; transform: none; }
+  .atlas-note-close { display: inline-flex; align-items: center; justify-content: center; min-width: 2.75rem; min-height: 2.75rem; padding: 0.5rem; }
+  .atlas-note-actions a, .atlas-note-actions button { display: inline-flex; align-items: center; min-height: 2.75rem; }
+  .atlas-nojs { position: static; order: 6; max-width: none; }
+  .science-table { overflow: visible; border: 0; padding: 0; background: transparent; }
+  .science-table table, .science-table tbody { display: block; }
+  .science-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .science-table tr { display: block; margin-bottom: 0.8rem; border: 1px solid var(--rule); border-top: 3px double var(--brass); background: var(--paper-light); }
+  .science-table td { display: grid; grid-template-columns: minmax(6.5rem, 0.35fr) minmax(0, 1fr); gap: 0.7rem; width: 100%; padding: 0.7rem; }
+  .science-table td::before { content: attr(data-label); color: var(--brass); font-family: "JetBrains Mono", monospace; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
 }
