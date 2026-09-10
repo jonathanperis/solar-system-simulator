@@ -168,7 +168,7 @@ T29|x|subdue grid and remove orange wireframes; host runtime in Astro and preser
 T30|x|update documentation, verify all affected boundaries, regression scan, commit/push main and deploy Pages|A5,V14,V16
 T31|x|add C-owned playback, selection, physical inspector, and renderer-only system framing with RED tests|A6,A7,A8,V23,V24
 T32|x|integrate accessible web controls, native shortcuts, state bridge, and source-backed documentation|A6,A7,A8,I.inspection
-T33|~|verify native/WASM/docs/browser boundaries, regression scan, commit/push main, and verify Pages|A8,V14,V16
+T33|x|verify native/WASM/docs/browser boundaries, regression scan, commit/push main, and verify Pages|A8,V14,V16
 
 ## §B
 
