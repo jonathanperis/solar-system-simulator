@@ -264,14 +264,16 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
         Color trail_color = Fade(renderer_body_color(body), 0.85f);
         size_t stride = renderer_trail_sample_stride(point_count);
         size_t previous_point = 0;
+        /* Adjacent segments share an endpoint. Reuse its render transform;
+         * the simulation and synchronized history are immutable while drawing. */
+        Vec3d start = renderer_trail_point_position(system, trails, i, 0, mode);
         for (size_t j = stride; j < point_count; j += stride) {
-            Vec3d start = renderer_trail_point_position(system, trails, i, previous_point, mode);
             Vec3d end = renderer_trail_point_position(system, trails, i, j, mode);
             DrawLine3D(vec3d_to_raylib(start), vec3d_to_raylib(end), trail_color);
+            start = end;
             previous_point = j;
         }
         if (previous_point + 1 < point_count) {
-            Vec3d start = renderer_trail_point_position(system, trails, i, previous_point, mode);
             Vec3d end = renderer_trail_point_position(system, trails, i, point_count - 1, mode);
             DrawLine3D(vec3d_to_raylib(start), vec3d_to_raylib(end), trail_color);
         }
