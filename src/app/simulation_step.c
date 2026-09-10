@@ -3,22 +3,20 @@
 void solar_app_step_system_with_trails(
     SolarSystem *system,
     BodyTrails *trails,
-    double dt_seconds,
-    double max_step_seconds
+    SimulationClock *clock,
+    double dt_seconds
 )
 {
-    if (dt_seconds <= 0.0 || max_step_seconds <= 0.0) {
+    if (dt_seconds <= 0.0) {
         return;
     }
 
-    while (dt_seconds > max_step_seconds) {
-        solar_system_step(system, max_step_seconds);
+    /* Never integrate a short remainder just because a render frame ended.
+     * Keep it for the next frame so trajectories do not depend on frame rate. */
+    clock->pending_seconds += dt_seconds;
+    while (clock->pending_seconds >= SOLAR_APP_MAX_PHYSICS_STEP_SECONDS) {
+        solar_system_step(system, SOLAR_APP_MAX_PHYSICS_STEP_SECONDS);
         body_trails_record_system(trails, system);
-        dt_seconds -= max_step_seconds;
-    }
-
-    if (dt_seconds > 0.0) {
-        solar_system_step(system, dt_seconds);
-        body_trails_record_system(trails, system);
+        clock->pending_seconds -= SOLAR_APP_MAX_PHYSICS_STEP_SECONDS;
     }
 }

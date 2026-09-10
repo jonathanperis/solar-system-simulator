@@ -4,13 +4,18 @@
 #include "body_trails.h"
 #include "../sim/solar_system.h"
 
-#define SOLAR_APP_MAX_PHYSICS_STEP_SECONDS (5.0 * 60.0)
+/* Verified against 100-day orbital phase and half-step convergence tests. */
+#define SOLAR_APP_MAX_PHYSICS_STEP_SECONDS 15.0
+
+typedef struct SimulationClock {
+    double pending_seconds;
+} SimulationClock;
 
 void solar_app_step_system_with_trails(
     SolarSystem *system,
     BodyTrails *trails,
-    double dt_seconds,
-    double max_step_seconds
+    SimulationClock *clock,
+    double dt_seconds
 );
 
 #endif

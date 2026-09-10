@@ -228,7 +228,16 @@ size_t renderer_trail_draw_segment_count(size_t point_count)
 
 void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode)
 {
-    DrawGrid(renderer_grid_slices_for_system(system, mode), 1.0f);
+    int slices = renderer_grid_slices_for_system(system, mode);
+    float half_width = (float)slices * 0.5f;
+    /* A subdued reference plane sits below the orbital plane so its lines do
+     * not compete with trails or share their depth at grid intersections. */
+    for (int i = 0; i <= slices; ++i) {
+        float offset = (float)i - half_width;
+        Color grid_color = {45, 57, 69, 255};
+        DrawLine3D((Vector3){offset, -0.02f, -half_width}, (Vector3){offset, -0.02f, half_width}, grid_color);
+        DrawLine3D((Vector3){-half_width, -0.02f, offset}, (Vector3){half_width, -0.02f, offset}, grid_color);
+    }
 
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
@@ -241,7 +250,7 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
             continue;
         }
 
-        Color trail_color = Fade(renderer_body_color(body), 0.55f);
+        Color trail_color = Fade(renderer_body_color(body), 0.85f);
         size_t stride = renderer_trail_sample_stride(point_count);
         size_t previous_point = 0;
         for (size_t j = stride; j < point_count; j += stride) {
@@ -264,6 +273,5 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
         float radius = renderer_body_radius(body, mode);
 
         DrawSphere(position, radius, color);
-        DrawSphereWires(position, radius, 16, 16, ORANGE);
     }
 }

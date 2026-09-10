@@ -19,10 +19,18 @@ EM_JS(int, solar_web_initial_canvas_height, (void), {
     return Math.max(1, value);
 })
 
-EM_JS(void, solar_web_report_control_state, (const char *focused_body_name, const char *view_mode), {
-    if (typeof Module.reportControlState === 'function') {
-        Module.reportControlState(UTF8ToString(focused_body_name), UTF8ToString(view_mode));
-    }
+EM_JS(void, solar_web_report_state, (const char *focused_body_name, const char *view_mode,
+    double elapsed_days, double trail_interval_seconds, int trails_failed), {
+    Module.reportState(UTF8ToString(focused_body_name), UTF8ToString(view_mode),
+        elapsed_days, trail_interval_seconds, trails_failed);
+})
+
+EM_JS(void, solar_web_initialization_failed, (void), {
+    Module.onAbort("WebGL could not initialize. Check browser graphics support.");
+})
+
+EM_JS(int, solar_web_canvas_has_focus, (void), {
+    return document.activeElement === Module.canvas;
 })
 #endif
 
@@ -39,6 +47,7 @@ typedef struct SolarApp {
     OrbitCameraState orbit_camera;
     SolarSystem system;
     BodyTrails trails;
+    SimulationClock clock;
     double time_scale;
     size_t focused_body_index;
     RenderScaleMode render_mode;
@@ -89,16 +98,32 @@ static void apply_orbit_camera(Camera3D *camera, const OrbitCameraState *state, 
 static void solar_app_update_draw(void *user_data)
 {
     SolarApp *app = user_data;
-    int control_state_changed = 0;
 
+#if defined(PLATFORM_WEB)
+    /* CSS owns the frame; keep raylib's projection/backing size in sync after
+     * responsive layout changes instead of stretching the old framebuffer. */
+    int width = solar_web_initial_canvas_width();
+    int height = solar_web_initial_canvas_height();
+    if (width != GetScreenWidth() || height != GetScreenHeight()) {
+        SetWindowSize(width, height);
+    }
+#endif
+
+#if defined(PLATFORM_WEB)
+    int simulator_controls_active = solar_web_canvas_has_focus();
+    if (simulator_controls_active && IsKeyPressed(KEY_C)) {
+#else
     if (IsKeyPressed(KEY_TAB) || IsKeyPressed(KEY_C)) {
+#endif
         app->focused_body_index = next_body_index(app->focused_body_index, &app->system);
-        control_state_changed = 1;
     }
 
-    if (IsKeyPressed(KEY_V)) {
+    if (
+#if defined(PLATFORM_WEB)
+        simulator_controls_active &&
+#endif
+        IsKeyPressed(KEY_V)) {
         app->render_mode = next_render_scale_mode(app->render_mode);
-        control_state_changed = 1;
     }
 
     float frame_time = GetFrameTime();
@@ -108,8 +133,8 @@ static void solar_app_update_draw(void *user_data)
     solar_app_step_system_with_trails(
         &app->system,
         &app->trails,
-        (double)frame_time * app->time_scale,
-        SOLAR_APP_MAX_PHYSICS_STEP_SECONDS
+        &app->clock,
+        (double)frame_time * app->time_scale
     );
     camera_target = body_camera_target(&app->system, app->focused_body_index, app->render_mode);
     apply_orbit_camera(&app->camera, &app->orbit_camera, camera_target);
@@ -120,11 +145,9 @@ static void solar_app_update_draw(void *user_data)
     }
 
 #if defined(PLATFORM_WEB)
-    if (control_state_changed) {
-        solar_web_report_control_state(focused_body_name, renderer_scale_mode_label(app->render_mode));
-    }
-#else
-    (void)control_state_changed;
+    solar_web_report_state(focused_body_name, renderer_scale_mode_label(app->render_mode),
+        seconds_to_days(app->system.elapsed_seconds), app->trails.sample_interval_seconds,
+        body_trails_recording_failed(&app->trails));
 #endif
 
     BeginDrawing();
@@ -134,6 +157,9 @@ static void solar_app_update_draw(void *user_data)
     renderer_draw_solar_system(&app->system, &app->trails, app->render_mode);
     EndMode3D();
 
+#if !defined(PLATFORM_WEB)
+    /* Astro presents these readouts outside the web canvas for accessibility
+     * and mobile layout. Native builds retain their in-window HUD. */
     DrawText("Solar System Simulator", 20, 20, 20, RAYWHITE);
     DrawText(TextFormat("Elapsed days: %.2f", seconds_to_days(app->system.elapsed_seconds)), 20, 50, 18, RAYWHITE);
     DrawText(TextFormat("Focus: %s", focused_body_name), 20, 75, 18, RAYWHITE);
@@ -142,6 +168,7 @@ static void solar_app_update_draw(void *user_data)
     if (body_trails_recording_failed(&app->trails)) {
         DrawText("Trail recording paused: memory unavailable.", 20, 150, 18, RED);
     }
+#endif
 
     EndDrawing();
 }
@@ -156,7 +183,15 @@ int main(void)
     screen_height = solar_web_initial_canvas_height();
 #endif
 
+#if defined(PLATFORM_WEB)
+    InitWindow(screen_width, screen_height, "Live simulator · Solar System Simulator");
+    if (!IsWindowReady()) {
+        solar_web_initialization_failed();
+        return 1;
+    }
+#else
     InitWindow(screen_width, screen_height, "Solar System Simulator");
+#endif
     SetTargetFPS(60);
 
     SolarApp app = {0};
@@ -177,9 +212,10 @@ int main(void)
      * callback never points at a stack frame that returned. */
     static SolarApp web_app;
     web_app = app;
-    solar_web_report_control_state(
+    solar_web_report_state(
         web_app.system.body_count > 0 ? web_app.system.bodies[web_app.focused_body_index].name : "None",
-        renderer_scale_mode_label(web_app.render_mode)
+        renderer_scale_mode_label(web_app.render_mode), 0.0,
+        web_app.trails.sample_interval_seconds, body_trails_recording_failed(&web_app.trails)
     );
     emscripten_set_main_loop_arg(solar_app_update_draw, &web_app, 0, 1);
 #else

@@ -6,6 +6,7 @@ docs/node_modules/
 docs/public/wasm/
 playwright-evidence/
 .playwright-cli/
+.specs/
 
 # Prerequisites
 *.d

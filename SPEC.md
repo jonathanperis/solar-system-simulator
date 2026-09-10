@@ -34,7 +34,7 @@ I.test: `make test` → all C tests
 
 I.run: `make run` → raylib app
 
-I.web: `make web` → checked HTML + JS + WASM
+I.web: `make web` → checked JS + WASM; Astro owns the runtime document and loader integration
 
 I.dist: `make dist-wasm` → WASM zip
 
@@ -48,9 +48,9 @@ I.app: body trails, stable orbit camera, bounded simulation stepping
 
 I.render: illustrative | real-scale transforms + raylib drawing
 
-I.controls: `Tab` | `C` focus; `V` scale; wheel zoom
+I.controls: native `Tab` | `C` focus; web `C` focus and browser-native `Tab`; `V` scale; wheel zoom
 
-I.pages: `/`, `/docs/`, `/docs/architecture/`, `/docs/simulation-core/`, `/docs/rendering/`, `/docs/controls/`, `/docs/build-and-web/`, `/docs/roadmap/`, `/physics/`, `/body-catalog/`, `/source-atlas/`, `/pipeline/`, `/wasm/solar-system-simulator.html`
+I.pages: `/`, `/docs/`, `/docs/architecture/`, `/docs/simulation-core/`, `/docs/rendering/`, `/docs/controls/`, `/docs/build-and-web/`, `/docs/roadmap/`, `/physics/`, `/body-catalog/`, `/source-atlas/`, `/pipeline/`, `/simulator/`; `/wasm/solar-system-simulator.html` redirects to `/simulator/`
 
 I.ci: `Build` → native tests + WASM artifact; `Deploy Pages` consumes successful artifact
 
@@ -77,9 +77,9 @@ V6: planets + Vesta start heliocentric perihelion; Moon starts Earth-relative pe
 
 V7: default no-inclination orbital motion ∈ X/Z plane; parent-relative Y position/velocity=0.
 
-V8: app physics step ≤300 simulated seconds; trail sample recorded after each substep.
+V8: app accumulates frame-scaled time and advances only in fixed 15-second physics steps; unconsumed time remains in the app clock. Equal accumulated time produces the same state regardless of frame partitioning.
 
-V9: trails retain full-run visual span in bounded memory; at point cap older samples decimate; renderer draws ≤1024 trail segments/body.
+V9: trails retain full-run temporal coverage and the current endpoint within 1025 visible points/body. History starts at a 300-second simulation-time cadence; each compaction doubles both historical spacing and future sampling cadence. All bodies share sample times for parent-relative rendering. Resolution coarsens uniformly during long runs; this is a history approximation, not a stored ephemeris or complete precomputed orbit.
 
 V10: illustrative transforms affect render output only; asteroid radius=`0.03` render units; real-scale uses same physical scale for positions + radii with no radius clamp.
 
@@ -104,6 +104,19 @@ V19: checked WASM begins `\0asm\1\0\0\0`; docs checker resolves all internal rou
 V20: atlas visual scale/positions are explicitly illustrative; body names, parents, initialization, sources derive from `implementedBodies`; live motion claims link only to WASM runtime.
 
 V21: atlas selection works without pointer; body controls expose selected state, drawer closes on `Escape`, focus returns to invoking body, reduced-motion suppresses ornamental motion.
+
+V22: 100-day isolated Phobos/Deimos numerical checks compare orbital phase against an analytical Kepler solution (less than 1 degree error); the nine-body scene compares the app step with half-sized reference steps (less than 1% parent-relative position discrepancy).
+
+## §A — Runtime accuracy repair, 2026-09-09
+
+id|criterion|verify
+A1|At the reported 86.83-day duration, circular Mercury-like history retains distributed coverage, bounded chord error, synchronized parent/child samples, and the exact current endpoint; storage and drawing remain bounded|`test_body_trails`, `test_renderer`
+A2|Fixed-step app clock is frame-partition independent; 100-day orbital phase and full-scene convergence satisfy V22|`test_simulation_step`
+A3|Body colors are not covered by universal orange wireframes; the grid is subdued; SI state and render-only size policy remain separate|native/WASM build, renderer tests, headless visual inspection
+A4|Astro runtime uses shared chrome, loads JS/WASM successfully under Pages base path, exposes focus/view state and visible load errors; existing HTML URL redirects successfully|docs route checker, WASM checker, Astro type-check, headless browser
+A5|Source-backed docs describe fixed stepping, uniformly coarsened trails, and Astro runtime ownership; main is committed/pushed and Pages deployment is verified at its commit SHA|source scan, Build/Deploy Pages runs, public browser verification
+
+Engineering decisions: Jonathan authorized all reported repairs and Astro integration on 2026-09-09, then explicitly confirmed `Main + Pages` deployment. The 15-second step and 100-day/one-degree target are engineering accuracy targets for this repair, not claims of ephemeris fidelity. Preserve the existing full-run history scope with honest uniformly decreasing resolution rather than silently switching to a recent-only trail.
 
 ## §T
 
@@ -135,6 +148,9 @@ T24|x|harden docs/WASM checks + premerge docs gate; add build provenance|V13,V14
 T25|x|fix docs/runtime accessibility, metadata, deploy-only analytics disclosure|C7,C8,V17,V18
 T26|x|refresh docs dependency tree; add Dependabot coverage|C7,V16,I.ci
 T27|x|ship archival solar-chart atlas: full-screen accessible homepage plates, source-backed body drawer, engraved route system, matched WASM frame, route/check coverage|C7,C8,V13,V16,V18,V20,V21,I.atlas,I.pages,I.web
+T28|x|repair trail retention and fixed-step accuracy using RED tests and 100-day analytical/convergence checks|A1,A2,V8,V9,V22
+T29|x|subdue grid and remove orange wireframes; host runtime in Astro and preserve old links|A3,A4,I.web,I.pages,V10,V12,V13,V18
+T30|~|update documentation, verify all affected boundaries, regression scan, commit/push main and deploy Pages|A5,V14,V16
 
 ## §B
 
@@ -148,3 +164,5 @@ B6|2026-09-02|unbounded full-sample trails + draw cap too high → long-run memo
 B7|2026-09-02|public docs claimed easing, HUD labels, WASM magic check absent from code|V16,V19
 B8|2026-09-02|WASM copy claimed unbounded trail history despite bounded decimation|V9,V16
 B9|2026-09-02|atlas client selectors lacked typed DOM bindings|V21
+B10|2026-09-09|repeatedly thinning old samples while recording new ones at full resolution erased early orbital curvature; endpoint-only straight-line tests missed it|V9,A1
+B11|2026-09-09|one-orbit radius bounds did not detect long-run Phobos phase drift from a five-minute step|V8,V22,A2

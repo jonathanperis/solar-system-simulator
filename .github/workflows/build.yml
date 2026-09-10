@@ -81,7 +81,6 @@ jobs:
         with:
           name: solar-system-simulator-wasm
           path: |
-            build/web/solar-system-simulator.html
             build/web/solar-system-simulator.js
             build/web/solar-system-simulator.wasm
             build/solar-system-simulator-wasm.zip
@@ -125,7 +124,7 @@ jobs:
         working-directory: docs
         run: npm ci
 
-      - name: Run atlas interaction tests
+      - name: Run atlas and runtime integration tests
         working-directory: docs
         run: npm run test
 

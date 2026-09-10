@@ -22,7 +22,7 @@ export const sourceSections: SourceSection[] = [
     label: 'Application helpers',
     path: 'src/app/',
     responsibility: 'orbit camera state, bounded full-run trails, and other window-independent app helpers.',
-    verification: 'C tests exercise zoom clamps, trail history endpoints, and bounded trail storage.'
+    verification: 'C tests exercise frame-independent stepping, 100-day orbital accuracy, curved trail coverage, and bounded storage.'
   },
   {
     label: 'Rendering boundary',
@@ -49,10 +49,10 @@ export const sourceSections: SourceSection[] = [
     verification: 'Run npm run build --prefix docs and the docs route smoke checker.'
   },
   {
-    label: 'Web shell',
-    path: 'web/shell.html',
-    responsibility: 'Emscripten HTML shell that hosts the C/raylib WebAssembly artifact.',
-    verification: 'Checked by tools/check_wasm_artifacts.py during WebAssembly builds.'
+    label: 'Browser runtime',
+    path: 'docs/src/pages/simulator.astro',
+    responsibility: 'Shared Astro layout and canvas; simulator.ts connects live C state and loading errors to accessible readouts.',
+    verification: 'Runtime integration tests, generated route checks, and headless browser verification.'
   },
   {
     label: 'Automation',

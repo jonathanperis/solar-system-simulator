@@ -29,10 +29,11 @@ ROUTES: dict[str, list[str]] = {
         "Heliocentric",
         "Earth system",
         "Mars system",
-        "wasm/solar-system-simulator.html",
+        "simulator/",
         "Run live simulator",
     ],
     "physics/index.html": ["Physics stays in SI units", "docs/simulation-core/", "data-footer-credits"],
+    "simulator/index.html": ["Run the real orbit loop", "data-simulator", "runtime-control-state", "canvas", "15-second", "uniform", "data-footer-credits"],
     "body-catalog/index.html": ["Stable IDs prevent duplicate knowledge", "docs/roadmap/", "Phobos", "Deimos", "Vesta", "JPL SBDB solution 36"],
     "source-atlas/index.html": ["The code separates physics from presentation", "docs/architecture/", "src/sim/"],
     "pipeline/index.html": ["Native tests feed a Pages lab bench", "docs/build-and-web/", "make web"],
@@ -58,7 +59,7 @@ class ReferenceParser(HTMLParser):
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.elements.append((tag, dict(attrs)))
         for name, value in attrs:
-            if name in {"href", "src"} and value:
+            if name in {"href", "src", "data-runtime-src"} and value:
                 self.references.append(value)
 
 
@@ -131,8 +132,8 @@ def main(argv: list[str]) -> int:
             for tag, attrs in parser.elements
             if tag == "a" and "data-primary-nav-link" in attrs
         ]
-        if len(primary_links) != 6:
-            fail(f"{route} must expose all six primary navigation links")
+        if len(primary_links) != 7:
+            fail(f"{route} must expose all seven primary navigation links")
         if sum(attrs.get("aria-current") == "page" for attrs in primary_links) != 1:
             fail(f"{route} must identify exactly one current primary navigation link")
         if "rel=\"canonical\"" not in html:
@@ -162,27 +163,12 @@ def main(argv: list[str]) -> int:
             for marker in FOOTER_MARKERS:
                 if marker not in html:
                     fail(f"{route} missing footer marker: {marker}")
-    wasm = dist / "wasm" / "solar-system-simulator.html"
-    if not wasm.is_file():
-        fail("missing copied WebAssembly HTML artifact")
-
-    wasm_markers = [
-        "Orbital atlas runtime",
-        "Launch-ready C/raylib canvas",
-        "Static renderer notes now shown on the page",
-        "Renderer behavior",
-        "Controls expose real simulator state",
-        "runtime-control-state",
-        "full-run visual span through bounded historical decimation",
-    ]
-    wasm_html = wasm.read_text(encoding="utf-8", errors="replace")
-    for marker in wasm_markers:
-        if marker not in wasm_html:
-            fail(f"copied WebAssembly HTML artifact missing marker: {marker}")
-    for marker in ("Skip to simulator", "rel=\"canonical\"", "fonts.googleapis.com"):
-        if marker not in wasm_html:
-            fail(f"copied WebAssembly HTML artifact missing shared page chrome: {marker}")
-    check_internal_references(dist, "wasm/solar-system-simulator.html", wasm_html)
+    for extension in ("js", "wasm"):
+        if not (dist / "wasm" / f"solar-system-simulator.{extension}").is_file():
+            fail(f"missing WebAssembly runtime asset: {extension}")
+    redirect = read_route(dist, "wasm/solar-system-simulator.html")
+    if "http-equiv=\"refresh\"" not in redirect or f"{BASE_PATH}simulator/" not in redirect:
+        fail("legacy WebAssembly HTML URL must redirect to the Astro simulator")
 
     print(f"Docs routes OK in {dist}")
     return 0

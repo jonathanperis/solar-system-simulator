@@ -28,6 +28,7 @@ export const techStack = [
 
 export const primaryRoutes = [
   { label: 'Lab', href: '' },
+  { label: 'Simulate', href: 'simulator/' },
   { label: 'Docs', href: 'docs/' },
   { label: 'Physics', href: 'physics/' },
   { label: 'Bodies', href: 'body-catalog/' },

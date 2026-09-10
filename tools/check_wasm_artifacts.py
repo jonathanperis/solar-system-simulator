@@ -17,40 +17,15 @@ def require(path: Path) -> None:
 def main() -> int:
     web_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("build/web")
     stem = "solar-system-simulator"
-    html = web_dir / f"{stem}.html"
     js = web_dir / f"{stem}.js"
     wasm = web_dir / f"{stem}.wasm"
 
-    for path in (html, js, wasm):
+    for path in (js, wasm):
         require(path)
 
-    html_text = html.read_text(encoding="utf-8")
     js_text = js.read_text(encoding="utf-8", errors="replace")
     repo_root = Path(__file__).resolve().parents[1]
     main_text = (repo_root / "src" / "main.c").read_text(encoding="utf-8")
-
-    expected_html = [
-        "Orbital atlas runtime",
-        "Solar System Simulator WebAssembly runtime",
-        "Skip to simulator",
-        "rel=\"canonical\"",
-        "fonts.googleapis.com",
-        "favicon.ico",
-        "Launch-ready C/raylib canvas",
-        "Static renderer notes now shown on the page",
-        "Renderer behavior",
-        "Responsive frame",
-        "full-run visual span through bounded historical decimation",
-        "role=\"status\"",
-        "aria-live=\"polite\"",
-        "runtime-control-state",
-        "reportControlState",
-        "canvas.emscripten:focus-visible",
-        f"{stem}.js",
-    ]
-    for marker in expected_html:
-        if marker not in html_text:
-            raise SystemExit(f"{html} missing marker: {marker}")
 
     if f"{stem}.wasm" not in js_text:
         raise SystemExit(f"{js} does not reference {stem}.wasm")
@@ -58,11 +33,11 @@ def main() -> int:
     if wasm.read_bytes()[:8] != b"\x00asm\x01\x00\x00\x00":
         raise SystemExit(f"{wasm} does not start with the WebAssembly magic and version bytes")
 
-    for marker in ("solar_web_initial_canvas_width", "solar_web_initial_canvas_height"):
+    for marker in ("solar_web_initial_canvas_width", "solar_web_initial_canvas_height", "solar_web_canvas_has_focus"):
         if marker not in main_text:
             raise SystemExit(f"src/main.c must use {marker} before InitWindow() so the WebGL window starts at the served frame size")
-    if "solar_web_report_control_state" not in main_text:
-        raise SystemExit("src/main.c must report focus and view changes to the accessible WebAssembly shell")
+    if "solar_web_report_state" not in main_text or "reportState" not in js_text:
+        raise SystemExit("WebAssembly must report live simulation state to the Astro page")
 
     if "const int screen_width = 1280" in main_text or "const int screen_height = 720" in main_text:
         raise SystemExit("src/main.c must not hardcode the web InitWindow() size to 1280x720")

@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -75,6 +76,7 @@ static void test_trails_keep_every_recorded_point_beyond_initial_capacity(void)
     BodyTrails trails = body_trails_create();
 
     for (size_t i = 0; i < SOLAR_TRAIL_INITIAL_CAPACITY + 3; ++i) {
+        system.elapsed_seconds = (double)i * 300.0;
         system.bodies[3].position_m = (Vec3d){(double)i, 0.0, 0.0};
         body_trails_record_system(&trails, &system);
     }
@@ -93,6 +95,7 @@ static void test_trails_keep_full_run_endpoints_with_bounded_storage(void)
     const size_t sample_count = SOLAR_TRAIL_MAX_POINTS * 3 + 7;
 
     for (size_t i = 0; i < sample_count; ++i) {
+        system.elapsed_seconds = (double)i * 300.0;
         system.bodies[3].position_m = (Vec3d){(double)i, 0.0, 0.0};
         body_trails_record_system(&trails, &system);
     }
@@ -108,6 +111,47 @@ static void test_trails_keep_full_run_endpoints_with_bounded_storage(void)
     body_trails_destroy(&trails);
 }
 
+static void test_long_curved_history_keeps_temporal_coverage_and_live_endpoint(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
+    BodyTrails trails = body_trails_create();
+    const double duration = 86.83 * SOLAR_DAY_SECONDS;
+    const double period = 87.9677 * SOLAR_DAY_SECONDS;
+
+    /* A known circle detects chords across erased history. The parent/child
+     * coordinates independently encode sample times to detect desynchronization. */
+    for (double t = 0.0;; t = fmin(t + 60.0, duration)) {
+        double angle = 2.0 * acos(-1.0) * t / period;
+        system.elapsed_seconds = t;
+        system.bodies[1].position_m = (Vec3d){cos(angle), 0.0, sin(angle)};
+        system.bodies[3].position_m = (Vec3d){t, 0.0, 0.0};
+        system.bodies[4].position_m = (Vec3d){t + 100.0, 0.0, 0.0};
+        body_trails_record_system(&trails, &system);
+        if (t == duration) break;
+    }
+
+    size_t count = body_trails_point_count(&trails, 1);
+    assert(count > 2 && count <= SOLAR_TRAIL_MAX_POINTS);
+    assert(body_trails_point_count(&trails, 3) == count);
+    assert(body_trails_point_count(&trails, 4) == count);
+    assert_vec3d_equal(body_trails_point_at(&trails, 1, 0), (Vec3d){1.0, 0.0, 0.0});
+    assert_vec3d_equal(body_trails_point_at(&trails, 1, count - 1), system.bodies[1].position_m);
+
+    for (size_t i = 1; i < count; ++i) {
+        double previous_time = body_trails_point_at(&trails, 3, i - 1).x;
+        double time = body_trails_point_at(&trails, 3, i).x;
+        assert(time > previous_time);
+        assert(time - previous_time <= 2.0 * duration / (double)(count - 2));
+        assert(body_trails_point_at(&trails, 4, i).x == time + 100.0);
+
+        Vec3d midpoint = vec3d_scale(vec3d_add(
+            body_trails_point_at(&trails, 1, i - 1), body_trails_point_at(&trails, 1, i)
+        ), 0.5);
+        assert(1.0 - vec3d_length(midpoint) < 0.0001);
+    }
+    body_trails_destroy(&trails);
+}
+
 int main(void)
 {
     test_trails_start_empty_for_all_body_slots();
@@ -115,6 +159,7 @@ int main(void)
     test_trails_append_new_positions_after_motion();
     test_trails_keep_every_recorded_point_beyond_initial_capacity();
     test_trails_keep_full_run_endpoints_with_bounded_storage();
+    test_long_curved_history_keeps_temporal_coverage_and_live_endpoint();
     puts("test_body_trails passed");
     return 0;
 }
