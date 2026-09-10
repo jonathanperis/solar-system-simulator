@@ -327,6 +327,15 @@ SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_
     return system;
 }
 
+SolarSystem solar_system_create_current(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter();
+    for (size_t i = 0; i < SOLAR_JOVIAN_MOON_COUNT; ++i) {
+        system.bodies[system.body_count++] = satellite_create(&solar_jovian_moons[i], &system.bodies[9]);
+    }
+    return system;
+}
+
 SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter(void)
 {
     SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();

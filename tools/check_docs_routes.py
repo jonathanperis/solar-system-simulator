@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import sys
 import os
+import json
 from html.parser import HTMLParser
 from pathlib import PurePosixPath
 from pathlib import Path
@@ -29,11 +30,13 @@ ROUTES: dict[str, list[str]] = {
         "Heliocentric",
         "Earth system",
         "Mars system",
+        "Jupiter system",
+        "data-atlas-moon-group",
         "simulator/",
         "Run live simulator",
     ],
     "physics/index.html": ["Physics stays in SI units", "docs/simulation-core/", "data-footer-credits"],
-    "simulator/index.html": ["Run the real orbit loop", "data-simulator", "runtime-control-state", "canvas", "15-second", "uniform", "data-footer-credits", "data-runtime-panel", "data-runtime-body", "data-runtime-speed", "Frame selected system", "Live physics inspector", "data-inspector-distance", "data-inspector-speed"],
+    "simulator/index.html": ["Run the real orbit loop", "data-simulator", "runtime-control-state", "canvas", "15-second", "uniform", "data-footer-credits", "data-runtime-panel", "data-runtime-body", "data-runtime-speed", "Frame selected system", "Frame selected body", "Live physics inspector", "data-inspector-distance", "data-inspector-speed", "data-runtime-search", "data-runtime-group", "15 days / second", "10 days / second", "data-runtime-achieved", "test particles"],
     "body-catalog/index.html": ["Stable IDs prevent duplicate knowledge", "docs/roadmap/", "Phobos", "Deimos", "Vesta", "Jupiter", "JPL physical parameters", "JPL SBDB solution 36"],
     "source-atlas/index.html": ["The code separates physics from presentation", "docs/architecture/", "src/sim/"],
     "pipeline/index.html": ["Native tests feed a Pages lab bench", "docs/build-and-web/", "make web"],
@@ -48,6 +51,7 @@ ROUTES: dict[str, list[str]] = {
 
 FOOTER_MARKERS = ["data-footer-credits", "Jonathan Peris", "raylib", "Emscripten", "Astro", "GitHub Pages"]
 ATLAS_BODY_ANCHORS = ["sun", "mercury", "venus", "earth", "moon", "mars", "phobos", "deimos", "vesta", "jupiter"]
+ATLAS_BODY_ANCHORS += [moon["slug"] for moon in json.loads((Path(__file__).resolve().parents[1] / "data/jovian_moons.json").read_text())["moons"]]
 
 
 class ReferenceParser(HTMLParser):

@@ -73,8 +73,40 @@ static void test_step_moves_unaccelerated_body_linearly(void)
     assert_close(probe.velocity_mps.x, 10.0, 1e-12);
 }
 
+static void test_massless_particles_feel_gravity_without_backreaction(void)
+{
+    Body bodies[] = {
+        body_create("Source", BODY_KIND_PLANET, 1e20, 100, vec3d_zero(), vec3d_zero(), false),
+        body_create("Tracer", BODY_KIND_MOON, 0, 0, (Vec3d){1e6, 0, 0}, vec3d_zero(), false),
+    };
+    physics_step(bodies, 2, 15);
+    assert(bodies[0].position_m.x == 0 && bodies[0].velocity_mps.x == 0);
+    assert(bodies[1].position_m.x < 1e6 && bodies[1].velocity_mps.x < 0);
+}
+
+static void test_optimized_accelerations_match_pairwise_formula(void)
+{
+    Body bodies[] = {
+        body_create("A", BODY_KIND_PLANET, 1e20, 100, (Vec3d){0, 0, 0}, vec3d_zero(), false),
+        body_create("Tracer", BODY_KIND_MOON, 0, 0, (Vec3d){1e6, -2e6, 3e6}, vec3d_zero(), false),
+        body_create("B", BODY_KIND_MOON, 2e18, 10, (Vec3d){-3e6, 1e6, 2e6}, vec3d_zero(), false)
+    };
+    Vec3d expected[3] = {0};
+    for (size_t i = 0; i < 3; ++i) {
+        for (size_t j = 0; j < 3; ++j) expected[i] = vec3d_add(expected[i], gravitational_acceleration_from(&bodies[i], &bodies[j]));
+    }
+    physics_compute_accelerations(bodies, 3);
+    for (size_t i = 0; i < 3; ++i) {
+        assert_close(bodies[i].acceleration_mps2.x, expected[i].x, 1e-18);
+        assert_close(bodies[i].acceleration_mps2.y, expected[i].y, 1e-18);
+        assert_close(bodies[i].acceleration_mps2.z, expected[i].z, 1e-18);
+    }
+}
+
 int main(void)
 {
+    test_optimized_accelerations_match_pairwise_formula();
+    test_massless_particles_feel_gravity_without_backreaction();
     test_sun_only_body_acceleration_is_zero();
     test_solar_gravity_at_one_au_has_expected_magnitude_and_direction();
     test_zero_distance_contributes_no_acceleration();

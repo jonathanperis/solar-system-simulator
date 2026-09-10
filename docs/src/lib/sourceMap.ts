@@ -7,6 +7,12 @@ export type SourceSection = {
 
 export const sourceSections: SourceSection[] = [
   {
+    label: 'Jovian satellite catalog',
+    path: 'data/jovian_moons.json',
+    responsibility: 'Versioned source elements, stable JPL codes, physical-data quality and references for all 115 Jupiter moons; shared with C and Astro.',
+    verification: 'Offline tools/jovian_catalog.py --check, C satellite/geometry tests, and full-scene convergence.'
+  },
+  {
     label: 'Project spec',
     path: 'SPEC.md',
     responsibility: 'Current goals, constraints, interfaces, invariants, tasks, and bug history.',

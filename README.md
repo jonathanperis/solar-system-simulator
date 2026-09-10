@@ -6,14 +6,14 @@ A bare-bones 3D solar system simulator written in C with [raylib](https://www.ra
 
 This project is intentionally physics-first. The renderer exists to show the simulation, but the core work is mathematical: deterministic celestial-body state, SI-unit physics, and testable orbital mechanics foundations.
 
-## Milestone 9: Foundation + Sun + Mercury + Venus + Earth + Moon + Mars + Phobos + Deimos + Vesta + Jupiter
+## Milestone 10: Complete current-planet moon catalog and faster playback
 
-The current milestone adds Jupiter as the first gas giant. Its Galilean moons, additional planets, asteroid populations, dwarf planets, textures, shaders, and visual polish remain deferred to later iterations.
+The current scene adds all 115 recognized Jupiter moons from the 2026-09-10 NASA/JPL inventory, including provisional designations, and playback presets up to 15 simulated days per real second. Earth and Mars already have all their moons modeled; Mercury and Venus have none. Saturn is the next planetary milestone.
 
 Current milestone behavior:
 
 - Opens a raylib 3D scene titled `Solar System Simulator`.
-- Renders exactly ten celestial bodies: the Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta, and Jupiter.
+- Models 125 bodies: the original Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta, Jupiter, plus 115 Jovian moons. Known radii render as spheres; unknown radii use explicitly nonphysical wire markers.
 - Keeps the Sun fixed at the origin for a stable heliocentric baseline.
 - Initializes Mercury at perihelion on the +X axis with tangential +Z velocity from the vis-viva equation.
 - Initializes Venus at perihelion on the -X axis with tangential -Z velocity from the vis-viva equation.
@@ -23,10 +23,11 @@ Current milestone behavior:
 - Initializes Phobos and Deimos at Mars-relative periareion with tangential relative velocities from the Mars-moon vis-viva equations.
 - Initializes Vesta at heliocentric perihelion on the +X axis with tangential +Z velocity from the vis-viva equation.
 - Initializes Jupiter at heliocentric perihelion on the -X axis with tangential -Z velocity from the vis-viva equation.
-- Advances Mercury, Venus, Earth, the Moon, Mars, Phobos, Deimos, Vesta, and Jupiter with Newtonian gravity from all simulated bodies using the shared simulation integrator.
+- Initializes Jovian moons from sourced mean orbital elements, preserving inclination and retrograde/prograde direction through a common-frame conversion, then adds Jupiter's absolute position and velocity.
+- Advances moving bodies with Newtonian gravity from all nonzero-mass sources using the shared simulation integrator. Unknown-mass moons are test particles, not invented physical masses.
 - Supports illustrative/default and real-scale visualization modes.
 - Draws bounded motion traces for every non-star body, with uniform full-run sampling that coarsens as the run grows and an always-current endpoint.
-- Allows camera focus cycling across every simulated body: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta, and Jupiter.
+- Allows camera focus cycling and name/group search across all 125 bodies, with separate family and individual-body framing.
 - Clamps mouse-wheel camera zoom while preserving the default viewing pitch, so max zoom-in does not flip or corrupt the camera orientation.
 - Displays simulation readouts in the native HUD and accessible Astro page; the browser canvas is reserved for the scene.
 
@@ -43,10 +44,10 @@ Simulation code lives under `src/sim/` and is independent from raylib.
 - Gravity uses the Newtonian point-mass formula:
   - `a = G * source_mass / distance^3 * displacement`
 - Time stepping uses a velocity-Verlet / kick-drift-kick integrator.
-- The app uses a fixed 15-second simulation step and carries frame remainders in an accumulator. The default speed advances one simulated day per real second; presets also provide one hour or five days per second. Display-frame partitioning does not change the sequence of physics steps.
-- `tests/test_simulation_step.c` verifies less than one degree of isolated Phobos/Deimos phase error over 100 days and less than 1% parent-relative position discrepancy against half-sized steps for the full ten-body scene. These are numerical accuracy checks, not ephemeris validation.
+- The app uses a fixed 15-second simulation step and carries frame remainders in an accumulator. Requested presets are one hour, one day (default), five days, ten days, and fifteen days per real second. Each update executes at most 2048 steps, retaining unconsumed time and reporting achieved speed/pending time. Display-frame partitioning does not change the sequence of physics steps once pending work is drained.
+- `tests/test_simulation_step.c` verifies less than one degree of isolated Phobos/Deimos phase error over 100 days and less than 1% parent-relative position discrepancy against half-sized steps for the full 125-body scene. These are numerical accuracy checks, not ephemeris validation.
 - The Sun is fixed for this milestone; barycentric Sun motion is deferred.
-- This is a deterministic physics baseline, not an ephemeris-accurate model. It does not include relativistic precession, dated J2000 state vectors, measured orbital inclinations, barycentric Earth-Moon initialization, or perturbations from bodies beyond the modeled ten-body scene.
+- This is a deterministic physics baseline, not an ephemeris-accurate model. It does not include relativistic precession, planetary oblateness, dated J2000 state vectors, barycentric Earth-Moon initialization, or perturbations from unmodeled bodies. The original ten-body initialization remains planar; Jovian moon inclinations are modeled from their source frames.
 
 Current simulation data:
 
@@ -64,6 +65,25 @@ Baseline planet values follow NASA/JPL references; Jupiter's values use [JPL phy
 | Deimos | `1.441349654645431e15 kg` | `6200 m` | Mars-relative periareion offset and tangential relative speed |
 | Vesta | `2.590276793071933e20 kg` | `261385 m` | heliocentric perihelion position and tangential speed |
 | Jupiter | `1.898125e27 kg` | `69911000 m` | heliocentric perihelion position and tangential speed |
+
+### Jovian satellite data and approximations
+
+The complete [versioned catalog](data/jovian_moons.json) supplies both generated
+C initialization and Astro metadata. It contains four Galilean moons, four
+smaller inner moons, and 107 irregular moons. See [data provenance](data/README.md)
+for source links, units, epochs, and frame conversion.
+
+Nine moons have JPL physical-table entries. Published model estimates are
+labeled in both inspectors. The other 106 have unknown mass/radius in this
+snapshot: they feel known-source gravity with no gravitational backreaction,
+and their wire markers in either view never claim a physical size. Measured,
+estimated, and unknown values remain distinct. Mean orbital elements describe
+shape/orientation, not a dated ephemeris or an exact resonant configuration.
+
+Normal builds are offline. `python3 tools/jovian_catalog.py --check` detects
+stale generated C data; `--refresh` explicitly updates the source snapshot for
+review. `make build/benchmark_simulation && build/benchmark_simulation` measures
+headless full-scene fixed-step/trail throughput, independently of rendering.
 
 Mercury orbital values used for initialization:
 
@@ -165,14 +185,16 @@ The app uses a small stable orbit camera instead of raylib's automatic orbital h
 - `Space`: pause/resume. Paused time does not accumulate for later catch-up.
 - `N`: advance exactly 15 simulated seconds while paused.
 - `R`: restore initial physics, trail history, and clock remainder; retain selection, speed, pause state, render mode, and camera rotation setting.
-- `[` / `]`: change speed among 1 hour, 1 day, and 5 days per real second without changing the integration step.
-- `1`–`9`, `0`: select a body directly by catalog position; `0` selects tenth body Jupiter.
+- `[` / `]`: change requested speed among 1 hour, 1 day, 5 days, 10 days, and 15 days per real second without changing the integration step.
+- `1`–`9`, `0`: select the original ten bodies; `0` selects Jupiter. `C` cycles the complete scene.
+- `B`: frame only the selected body or its unknown-radius marker.
+- `/` in the native app: search by name, provisional designation, or moon group. Down finds the next match, Enter selects, and Escape closes search. Web controls provide a search field and group filter.
 - `A`: toggle camera auto-rotation independently of playback.
 - `F`: frame the selected planet and its moons. A selected moon frames its parent and siblings; the Sun frames all implemented bodies. Framing fits the current rendered bounding sphere to the viewport. Reframe after motion or manual zoom when needed.
 - `V`: toggle visualization mode.
   - Illustrative: physical planetary positions with large visible planet radii, smaller moon radii, and expanded parent-moon visual separation.
   - Real scale: physical orbital positions and physical radii under the same render scale; planets may be nearly invisible.
-- `Tab` or `C`: cycle camera focus across Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta, and Jupiter in the native app.
+- `Tab` or `C`: cycle camera focus across all 125 bodies in the native app.
 - `C`: cycle camera focus in the web app; `Tab` remains available for browser navigation.
 - Mouse wheel: zoom camera in/out around the current camera target.
   - Zoom distance is clamped.
@@ -237,9 +259,8 @@ tests/                 # C test binaries for simulation and app math
 
 Each future body should be added one iteration at a time, with physical constants, initial conditions, tests, and rendering checks scoped to that body.
 
-1. Galilean moons
-2. Saturn
-3. major Saturnian moons
-4. Uranus
-5. Neptune
-6. dwarf planets / Kuiper belt representatives
+1. Saturn
+2. major Saturnian moons
+3. Uranus
+4. Neptune
+5. dwarf planets / Kuiper belt representatives

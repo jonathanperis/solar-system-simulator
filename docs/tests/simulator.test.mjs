@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createSimulatorModule, moveSelectByKey, routeSimulatorKeyboard } from '../src/lib/simulator.ts';
+import { createSimulatorModule, filterRuntimeBodies, moveSelectByKey, routeSimulatorKeyboard } from '../src/lib/simulator.ts';
 
 test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolling', () => {
   for (const [key, focused, reachesGlfw, cancelled] of [
@@ -38,10 +38,10 @@ test('select arrow and boundary keys use the same change path as pointer selecti
 });
 
 test('C state drives playback, precise SI readouts, asset pairing, and permanent failure state', () => {
-  const readouts = Object.fromEntries(['status', 'controls', 'elapsed', 'interval', 'parent', 'distance', 'speed', 'mass', 'radius', 'camera']
+  const readouts = Object.fromEntries(['status', 'controls', 'elapsed', 'interval', 'parent', 'distance', 'speed', 'mass', 'radius', 'camera', 'achieved', 'pending']
     .map(key => [key, { textContent: '' }]));
   const controls = { panel: { disabled: true }, pause: { textContent: '' }, step: { disabled: true },
-    rotate: { checked: true }, body: { value: '' }, speed: { value: '' }, view: { textContent: '' } };
+    rotate: { checked: true }, body: { value: '', replaceChildren() {} }, speed: { value: '' }, view: { textContent: '' }, search: { value: '' }, group: { value: '' } };
   const runtime = createSimulatorModule({}, readouts,
     new URL('https://example.test/solar-system-simulator/wasm/solar-system-simulator.js?revision=abc123'), controls);
   assert.equal(runtime.locateFile('solar-system-simulator.wasm'),
@@ -49,7 +49,7 @@ test('C state drives playback, precise SI readouts, asset pairing, and permanent
   const state = { body: 'Phobos', parent: 'Mars', view: 'Illustrative', cameraTarget: 'Mars', selected: 6,
     paused: true, speedPreset: 0, autoRotate: false, elapsedSeconds: 15, intervalSeconds: 300,
     trailsFailed: false, hasParent: true, distanceM: 9233000, speedMps: 2138, massKg: 1.061834e16,
-    radiusM: 11266.7, zoom: 0.5 };
+    radiusM: 11266.7, zoom: 0.5, massQuality: 0, radiusQuality: 0, achievedTimeScale: 864000, pendingSeconds: 43200 };
   runtime.reportState(state);
   assert.equal(readouts.status.textContent, 'Simulation paused');
   assert.equal(readouts.elapsed.textContent, '0.00017 simulated days · 15 s');
@@ -77,9 +77,27 @@ test('C state drives playback, precise SI readouts, asset pairing, and permanent
   assert.equal(readouts.speed.textContent, 'N/A — no parent');
   assert.equal(readouts.radius.textContent, '11.267 km');
   assert.equal(controls.step.disabled, true);
+  runtime.reportState({ ...state, selected: 124, speedPreset: 4, paused: false,
+    massKg: 0, radiusM: 0, massQuality: 2, radiusQuality: 2 });
+  assert.equal(readouts.mass.textContent, 'Unknown (test particle)');
+  assert.equal(readouts.radius.textContent, 'Unknown (marker only)');
+  assert.equal(readouts.achieved.textContent, '10.00 days / second');
+  assert.equal(readouts.pending.textContent, '0.500 days');
+  assert.equal(controls.speed.value, '4');
+  runtime.reportState({ ...state, massQuality: 1, radiusQuality: 1 });
+  assert.equal(readouts.mass.textContent, '1.061834e+16 kg (estimated)');
+  assert.equal(readouts.radius.textContent, '11.267 km (estimated)');
   runtime.onAbort('Unable to load WebAssembly');
   runtime.setStatus('');
   runtime.reportState(state);
   assert.equal(readouts.status.textContent, 'Runtime error: Unable to load WebAssembly');
   assert.equal(controls.panel.disabled, true);
+});
+
+test('body filtering matches provisional names and retains the C selection without selecting a different body', () => {
+  const bodies = [{ index: 10, name: 'Io', group: 'Galilean moons' },
+    { index: 124, name: 'S/2021 J 8', group: 'Irregular moons' }];
+  assert.deepEqual(filterRuntimeBodies(bodies, '2021 j', '', 10), bodies);
+  assert.deepEqual(filterRuntimeBodies(bodies, '', 'Galilean moons', 10), [bodies[0]]);
+  assert.deepEqual(filterRuntimeBodies(bodies, 'missing', '', 124), [bodies[1]]);
 });

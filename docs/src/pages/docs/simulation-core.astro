@@ -21,6 +21,7 @@ import DocsShell from '../../components/DocsShell.astro';
         <li><code>src/sim/body.c</code> stores mass, radius, position, velocity, and acceleration in SI units.</li>
         <li><code>src/sim/physics.c</code> computes Newtonian point-mass acceleration.</li>
         <li><code>src/sim/solar_system.c</code> initializes the Sun, planets through Jupiter, moons, and Vesta with parent-aware states.</li>
+        <li><code>src/sim/satellite.c</code> converts Jovian mean elements and Laplace/ecliptic source frames into parent-relative SI states. The versioned <code>data/jovian_moons.json</code> catalog covers 115 Jupiter moons.</li>
         <li>The integrator is velocity-Verlet / kick-drift-kick, not Euler stepping.</li>
         <li><code>src/app/simulation_step.c</code> accumulates frame time and advances in fixed 15-second simulation steps, retaining the remainder for the next frame.</li>
       </ul>
@@ -30,7 +31,8 @@ import DocsShell from '../../components/DocsShell.astro';
       <h2>Known approximations</h2>
       <p>A moon can stay near its parent while drifting to the wrong place around its orbit. The 100-day checks in <code>tests/test_simulation_step.c</code> require less than one degree of isolated Phobos/Deimos phase error against analytical Kepler solutions, plus less than 1% parent-relative position discrepancy when the full scene is rerun with half-sized steps.</p>
       <p>Physics steps and trail sampling have separate cadences: improving numerical accuracy must not accelerate the loss of historical trail detail.</p>
-      <p>The Sun remains fixed for the current milestone. The project does not claim relativistic precession, dated J2000 state vectors, measured orbital inclinations, barycentric Earth-Moon initialization, or ephemeris accuracy.</p>
+      <p>The Sun remains fixed for the current milestone. Jovian moon inclinations and orbital directions come from source elements; original scene initialization remains planar. The project does not claim relativistic precession, planetary oblateness, dated J2000 state vectors, barycentric Earth-Moon initialization, or ephemeris accuracy.</p>
+      <p>Unknown-mass moons are test particles: they feel gravity without exerting it. Missing mass/radius values display as Unknown and published model estimates are labeled. The 2048-step update budget retains unconsumed time while keeping input responsive.</p>
       <p>That limitation is intentional for the foundation: the goal is inspectable orbital mechanics before catalog scale.</p>
     </section>
   </DocsShell>

@@ -21,7 +21,7 @@ static void test_trail_sampling_is_independent_of_physics_step_size(void)
     SimulationClock clock = {0};
 
     body_trails_record_system(&trails, &system);
-    solar_app_step_system_with_trails(&system, &trails, &clock, SOLAR_DAY_SECONDS);
+    solar_app_step_system_with_trails(&system, &trails, &clock, SOLAR_DAY_SECONDS, 5760);
 
     assert(body_trails_point_count(&trails, 0) == 0);
     assert(body_trails_point_count(&trails, 1) == 1 + 288);
@@ -50,9 +50,11 @@ static void test_frame_partitioning_preserves_state_and_pending_time(void)
 
     body_trails_record_system(&trails, &system);
     body_trails_record_system(&partitioned_trails, &partitioned);
-    solar_app_step_system_with_trails(&system, &trails, &clock, 650.0);
+    solar_app_step_system_with_trails(&system, &trails, &clock, 650.0, 10);
+    assert(system.elapsed_seconds == 150 && clock.pending_seconds == 500);
+    while (clock.pending_seconds >= 15) solar_app_step_system_with_trails(&system, &trails, &clock, 0, 10);
     for (int i = 0; i < 65; ++i) {
-        solar_app_step_system_with_trails(&partitioned, &partitioned_trails, &partitioned_clock, 10.0);
+        solar_app_step_system_with_trails(&partitioned, &partitioned_trails, &partitioned_clock, 10.0, 10);
     }
 
     assert(system.elapsed_seconds == 645.0);
@@ -110,7 +112,7 @@ static void test_martian_moons_keep_phase_over_100_days(void)
 
 static void test_full_scene_converges_over_100_days(void)
 {
-    SolarSystem actual = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter();
+    SolarSystem actual = solar_system_create_current();
     SolarSystem reference = actual;
     const double dt = SOLAR_APP_MAX_PHYSICS_STEP_SECONDS;
     for (double t = 0.0; t < 100.0 * SOLAR_DAY_SECONDS; t += dt) {

@@ -21,6 +21,8 @@ static Vector3 vec3d_to_raylib(Vec3d vector)
 
 float renderer_body_radius(const Body *body, RenderScaleMode mode)
 {
+    /* Unknown radii use an explicitly nonphysical wire marker in either view. */
+    if (body->radius_quality == PHYSICAL_UNKNOWN) return SOLAR_ILLUSTRATIVE_SMALL_MOON_RADIUS;
     float scaled_radius = meters_to_render_units(body->radius_m);
     if (mode == RENDER_SCALE_REAL) {
         return scaled_radius;
@@ -132,6 +134,11 @@ RenderSystemFrame renderer_system_frame(const SolarSystem *system, size_t select
     return frame;
 }
 
+RenderSystemFrame renderer_body_frame(const SolarSystem *system, size_t selected, RenderScaleMode mode)
+{
+    return (RenderSystemFrame){selected, renderer_body_radius(&system->bodies[selected], mode)};
+}
+
 Color renderer_body_color(const Body *body)
 {
     switch (body->id) {
@@ -155,6 +162,10 @@ Color renderer_body_color(const Body *body)
             return LIGHTGRAY;
         case BODY_ID_JUPITER:
             return (Color){206, 164, 118, 255};
+        case BODY_ID_IO: return (Color){230, 205, 94, 255};
+        case BODY_ID_EUROPA: return (Color){205, 215, 223, 255};
+        case BODY_ID_GANYMEDE: return (Color){164, 152, 129, 255};
+        case BODY_ID_CALLISTO: return (Color){130, 145, 160, 255};
         case BODY_ID_UNKNOWN:
         case BODY_ID_NONE:
         default:
@@ -272,6 +283,7 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
         Vector3 position = vec3d_to_raylib(renderer_body_position(system, i, mode));
         float radius = renderer_body_radius(body, mode);
 
-        DrawSphere(position, radius, color);
+        if (body->radius_quality == PHYSICAL_UNKNOWN) DrawSphereWires(position, radius, 4, 4, color);
+        else DrawSphere(position, radius, color);
     }
 }

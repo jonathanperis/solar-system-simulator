@@ -30,10 +30,25 @@ void physics_compute_accelerations(Body *bodies, size_t body_count)
         bodies[i].acceleration_mps2 = vec3d_zero();
     }
 
-    for (size_t i = 0; i < body_count; ++i) {
-        for (size_t j = 0; j < body_count; ++j) {
-            Vec3d contribution = gravitational_acceleration_from(&bodies[i], &bodies[j]);
-            bodies[i].acceleration_mps2 = vec3d_add(bodies[i].acceleration_mps2, contribution);
+    /* Most new satellites are explicitly massless tracers. Iterate sources
+     * first to skip their entire zero-contribution columns, while preserving
+     * the original source summation order for every target. Direct component
+     * arithmetic keeps this measured hot loop free of cross-file vector calls. */
+    for (size_t j = 0; j < body_count; ++j) {
+        if (bodies[j].mass_kg == 0.0) continue;
+        const Vec3d source = bodies[j].position_m;
+        const double gm = SOLAR_G * bodies[j].mass_kg;
+        for (size_t i = 0; i < body_count; ++i) {
+            if (i == j) continue;
+            double x = source.x - bodies[i].position_m.x;
+            double y = source.y - bodies[i].position_m.y;
+            double z = source.z - bodies[i].position_m.z;
+            double r2 = x * x + y * y + z * z;
+            if (r2 == 0.0) continue;
+            double scale = gm / (r2 * sqrt(r2));
+            bodies[i].acceleration_mps2.x += x * scale;
+            bodies[i].acceleration_mps2.y += y * scale;
+            bodies[i].acceleration_mps2.z += z * scale;
         }
     }
 }
@@ -41,7 +56,11 @@ void physics_compute_accelerations(Body *bodies, size_t body_count)
 void physics_step(Body *bodies, size_t body_count, double dt_seconds)
 {
     physics_compute_accelerations(bodies, body_count);
+    physics_step_from_accelerations(bodies, body_count, dt_seconds);
+}
 
+void physics_step_from_accelerations(Body *bodies, size_t body_count, double dt_seconds)
+{
     /* Velocity-Verlet: half-kick velocities, drift positions, recompute
      * acceleration from the new positions, then finish the second half-kick.
      * This is more orbit-friendly than explicit Euler for the same simple API. */

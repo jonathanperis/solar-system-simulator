@@ -9,7 +9,7 @@ A physics-first 3D solar system simulator written in C11 with raylib. This repos
 - **Language:** C11 only for simulator/runtime code.
 - **Graphics/windowing:** raylib.
 - **Architecture:** deterministic SI-unit simulation isolated from rendering.
-- **Current scene:** Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta, Jupiter.
+- **Current scene:** original ten bodies (Sun through Jupiter) plus all 115 Jovian moons; 125 bodies total. `data/jovian_moons.json` supplies offline C and Astro catalog data.
 - **Primary goal:** teach and verify orbital mechanics foundations before visual polish.
 - **Current public-site direction:** archival solar chart, source-backed and playful, with an accessible illustrative orrery wrapped around SI-unit physics. The docs hub and Astro-owned `/simulator/` runtime share the atlas layout.
 
@@ -84,9 +84,13 @@ solar-system-simulator/
 ## Current technical notes
 
 - Gravity is Newtonian point-mass acceleration.
+- Unknown-mass moons are explicit test particles. Unknown radius is never a physical zero readout: show Unknown and draw a render-only wire marker. Preserve measured/estimated/unknown provenance.
+- Jovian satellite mean elements use ecliptic or Laplace frames; convert the reference node/pole correctly before adding Jupiter's absolute state. Legacy initial states remain planar; source-backed Jovian inclinations/retrograde directions are intentional.
 - Time stepping uses velocity-Verlet / kick-drift-kick.
 - The Sun remains fixed at the origin for the current heliocentric baseline.
 - The app accumulates frame-scaled time and advances in fixed 15-second physics steps. Accuracy is checked over 100 days against analytical phase and half-step reference solutions.
+- Requested speeds extend to 10 and 15 days/second. Each update is capped at 2048 steps, with pending time retained and achieved speed reported. Do not hide slow hardware by dropping time or enlarging steps.
+- `make test` checks generated satellite data offline. Only explicit `python3 tools/jovian_catalog.py --refresh` fetches new source data. Review inventory/frame/epoch changes before accepting them.
 - Trails are bounded app-owned histories. They start at a 300-second sample cadence, double both historical and future spacing at compaction, and keep a live endpoint. Do not reintroduce repeated early-history erosion or claim unlimited trail resolution.
 - Illustrative render mode enlarges bodies and separates close moons visually without changing simulation data.
 - `src/app/simulation_session.*` owns playback, selection, reset, and physical inspection. Paused wall time is excluded; manual steps are exactly 15 seconds; reset preserves observer settings.
