@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { normalizeBase } from '../lib/base';
 import { buildRevision } from '../lib/site';
+import { implementedBodies } from '../lib/bodies';
 const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 <BaseLayout title="Live simulator" description="Run the C11 and raylib solar system in your browser, with fixed-step SI physics and source-backed controls.">
@@ -10,7 +11,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
       <div>
         <p class="eyebrow">Live field station / C11 + WebAssembly</p>
         <h1>Run the real orbit loop.</h1>
-        <p>Ten bodies. One SI-unit simulation. The chart below is rendered by raylib.</p>
+        <p>{implementedBodies.length} bodies. One SI-unit simulation. The chart below is rendered by raylib.</p>
       </div>
       <div class="actions">
         <a class="button" href="#canvas">Focus canvas</a>
@@ -24,6 +25,8 @@ const base = normalizeBase(import.meta.env.BASE_URL);
       <dl>
         <div><dt>Elapsed time</dt><dd data-runtime-elapsed>—</dd></div>
         <div><dt>History sample spacing</dt><dd data-runtime-interval>—</dd></div>
+        <div><dt>Achieved speed</dt><dd data-runtime-achieved>—</dd></div>
+        <div><dt>Pending simulation time</dt><dd data-runtime-pending>—</dd></div>
       </dl>
     </div>
 
@@ -38,18 +41,25 @@ const base = normalizeBase(import.meta.env.BASE_URL);
             <option value="0">1 hour / second</option>
             <option value="1" selected>1 day / second</option>
             <option value="2">5 days / second</option>
+            <option value="3">10 days / second</option>
+            <option value="4">15 days / second</option>
           </select>
         </label>
       </div>
       <div class="control-row">
+        <label>Find a body <input type="search" data-runtime-search placeholder="Name or designation" /></label>
+        <label>Body group <select data-runtime-group><option value="">All groups</option></select></label>
+      </div>
+      <div class="control-row">
         <label>Selected body <select data-runtime-body aria-describedby="inspector-description"></select></label>
         <button type="button" data-command="frame">Frame selected system</button>
+        <button type="button" data-command="frameBody">Frame selected body</button>
         <button type="button" data-command="view">View: Illustrative</button>
         <button type="button" data-command="zoom" data-value="1">Zoom in</button>
         <button type="button" data-command="zoom" data-value="-1">Zoom out</button>
         <label class="rotate-control"><input type="checkbox" data-runtime-rotate checked /> Rotate camera</label>
       </div>
-      <p>Reset restores time zero and fresh trails while keeping your selection, speed, pause state, and view settings.</p>
+      <p>Filters keep your current selection available. Reset restores time zero and fresh trails while keeping your selection, speed, pause state, and view settings.</p>
     </fieldset>
 
     <div class="canvas-wrap">
@@ -57,12 +67,13 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         Your browser needs canvas and WebGL to display the simulation.
       </canvas>
     </div>
-    <p id="simulator-keys" class="simulator-keys"><kbd>Space</kbd> pause · <kbd>N</kbd> step · <kbd>R</kbd> reset · <kbd>C</kbd> / <kbd>1–9</kbd> / <kbd>0</kbd> select · <kbd>V</kbd> view · <kbd>F</kbd> frame system · <kbd>A</kbd> camera rotation · Mouse wheel to zoom. Shortcuts require canvas focus; <kbd>Tab</kbd> continues through the page.</p>
+    <p id="simulator-keys" class="simulator-keys"><kbd>Space</kbd> pause · <kbd>N</kbd> step · <kbd>R</kbd> reset · <kbd>C</kbd> cycle all bodies · <kbd>1–9</kbd> / <kbd>0</kbd> select first ten · <kbd>V</kbd> view · <kbd>F</kbd> frame system · <kbd>B</kbd> frame body · <kbd>A</kbd> camera rotation · Mouse wheel to zoom. Shortcuts require canvas focus; <kbd>Tab</kbd> continues through the page.</p>
     <noscript><p class="callout">JavaScript is required to run WebAssembly. The <a href={`${base}docs/simulation-core/`}>physics guide</a> is available without it.</p></noscript>
 
     <section class="physics-inspector" aria-labelledby="inspector-heading">
       <h2 id="inspector-heading">Live physics inspector</h2>
       <p id="inspector-description">Measurements come from the C simulation in physical units. Distance and speed are relative to the selected body's parent, independent of illustrative size and moon spacing.</p>
+      <p>Published model estimates are labeled. Unknown masses use test particles that feel gravity without exerting it. Unknown radii use wire markers in both views; their drawn size is not a physical measurement.</p>
       <dl>
         <div><dt>Parent body</dt><dd data-inspector-parent>—</dd></div>
         <div><dt>Distance from parent</dt><dd data-inspector-distance>—</dd></div>
@@ -71,7 +82,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         <div><dt>Physical radius</dt><dd data-inspector-radius>—</dd></div>
         <div><dt>Camera target / distance (visual)</dt><dd data-runtime-camera>—</dd></div>
       </dl>
-      <p>Frame selected system fits a planet and its moons; selecting a moon frames its parent and siblings. Framing the Sun includes all implemented bodies. Use it again after motion or zoom to refit the view.</p>
+      <p>Frame selected system fits a planet and its moons; selecting a moon frames its parent and siblings. Framing the Sun includes all implemented bodies. Frame selected body zooms to just that body or its unknown-size marker. Use framing again after motion or zoom to refit the view.</p>
     </section>
 
     <div class="simulator-notes">
@@ -85,7 +96,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
       </section>
       <section>
         <h2>Read the numbers.</h2>
-        <p>Fixed 15-second physics steps are checked against 100-day orbital-phase and convergence tests. At the default speed, one real second advances one simulated day. Speed presets change elapsed time, never the integration step. This is an educational model, not a dated ephemeris.</p>
+        <p>Fixed 15-second physics steps are checked against 100-day orbital-phase and convergence tests. Requested speeds range from one hour to 15 days per real second. Bounded work per frame keeps controls responsive; slower hardware retains pending time and reports achieved speed. Speed presets never enlarge the integration step. This is an educational model, not a dated ephemeris.</p>
       </section>
     </div>
     <p><a href={`${base}docs/build-and-web/`}>How Astro loads the C runtime →</a></p>
@@ -112,8 +123,8 @@ const base = normalizeBase(import.meta.env.BASE_URL);
   .runtime-panel { margin: 1rem 0; padding: 1rem; border: 1px solid var(--rule); min-width: 0; background: var(--paper-light); }
   .runtime-panel legend { font-weight: 700; padding: 0 0.4rem; }
   .control-row { display: flex; flex-wrap: wrap; align-items: end; gap: 0.75rem; margin-bottom: 0.75rem; }
-  .control-row label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.95rem; }
-  .control-row button, .control-row select { min-height: 44px; padding: 0.5rem 0.7rem; border: 1px solid var(--ink-soft); border-radius: 3px; background: var(--paper-light); color: var(--ink); font: inherit; font-size: 0.9rem; }
+  .control-row label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.95rem; min-width: 0; max-width: 100%; }
+  .control-row button, .control-row select, .control-row input[type="search"] { min-height: 44px; max-width: 100%; padding: 0.5rem 0.7rem; border: 1px solid var(--ink-soft); border-radius: 3px; background: var(--paper-light); color: var(--ink); font: inherit; font-size: 0.9rem; }
   .control-row button { cursor: pointer; }
   .control-row button:hover:enabled { background: var(--paper); }
   .control-row button:disabled { opacity: 0.5; cursor: default; }

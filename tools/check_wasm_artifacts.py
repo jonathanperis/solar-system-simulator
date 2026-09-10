@@ -38,7 +38,7 @@ def main() -> int:
             raise SystemExit(f"src/main.c missing web sizing/focus boundary: {marker}")
     if "solar_web_report_state" not in main_text or "reportState" not in js_text:
         raise SystemExit("WebAssembly must report live simulation state to the Astro page")
-    for marker in ("_solar_web_command", "addBody", "distanceM", "speedMps", "massKg", "radiusM"):
+    for marker in ("_solar_web_command", "addBody", "distanceM", "speedMps", "massKg", "radiusM", "massQuality", "radiusQuality", "achievedTimeScale", "pendingSeconds"):
         if marker not in js_text:
             raise SystemExit(f"WebAssembly missing inspection/control bridge: {marker}")
 

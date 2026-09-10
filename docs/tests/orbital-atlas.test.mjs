@@ -21,8 +21,8 @@ test('V21 cycles body selection in both directions with wraparound', () => {
 });
 
 test('A10 publishes Jupiter as the tenth implemented atlas body', () => {
-  assert.equal(implementedBodies.length, 10);
-  assert.deepEqual(implementedBodies.at(-1), {
+  assert.equal(implementedBodies.length, 125);
+  assert.deepEqual(implementedBodies[9], {
     slug: 'jupiter',
     name: 'Jupiter',
     kind: 'Planet',
@@ -34,5 +34,16 @@ test('A10 publishes Jupiter as the tenth implemented atlas body', () => {
     chart: { plate: 'heliocentric', angle: 112, radius: 91 },
     summary: 'First gas giant, initialized at heliocentric perihelion.'
   });
-  assert.equal(plannedBodies[0], 'Galilean moons');
+  assert.equal(plannedBodies[0], 'Saturn');
+});
+
+test('the Jovian atlas exposes every sourced moon with unique anchors and explicit data quality', () => {
+  const moons = implementedBodies.filter(body => body.parent === 'Jupiter');
+  assert.equal(moons.length, 115);
+  assert.equal(new Set(moons.map(body => body.slug)).size, 115);
+  assert.equal(moons.filter(body => body.group === 'Galilean moons').length, 4);
+  assert.equal(moons.filter(body => body.group === 'Inner small moons').length, 4);
+  assert.equal(moons.filter(body => body.group === 'Irregular moons').length, 107);
+  assert.ok(moons.every(body => body.chart.plate === 'jupiter' && body.summary.includes('Mass:')));
+  assert.equal(moons.at(-1).name, 'S/2021 J 8');
 });

@@ -8,6 +8,7 @@ docs/public/wasm/
 playwright-evidence/
 .playwright-cli/
 .specs/
+__pycache__/
 
 # Prerequisites
 *.d

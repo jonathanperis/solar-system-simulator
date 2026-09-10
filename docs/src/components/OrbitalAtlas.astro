@@ -6,7 +6,8 @@ const base = normalizeBase(import.meta.env.BASE_URL);
 const plates = [
   { id: 'heliocentric', label: 'Heliocentric', detail: 'Sun-centered reference plate' },
   { id: 'earth', label: 'Earth system', detail: 'Earth-relative reference plate' },
-  { id: 'mars', label: 'Mars system', detail: 'Mars-relative reference plate' }
+  { id: 'mars', label: 'Mars system', detail: 'Mars-relative reference plate' },
+  { id: 'jupiter', label: 'Jupiter system', detail: 'Jupiter-relative moon index' }
 ] as const;
 
 const chartPosition = (angle: number, radius: number) => {
@@ -20,7 +21,7 @@ const chartPosition = (angle: number, radius: number) => {
     <p class="eyebrow">Field plate 01 / illustrative index</p>
     <h1 id="atlas-title">A solar system, drawn for inspection.</h1>
     <p>
-      Ten implemented bodies. Select a marker to read its model note, then open the real C11/raylib runtime for live motion.
+      {implementedBodies.length} implemented bodies. Select a marker to read its model note, then open the real C11/raylib runtime for live motion.
     </p>
     <p class="atlas-hint">Select a body. Drag chart. Use <kbd>Left</kbd> <kbd>Right</kbd> to step markers.</p>
   </div>
@@ -41,6 +42,17 @@ const chartPosition = (angle: number, radius: number) => {
         <span>{String(index + 1).padStart(2, '0')}</span>{plate.label}
       </button>
     ))}
+  </div>
+
+  <div class="atlas-moon-tools" data-atlas-moon-tools hidden>
+    <label>Jupiter moon group
+      <select data-atlas-moon-group>
+        <option>Galilean moons</option><option>Inner small moons</option><option>Irregular moons</option>
+      </select>
+    </label>
+    <div><button type="button" data-atlas-page-previous>Previous page</button>
+      <output data-atlas-page>Page 1 of 1</output>
+      <button type="button" data-atlas-page-next>Next page</button></div>
   </div>
 
   <div class="atlas-stage" data-atlas-stage tabindex="0" aria-label="Interactive illustrative solar-system chart">
@@ -75,9 +87,14 @@ const chartPosition = (angle: number, radius: number) => {
               <ellipse cx="500" cy="500" rx="286" ry="236" />
               <circle cx="500" cy="500" r="392" stroke-dasharray="3 12" />
             </>}
+            {plate.id === 'jupiter' && <>
+              <circle cx="500" cy="500" r="150" />
+              <circle cx="500" cy="500" r="250" />
+              <circle cx="500" cy="500" r="350" />
+            </>}
           </g>
           <g class="atlas-plate-labels">
-            <text x="500" y="78" text-anchor="middle">{plate.detail}</text>
+            <text x="500" y={plate.id === 'jupiter' ? '170' : '78'} text-anchor="middle">{plate.detail}</text>
             <text x="500" y="942" text-anchor="middle">positions are a readable chart index, not an ephemeris</text>
           </g>
         </svg>
@@ -96,6 +113,7 @@ const chartPosition = (angle: number, radius: number) => {
             data-slug={body.slug}
             data-plate={body.chart.plate}
             data-angle={body.chart.angle}
+            hidden={body.parent === 'Jupiter' && body.group !== 'Galilean moons'}
             aria-controls="atlas-note"
             aria-pressed={body.slug === 'sun' ? 'true' : 'false'}
             aria-expanded="false"
@@ -144,6 +162,7 @@ const chartPosition = (angle: number, radius: number) => {
 
 <script>
   import { cycleIndex, nearestBodyIndex, normalizeDegrees } from '../lib/orbitalAtlas';
+  import { moveSelectByKey } from '../lib/simulator';
   import { implementedBodies, type ImplementedBody } from '../lib/bodies';
 
   type Plate = ImplementedBody['chart']['plate'];
@@ -158,6 +177,11 @@ const chartPosition = (angle: number, radius: number) => {
     const bearingInput = atlas.querySelector<HTMLInputElement>('[data-atlas-bearing]')!;
     const bearingOutput = atlas.querySelector<HTMLOutputElement>('[data-atlas-bearing-output]')!;
     const status = atlas.querySelector<HTMLElement>('[data-atlas-status]')!;
+    const moonTools = atlas.querySelector<HTMLElement>('[data-atlas-moon-tools]')!;
+    const moonGroup = atlas.querySelector<HTMLSelectElement>('[data-atlas-moon-group]')!;
+    const pageOutput = atlas.querySelector<HTMLOutputElement>('[data-atlas-page]')!;
+    const previousPage = atlas.querySelector<HTMLButtonElement>('[data-atlas-page-previous]')!;
+    const nextPage = atlas.querySelector<HTMLButtonElement>('[data-atlas-page-next]')!;
     const fields = {
       kind: atlas.querySelector<HTMLElement>('[data-atlas-kind]')!,
       name: atlas.querySelector<HTMLElement>('[data-atlas-name]')!,
@@ -172,8 +196,24 @@ const chartPosition = (angle: number, radius: number) => {
     let selectedSlug = 'sun';
     let invokingControl: HTMLElement | null = null;
     let dragging = false;
+    let moonPage = 0;
+    const moonsPerPage = 6;
 
-    const currentBodies = (): ImplementedBody[] => implementedBodies.filter((body) => body.chart.plate === activePlate);
+    const currentBodies = (): ImplementedBody[] => implementedBodies.filter((body) => body.chart.plate === activePlate
+      && (activePlate !== 'jupiter' || body.group === moonGroup.value));
+    const visibleBodies = (): ImplementedBody[] => activePlate === 'jupiter'
+      ? currentBodies().slice(moonPage * moonsPerPage, (moonPage + 1) * moonsPerPage) : currentBodies();
+    const refreshMoonPage = (): void => {
+      moonTools.hidden = activePlate !== 'jupiter';
+      const visible = new Set(visibleBodies().map(body => body.slug));
+      bodyControls.filter(control => control.dataset.plate === 'jupiter').forEach(control => {
+        control.hidden = !visible.has(control.dataset.slug!);
+      });
+      const pages = Math.ceil(currentBodies().length / moonsPerPage);
+      pageOutput.textContent = `Page ${moonPage + 1} of ${pages}`;
+      previousPage.disabled = moonPage === 0;
+      nextPage.disabled = moonPage + 1 >= pages;
+    };
     const selectedBody = (): ImplementedBody => implementedBodies.find((body) => body.slug === selectedSlug) ?? implementedBodies[0];
     const bodyControl = (slug: string): HTMLButtonElement | undefined => bodyControls.find((control) => control.dataset.slug === slug);
     const restoreFocus = (): void => (invokingControl ?? bodyControl(selectedSlug))?.focus();
@@ -201,12 +241,18 @@ const chartPosition = (angle: number, radius: number) => {
       const body = implementedBodies.find((item) => item.slug === slug);
       if (!body) return;
       if (body.chart.plate !== activePlate) setPlate(body.chart.plate, false);
+      if (body.chart.plate === 'jupiter') {
+        moonGroup.value = body.group!;
+        moonPage = Math.floor(currentBodies().findIndex(item => item.slug === slug) / moonsPerPage);
+      }
+      refreshMoonPage();
       selectedSlug = body.slug;
       bodyControls.forEach((control) => {
         control.setAttribute('aria-pressed', 'false');
         control.setAttribute('aria-expanded', 'false');
       });
       const control = bodyControl(body.slug);
+      if (invokingControl?.matches('[data-atlas-body]')) invokingControl = control ?? null;
       control?.setAttribute('aria-pressed', 'true');
       control?.setAttribute('aria-expanded', String(openNote));
       setBearing(body.chart.angle);
@@ -222,6 +268,7 @@ const chartPosition = (angle: number, radius: number) => {
       plateTabs.forEach((tab) => { tab.setAttribute('aria-pressed', String(tab.dataset.atlasPlateTab === plate)); });
       const current = selectedBody();
       if (!retainSelection || current.chart.plate !== plate) selectBody(currentBodies()[0].slug, false);
+      refreshMoonPage();
       status.textContent = `${plateTabs.find((tab) => tab.dataset.atlasPlateTab === plate)?.textContent?.trim()} plate selected.`;
     };
 
@@ -232,9 +279,9 @@ const chartPosition = (angle: number, radius: number) => {
     };
 
     const selectNearestAtPointer = (event: PointerEvent): void => {
-      const rect = stage.getBoundingClientRect();
+      const rect = plates.find(plate => plate.dataset.atlasPlate === activePlate)!.getBoundingClientRect();
       const degrees = Math.atan2(event.clientY - rect.top - rect.height / 2, event.clientX - rect.left - rect.width / 2) * 180 / Math.PI + 90;
-      const bodies = currentBodies();
+      const bodies = visibleBodies();
       const index = nearestBodyIndex(bodies.map((body) => ({ chartAngle: body.chart.angle })), degrees);
       setBearing(degrees);
       selectBody(bodies[index].slug, true);
@@ -251,10 +298,24 @@ const chartPosition = (angle: number, radius: number) => {
       selectBody(control.dataset.slug!, true);
     }));
     plateTabs.forEach((tab) => tab.addEventListener('click', () => setPlate(tab.dataset.atlasPlateTab as Plate, false)));
+    moonGroup.addEventListener('change', () => {
+      moonPage = 0;
+      selectBody(currentBodies()[0].slug, false);
+    });
+    moonGroup.addEventListener('keydown', event => {
+      if (moveSelectByKey(moonGroup, event.key)) event.preventDefault();
+    });
+    const turnPage = (direction: number): void => {
+      moonPage += direction;
+      selectBody(currentBodies()[moonPage * moonsPerPage].slug, false);
+      status.textContent = `${moonGroup.value}. ${pageOutput.textContent}.`;
+    };
+    previousPage.addEventListener('click', () => turnPage(-1));
+    nextPage.addEventListener('click', () => turnPage(1));
     bearingInput.addEventListener('input', () => {
       invokingControl = bearingInput;
       setBearing(bearingInput.value);
-      const bodies = currentBodies();
+      const bodies = visibleBodies();
       selectBody(bodies[nearestBodyIndex(bodies.map((body) => ({ chartAngle: body.chart.angle })), Number(bearingInput.value))].slug, true);
     });
     stage.addEventListener('pointerdown', (event) => {
@@ -280,6 +341,11 @@ const chartPosition = (angle: number, radius: number) => {
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault();
         stepBody(event.key === 'ArrowRight' ? 1 : -1, true);
+      }
+      if (event.key === 'Home' || event.key === 'End') {
+        event.preventDefault();
+        const bodies = currentBodies();
+        selectBody(bodies[event.key === 'Home' ? 0 : bodies.length - 1].slug, true, true);
       }
     });
     atlas.addEventListener('keydown', (event) => {

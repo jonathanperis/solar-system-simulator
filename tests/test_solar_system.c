@@ -294,7 +294,7 @@ static void test_jupiter_constants_and_derived_perihelion_state(void)
 
 static void test_solar_system_capacity_supports_ten_body_scene(void)
 {
-    assert(SOLAR_SYSTEM_BODY_CAPACITY == 10);
+    assert(SOLAR_SYSTEM_BODY_CAPACITY == 125);
 }
 
 static void test_mercury_body_starts_at_perihelion_with_tangential_velocity(void)

@@ -35,8 +35,8 @@ static void test_playback_pause_step_speed_and_reset(void)
     simulation_session_single_step(&session);
     assert_same_motion(&session.system, &paused);
 
-    const double rates[] = {3600.0, 86400.0, 432000.0};
-    for (int preset = 0; preset < 3; ++preset) {
+    const double rates[] = {3600.0, 86400.0, 432000.0, 864000.0, 1296000.0};
+    for (int preset = 0; preset < 5; ++preset) {
         simulation_session_set_speed(&session, preset);
         simulation_session_reset(&session);
         simulation_session_update(&session, 300.0 / rates[preset]);
@@ -49,13 +49,13 @@ static void test_playback_pause_step_speed_and_reset(void)
     simulation_session_update(&session, 100.0);
     simulation_session_reset(&session);
     assert_same_motion(&session.system, &initial);
-    assert(session.paused && session.speed_preset == 2 && session.selected_body_index == 6);
+    assert(session.paused && session.speed_preset == 4 && session.selected_body_index == 6);
     assert(session.clock.pending_seconds == 0.0);
     assert(body_trails_point_count(&session.trails, 6) == 1);
     assert(session.trails.sample_interval_seconds == 300.0);
     simulation_session_select_body(&session, -1);
-    simulation_session_set_speed(&session, 3);
-    assert(session.selected_body_index == 6 && session.speed_preset == 2);
+    simulation_session_set_speed(&session, 5);
+    assert(session.selected_body_index == 6 && session.speed_preset == 4);
     simulation_session_destroy(&session);
 }
 
@@ -87,7 +87,11 @@ static void test_session_exposes_jupiter_as_tenth_body(void)
 {
     SimulationSession session = simulation_session_create();
 
-    assert(session.system.body_count == 10);
+    assert(session.system.body_count == 125);
+    assert(simulation_session_find_body(&session, "s/2021 j 8", 0) == 124);
+    assert(simulation_session_find_body(&session, "Galilean moons", 0) == 10);
+    assert(simulation_session_find_body(&session, "Galilean moons", 11) == 11);
+    assert(simulation_session_find_body(&session, "no such body", 0) == -1);
     simulation_session_select_body(&session, 9);
     BodyInspection inspection = simulation_session_inspect(&session);
     assert(strcmp(inspection.name, "Jupiter") == 0);
@@ -98,8 +102,31 @@ static void test_session_exposes_jupiter_as_tenth_body(void)
     simulation_session_destroy(&session);
 }
 
+static void test_overloaded_playback_retains_time_and_freezes_while_paused(void)
+{
+    SimulationSession session = simulation_session_create();
+    simulation_session_set_speed(&session, 4);
+    simulation_session_update(&session, 1.0);
+    assert(session.system.elapsed_seconds == SOLAR_APP_MAX_STEPS_PER_UPDATE * 15.0);
+    assert(session.clock.pending_seconds == 1296000.0 - session.system.elapsed_seconds);
+    assert(session.achieved_time_scale == session.system.elapsed_seconds);
+    double pending = session.clock.pending_seconds;
+    session.paused = true;
+    simulation_session_update(&session, 2.0);
+    assert(session.clock.pending_seconds == pending);
+    simulation_session_select_body(&session, 124);
+    BodyInspection body = simulation_session_inspect(&session);
+    assert(body.mass_quality == PHYSICAL_UNKNOWN && body.radius_quality == PHYSICAL_UNKNOWN);
+    simulation_session_reset(&session);
+    assert(session.selected_body_index == 124 && session.speed_preset == 4 && session.paused);
+    assert(session.clock.pending_seconds == 0 && session.achieved_time_scale == 0);
+    assert(body_trails_point_count(&session.trails, 124) == 1);
+    simulation_session_destroy(&session);
+}
+
 int main(void)
 {
+    test_overloaded_playback_retains_time_and_freezes_while_paused();
     test_playback_pause_step_speed_and_reset();
     test_inspector_uses_parent_ids_and_relative_si_motion();
     test_session_exposes_jupiter_as_tenth_body();

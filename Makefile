@@ -24,6 +24,8 @@ SIM_SRCS := \
     src/sim/units.c \
     src/sim/body.c \
     src/sim/physics.c \
+    src/sim/satellite.c \
+    src/sim/jovian_catalog.c \
     src/sim/solar_system.c
 
 APP_SRCS := src/main.c src/app/orbit_camera.c src/app/body_trails.c src/app/simulation_step.c src/app/simulation_session.c src/render/renderer.c $(SIM_SRCS)
@@ -41,7 +43,8 @@ TEST_BODY_TRAILS := $(TEST_DIR)/test_body_trails
 TEST_SIMULATION_STEP := $(TEST_DIR)/test_simulation_step
 TEST_SIMULATION_SESSION := $(TEST_DIR)/test_simulation_session
 TEST_RENDERER := $(TEST_DIR)/test_renderer
-TEST_BINS := $(TEST_VEC3D) $(TEST_PHYSICS) $(TEST_SOLAR_SYSTEM) $(TEST_ORBIT_CAMERA) $(TEST_BODY_TRAILS) $(TEST_SIMULATION_STEP) $(TEST_SIMULATION_SESSION) $(TEST_RENDERER)
+TEST_SATELLITES := $(TEST_DIR)/test_satellites
+TEST_BINS := $(TEST_VEC3D) $(TEST_PHYSICS) $(TEST_SOLAR_SYSTEM) $(TEST_ORBIT_CAMERA) $(TEST_BODY_TRAILS) $(TEST_SIMULATION_STEP) $(TEST_SIMULATION_SESSION) $(TEST_RENDERER) $(TEST_SATELLITES)
 
 .PHONY: all run test web raylib-web dist-wasm docs-check clean
 
@@ -51,6 +54,7 @@ run: $(APP)
 	$(APP)
 
 test: $(TEST_BINS)
+	python3 tools/jovian_catalog.py --check
 	@set -e; for test_bin in $(TEST_BINS); do \
 		echo "Running $$test_bin"; \
 		$$test_bin; \
@@ -70,7 +74,7 @@ dist-wasm: web
 docs-check:
 	python3 tools/check_docs_routes.py docs/dist
 
-$(WEB_APP): $(APP_SRCS) $(wildcard src/app/*.h src/sim/*.h src/render/*.h) $(RAYLIB_WEB_LIB)
+$(WEB_APP): $(APP_SRCS) $(wildcard src/app/*.h src/sim/*.h src/render/*.h src/sim/*.inc) $(RAYLIB_WEB_LIB)
 	@mkdir -p $(@D)
 	emcc $(CPPFLAGS) $(CFLAGS) $(RAYLIB_WEB_CFLAGS) $(APP_SRCS) $(RAYLIB_WEB_LIB) $(RAYLIB_WEB_LDFLAGS) -o $@
 
@@ -90,17 +94,23 @@ build/%.o: %.c
 	@mkdir -p $(@D)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(RAYLIB_CFLAGS) -MMD -MP -c $< -o $@
 
+$(TEST_BINS): $(wildcard src/sim/*.h src/sim/*.inc)
+
 $(TEST_VEC3D): tests/test_vec3d.c src/sim/vec3d.c src/sim/units.c
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $^ $(LDLIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(TEST_PHYSICS): tests/test_physics.c src/sim/vec3d.c src/sim/body.c src/sim/physics.c
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $^ $(LDLIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(TEST_SOLAR_SYSTEM): tests/test_solar_system.c $(SIM_SRCS)
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $^ $(LDLIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+
+$(TEST_SATELLITES): tests/test_satellites.c $(SIM_SRCS)
+	@mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(TEST_ORBIT_CAMERA): tests/test_orbit_camera.c src/app/orbit_camera.c src/app/orbit_camera.h
 	@mkdir -p $(@D)
@@ -124,3 +134,7 @@ $(TEST_SIMULATION_SESSION): tests/test_simulation_session.c src/app/simulation_s
 
 clean:
 	rm -rf build
+
+build/benchmark_simulation: tools/benchmark_simulation.c src/app/body_trails.c src/app/simulation_step.c $(SIM_SRCS) $(wildcard src/sim/*.h src/sim/*.inc src/app/*.h)
+	@mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@

@@ -1,3 +1,5 @@
+import jovianCatalog from '../../../data/jovian_moons.json' with { type: 'json' };
+
 export type ImplementedBody = {
   slug: string;
   name: string;
@@ -8,11 +10,12 @@ export type ImplementedBody = {
   source: string;
   accent: 'solar' | 'cyan' | 'earth' | 'moon' | 'mars' | 'asteroid' | 'jupiter';
   chart: {
-    plate: 'heliocentric' | 'earth' | 'mars';
+    plate: 'heliocentric' | 'earth' | 'mars' | 'jupiter';
     angle: number;
     radius: number;
   };
   summary: string;
+  group?: string;
 };
 
 export const implementedBodies: ImplementedBody[] = [
@@ -135,11 +138,23 @@ export const implementedBodies: ImplementedBody[] = [
     accent: 'jupiter',
     chart: { plate: 'heliocentric', angle: 112, radius: 91 },
     summary: 'First gas giant, initialized at heliocentric perihelion.'
-  }
+  },
+  ...jovianCatalog.moons.map((moon, index): ImplementedBody => ({
+    slug: moon.slug,
+    name: moon.name,
+    kind: 'Moon',
+    parent: 'Jupiter',
+    milestone: 'Complete Jovian moon catalog',
+    group: moon.group,
+    initialization: `${moon.frame}-frame mean elements converted to Jupiter-relative SI position and velocity.`,
+    source: 'data/jovian_moons.json',
+    accent: 'jupiter',
+    chart: { plate: 'jupiter', angle: (index % 6) * 60 + 30, radius: 72 },
+    summary: `${moon.group}. ${moon.inclination_deg > 90 ? 'Retrograde' : 'Prograde'} in the source frame. Mass: ${moon.mass_quality === 'unknown' ? 'unknown — test particle' : moon.mass_quality}. Radius: ${moon.radius_quality === 'unknown' ? 'unknown — marker only' : moon.radius_quality}.`
+  }))
 ];
 
 export const plannedBodies = [
-  'Galilean moons',
   'Saturn',
   'major Saturnian moons',
   'Uranus',

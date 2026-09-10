@@ -25,8 +25,19 @@ typedef enum BodyId {
     BODY_ID_PHOBOS,
     BODY_ID_DEIMOS,
     BODY_ID_VESTA,
-    BODY_ID_JUPITER
+    BODY_ID_JUPITER,
+    /* New satellites retain JPL codes, not their position in a sorted menu. */
+    BODY_ID_IO = 501,
+    BODY_ID_EUROPA = 502,
+    BODY_ID_GANYMEDE = 503,
+    BODY_ID_CALLISTO = 504
 } BodyId;
+
+typedef enum PhysicalQuality {
+    PHYSICAL_MEASURED,
+    PHYSICAL_ESTIMATED,
+    PHYSICAL_UNKNOWN
+} PhysicalQuality;
 
 /*
  * Body is pure simulation state: all distances are meters, velocities are
@@ -41,6 +52,9 @@ typedef struct Body {
     BodyId parent_id;
     double mass_kg;
     double radius_m;
+    PhysicalQuality mass_quality;
+    PhysicalQuality radius_quality;
+    const char *group;
     Vec3d position_m;
     Vec3d velocity_mps;
     Vec3d acceleration_mps2;

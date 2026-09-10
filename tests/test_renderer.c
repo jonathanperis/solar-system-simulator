@@ -261,10 +261,10 @@ static void test_trail_rendering_keeps_long_runs_bounded(void)
 
 static void test_system_frame_contains_selected_family_in_both_modes(void)
 {
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter();
+    SolarSystem system = solar_system_create_current();
     SolarSystem original = system;
-    const size_t selections[] = {0, 3, 4, 5, 6, 7, 8, 9};
-    const size_t roots[] = {0, 3, 3, 5, 5, 5, 8, 9};
+    const size_t selections[] = {0, 3, 4, 5, 6, 7, 8, 9, 10, 124};
+    const size_t roots[] = {0, 3, 3, 5, 5, 5, 8, 9, 9, 9};
     for (int mode = RENDER_SCALE_ILLUSTRATIVE; mode <= RENDER_SCALE_REAL; ++mode) {
         for (size_t s = 0; s < sizeof(selections) / sizeof(selections[0]); ++s) {
             RenderSystemFrame frame = renderer_system_frame(&system, selections[s], mode);
@@ -286,8 +286,25 @@ static void test_system_frame_contains_selected_family_in_both_modes(void)
     }
 }
 
+static void test_individual_moon_frame_and_unknown_radius_marker(void)
+{
+    SolarSystem system = solar_system_create_current();
+    for (int mode = RENDER_SCALE_ILLUSTRATIVE; mode <= RENDER_SCALE_REAL; ++mode) {
+        RenderSystemFrame io = renderer_body_frame(&system, 10, mode);
+        RenderSystemFrame family = renderer_system_frame(&system, 10, mode);
+        RenderSystemFrame unknown = renderer_body_frame(&system, 124, mode);
+        assert(io.root_index == 10 && io.radius > 0 && io.radius < family.radius);
+        assert(unknown.root_index == 124 && unknown.radius > 0);
+        assert(system.bodies[124].radius_m == 0);
+        assert(system.bodies[124].radius_quality == PHYSICAL_UNKNOWN);
+    }
+    assert_close(renderer_body_radius(&system.bodies[10], RENDER_SCALE_REAL),
+        meters_to_render_units(1821490), 1e-12);
+}
+
 int main(void)
 {
+    test_individual_moon_frame_and_unknown_radius_marker();
     test_system_frame_contains_selected_family_in_both_modes();
     test_real_scale_radius_uses_physical_meter_scale();
     test_real_scale_position_uses_physical_meter_scale();

@@ -10,6 +10,8 @@ interface RuntimeReadouts {
   mass: Readout;
   radius: Readout;
   camera: Readout;
+  achieved: Readout;
+  pending: Readout;
 }
 
 interface RuntimeControls {
@@ -20,6 +22,8 @@ interface RuntimeControls {
   body: HTMLSelectElement;
   speed: HTMLSelectElement;
   view: HTMLButtonElement;
+  search: HTMLInputElement;
+  group: HTMLSelectElement;
 }
 
 interface RuntimeState {
@@ -27,10 +31,21 @@ interface RuntimeState {
   paused: boolean; speedPreset: number; autoRotate: boolean;
   elapsedSeconds: number; intervalSeconds: number; trailsFailed: boolean; hasParent: boolean;
   distanceM: number; speedMps: number; massKg: number; radiusM: number; zoom: number;
+  massQuality: number; radiusQuality: number; achievedTimeScale: number; pendingSeconds: number;
 }
 
 // Matches SolarCommand in src/main.c. All actions execute in the C runtime.
-export const runtimeCommands = { pause: 0, step: 1, reset: 2, speed: 3, select: 4, view: 5, zoom: 6, rotate: 7, frame: 8 } as const;
+export const runtimeCommands = { pause: 0, step: 1, reset: 2, speed: 3, select: 4, view: 5, zoom: 6, rotate: 7, frame: 8, frameBody: 9 } as const;
+
+interface RuntimeBody { index: number; name: string; group: string }
+
+export function filterRuntimeBodies(bodies: RuntimeBody[], search: string, group: string, selected: number): RuntimeBody[] {
+  const query = search.trim().toLowerCase();
+  // Filtering changes menu visibility only. Keep C's current selection reachable
+  // even if it falls outside the filter, until the user selects a different body.
+  return bodies.filter(body => body.index === selected ||
+    ((!group || body.group === group) && body.name.toLowerCase().includes(query)));
+}
 
 function setText(element: Readout, text: string): void {
   if (element.textContent !== text) element.textContent = text;
@@ -62,6 +77,14 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
   let failed = false;
   let reportedBody = -1;
   let reportedSpeed = -1;
+  const bodies: RuntimeBody[] = [];
+  const groups = new Set<string>();
+  const filterBodies = (): void => {
+    const visible = filterRuntimeBodies(bodies, controls.search.value, controls.group.value, reportedBody);
+    const options = visible.map(body => new Option(`${body.name} — ${body.group}`, String(body.index)));
+    controls.body.replaceChildren(...options);
+    controls.body.value = String(reportedBody);
+  };
   const fail = (reason: unknown): void => {
     failed = true;
     controls.panel.disabled = true;
@@ -71,9 +94,15 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
   return {
     canvas,
     _solar_web_command: undefined as ((command: number, value: number) => void) | undefined,
-    addBody(index: number, name: string) {
-      controls.body.add(new Option(name, String(index)));
+    addBody(index: number, name: string, group: string) {
+      bodies.push({ index, name, group });
+      if (!groups.has(group)) {
+        controls.group.add(new Option(group, group));
+        groups.add(group);
+      }
+      controls.body.add(new Option(`${name} — ${group}`, String(index)));
     },
+    filterBodies,
     locateFile(path: string) {
       const url = new URL(path, artifactUrl);
       url.search = artifactUrl.search;
@@ -95,8 +124,8 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       // A native select may expose a tentative arrow-key value before change.
       // Sync only when C state changes, not on every animation-frame report.
       if (reportedBody !== state.selected) {
-        controls.body.value = String(state.selected);
         reportedBody = state.selected;
+        filterBodies();
       }
       if (reportedSpeed !== state.speedPreset) {
         controls.speed.value = String(state.speedPreset);
@@ -110,9 +139,13 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       setText(readouts.parent, state.parent);
       setText(readouts.distance, state.hasParent ? `${(state.distanceM / 1000).toFixed(3)} km` : 'N/A — no parent');
       setText(readouts.speed, state.hasParent ? `${(state.speedMps / 1000).toFixed(6)} km/s` : 'N/A — no parent');
-      setText(readouts.mass, `${state.massKg.toExponential(6)} kg`);
-      setText(readouts.radius, `${(state.radiusM / 1000).toFixed(3)} km`);
+      setText(readouts.mass, state.massQuality === 2 ? 'Unknown (test particle)'
+        : `${state.massKg.toExponential(6)} kg${state.massQuality === 1 ? ' (estimated)' : ''}`);
+      setText(readouts.radius, state.radiusQuality === 2 ? 'Unknown (marker only)'
+        : `${(state.radiusM / 1000).toFixed(3)} km${state.radiusQuality === 1 ? ' (estimated)' : ''}`);
       setText(readouts.camera, `${state.cameraTarget} · ${state.zoom.toPrecision(4)} render units`);
+      setText(readouts.achieved, `${(state.paused ? 0 : state.achievedTimeScale / 86400).toFixed(2)} days / second`);
+      setText(readouts.pending, `${(state.pendingSeconds / 86400).toFixed(3)} days`);
     }
   };
 }
@@ -133,7 +166,9 @@ export function mountSimulator(root: HTMLElement): void {
     rotate: root.querySelector<HTMLInputElement>('[data-runtime-rotate]')!,
     body: root.querySelector<HTMLSelectElement>('[data-runtime-body]')!,
     speed: root.querySelector<HTMLSelectElement>('[data-runtime-speed]')!,
-    view: root.querySelector<HTMLButtonElement>('[data-command="view"]')!
+    view: root.querySelector<HTMLButtonElement>('[data-command="view"]')!,
+    search: root.querySelector<HTMLInputElement>('[data-runtime-search]')!,
+    group: root.querySelector<HTMLSelectElement>('[data-runtime-group]')!
   };
   const runtime = createSimulatorModule(canvas, {
     status: root.querySelector<HTMLElement>('[data-runtime-status]')!,
@@ -145,7 +180,9 @@ export function mountSimulator(root: HTMLElement): void {
     speed: root.querySelector<HTMLElement>('[data-inspector-speed]')!,
     mass: root.querySelector<HTMLElement>('[data-inspector-mass]')!,
     radius: root.querySelector<HTMLElement>('[data-inspector-radius]')!,
-    camera: root.querySelector<HTMLElement>('[data-runtime-camera]')!
+    camera: root.querySelector<HTMLElement>('[data-runtime-camera]')!,
+    achieved: root.querySelector<HTMLElement>('[data-runtime-achieved]')!,
+    pending: root.querySelector<HTMLElement>('[data-runtime-pending]')!
   }, artifactUrl, controls);
 
   const send = (command: keyof typeof runtimeCommands, value = 0): void => {
@@ -156,7 +193,9 @@ export function mountSimulator(root: HTMLElement): void {
   });
   controls.body.addEventListener('change', () => send('select', Number(controls.body.value)));
   controls.speed.addEventListener('change', () => send('speed', Number(controls.speed.value)));
-  for (const select of [controls.body, controls.speed]) {
+  controls.search.addEventListener('input', runtime.filterBodies);
+  controls.group.addEventListener('change', runtime.filterBodies);
+  for (const select of [controls.body, controls.speed, controls.group]) {
     select.addEventListener('keydown', event => {
       if (moveSelectByKey(select, event.key)) {
         event.preventDefault();

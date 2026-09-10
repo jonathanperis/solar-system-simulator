@@ -21,6 +21,7 @@ typedef struct RenderSystemFrame {
 } RenderSystemFrame;
 
 RenderSystemFrame renderer_system_frame(const SolarSystem *system, size_t selected, RenderScaleMode mode);
+RenderSystemFrame renderer_body_frame(const SolarSystem *system, size_t selected, RenderScaleMode mode);
 
 const char *renderer_scale_mode_label(RenderScaleMode mode);
 Color renderer_body_color(const Body *body);

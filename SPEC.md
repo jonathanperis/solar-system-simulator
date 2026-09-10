@@ -50,7 +50,7 @@ I.render: illustrative | real-scale transforms + raylib drawing
 
 I.controls: native `Tab` | `C` focus; web `C` focus and browser-native `Tab`; `V` scale; wheel zoom
 
-I.inspection: native shortcuts and accessible web buttons share C-owned playback and selection; web readouts use live C physical state. Space pauses, N steps, R resets, A toggles camera rotation, F frames the selected system; native 1–9 and 0 select the ten catalog bodies and brackets change speed.
+I.inspection: native shortcuts and accessible web buttons share C-owned playback and selection; web readouts use live C physical state. Space pauses, N steps, R resets, A toggles camera rotation, F frames the selected system, B frames only the selected body; native 1–9 and 0 select the first ten catalog bodies and brackets change speed. Search/group selection reaches the full catalog.
 
 I.pages: `/`, `/docs/`, `/docs/architecture/`, `/docs/simulation-core/`, `/docs/rendering/`, `/docs/controls/`, `/docs/build-and-web/`, `/docs/roadmap/`, `/physics/`, `/body-catalog/`, `/source-atlas/`, `/pipeline/`, `/simulator/`; `/wasm/solar-system-simulator.html` redirects to `/simulator/`
 
@@ -64,6 +64,9 @@ R3|4 Vesta physical|GM=`17.2882844 km^3/s^2`; effective diameter=`522.77 km`|htt
 R4|target rationale|Vesta second-most-massive main-belt body; Ceres dwarf planet|https://science.nasa.gov/solar-system/asteroids/4-vesta/
 R5|Jupiter physical|mass=`1898.125 × 10^24 kg`; mean radius=`69911 km`|https://ssd.jpl.nasa.gov/planets/phys_par.html
 R6|Jupiter orbit|J2000 a=`5.20288700 AU`; e=`0.04838624`; i=`1.30439695 deg`|https://ssd.jpl.nasa.gov/planets/approx_pos.html
+R7|Jovian inventory|115 recognized satellites, including provisional designations; checked 2026-09-10|https://science.nasa.gov/jupiter/moons/
+R8|Jovian mean elements|115 entries, J2000 epoch, Laplace/ecliptic reference frames; shape/orientation baseline, not ephemerides; checked 2026-09-10|https://ssd.jpl.nasa.gov/sats/elem/
+R9|Satellite physical data|available GM and mean-radius values with source/quality metadata; absent values remain unknown; checked 2026-09-10|https://ssd.jpl.nasa.gov/sats/phys_par/
 
 ## §V
 
@@ -75,17 +78,17 @@ V3: gravity = `G * source_mass / distance^3 * displacement`; self | zero-distanc
 
 V4: stepping = velocity-Verlet kick-drift-kick; fixed bodies contribute gravity but never move.
 
-V5: shipped scene order = Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta, Jupiter; stable IDs + parents match catalog.
+V5: shipped scene starts Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta, Jupiter, followed by the 115 cataloged Jovian moons. Existing IDs/indices remain stable; satellite IDs derive from JPL codes; parents match catalog.
 
 V6: planets + Vesta start heliocentric perihelion; Moon starts Earth-relative perigee; Phobos/Deimos start Mars-relative periareion; speeds use vis-viva.
 
-V7: default no-inclination orbital motion ∈ X/Z plane; parent-relative Y position/velocity=0.
+V7: legacy no-inclination initial states remain in X/Z. Jovian moon initial states preserve sourced inclination, orbital direction, eccentricity and phase; source frames convert into the common simulation frame before adding Jupiter's absolute position and velocity.
 
-V8: app accumulates frame-scaled time and advances only in fixed 15-second physics steps; unconsumed time remains in the app clock. Equal accumulated time produces the same state regardless of frame partitioning.
+V8: app accumulates frame-scaled time and advances only in fixed 15-second physics steps; unconsumed time remains in the app clock. Per-frame work is bounded to keep controls responsive. Once pending work is drained, equal accumulated time produces the same state regardless of frame partitioning; requested and achieved speeds are distinguished.
 
 V9: trails retain full-run temporal coverage and the current endpoint within 1025 visible points/body. History starts at a 300-second simulation-time cadence; each compaction doubles both historical spacing and future sampling cadence. All bodies share sample times for parent-relative rendering. Resolution coarsens uniformly during long runs; this is a history approximation, not a stored ephemeris or complete precomputed orbit.
 
-V10: illustrative transforms affect render output only; asteroid radius=`0.03` render units; real-scale uses same physical scale for positions + radii with no radius clamp.
+V10: illustrative transforms affect render output only; asteroid radius=`0.03` render units; real-scale uses same physical scale for positions + known radii with no radius clamp. Unknown-radius wire markers are the explicitly labeled render-only exception described by V25.
 
 V11: camera focus covers ∀ bodies; wheel changes clamped distance only; pitch preserved.
 
@@ -111,9 +114,11 @@ V21: atlas selection works without pointer; body controls expose selected state,
 
 V22: 100-day isolated Phobos/Deimos numerical checks compare orbital phase against an analytical Kepler solution (less than 1 degree error); the shipped scene compares the app step with half-sized reference steps (less than 1% parent-relative position discrepancy).
 
-V23: pause freezes simulation time and trails without accumulating paused wall time; single-step advances exactly 15 simulated seconds only while paused. Speed presets (1 hour, 1 day, 5 days per real second) change accumulated time, never the physics step. Reset restores initial physics, trails, and clock remainder while preserving selection, playback settings, and presentation settings.
+V23: pause freezes simulation time and trails without accumulating paused wall time; single-step advances exactly 15 simulated seconds only while paused. Speed presets (1 hour, 1 day, 5 days, 10 days, 15 days per real second) change accumulated time, never the physics step. Reset restores initial physics, trails, clock remainder and achieved-speed measurement while preserving selection, playback settings, and presentation settings.
 
 V24: inspector distance and speed are relative to the identified parent in SI state, independent of render mode; parentless bodies show unavailable relative measurements. Framing is renderer-only: planet plus direct moons, a moon's parent plus siblings, or all bodies for the Sun; fit respects aspect ratio and physical/illustrative radii.
+
+V25: mass and radius have explicit measured/estimated/unknown provenance. Unknown mass uses a zero-gravitational-mass test particle that feels known-source gravity without backreaction. Unknown physical values display as Unknown, never as measured zero; an unknown-radius marker is explicitly render-only in either view.
 
 ## §A — Runtime accuracy repair, 2026-09-09
 
@@ -143,6 +148,16 @@ A10|Jupiter is selectable by native `0`, cycle controls, and the C-populated web
 
 Decision: Jonathan approved the Jupiter plan on 2026-09-10 and authorized task-local `npm ci`, existing raylib reuse, isolated browser verification, direct commit/push to `main`, Pages deployment, and exact deployed-revision verification. Galilean moons, orbital inclinations, barycentric physics, and longer-period numerical work remain separate milestones.
 
+## §A — Complete current-planet moons and faster playback, 2026-09-10
+
+id|criterion|verify
+A11|Five speed presets include 10 and 15 days/second; bounded playback retains pending time, pause/reset/step semantics and fixed-step determinism; achieved speed is visible|session/step tests and native/WASM throughput measurements
+A12|All 115 Jovian moons are in a reproducible source-cited catalog and the 125-body scene, with stable identities, Jupiter parent, common-frame orbital initialization and explicit physical-data quality|catalog generation check, table-driven satellite/orbital/physics tests and full-scene convergence
+A13|All bodies are reachable through grouped/searchable selection and Jupiter atlas groups; family and individual framing, bounded synchronized trails, inspector quality labels, docs and native/web controls match the C model|renderer/session/docs checks, authorized desktop/mobile browser verification
+A14|Native/WASM accuracy and performance verification, regression scan and source-backed docs pass; approved main delivery has successful Build/Pages workflows and exact deployed revision|build/test/sanitizer/artifact checks, CI and public verification
+
+Decision: Jonathan requested both faster presets and all moons of existing planets. On 2026-09-10 he selected “Yes, label approximations” for source-backed estimates and otherwise massless particles/Unknown readouts, then approved the complete 115-moon/125-body plan with “do it”. The plan includes scoped orbital geometry, native/WASM performance work, browser verification and release/deployed-revision verification. This expands T16 beyond the four Galilean moons. Task-local dependency setup and existing raylib reuse follow the approved delivery workflow.
+
 ## §T
 
 id|status|task|cites
@@ -161,7 +176,7 @@ T12|x|ship softened cockpit site + docs manual + WASM shell|C8,V13,V16
 T13|x|revert renderer overhaul; retain responsive WASM frame|C9,V10,V12
 T14|x|add 4 Vesta asteroid milestone: sourced constants, planar heliocentric perihelion state, nine-body scene, distinct render visibility, full docs/test surface|C5,C6,V5,V6,V7,V10,V15,V16
 T15|x|add Jupiter milestone: sourced constants, planar heliocentric perihelion state, ten-body scene, selection/render/catalog/docs integration, verification and Pages delivery|A9,A10,C5,C6,V5,V6,V15
-T16|.|add Galilean moons milestone|C5,C6,V15
+T16|x|add all 115 Jovian moons from a reproducible catalog, orbital geometry, data-quality model and five speed presets|A11,A12,V5,V7,V8,V23,V25
 T17|.|add Saturn milestone|C5,C6,V15
 T18|.|add major Saturnian moons milestone|C5,C6,V15
 T19|.|add Uranus milestone|C5,C6,V15
@@ -179,6 +194,8 @@ T30|x|update documentation, verify all affected boundaries, regression scan, com
 T31|x|add C-owned playback, selection, physical inspector, and renderer-only system framing with RED tests|A6,A7,A8,V23,V24
 T32|x|integrate accessible web controls, native shortcuts, state bridge, and source-backed documentation|A6,A7,A8,I.inspection
 T33|x|verify native/WASM/docs/browser boundaries, regression scan, commit/push main, and verify Pages|A8,V14,V16
+T34|x|integrate full-catalog selection/atlas, individual framing, inspector quality and high-speed responsiveness|A11,A13,V9,V18,V20,V24,V25
+T35|~|verify complete moon scene, performance, regressions and main/Pages delivery|A14,V14,V16,V22
 
 ## §B
 

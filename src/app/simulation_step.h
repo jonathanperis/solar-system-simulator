@@ -15,7 +15,8 @@ void solar_app_step_system_with_trails(
     SolarSystem *system,
     BodyTrails *trails,
     SimulationClock *clock,
-    double dt_seconds
+    double dt_seconds,
+    size_t max_steps
 );
 
 #endif

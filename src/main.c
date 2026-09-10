@@ -1,6 +1,7 @@
 #include <raylib.h>
 #include <rlgl.h>
 #include <math.h>
+#include <string.h>
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
@@ -24,17 +25,20 @@ EM_JS(int, solar_web_initial_canvas_height, (void), {
 EM_JS(void, solar_web_report_state, (const char *body_name, const char *parent_name, const char *view_mode,
     const char *camera_target, int selected, int paused, int speed_preset, int auto_rotate,
     double elapsed_seconds, double trail_interval_seconds, int trails_failed, int has_parent,
-    double distance_m, double speed_mps, double mass_kg, double radius_m, double zoom), {
+    double distance_m, double speed_mps, double mass_kg, double radius_m, double zoom,
+    int mass_quality, int radius_quality, double achieved_time_scale, double pending_seconds), {
     Module.reportState({body: UTF8ToString(body_name), parent: UTF8ToString(parent_name),
         view: UTF8ToString(view_mode), cameraTarget: UTF8ToString(camera_target), selected,
         paused: !!paused, speedPreset: speed_preset, autoRotate: !!auto_rotate,
         elapsedSeconds: elapsed_seconds, intervalSeconds: trail_interval_seconds,
         trailsFailed: !!trails_failed, hasParent: !!has_parent,
-        distanceM: distance_m, speedMps: speed_mps, massKg: mass_kg, radiusM: radius_m, zoom});
+        distanceM: distance_m, speedMps: speed_mps, massKg: mass_kg, radiusM: radius_m, zoom,
+        massQuality: mass_quality, radiusQuality: radius_quality,
+        achievedTimeScale: achieved_time_scale, pendingSeconds: pending_seconds});
 })
 
-EM_JS(void, solar_web_add_body, (int index, const char *name), {
-    Module.addBody(index, UTF8ToString(name));
+EM_JS(void, solar_web_add_body, (int index, const char *name, const char *group), {
+    Module.addBody(index, UTF8ToString(name), UTF8ToString(group));
 })
 
 EM_JS(void, solar_web_initialization_failed, (void), {
@@ -62,6 +66,12 @@ typedef struct SolarApp {
     RenderScaleMode render_mode;
     bool auto_rotate;
     bool system_framed;
+    bool body_framed;
+#if !defined(PLATFORM_WEB)
+    bool searching;
+    char search[64];
+    int search_match;
+#endif
 } SolarApp;
 
 /* One C command boundary serves native shortcuts and web buttons. Values match
@@ -69,7 +79,7 @@ typedef struct SolarApp {
 typedef enum SolarCommand {
     SOLAR_COMMAND_PAUSE, SOLAR_COMMAND_STEP, SOLAR_COMMAND_RESET,
     SOLAR_COMMAND_SPEED, SOLAR_COMMAND_SELECT, SOLAR_COMMAND_VIEW,
-    SOLAR_COMMAND_ZOOM, SOLAR_COMMAND_ROTATE, SOLAR_COMMAND_FRAME
+    SOLAR_COMMAND_ZOOM, SOLAR_COMMAND_ROTATE, SOLAR_COMMAND_FRAME, SOLAR_COMMAND_FRAME_BODY
 } SolarCommand;
 
 static SolarApp app;
@@ -120,6 +130,16 @@ static void frame_selected_system(SolarApp *state)
     orbit_camera_frame_sphere(&state->orbit_camera, (float)frame.radius, state->camera.fovy,
         (float)GetScreenWidth() / (float)GetScreenHeight());
     state->system_framed = true;
+    state->body_framed = false;
+}
+
+static void frame_selected_body(SolarApp *state)
+{
+    RenderSystemFrame frame = renderer_body_frame(&state->session.system, state->session.selected_body_index, state->render_mode);
+    orbit_camera_frame_sphere(&state->orbit_camera, (float)frame.radius, state->camera.fovy,
+        (float)GetScreenWidth() / (float)GetScreenHeight());
+    state->system_framed = false;
+    state->body_framed = true;
 }
 
 static void solar_app_command(SolarApp *state, SolarCommand command, int value)
@@ -131,20 +151,24 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
         case SOLAR_COMMAND_RESET:
             simulation_session_reset(session);
             if (state->system_framed) frame_selected_system(state);
+            else if (state->body_framed) frame_selected_body(state);
             break;
         case SOLAR_COMMAND_SPEED: simulation_session_set_speed(session, value); break;
         case SOLAR_COMMAND_SELECT:
             simulation_session_select_body(session, value);
             state->system_framed = false;
+            state->body_framed = false;
             state->orbit_camera = orbit_camera_default_state();
             break;
         case SOLAR_COMMAND_VIEW:
             state->render_mode = next_render_scale_mode(state->render_mode);
             if (state->system_framed) frame_selected_system(state);
+            else if (state->body_framed) frame_selected_body(state);
             break;
         case SOLAR_COMMAND_ZOOM: orbit_camera_apply_zoom(&state->orbit_camera, (float)value); break;
         case SOLAR_COMMAND_ROTATE: state->auto_rotate = !state->auto_rotate; break;
         case SOLAR_COMMAND_FRAME: frame_selected_system(state); break;
+        case SOLAR_COMMAND_FRAME_BODY: frame_selected_body(state); break;
     }
 }
 
@@ -158,13 +182,50 @@ static void report_web_state(const SolarApp *state)
         session->paused, session->speed_preset, state->auto_rotate,
         session->system.elapsed_seconds, session->trails.sample_interval_seconds,
         body_trails_recording_failed(&session->trails), body.has_parent,
-        body.distance_m, body.speed_mps, body.mass_kg, body.radius_m, state->orbit_camera.distance);
+        body.distance_m, body.speed_mps, body.mass_kg, body.radius_m, state->orbit_camera.distance,
+        body.mass_quality, body.radius_quality, session->achieved_time_scale, session->clock.pending_seconds);
 }
 
 EMSCRIPTEN_KEEPALIVE void solar_web_command(int command, int value)
 {
     solar_app_command(&app, (SolarCommand)command, value);
     report_web_state(&app);
+}
+#endif
+
+#if !defined(PLATFORM_WEB)
+static bool update_body_search(SolarApp *state)
+{
+    bool opened = !state->searching && IsKeyPressed(KEY_SLASH);
+    if (opened) {
+        state->searching = true;
+        state->search[0] = '\0';
+    }
+    if (!state->searching) return false;
+    bool changed = opened;
+    int character;
+    while ((character = GetCharPressed()) != 0) {
+        size_t length = strlen(state->search);
+        if (!opened && character >= 32 && character <= 126 && length + 1 < sizeof(state->search)) {
+            state->search[length] = (char)character;
+            state->search[length + 1] = '\0';
+            changed = true;
+        }
+    }
+    size_t length = strlen(state->search);
+    if (IsKeyPressed(KEY_BACKSPACE) && length) {
+        state->search[length - 1] = '\0';
+        changed = true;
+    }
+    if (changed) state->search_match = simulation_session_find_body(&state->session, state->search, 0);
+    if (IsKeyPressed(KEY_DOWN)) state->search_match = simulation_session_find_body(&state->session,
+        state->search, (size_t)(state->search_match + 1));
+    if (IsKeyPressed(KEY_ENTER) && state->search_match >= 0) {
+        solar_app_command(state, SOLAR_COMMAND_SELECT, state->search_match);
+        state->searching = false;
+    }
+    if (IsKeyPressed(KEY_ESCAPE)) state->searching = false;
+    return true;
 }
 #endif
 
@@ -180,13 +241,14 @@ static void solar_app_update_draw(void *user_data)
     if (width != GetScreenWidth() || height != GetScreenHeight()) {
         SetWindowSize(width, height);
         if (app->system_framed) frame_selected_system(app);
+        else if (app->body_framed) frame_selected_body(app);
     }
 #endif
 
 #if defined(PLATFORM_WEB)
     bool controls_active = solar_web_canvas_has_focus();
 #else
-    bool controls_active = true;
+    bool controls_active = !update_body_search(app);
 #endif
     if (controls_active) {
         bool next = IsKeyPressed(KEY_C);
@@ -204,6 +266,7 @@ static void solar_app_update_draw(void *user_data)
         if (IsKeyPressed(KEY_R)) solar_app_command(app, SOLAR_COMMAND_RESET, 0);
         if (IsKeyPressed(KEY_A)) solar_app_command(app, SOLAR_COMMAND_ROTATE, 0);
         if (IsKeyPressed(KEY_F)) solar_app_command(app, SOLAR_COMMAND_FRAME, 0);
+        if (IsKeyPressed(KEY_B)) solar_app_command(app, SOLAR_COMMAND_FRAME_BODY, 0);
         if (IsKeyPressed(KEY_V)) solar_app_command(app, SOLAR_COMMAND_VIEW, 0);
         if (IsKeyPressed(KEY_LEFT_BRACKET)) solar_app_command(app, SOLAR_COMMAND_SPEED, app->session.speed_preset - 1);
         if (IsKeyPressed(KEY_RIGHT_BRACKET)) solar_app_command(app, SOLAR_COMMAND_SPEED, app->session.speed_preset + 1);
@@ -239,15 +302,25 @@ static void solar_app_update_draw(void *user_data)
         app->session.system.elapsed_seconds, simulation_session_time_scale(&app->session)), 20, 50, 18, RAYWHITE);
     DrawText(TextFormat("Selected: %s | Parent: %s | View: %s", body.name, body.parent_name,
         renderer_scale_mode_label(app->render_mode)), 20, 75, 18, RAYWHITE);
-    DrawText(TextFormat("Mass: %.6g kg | Physical radius: %.3f km", body.mass_kg, body.radius_m / 1000.0), 20, 100, 18, RAYWHITE);
+    const char *mass = body.mass_quality == PHYSICAL_UNKNOWN ? "Unknown (test particle)"
+        : TextFormat("%.6g kg%s", body.mass_kg, body.mass_quality == PHYSICAL_ESTIMATED ? " (estimated)" : "");
+    const char *radius = body.radius_quality == PHYSICAL_UNKNOWN ? "Unknown (marker only)"
+        : TextFormat("%.3f km%s", body.radius_m / 1000.0, body.radius_quality == PHYSICAL_ESTIMATED ? " (estimated)" : "");
+    DrawText(TextFormat("Mass: %s | Physical radius: %s", mass, radius), 20, 100, 18, RAYWHITE);
     DrawText(body.has_parent ? TextFormat("Parent-relative: %.3f km | %.6f km/s", body.distance_m / 1000.0, body.speed_mps / 1000.0)
         : "Parent-relative distance/speed: N/A (no parent)", 20, 125, 18, RAYWHITE);
     DrawText("Space: pause | N: +15 s (paused) | R: reset | [ / ]: speed", 20, 155, 18, RAYWHITE);
-    DrawText("1-9 / 0 / Tab / C: select | V: scale | F: frame system | Wheel: zoom", 20, 180, 18, RAYWHITE);
+    DrawText("1-9 / 0 / Tab / C: select | V: scale | F: family | B: body | Wheel: zoom", 20, 180, 18, RAYWHITE);
     DrawText(TextFormat("A: camera rotation (%s) | Camera target: %s", app->auto_rotate ? "on" : "off",
         app->session.system.bodies[camera_target_index(app)].name), 20, 205, 18, RAYWHITE);
+    DrawText(TextFormat("Achieved: %.2f days/second | Pending: %.3f days",
+        app->session.paused ? 0 : app->session.achieved_time_scale / SOLAR_DAY_SECONDS,
+        app->session.clock.pending_seconds / SOLAR_DAY_SECONDS), 20, 230, 18, RAYWHITE);
+    DrawText(app->searching ? TextFormat("Find: %s | %s | Down: next | Enter: select | Esc: close", app->search,
+        app->search_match >= 0 ? app->session.system.bodies[app->search_match].name : "No match")
+        : "/: find body by name, designation, or moon group", 20, 280, 18, RAYWHITE);
     if (body_trails_recording_failed(&app->session.trails)) {
-        DrawText("Trail recording paused: memory unavailable.", 20, 235, 18, RED);
+        DrawText("Trail recording paused: memory unavailable.", 20, 255, 18, RED);
     }
 #endif
 
@@ -272,6 +345,7 @@ int main(void)
     }
 #else
     InitWindow(screen_width, screen_height, "Solar System Simulator");
+    SetExitKey(KEY_NULL); /* Escape closes native search rather than the window. */
 #endif
     SetTargetFPS(60);
 
@@ -288,7 +362,9 @@ int main(void)
 #if defined(PLATFORM_WEB)
     /* Static app storage is shared by the browser loop and exported commands. */
     for (size_t i = 0; i < app.session.system.body_count; ++i) {
-        solar_web_add_body((int)i, app.session.system.bodies[i].name);
+        const Body *body = &app.session.system.bodies[i];
+        const char *group = body->group ? body->group : body->kind == BODY_KIND_MOON ? "Earth and Mars moons" : "Primary bodies";
+        solar_web_add_body((int)i, body->name, group);
     }
     report_web_state(&app);
     emscripten_set_main_loop_arg(solar_app_update_draw, &app, 0, 1);

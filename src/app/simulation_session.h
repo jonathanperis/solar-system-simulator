@@ -3,7 +3,8 @@
 
 #include "simulation_step.h"
 
-#define SOLAR_SPEED_PRESET_COUNT 3
+#define SOLAR_SPEED_PRESET_COUNT 5
+#define SOLAR_APP_MAX_STEPS_PER_UPDATE 2048
 
 typedef struct SimulationSession {
     SolarSystem system;
@@ -12,6 +13,9 @@ typedef struct SimulationSession {
     bool paused;
     int speed_preset;
     size_t selected_body_index;
+    double achieved_time_scale;
+    double rate_real_seconds;
+    double rate_sim_seconds;
 } SimulationSession;
 
 typedef struct BodyInspection {
@@ -22,6 +26,8 @@ typedef struct BodyInspection {
     double speed_mps;
     double mass_kg;
     double radius_m;
+    PhysicalQuality mass_quality;
+    PhysicalQuality radius_quality;
 } BodyInspection;
 
 SimulationSession simulation_session_create(void);
@@ -31,6 +37,7 @@ void simulation_session_update(SimulationSession *session, double real_seconds);
 void simulation_session_single_step(SimulationSession *session);
 void simulation_session_set_speed(SimulationSession *session, int preset);
 void simulation_session_select_body(SimulationSession *session, int index);
+int simulation_session_find_body(const SimulationSession *session, const char *query, size_t start);
 double simulation_session_time_scale(const SimulationSession *session);
 BodyInspection simulation_session_inspect(const SimulationSession *session);
 
