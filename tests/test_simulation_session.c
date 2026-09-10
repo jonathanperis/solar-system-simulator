@@ -83,10 +83,26 @@ static void test_inspector_uses_parent_ids_and_relative_si_motion(void)
     simulation_session_destroy(&session);
 }
 
+static void test_session_exposes_jupiter_as_tenth_body(void)
+{
+    SimulationSession session = simulation_session_create();
+
+    assert(session.system.body_count == 10);
+    simulation_session_select_body(&session, 9);
+    BodyInspection inspection = simulation_session_inspect(&session);
+    assert(strcmp(inspection.name, "Jupiter") == 0);
+    assert(strcmp(inspection.parent_name, "Sun") == 0);
+    assert(fabs(inspection.distance_m - SOLAR_JUPITER_PERIHELION_M) < 0.001);
+    assert(inspection.mass_kg == SOLAR_JUPITER_MASS_KG);
+    assert(inspection.radius_m == SOLAR_JUPITER_RADIUS_M);
+    simulation_session_destroy(&session);
+}
+
 int main(void)
 {
     test_playback_pause_step_speed_and_reset();
     test_inspector_uses_parent_ids_and_relative_si_motion();
+    test_session_exposes_jupiter_as_tenth_body();
     puts("test_simulation_session passed");
     return 0;
 }

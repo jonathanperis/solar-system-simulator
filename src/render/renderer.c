@@ -153,6 +153,8 @@ Color renderer_body_color(const Body *body)
             return MAROON;
         case BODY_ID_VESTA:
             return LIGHTGRAY;
+        case BODY_ID_JUPITER:
+            return (Color){206, 164, 118, 255};
         case BODY_ID_UNKNOWN:
         case BODY_ID_NONE:
         default:

@@ -104,6 +104,19 @@
     (sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * \
         ((2.0 / SOLAR_VESTA_PERIHELION_M) - (1.0 / SOLAR_VESTA_SEMI_MAJOR_AXIS_M))))
 
+/* JPL planetary tables supply Jupiter's total mass, mean radius, and J2000
+ * orbit. Inclination is deferred, so this milestone uses the same planar
+ * perihelion model as the existing planets. */
+#define SOLAR_JUPITER_MASS_KG 1.898125e27
+#define SOLAR_JUPITER_RADIUS_M 69911000.0
+#define SOLAR_JUPITER_SEMI_MAJOR_AXIS_M (5.20288700 * SOLAR_AU_METERS)
+#define SOLAR_JUPITER_ECCENTRICITY 0.04838624
+#define SOLAR_JUPITER_PERIHELION_M \
+    (SOLAR_JUPITER_SEMI_MAJOR_AXIS_M * (1.0 - SOLAR_JUPITER_ECCENTRICITY))
+#define SOLAR_JUPITER_PERIHELION_SPEED_MPS \
+    (sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * \
+        ((2.0 / SOLAR_JUPITER_PERIHELION_M) - (1.0 / SOLAR_JUPITER_SEMI_MAJOR_AXIS_M))))
+
 #define SOLAR_RENDER_UNITS_PER_AU 10.0
 #define SOLAR_MIN_VISIBLE_BODY_RADIUS 0.5f
 #define SOLAR_ILLUSTRATIVE_PLANET_RADIUS 0.12f

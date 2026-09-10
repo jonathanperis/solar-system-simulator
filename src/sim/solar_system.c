@@ -155,6 +155,21 @@ Body solar_system_create_vesta_at_perihelion(void)
     );
 }
 
+Body solar_system_create_jupiter_at_perihelion(void)
+{
+    return body_create_identified(
+        "Jupiter",
+        BODY_KIND_PLANET,
+        BODY_ID_JUPITER,
+        BODY_ID_SUN,
+        SOLAR_JUPITER_MASS_KG,
+        SOLAR_JUPITER_RADIUS_M,
+        (Vec3d){-SOLAR_JUPITER_PERIHELION_M, 0.0, 0.0},
+        (Vec3d){0.0, 0.0, -SOLAR_JUPITER_PERIHELION_SPEED_MPS},
+        false
+    );
+}
+
 SolarSystem solar_system_create_sun_only(void)
 {
     SolarSystem system = {
@@ -188,6 +203,20 @@ SolarSystem solar_system_create_sun_vesta(void)
         .bodies = {
             create_sun(),
             solar_system_create_vesta_at_perihelion(),
+        },
+        .body_count = 2,
+        .elapsed_seconds = 0.0,
+    };
+
+    return system;
+}
+
+SolarSystem solar_system_create_sun_jupiter(void)
+{
+    SolarSystem system = {
+        .bodies = {
+            create_sun(),
+            solar_system_create_jupiter_at_perihelion(),
         },
         .body_count = 2,
         .elapsed_seconds = 0.0,
@@ -294,6 +323,15 @@ SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_
     SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
 
     system.bodies[system.body_count] = solar_system_create_vesta_at_perihelion();
+    ++system.body_count;
+    return system;
+}
+
+SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();
+
+    system.bodies[system.body_count] = solar_system_create_jupiter_at_perihelion();
     ++system.body_count;
     return system;
 }

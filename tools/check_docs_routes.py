@@ -34,7 +34,7 @@ ROUTES: dict[str, list[str]] = {
     ],
     "physics/index.html": ["Physics stays in SI units", "docs/simulation-core/", "data-footer-credits"],
     "simulator/index.html": ["Run the real orbit loop", "data-simulator", "runtime-control-state", "canvas", "15-second", "uniform", "data-footer-credits", "data-runtime-panel", "data-runtime-body", "data-runtime-speed", "Frame selected system", "Live physics inspector", "data-inspector-distance", "data-inspector-speed"],
-    "body-catalog/index.html": ["Stable IDs prevent duplicate knowledge", "docs/roadmap/", "Phobos", "Deimos", "Vesta", "JPL SBDB solution 36"],
+    "body-catalog/index.html": ["Stable IDs prevent duplicate knowledge", "docs/roadmap/", "Phobos", "Deimos", "Vesta", "Jupiter", "JPL physical parameters", "JPL SBDB solution 36"],
     "source-atlas/index.html": ["The code separates physics from presentation", "docs/architecture/", "src/sim/"],
     "pipeline/index.html": ["Native tests feed a Pages lab bench", "docs/build-and-web/", "make web"],
     "docs/index.html": ["Trace every orbit wire without one giant scroll", "Solar manual routes", "Every orbit manual page", "docs/architecture/"],
@@ -43,11 +43,11 @@ ROUTES: dict[str, list[str]] = {
     "docs/rendering/index.html": ["Rendering adapts physics for human eyes", "src/render/renderer.c", "src/app/body_trails.c"],
     "docs/controls/index.html": ["Controls expose the current physics scene", "Space", "N", "R", "Frame", "physical inspector", "simulation_session", "orbit_camera"],
     "docs/build-and-web/index.html": ["Native checks feed the public WebAssembly lab", "make test", "make web", "make dist-wasm", ".github/workflows/build.yml", ".github/workflows/deploy-pages.yml"],
-    "docs/roadmap/index.html": ["Expansion stays one body at a time", "Implemented now", "Planned sequence", "Jupiter", "Kuiper belt"],
+    "docs/roadmap/index.html": ["Expansion stays one body at a time", "Implemented now", "Planned sequence", "Jupiter", "Galilean moons", "Kuiper belt"],
 }
 
 FOOTER_MARKERS = ["data-footer-credits", "Jonathan Peris", "raylib", "Emscripten", "Astro", "GitHub Pages"]
-ATLAS_BODY_ANCHORS = ["sun", "mercury", "venus", "earth", "moon", "mars", "phobos", "deimos", "vesta"]
+ATLAS_BODY_ANCHORS = ["sun", "mercury", "venus", "earth", "moon", "mars", "phobos", "deimos", "vesta", "jupiter"]
 
 
 class ReferenceParser(HTMLParser):

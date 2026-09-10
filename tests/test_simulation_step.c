@@ -16,7 +16,7 @@ static void assert_vec3d_equal(Vec3d actual, Vec3d expected)
 
 static void test_trail_sampling_is_independent_of_physics_step_size(void)
 {
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter();
     BodyTrails trails = body_trails_create();
     SimulationClock clock = {0};
 
@@ -30,9 +30,11 @@ static void test_trail_sampling_is_independent_of_physics_step_size(void)
     assert(body_trails_point_count(&trails, 6) == 1 + 288);
     assert(body_trails_point_count(&trails, 7) == 1 + 288);
     assert(body_trails_point_count(&trails, 8) == 1 + 288);
+    assert(body_trails_point_count(&trails, 9) == 1 + 288);
     assert_vec3d_equal(body_trails_point_at(&trails, 6, body_trails_point_count(&trails, 6) - 1), system.bodies[6].position_m);
     assert_vec3d_equal(body_trails_point_at(&trails, 7, body_trails_point_count(&trails, 7) - 1), system.bodies[7].position_m);
     assert_vec3d_equal(body_trails_point_at(&trails, 8, body_trails_point_count(&trails, 8) - 1), system.bodies[8].position_m);
+    assert_vec3d_equal(body_trails_point_at(&trails, 9, body_trails_point_count(&trails, 9) - 1), system.bodies[9].position_m);
 
     body_trails_destroy(&trails);
 }
@@ -108,18 +110,19 @@ static void test_martian_moons_keep_phase_over_100_days(void)
 
 static void test_full_scene_converges_over_100_days(void)
 {
-    SolarSystem actual = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();
+    SolarSystem actual = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter();
     SolarSystem reference = actual;
     const double dt = SOLAR_APP_MAX_PHYSICS_STEP_SECONDS;
-    const int parent_indices[] = {0, 0, 0, 0, 3, 0, 5, 5, 0};
     for (double t = 0.0; t < 100.0 * SOLAR_DAY_SECONDS; t += dt) {
         solar_system_step(&actual, dt);
         solar_system_step(&reference, dt * 0.5);
         solar_system_step(&reference, dt * 0.5);
     }
     for (size_t i = 1; i < actual.body_count; ++i) {
-        Vec3d position = vec3d_sub(actual.bodies[i].position_m, actual.bodies[parent_indices[i]].position_m);
-        Vec3d expected = vec3d_sub(reference.bodies[i].position_m, reference.bodies[parent_indices[i]].position_m);
+        int parent_index = solar_system_parent_index(&actual, i);
+        assert(parent_index >= 0);
+        Vec3d position = vec3d_sub(actual.bodies[i].position_m, actual.bodies[parent_index].position_m);
+        Vec3d expected = vec3d_sub(reference.bodies[i].position_m, reference.bodies[parent_index].position_m);
         double relative_error = vec3d_length(vec3d_sub(position, expected)) / vec3d_length(expected);
         printf("%s 100-day half-step discrepancy: %.6f%%\n", actual.bodies[i].name, 100.0 * relative_error);
         assert(relative_error < 0.01);
