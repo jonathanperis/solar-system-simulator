@@ -63,6 +63,16 @@ static void test_vesta_uses_physical_radius_in_real_scale_and_distinct_illustrat
     assert(renderer_body_radius(&vesta, RENDER_SCALE_ILLUSTRATIVE) < SOLAR_ILLUSTRATIVE_PLANET_RADIUS);
 }
 
+static void test_jupiter_uses_planet_scale_and_distinct_catalog_color(void)
+{
+    Body jupiter = solar_system_create_jupiter_at_perihelion();
+    Color color = renderer_body_color(&jupiter);
+
+    assert_close(renderer_body_radius(&jupiter, RENDER_SCALE_REAL), meters_to_render_units(SOLAR_JUPITER_RADIUS_M), 1e-12);
+    assert_close(renderer_body_radius(&jupiter, RENDER_SCALE_ILLUSTRATIVE), SOLAR_ILLUSTRATIVE_PLANET_RADIUS, 1e-6);
+    assert(color.r == 206 && color.g == 164 && color.b == 118 && color.a == 255);
+}
+
 static void test_illustrative_moon_is_smaller_but_still_visible(void)
 {
     Body earth = solar_system_create_earth_at_perihelion();
@@ -228,6 +238,16 @@ static void test_grid_expands_to_cover_vesta_orbit_with_padding(void)
     assert(((double)slices / 2.0) >= required_half_width);
 }
 
+static void test_grid_expands_to_cover_jupiter_orbit_with_padding(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter();
+    Vec3d jupiter_position = renderer_body_position(&system, 9, RENDER_SCALE_ILLUSTRATIVE);
+    double required_half_width = fabs(jupiter_position.x) + 2.0;
+    int slices = renderer_grid_slices_for_system(&system, RENDER_SCALE_ILLUSTRATIVE);
+
+    assert(((double)slices / 2.0) >= required_half_width);
+}
+
 static void test_trail_rendering_keeps_long_runs_bounded(void)
 {
     size_t points_after_500_days = 1 + (size_t)500 * 288;
@@ -241,10 +261,10 @@ static void test_trail_rendering_keeps_long_runs_bounded(void)
 
 static void test_system_frame_contains_selected_family_in_both_modes(void)
 {
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter();
     SolarSystem original = system;
-    const size_t selections[] = {0, 3, 4, 5, 6, 7, 8};
-    const size_t roots[] = {0, 3, 3, 5, 5, 5, 8};
+    const size_t selections[] = {0, 3, 4, 5, 6, 7, 8, 9};
+    const size_t roots[] = {0, 3, 3, 5, 5, 5, 8, 9};
     for (int mode = RENDER_SCALE_ILLUSTRATIVE; mode <= RENDER_SCALE_REAL; ++mode) {
         for (size_t s = 0; s < sizeof(selections) / sizeof(selections[0]); ++s) {
             RenderSystemFrame frame = renderer_system_frame(&system, selections[s], mode);
@@ -274,6 +294,7 @@ int main(void)
     test_illustrative_planets_keep_old_visible_radius();
     test_real_scale_mars_radius_uses_physical_meter_scale();
     test_vesta_uses_physical_radius_in_real_scale_and_distinct_illustrative_radius();
+    test_jupiter_uses_planet_scale_and_distinct_catalog_color();
     test_illustrative_moon_is_smaller_but_still_visible();
     test_illustrative_earth_and_moon_do_not_overlap_at_perigee();
     test_illustrative_martian_moons_are_visible_and_outside_mars();
@@ -286,6 +307,7 @@ int main(void)
     test_grid_keeps_at_least_minimum_square_count_for_inner_system();
     test_grid_expands_to_cover_mars_orbit_with_padding();
     test_grid_expands_to_cover_vesta_orbit_with_padding();
+    test_grid_expands_to_cover_jupiter_orbit_with_padding();
     test_trail_rendering_keeps_long_runs_bounded();
     puts("test_renderer passed");
     return 0;

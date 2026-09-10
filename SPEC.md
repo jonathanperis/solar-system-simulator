@@ -50,7 +50,7 @@ I.render: illustrative | real-scale transforms + raylib drawing
 
 I.controls: native `Tab` | `C` focus; web `C` focus and browser-native `Tab`; `V` scale; wheel zoom
 
-I.inspection: native shortcuts and accessible web buttons share C-owned playback and selection; web readouts use live C physical state. Space pauses, N steps, R resets, A toggles camera rotation, F frames the selected system; native 1–9 selects a body and brackets change speed.
+I.inspection: native shortcuts and accessible web buttons share C-owned playback and selection; web readouts use live C physical state. Space pauses, N steps, R resets, A toggles camera rotation, F frames the selected system; native 1–9 and 0 select the ten catalog bodies and brackets change speed.
 
 I.pages: `/`, `/docs/`, `/docs/architecture/`, `/docs/simulation-core/`, `/docs/rendering/`, `/docs/controls/`, `/docs/build-and-web/`, `/docs/roadmap/`, `/physics/`, `/body-catalog/`, `/source-atlas/`, `/pipeline/`, `/simulator/`; `/wasm/solar-system-simulator.html` redirects to `/simulator/`
 
@@ -62,6 +62,8 @@ R1|4 Vesta class|numbered Main-belt Asteroid|https://ssd-api.jpl.nasa.gov/sbdb.a
 R2|4 Vesta orbit|a=`2.361365965127599 AU`; e=`0.09020374382834395`; i=`7.143925545058711 deg`|https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1
 R3|4 Vesta physical|GM=`17.2882844 km^3/s^2`; effective diameter=`522.77 km`|https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1
 R4|target rationale|Vesta second-most-massive main-belt body; Ceres dwarf planet|https://science.nasa.gov/solar-system/asteroids/4-vesta/
+R5|Jupiter physical|mass=`1898.125 × 10^24 kg`; mean radius=`69911 km`|https://ssd.jpl.nasa.gov/planets/phys_par.html
+R6|Jupiter orbit|J2000 a=`5.20288700 AU`; e=`0.04838624`; i=`1.30439695 deg`|https://ssd.jpl.nasa.gov/planets/approx_pos.html
 
 ## §V
 
@@ -73,7 +75,7 @@ V3: gravity = `G * source_mass / distance^3 * displacement`; self | zero-distanc
 
 V4: stepping = velocity-Verlet kick-drift-kick; fixed bodies contribute gravity but never move.
 
-V5: shipped scene order = Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta; stable IDs + parents match catalog.
+V5: shipped scene order = Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta, Jupiter; stable IDs + parents match catalog.
 
 V6: planets + Vesta start heliocentric perihelion; Moon starts Earth-relative perigee; Phobos/Deimos start Mars-relative periareion; speeds use vis-viva.
 
@@ -107,7 +109,7 @@ V20: atlas visual scale/positions are explicitly illustrative; body names, paren
 
 V21: atlas selection works without pointer; body controls expose selected state, drawer closes on `Escape`, focus returns to invoking body, reduced-motion suppresses ornamental motion.
 
-V22: 100-day isolated Phobos/Deimos numerical checks compare orbital phase against an analytical Kepler solution (less than 1 degree error); the nine-body scene compares the app step with half-sized reference steps (less than 1% parent-relative position discrepancy).
+V22: 100-day isolated Phobos/Deimos numerical checks compare orbital phase against an analytical Kepler solution (less than 1 degree error); the shipped scene compares the app step with half-sized reference steps (less than 1% parent-relative position discrepancy).
 
 V23: pause freezes simulation time and trails without accumulating paused wall time; single-step advances exactly 15 simulated seconds only while paused. Speed presets (1 hour, 1 day, 5 days per real second) change accumulated time, never the physics step. Reset restores initial physics, trails, and clock remainder while preserving selection, playback settings, and presentation settings.
 
@@ -133,6 +135,14 @@ A8|Live inspector shows selected name, parent, relative distance/speed, mass and
 
 Decision: Jonathan approved the three proposed inspection enhancements with “go”, then authorized task-local `npm ci`, existing raylib 6.0 reuse, isolated headless local browser verification, and Main + Pages delivery. Jupiter, barycentric physics, and longer-period numerical work remain separate milestones.
 
+## §A — Jupiter milestone, 2026-09-10
+
+id|criterion|verify
+A9|Jupiter is the tenth body after Vesta with stable ID, Sun parent, JPL-sourced mass/radius/orbit, planar heliocentric perihelion state, and vis-viva speed; the fixed 15-second app step remains unchanged|solar-system and simulation-step C tests
+A10|Jupiter is selectable by native `0`, cycle controls, and the C-populated web dropdown; inspector, trails, illustrative/real-scale rendering, family framing, atlas, catalog, controls, and source-backed docs expose the ten-body scene without changing existing indices|session/renderer C tests, docs tests/checks, native/WASM builds, browser verification
+
+Decision: Jonathan approved the Jupiter plan on 2026-09-10 and authorized task-local `npm ci`, existing raylib reuse, isolated browser verification, direct commit/push to `main`, Pages deployment, and exact deployed-revision verification. Galilean moons, orbital inclinations, barycentric physics, and longer-period numerical work remain separate milestones.
+
 ## §T
 
 id|status|task|cites
@@ -150,7 +160,7 @@ T11|x|fix moon planes + substep trail sampling + bounded trail drawing|V7,V8,V9
 T12|x|ship softened cockpit site + docs manual + WASM shell|C8,V13,V16
 T13|x|revert renderer overhaul; retain responsive WASM frame|C9,V10,V12
 T14|x|add 4 Vesta asteroid milestone: sourced constants, planar heliocentric perihelion state, nine-body scene, distinct render visibility, full docs/test surface|C5,C6,V5,V6,V7,V10,V15,V16
-T15|.|add Jupiter milestone|C5,C6,V15
+T15|~|add Jupiter milestone: sourced constants, planar heliocentric perihelion state, ten-body scene, selection/render/catalog/docs integration, verification and Pages delivery|A9,A10,C5,C6,V5,V6,V15
 T16|.|add Galilean moons milestone|C5,C6,V15
 T17|.|add Saturn milestone|C5,C6,V15
 T18|.|add major Saturnian moons milestone|C5,C6,V15

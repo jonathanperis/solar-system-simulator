@@ -6,7 +6,7 @@ export type ImplementedBody = {
   milestone: string;
   initialization: string;
   source: string;
-  accent: 'solar' | 'cyan' | 'earth' | 'moon' | 'mars' | 'asteroid';
+  accent: 'solar' | 'cyan' | 'earth' | 'moon' | 'mars' | 'asteroid' | 'jupiter';
   chart: {
     plate: 'heliocentric' | 'earth' | 'mars';
     angle: number;
@@ -123,11 +123,22 @@ export const implementedBodies: ImplementedBody[] = [
     accent: 'asteroid',
     chart: { plate: 'heliocentric', angle: 274, radius: 80 },
     summary: 'Main-belt asteroid, represented as a single sourced body.'
+  },
+  {
+    slug: 'jupiter',
+    name: 'Jupiter',
+    kind: 'Planet',
+    parent: 'Sun',
+    milestone: 'Outer planet pass',
+    initialization: 'Planar heliocentric perihelion position with vis-viva tangential speed.',
+    source: 'src/sim/solar_system.c',
+    accent: 'jupiter',
+    chart: { plate: 'heliocentric', angle: 112, radius: 91 },
+    summary: 'First gas giant, initialized at heliocentric perihelion.'
   }
 ];
 
 export const plannedBodies = [
-  'Jupiter',
   'Galilean moons',
   'Saturn',
   'major Saturnian moons',

@@ -29,7 +29,7 @@ static void test_sun_body_creation_preserves_fields(void)
 
 static void test_current_scene_bodies_have_stable_catalog_ids_and_parents(void)
 {
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter();
 
     assert(system.bodies[0].id == BODY_ID_SUN);
     assert(system.bodies[0].parent_id == BODY_ID_NONE);
@@ -49,6 +49,8 @@ static void test_current_scene_bodies_have_stable_catalog_ids_and_parents(void)
     assert(system.bodies[7].parent_id == BODY_ID_MARS);
     assert(system.bodies[8].id == BODY_ID_VESTA);
     assert(system.bodies[8].parent_id == BODY_ID_SUN);
+    assert(system.bodies[9].id == BODY_ID_JUPITER);
+    assert(system.bodies[9].parent_id == BODY_ID_SUN);
 }
 
 static void test_sun_only_system_has_one_real_sun(void)
@@ -277,9 +279,22 @@ static void test_vesta_perihelion_speed_matches_vis_viva(void)
     assert_close(SOLAR_VESTA_PERIHELION_SPEED_MPS, expected, 1e-6);
 }
 
-static void test_solar_system_capacity_supports_nine_body_scene(void)
+static void test_jupiter_constants_and_derived_perihelion_state(void)
 {
-    assert(SOLAR_SYSTEM_BODY_CAPACITY == 9);
+    assert_close(SOLAR_JUPITER_MASS_KG, 1.898125e27, 1.898125e27 * 1e-12);
+    assert_close(SOLAR_JUPITER_RADIUS_M, 69911000.0, 1e-6);
+    assert_close(SOLAR_JUPITER_SEMI_MAJOR_AXIS_M, 5.20288700 * SOLAR_AU_METERS, 1e-3);
+    assert_close(SOLAR_JUPITER_ECCENTRICITY, 0.04838624, 1e-15);
+    assert_close(SOLAR_JUPITER_PERIHELION_M,
+        SOLAR_JUPITER_SEMI_MAJOR_AXIS_M * (1.0 - SOLAR_JUPITER_ECCENTRICITY), 1e-3);
+    double expected_speed = sqrt(SOLAR_G * SOLAR_SUN_MASS_KG *
+        ((2.0 / SOLAR_JUPITER_PERIHELION_M) - (1.0 / SOLAR_JUPITER_SEMI_MAJOR_AXIS_M)));
+    assert_close(SOLAR_JUPITER_PERIHELION_SPEED_MPS, expected_speed, 1e-6);
+}
+
+static void test_solar_system_capacity_supports_ten_body_scene(void)
+{
+    assert(SOLAR_SYSTEM_BODY_CAPACITY == 10);
 }
 
 static void test_mercury_body_starts_at_perihelion_with_tangential_velocity(void)
@@ -450,6 +465,25 @@ static void test_vesta_body_starts_at_perihelion_with_tangential_velocity(void)
     assert_close(vesta.velocity_mps.z, SOLAR_VESTA_PERIHELION_SPEED_MPS, 1e-6);
 }
 
+static void test_jupiter_body_starts_at_perihelion_with_tangential_velocity(void)
+{
+    Body jupiter = solar_system_create_jupiter_at_perihelion();
+
+    assert(strcmp(jupiter.name, "Jupiter") == 0);
+    assert(jupiter.kind == BODY_KIND_PLANET);
+    assert(jupiter.id == BODY_ID_JUPITER);
+    assert(jupiter.parent_id == BODY_ID_SUN);
+    assert(!jupiter.fixed);
+    assert_close(jupiter.mass_kg, SOLAR_JUPITER_MASS_KG, SOLAR_JUPITER_MASS_KG * 1e-12);
+    assert_close(jupiter.radius_m, SOLAR_JUPITER_RADIUS_M, 1e-6);
+    assert_close(jupiter.position_m.x, -SOLAR_JUPITER_PERIHELION_M, 1e-3);
+    assert_close(jupiter.position_m.y, 0.0, 1e-12);
+    assert_close(jupiter.position_m.z, 0.0, 1e-12);
+    assert_close(jupiter.velocity_mps.x, 0.0, 1e-12);
+    assert_close(jupiter.velocity_mps.y, 0.0, 1e-12);
+    assert_close(jupiter.velocity_mps.z, -SOLAR_JUPITER_PERIHELION_SPEED_MPS, 1e-6);
+}
+
 static void test_sun_mercury_system_has_two_expected_bodies(void)
 {
     SolarSystem system = solar_system_create_sun_mercury();
@@ -544,14 +578,17 @@ static void test_sun_mercury_venus_earth_moon_mars_phobos_deimos_system_has_eigh
     assert(system.bodies[7].kind == BODY_KIND_MOON);
 }
 
-static void test_current_scene_has_nine_expected_bodies(void)
+static void test_current_scene_has_ten_expected_bodies(void)
 {
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter();
 
-    assert(system.body_count == 9);
+    assert(system.body_count == 10);
     assert(strcmp(system.bodies[8].name, "Vesta") == 0);
     assert(!system.bodies[8].fixed);
     assert(system.bodies[8].kind == BODY_KIND_ASTEROID);
+    assert(strcmp(system.bodies[9].name, "Jupiter") == 0);
+    assert(!system.bodies[9].fixed);
+    assert(system.bodies[9].kind == BODY_KIND_PLANET);
 }
 
 static void test_mercury_acceleration_points_toward_sun_at_perihelion(void)
@@ -865,6 +902,19 @@ static void test_vesta_roughly_returns_after_one_orbit(void)
     assert(distance_from_initial < 0.12 * SOLAR_AU_METERS);
 }
 
+static void test_jupiter_accelerates_toward_sun_and_moves_tangentially(void)
+{
+    SolarSystem system = solar_system_create_sun_jupiter();
+    Vec3d initial = system.bodies[1].position_m;
+
+    solar_system_step(&system, SOLAR_DAY_SECONDS);
+
+    assert(system.bodies[1].acceleration_mps2.x > 0.0);
+    assert_close(system.bodies[1].acceleration_mps2.y, 0.0, 1e-18);
+    assert(system.bodies[1].position_m.x > initial.x);
+    assert(system.bodies[1].position_m.z < initial.z);
+}
+
 int main(void)
 {
     test_sun_body_creation_preserves_fields();
@@ -898,7 +948,8 @@ int main(void)
     test_vesta_constants_are_real_si_values();
     test_vesta_perihelion_distance_is_derived_from_orbital_elements();
     test_vesta_perihelion_speed_matches_vis_viva();
-    test_solar_system_capacity_supports_nine_body_scene();
+    test_jupiter_constants_and_derived_perihelion_state();
+    test_solar_system_capacity_supports_ten_body_scene();
     test_mercury_body_starts_at_perihelion_with_tangential_velocity();
     test_venus_body_starts_at_perihelion_with_tangential_velocity();
     test_earth_body_starts_at_perihelion_with_tangential_velocity();
@@ -909,13 +960,14 @@ int main(void)
     test_deimos_body_starts_at_mars_relative_periareion_with_tangential_velocity();
     test_deimos_orbit_starts_in_ecliptic_render_plane();
     test_vesta_body_starts_at_perihelion_with_tangential_velocity();
+    test_jupiter_body_starts_at_perihelion_with_tangential_velocity();
     test_sun_mercury_system_has_two_expected_bodies();
     test_sun_mercury_venus_system_has_three_expected_bodies();
     test_sun_mercury_venus_earth_system_has_four_expected_bodies();
     test_sun_mercury_venus_earth_moon_system_has_five_expected_bodies();
     test_sun_mercury_venus_earth_moon_mars_system_has_six_expected_bodies();
     test_sun_mercury_venus_earth_moon_mars_phobos_deimos_system_has_eight_expected_bodies();
-    test_current_scene_has_nine_expected_bodies();
+    test_current_scene_has_ten_expected_bodies();
     test_mercury_acceleration_points_toward_sun_at_perihelion();
     test_mercury_moves_after_one_day_while_sun_stays_fixed();
     test_mercury_roughly_returns_after_one_orbit();
@@ -937,6 +989,7 @@ int main(void)
     test_vesta_acceleration_points_toward_sun_at_perihelion();
     test_vesta_moves_after_one_day_while_sun_stays_fixed();
     test_vesta_roughly_returns_after_one_orbit();
+    test_jupiter_accelerates_toward_sun_and_moves_tangentially();
     puts("test_solar_system passed");
     return 0;
 }

@@ -198,6 +198,7 @@ static void solar_app_update_draw(void *user_data)
         for (int i = 0; i < 9; ++i) {
             if (IsKeyPressed(KEY_ONE + i)) solar_app_command(app, SOLAR_COMMAND_SELECT, i);
         }
+        if (IsKeyPressed(KEY_ZERO)) solar_app_command(app, SOLAR_COMMAND_SELECT, 9);
         if (IsKeyPressed(KEY_SPACE)) solar_app_command(app, SOLAR_COMMAND_PAUSE, 0);
         if (IsKeyPressed(KEY_N)) solar_app_command(app, SOLAR_COMMAND_STEP, 0);
         if (IsKeyPressed(KEY_R)) solar_app_command(app, SOLAR_COMMAND_RESET, 0);
@@ -242,7 +243,7 @@ static void solar_app_update_draw(void *user_data)
     DrawText(body.has_parent ? TextFormat("Parent-relative: %.3f km | %.6f km/s", body.distance_m / 1000.0, body.speed_mps / 1000.0)
         : "Parent-relative distance/speed: N/A (no parent)", 20, 125, 18, RAYWHITE);
     DrawText("Space: pause | N: +15 s (paused) | R: reset | [ / ]: speed", 20, 155, 18, RAYWHITE);
-    DrawText("1-9 / Tab / C: select | V: scale | F: frame system | Wheel: zoom", 20, 180, 18, RAYWHITE);
+    DrawText("1-9 / 0 / Tab / C: select | V: scale | F: frame system | Wheel: zoom", 20, 180, 18, RAYWHITE);
     DrawText(TextFormat("A: camera rotation (%s) | Camera target: %s", app->auto_rotate ? "on" : "off",
         app->session.system.bodies[camera_target_index(app)].name), 20, 205, 18, RAYWHITE);
     if (body_trails_recording_failed(&app->session.trails)) {

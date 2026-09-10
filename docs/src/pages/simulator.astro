@@ -10,7 +10,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
       <div>
         <p class="eyebrow">Live field station / C11 + WebAssembly</p>
         <h1>Run the real orbit loop.</h1>
-        <p>Nine bodies. One SI-unit simulation. The chart below is rendered by raylib.</p>
+        <p>Ten bodies. One SI-unit simulation. The chart below is rendered by raylib.</p>
       </div>
       <div class="actions">
         <a class="button" href="#canvas">Focus canvas</a>
@@ -57,7 +57,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         Your browser needs canvas and WebGL to display the simulation.
       </canvas>
     </div>
-    <p id="simulator-keys" class="simulator-keys"><kbd>Space</kbd> pause · <kbd>N</kbd> step · <kbd>R</kbd> reset · <kbd>C</kbd> / <kbd>1–9</kbd> select · <kbd>V</kbd> view · <kbd>F</kbd> frame system · <kbd>A</kbd> camera rotation · Mouse wheel to zoom. Shortcuts require canvas focus; <kbd>Tab</kbd> continues through the page.</p>
+    <p id="simulator-keys" class="simulator-keys"><kbd>Space</kbd> pause · <kbd>N</kbd> step · <kbd>R</kbd> reset · <kbd>C</kbd> / <kbd>1–9</kbd> / <kbd>0</kbd> select · <kbd>V</kbd> view · <kbd>F</kbd> frame system · <kbd>A</kbd> camera rotation · Mouse wheel to zoom. Shortcuts require canvas focus; <kbd>Tab</kbd> continues through the page.</p>
     <noscript><p class="callout">JavaScript is required to run WebAssembly. The <a href={`${base}docs/simulation-core/`}>physics guide</a> is available without it.</p></noscript>
 
     <section class="physics-inspector" aria-labelledby="inspector-heading">

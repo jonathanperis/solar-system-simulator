@@ -5,9 +5,9 @@ export const liveUrl = 'https://jonathanperis.github.io/solar-system-simulator/'
 export const buildRevision = import.meta.env.PUBLIC_BUILD_SHA || 'local build';
 
 export const currentMilestone = {
-  label: 'Foundation, inner planets, Earth Moon system, Mars moons, Vesta',
-  shortLabel: 'Milestone 8',
-  implementedBodyCount: 9,
+  label: 'Foundation, inner planets, Earth Moon system, Mars moons, Vesta, Jupiter',
+  shortLabel: 'Milestone 9',
+  implementedBodyCount: 10,
   integrator: 'velocity-Verlet / kick-drift-kick',
   units: 'SI units: m, kg, s, m/s',
   language: 'C11',

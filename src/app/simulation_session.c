@@ -18,7 +18,7 @@ void simulation_session_reset(SimulationSession *session)
 {
     /* Reset the physical experiment, retaining the observer's control settings. */
     body_trails_destroy(&session->trails);
-    session->system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();
+    session->system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter();
     session->clock = (SimulationClock){0};
     body_trails_record_system(&session->trails, &session->system);
 }

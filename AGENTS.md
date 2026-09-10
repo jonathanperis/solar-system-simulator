@@ -9,7 +9,7 @@ A physics-first 3D solar system simulator written in C11 with raylib. This repos
 - **Language:** C11 only for simulator/runtime code.
 - **Graphics/windowing:** raylib.
 - **Architecture:** deterministic SI-unit simulation isolated from rendering.
-- **Current scene:** Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta.
+- **Current scene:** Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta, Jupiter.
 - **Primary goal:** teach and verify orbital mechanics foundations before visual polish.
 - **Current public-site direction:** archival solar chart, source-backed and playful, with an accessible illustrative orrery wrapped around SI-unit physics. The docs hub and Astro-owned `/simulator/` runtime share the atlas layout.
 
