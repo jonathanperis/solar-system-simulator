@@ -160,7 +160,7 @@ T11|x|fix moon planes + substep trail sampling + bounded trail drawing|V7,V8,V9
 T12|x|ship softened cockpit site + docs manual + WASM shell|C8,V13,V16
 T13|x|revert renderer overhaul; retain responsive WASM frame|C9,V10,V12
 T14|x|add 4 Vesta asteroid milestone: sourced constants, planar heliocentric perihelion state, nine-body scene, distinct render visibility, full docs/test surface|C5,C6,V5,V6,V7,V10,V15,V16
-T15|~|add Jupiter milestone: sourced constants, planar heliocentric perihelion state, ten-body scene, selection/render/catalog/docs integration, verification and Pages delivery|A9,A10,C5,C6,V5,V6,V15
+T15|x|add Jupiter milestone: sourced constants, planar heliocentric perihelion state, ten-body scene, selection/render/catalog/docs integration, verification and Pages delivery|A9,A10,C5,C6,V5,V6,V15
 T16|.|add Galilean moons milestone|C5,C6,V15
 T17|.|add Saturn milestone|C5,C6,V15
 T18|.|add major Saturnian moons milestone|C5,C6,V15
