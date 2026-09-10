@@ -239,8 +239,36 @@ static void test_trail_rendering_keeps_long_runs_bounded(void)
     assert(renderer_trail_draw_segment_count(2) == 1);
 }
 
+static void test_system_frame_contains_selected_family_in_both_modes(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();
+    SolarSystem original = system;
+    const size_t selections[] = {0, 3, 4, 5, 6, 7, 8};
+    const size_t roots[] = {0, 3, 3, 5, 5, 5, 8};
+    for (int mode = RENDER_SCALE_ILLUSTRATIVE; mode <= RENDER_SCALE_REAL; ++mode) {
+        for (size_t s = 0; s < sizeof(selections) / sizeof(selections[0]); ++s) {
+            RenderSystemFrame frame = renderer_system_frame(&system, selections[s], mode);
+            assert(frame.root_index == roots[s]);
+            Vec3d center = renderer_body_position(&system, frame.root_index, mode);
+            double expected = 0.0;
+            for (size_t i = 0; i < system.body_count; ++i) {
+                if (roots[s] == 0 || i == roots[s] || system.bodies[i].parent_id == system.bodies[roots[s]].id) {
+                    double extent = vec3d_length(vec3d_sub(renderer_body_position(&system, i, mode), center))
+                        + renderer_body_radius(&system.bodies[i], mode);
+                    expected = fmax(expected, extent);
+                }
+            }
+            assert_close(frame.radius, expected, 1e-9);
+        }
+    }
+    for (size_t i = 0; i < system.body_count; ++i) {
+        assert_close(vec3d_length(vec3d_sub(system.bodies[i].position_m, original.bodies[i].position_m)), 0.0, 0.0);
+    }
+}
+
 int main(void)
 {
+    test_system_frame_contains_selected_family_in_both_modes();
     test_real_scale_radius_uses_physical_meter_scale();
     test_real_scale_position_uses_physical_meter_scale();
     test_illustrative_planets_keep_old_visible_radius();

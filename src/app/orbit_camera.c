@@ -53,3 +53,15 @@ void orbit_camera_advance(OrbitCameraState *state, float dt_seconds)
 {
     state->yaw_radians += state->auto_orbit_speed_radians_per_second * dt_seconds;
 }
+
+void orbit_camera_frame_sphere(OrbitCameraState *state, float radius, float vertical_fov_degrees, float aspect)
+{
+    /* The sphere's angular radius must fit the narrower field of view. Using
+     * sin rather than tan accounts for the nearest surface, with 15% padding. */
+    float vertical_half_angle = vertical_fov_degrees * acosf(-1.0f) / 360.0f;
+    float horizontal_half_angle = atanf(tanf(vertical_half_angle) * aspect);
+    state->distance = 1.15f * radius / sinf(fminf(vertical_half_angle, horizontal_half_angle));
+    state->min_distance = 1.05f * radius;
+    state->max_distance = fmaxf(80.0f, state->distance * 4.0f);
+    state->zoom_speed = state->distance * 0.1f;
+}

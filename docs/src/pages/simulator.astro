@@ -27,13 +27,52 @@ const base = normalizeBase(import.meta.env.BASE_URL);
       </dl>
     </div>
 
+    <fieldset class="runtime-panel" data-runtime-panel disabled>
+      <legend>Simulation controls</legend>
+      <div class="control-row">
+        <button type="button" data-command="pause">Pause</button>
+        <button type="button" data-command="step" disabled>Step +15 s</button>
+        <button type="button" data-command="reset">Reset time</button>
+        <label>Simulation speed
+          <select data-runtime-speed>
+            <option value="0">1 hour / second</option>
+            <option value="1" selected>1 day / second</option>
+            <option value="2">5 days / second</option>
+          </select>
+        </label>
+      </div>
+      <div class="control-row">
+        <label>Selected body <select data-runtime-body aria-describedby="inspector-description"></select></label>
+        <button type="button" data-command="frame">Frame selected system</button>
+        <button type="button" data-command="view">View: Illustrative</button>
+        <button type="button" data-command="zoom" data-value="1">Zoom in</button>
+        <button type="button" data-command="zoom" data-value="-1">Zoom out</button>
+        <label class="rotate-control"><input type="checkbox" data-runtime-rotate checked /> Rotate camera</label>
+      </div>
+      <p>Reset restores time zero and fresh trails while keeping your selection, speed, pause state, and view settings.</p>
+    </fieldset>
+
     <div class="canvas-wrap">
       <canvas id="canvas" tabindex="0" aria-label="Solar System Simulator WebAssembly canvas" aria-describedby="simulator-keys">
         Your browser needs canvas and WebGL to display the simulation.
       </canvas>
     </div>
-    <p id="simulator-keys" class="simulator-keys"><kbd>C</kbd> next body · <kbd>V</kbd> view scale · Mouse wheel to zoom · <kbd>Tab</kbd> continues through the page. Focus the canvas to use simulator controls.</p>
+    <p id="simulator-keys" class="simulator-keys"><kbd>Space</kbd> pause · <kbd>N</kbd> step · <kbd>R</kbd> reset · <kbd>C</kbd> / <kbd>1–9</kbd> select · <kbd>V</kbd> view · <kbd>F</kbd> frame system · <kbd>A</kbd> camera rotation · Mouse wheel to zoom. Shortcuts require canvas focus; <kbd>Tab</kbd> continues through the page.</p>
     <noscript><p class="callout">JavaScript is required to run WebAssembly. The <a href={`${base}docs/simulation-core/`}>physics guide</a> is available without it.</p></noscript>
+
+    <section class="physics-inspector" aria-labelledby="inspector-heading">
+      <h2 id="inspector-heading">Live physics inspector</h2>
+      <p id="inspector-description">Measurements come from the C simulation in physical units. Distance and speed are relative to the selected body's parent, independent of illustrative size and moon spacing.</p>
+      <dl>
+        <div><dt>Parent body</dt><dd data-inspector-parent>—</dd></div>
+        <div><dt>Distance from parent</dt><dd data-inspector-distance>—</dd></div>
+        <div><dt>Speed relative to parent</dt><dd data-inspector-speed>—</dd></div>
+        <div><dt>Mass</dt><dd data-inspector-mass>—</dd></div>
+        <div><dt>Physical radius</dt><dd data-inspector-radius>—</dd></div>
+        <div><dt>Camera target / distance (visual)</dt><dd data-runtime-camera>—</dd></div>
+      </dl>
+      <p>Frame selected system fits a planet and its moons; selecting a moon frames its parent and siblings. Framing the Sun includes all implemented bodies. Use it again after motion or zoom to refit the view.</p>
+    </section>
 
     <div class="simulator-notes">
       <section>
@@ -46,7 +85,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
       </section>
       <section>
         <h2>Read the numbers.</h2>
-        <p>Fixed 15-second physics steps are checked against 100-day orbital-phase and convergence tests. One real second advances one simulated day. This is an educational model, not a dated ephemeris.</p>
+        <p>Fixed 15-second physics steps are checked against 100-day orbital-phase and convergence tests. At the default speed, one real second advances one simulated day. Speed presets change elapsed time, never the integration step. This is an educational model, not a dated ephemeris.</p>
       </section>
     </div>
     <p><a href={`${base}docs/build-and-web/`}>How Astro loads the C runtime →</a></p>
@@ -70,6 +109,23 @@ const base = normalizeBase(import.meta.env.BASE_URL);
   .simulator-readouts dl { display: flex; flex-wrap: wrap; gap: 0.75rem 2rem; margin-top: 0.7rem; }
   dt { color: var(--ink-soft); }
   dd { margin: 0; font-weight: 700; }
+  .runtime-panel { margin: 1rem 0; padding: 1rem; border: 1px solid var(--rule); min-width: 0; background: var(--paper-light); }
+  .runtime-panel legend { font-weight: 700; padding: 0 0.4rem; }
+  .control-row { display: flex; flex-wrap: wrap; align-items: end; gap: 0.75rem; margin-bottom: 0.75rem; }
+  .control-row label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.95rem; }
+  .control-row button, .control-row select { min-height: 44px; padding: 0.5rem 0.7rem; border: 1px solid var(--ink-soft); border-radius: 3px; background: var(--paper-light); color: var(--ink); font: inherit; font-size: 0.9rem; }
+  .control-row button { cursor: pointer; }
+  .control-row button:hover:enabled { background: var(--paper); }
+  .control-row button:disabled { opacity: 0.5; cursor: default; }
+  .control-row :is(button, select, input):focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  .control-row .rotate-control { flex-direction: row; align-items: center; min-height: 44px; gap: 0.5rem; }
+  .rotate-control input { width: 20px; height: 20px; accent-color: var(--ink); }
+  .runtime-panel p { margin: 0; font-size: 0.9rem; }
+  .physics-inspector { padding: 1rem; border: 1px solid var(--rule); background: var(--paper-light); }
+  .physics-inspector h2 { margin: 0; font-size: 1.8rem; }
+  .physics-inspector p { font-size: 1rem; }
+  .physics-inspector dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+  .physics-inspector dd { overflow-wrap: anywhere; }
   .canvas-wrap { width: 100%; aspect-ratio: 16 / 9; background: #000; border: 1px solid var(--rule); }
   canvas { display: block; width: 100% !important; height: 100% !important; }
   canvas:focus-visible { outline: 3px solid var(--brass-light); outline-offset: -3px; }
@@ -80,5 +136,6 @@ const base = normalizeBase(import.meta.env.BASE_URL);
   @media (max-width: 680px) {
     .simulator-notes { grid-template-columns: 1fr; gap: 0.5rem; }
     .canvas-wrap { aspect-ratio: 4 / 3; }
+    .physics-inspector dl { grid-template-columns: 1fr; }
   }
 </style>

@@ -50,6 +50,8 @@ I.render: illustrative | real-scale transforms + raylib drawing
 
 I.controls: native `Tab` | `C` focus; web `C` focus and browser-native `Tab`; `V` scale; wheel zoom
 
+I.inspection: native shortcuts and accessible web buttons share C-owned playback and selection; web readouts use live C physical state. Space pauses, N steps, R resets, A toggles camera rotation, F frames the selected system; native 1–9 selects a body and brackets change speed.
+
 I.pages: `/`, `/docs/`, `/docs/architecture/`, `/docs/simulation-core/`, `/docs/rendering/`, `/docs/controls/`, `/docs/build-and-web/`, `/docs/roadmap/`, `/physics/`, `/body-catalog/`, `/source-atlas/`, `/pipeline/`, `/simulator/`; `/wasm/solar-system-simulator.html` redirects to `/simulator/`
 
 I.ci: `Build` → native tests + WASM artifact; `Deploy Pages` consumes successful artifact
@@ -97,7 +99,7 @@ V16: public claims trace to source/tests; checked claims match implementation; l
 
 V17: local/fork docs builds emit no analytics; deployed Pages build emits configured analytics only; public analytics disclosure exists.
 
-V18: keyboard focus always visible; runtime status announces changes; interactive content uses valid semantic HTML.
+V18: keyboard focus always visible; runtime status announces changes; interactive content uses valid semantic HTML. Web form controls retain Tab, arrow, Home/End, type-ahead, and native button activation despite Emscripten/GLFW window-level keyboard listeners; simulator shortcuts act only with canvas focus.
 
 V19: checked WASM begins `\0asm\1\0\0\0`; docs checker resolves all internal routes/assets under configured base path.
 
@@ -106,6 +108,10 @@ V20: atlas visual scale/positions are explicitly illustrative; body names, paren
 V21: atlas selection works without pointer; body controls expose selected state, drawer closes on `Escape`, focus returns to invoking body, reduced-motion suppresses ornamental motion.
 
 V22: 100-day isolated Phobos/Deimos numerical checks compare orbital phase against an analytical Kepler solution (less than 1 degree error); the nine-body scene compares the app step with half-sized reference steps (less than 1% parent-relative position discrepancy).
+
+V23: pause freezes simulation time and trails without accumulating paused wall time; single-step advances exactly 15 simulated seconds only while paused. Speed presets (1 hour, 1 day, 5 days per real second) change accumulated time, never the physics step. Reset restores initial physics, trails, and clock remainder while preserving selection, playback settings, and presentation settings.
+
+V24: inspector distance and speed are relative to the identified parent in SI state, independent of render mode; parentless bodies show unavailable relative measurements. Framing is renderer-only: planet plus direct moons, a moon's parent plus siblings, or all bodies for the Sun; fit respects aspect ratio and physical/illustrative radii.
 
 ## §A — Runtime accuracy repair, 2026-09-09
 
@@ -117,6 +123,15 @@ A4|Astro runtime uses shared chrome, loads JS/WASM successfully under Pages base
 A5|Source-backed docs describe fixed stepping, uniformly coarsened trails, and Astro runtime ownership; main is committed/pushed and Pages deployment is verified at its commit SHA|source scan, Build/Deploy Pages runs, public browser verification
 
 Engineering decisions: Jonathan authorized all reported repairs and Astro integration on 2026-09-09, then explicitly confirmed `Main + Pages` deployment. The 15-second step and 100-day/one-degree target are engineering accuracy targets for this repair, not claims of ephemeris fidelity. Preserve the existing full-run history scope with honest uniformly decreasing resolution rather than silently switching to a recent-only trail.
+
+## §A — Inspection and controls, 2026-09-10
+
+id|criterion|verify
+A6|Pause/resume, reset, speed presets and paused single-step preserve V8,V9,V23; camera rotation is independently switchable|session C tests, browser interactions
+A7|Direct selection, view and zoom controls work through native shortcuts and touch/keyboard-accessible web controls; frame-system fits the selected family; Tab and form keys keep native browser behavior outside the canvas|camera/renderer C tests, web integration tests, desktop/mobile browser checks
+A8|Live inspector shows selected name, parent, relative distance/speed, mass and physical radius from C with explicit units and unavailable parentless values; docs explain controls and reset semantics; verified main revision deploys to Pages|session/inspector C tests, web integration tests, build/route checks, CI and deployed revision
+
+Decision: Jonathan approved the three proposed inspection enhancements with “go”, then authorized task-local `npm ci`, existing raylib 6.0 reuse, isolated headless local browser verification, and Main + Pages delivery. Jupiter, barycentric physics, and longer-period numerical work remain separate milestones.
 
 ## §T
 
@@ -151,6 +166,9 @@ T27|x|ship archival solar-chart atlas: full-screen accessible homepage plates, s
 T28|x|repair trail retention and fixed-step accuracy using RED tests and 100-day analytical/convergence checks|A1,A2,V8,V9,V22
 T29|x|subdue grid and remove orange wireframes; host runtime in Astro and preserve old links|A3,A4,I.web,I.pages,V10,V12,V13,V18
 T30|x|update documentation, verify all affected boundaries, regression scan, commit/push main and deploy Pages|A5,V14,V16
+T31|x|add C-owned playback, selection, physical inspector, and renderer-only system framing with RED tests|A6,A7,A8,V23,V24
+T32|x|integrate accessible web controls, native shortcuts, state bridge, and source-backed documentation|A6,A7,A8,I.inspection
+T33|~|verify native/WASM/docs/browser boundaries, regression scan, commit/push main, and verify Pages|A8,V14,V16
 
 ## §B
 
@@ -166,3 +184,4 @@ B8|2026-09-02|WASM copy claimed unbounded trail history despite bounded decimati
 B9|2026-09-02|atlas client selectors lacked typed DOM bindings|V21
 B10|2026-09-09|repeatedly thinning old samples while recording new ones at full resolution erased early orbital curvature; endpoint-only straight-line tests missed it|V9,A1
 B11|2026-09-09|one-orbit radius bounds did not detect long-run Phobos phase drift from a five-minute step|V8,V22,A2
+B12|2026-09-10|broad window-capture filtering protected canvas shortcuts but prevented native select arrow/Home navigation; scope interception to GLFW-cancelled keys and give semantic selects an explicit tested navigation path|V18,A7

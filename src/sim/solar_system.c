@@ -303,3 +303,13 @@ void solar_system_step(SolarSystem *system, double dt_seconds)
     physics_step(system->bodies, system->body_count, dt_seconds);
     system->elapsed_seconds += dt_seconds;
 }
+int solar_system_parent_index(const SolarSystem *system, size_t body_index)
+{
+    if (body_index >= system->body_count) return -1;
+    BodyId parent = system->bodies[body_index].parent_id;
+    if (parent == BODY_ID_NONE || parent == BODY_ID_UNKNOWN) return -1;
+    for (size_t i = 0; i < system->body_count; ++i) {
+        if (system->bodies[i].id == parent) return (int)i;
+    }
+    return -1;
+}

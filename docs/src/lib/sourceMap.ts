@@ -21,14 +21,14 @@ export const sourceSections: SourceSection[] = [
   {
     label: 'Application helpers',
     path: 'src/app/',
-    responsibility: 'orbit camera state, bounded full-run trails, and other window-independent app helpers.',
-    verification: 'C tests exercise frame-independent stepping, 100-day orbital accuracy, curved trail coverage, and bounded storage.'
+    responsibility: 'C-owned playback/selection session, physical inspector, orbit camera, and bounded full-run trails.',
+    verification: 'C tests exercise pause/reset/single-step, parent-relative inspection, camera framing, 100-day accuracy, and curved trail coverage.'
   },
   {
     label: 'Rendering boundary',
     path: 'src/render/',
     responsibility: 'raylib conversion from SI-unit simulation state into readable 3D drawing policies.',
-    verification: 'Renderer helper tests guard scale conversion, visual radius policy, and grid sizing.'
+    verification: 'Renderer helper tests guard scale conversion, visual radius policy, family framing, and grid sizing.'
   },
   {
     label: 'Runtime loop',
@@ -51,7 +51,7 @@ export const sourceSections: SourceSection[] = [
   {
     label: 'Browser runtime',
     path: 'docs/src/pages/simulator.astro',
-    responsibility: 'Shared Astro layout and canvas; simulator.ts connects live C state and loading errors to accessible readouts.',
+    responsibility: 'Shared Astro layout, controls, and canvas; simulator.ts sends commands to C and presents live physical readouts and errors.',
     verification: 'Runtime integration tests, generated route checks, and headless browser verification.'
   },
   {

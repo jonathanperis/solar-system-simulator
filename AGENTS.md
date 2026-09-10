@@ -42,7 +42,9 @@ solar-system-simulator/
 │   ├── main.c             # raylib app loop, camera controls, overlays, simulation stepping
 │   ├── app/               # app-owned helpers testable without opening a window
 │   │   ├── body_trails.*  # persistent motion-history storage for non-star bodies
-│   │   └── orbit_camera.* # small stable orbit camera math
+│   │   ├── orbit_camera.* # stable orbit camera and family framing math
+│   │   ├── simulation_session.* # playback, selection, reset, physical inspector
+│   │   └── simulation_step.* # fixed-step clock accumulator
 │   ├── render/            # raylib presentation boundary and render-scale policy
 │   └── sim/               # raylib-independent physics/data model in SI units
 └── tests/                 # C test binaries for math, physics, scenes, app helpers, renderer helpers
@@ -87,6 +89,9 @@ solar-system-simulator/
 - The app accumulates frame-scaled time and advances in fixed 15-second physics steps. Accuracy is checked over 100 days against analytical phase and half-step reference solutions.
 - Trails are bounded app-owned histories. They start at a 300-second sample cadence, double both historical and future spacing at compaction, and keep a live endpoint. Do not reintroduce repeated early-history erosion or claim unlimited trail resolution.
 - Illustrative render mode enlarges bodies and separates close moons visually without changing simulation data.
+- `src/app/simulation_session.*` owns playback, selection, reset, and physical inspection. Paused wall time is excluded; manual steps are exactly 15 seconds; reset preserves observer settings.
+- Web controls call the C command boundary in `src/main.c`. Keep numeric command IDs aligned with `runtimeCommands` in `docs/src/lib/simulator.ts`; the C scene populates the body selector.
+- Frame-system uses renderer-only family bounds and aspect-aware camera fitting. Inspector distances/speeds always use parent-relative SI state, independent of render mode.
 
 ---
 

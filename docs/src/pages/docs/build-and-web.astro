@@ -22,7 +22,7 @@ import DocsShell from '../../components/DocsShell.astro';
     <section class="doc-panel">
       <h2>Artifact checks</h2>
       <p><code>tools/check_wasm_artifacts.py</code> confirms the generated <code>solar-system-simulator.js</code> and <code>.wasm</code> files exist, checks the loader reference and state bridge, and verifies <code>\0asm\1\0\0\0</code> WebAssembly header bytes.</p>
-      <p><code>docs/src/pages/simulator.astro</code> owns the browser canvas and shared page layout. <code>docs/src/lib/simulator.ts</code> configures Emscripten before loading its JavaScript, exposes live C state, and preserves visible download/runtime failures.</p>
+      <p><code>docs/src/pages/simulator.astro</code> owns the browser canvas and shared page layout. <code>docs/src/lib/simulator.ts</code> configures Emscripten before loading its JavaScript, sends control actions through the exported <code>solar_web_command</code> function, and formats live C inspector/playback state. Controls stay disabled until C reports readiness and after fatal loading/runtime failures.</p>
       <p>The old <code>/wasm/solar-system-simulator.html</code> URL redirects to <code>/simulator/</code>. Astro renders that compatibility document at build time; the published site remains static.</p>
     </section>
 

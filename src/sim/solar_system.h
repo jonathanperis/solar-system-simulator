@@ -31,5 +31,6 @@ SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars(void);
 SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos(void);
 SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta(void);
 void solar_system_step(SolarSystem *system, double dt_seconds);
+int solar_system_parent_index(const SolarSystem *system, size_t body_index);
 
 #endif
