@@ -2,6 +2,7 @@
 build/
 docs/dist/
 docs/.astro/
+.astro/
 docs/node_modules/
 docs/public/wasm/
 playwright-evidence/

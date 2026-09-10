@@ -19,25 +19,6 @@ static Vector3 vec3d_to_raylib(Vec3d vector)
     };
 }
 
-static int moon_parent_index(const SolarSystem *system, size_t body_index)
-{
-    /* Renderer-only parent lookup: physics does not need parent links, but the
-     * illustrative view uses catalog metadata to separate tiny satellites from
-     * readable planet radii without depending on fragile body-name strings. */
-    const Body *body = &system->bodies[body_index];
-    if (body->parent_id == BODY_ID_NONE || body->parent_id == BODY_ID_UNKNOWN) {
-        return -1;
-    }
-
-    for (size_t i = 0; i < system->body_count; ++i) {
-        if (system->bodies[i].id == body->parent_id) {
-            return (int)i;
-        }
-    }
-
-    return -1;
-}
-
 float renderer_body_radius(const Body *body, RenderScaleMode mode)
 {
     float scaled_radius = meters_to_render_units(body->radius_m);
@@ -102,7 +83,7 @@ Vec3d renderer_body_position(const SolarSystem *system, size_t body_index, Rende
         return position;
     }
 
-    int parent_index = moon_parent_index(system, body_index);
+    int parent_index = solar_system_parent_index(system, body_index);
     if (parent_index < 0) {
         return position;
     }
@@ -124,7 +105,7 @@ Vec3d renderer_trail_point_position(const SolarSystem *system, const BodyTrails 
         return position;
     }
 
-    int parent_index = moon_parent_index(system, body_index);
+    int parent_index = solar_system_parent_index(system, body_index);
     if (parent_index < 0 || point_index >= body_trails_point_count(trails, (size_t)parent_index)) {
         return position;
     }
@@ -132,6 +113,23 @@ Vec3d renderer_trail_point_position(const SolarSystem *system, const BodyTrails 
     const Body *parent = &system->bodies[parent_index];
     Vec3d parent_position = meters_vec_to_render_vec3d(body_trails_point_at(trails, (size_t)parent_index, point_index));
     return visible_satellite_position(body, parent, position, parent_position, mode);
+}
+
+RenderSystemFrame renderer_system_frame(const SolarSystem *system, size_t selected, RenderScaleMode mode)
+{
+    RenderSystemFrame frame = {.root_index = selected};
+    int parent = solar_system_parent_index(system, selected);
+    if (system->bodies[selected].kind == BODY_KIND_MOON && parent >= 0) frame.root_index = (size_t)parent;
+    const Body *root = &system->bodies[frame.root_index];
+    Vec3d center = renderer_body_position(system, frame.root_index, mode);
+    for (size_t i = 0; i < system->body_count; ++i) {
+        if (root->kind == BODY_KIND_STAR || i == frame.root_index || system->bodies[i].parent_id == root->id) {
+            double extent = vec3d_length(vec3d_sub(renderer_body_position(system, i, mode), center))
+                + renderer_body_radius(&system->bodies[i], mode);
+            frame.radius = fmax(frame.radius, extent);
+        }
+    }
+    return frame;
 }
 
 Color renderer_body_color(const Body *body)

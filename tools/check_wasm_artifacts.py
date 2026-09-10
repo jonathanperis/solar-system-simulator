@@ -35,9 +35,12 @@ def main() -> int:
 
     for marker in ("solar_web_initial_canvas_width", "solar_web_initial_canvas_height", "solar_web_canvas_has_focus"):
         if marker not in main_text:
-            raise SystemExit(f"src/main.c must use {marker} before InitWindow() so the WebGL window starts at the served frame size")
+            raise SystemExit(f"src/main.c missing web sizing/focus boundary: {marker}")
     if "solar_web_report_state" not in main_text or "reportState" not in js_text:
         raise SystemExit("WebAssembly must report live simulation state to the Astro page")
+    for marker in ("_solar_web_command", "addBody", "distanceM", "speedMps", "massKg", "radiusM"):
+        if marker not in js_text:
+            raise SystemExit(f"WebAssembly missing inspection/control bridge: {marker}")
 
     if "const int screen_width = 1280" in main_text or "const int screen_height = 720" in main_text:
         raise SystemExit("src/main.c must not hardcode the web InitWindow() size to 1280x720")

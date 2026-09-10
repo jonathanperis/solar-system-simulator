@@ -33,7 +33,7 @@ ROUTES: dict[str, list[str]] = {
         "Run live simulator",
     ],
     "physics/index.html": ["Physics stays in SI units", "docs/simulation-core/", "data-footer-credits"],
-    "simulator/index.html": ["Run the real orbit loop", "data-simulator", "runtime-control-state", "canvas", "15-second", "uniform", "data-footer-credits"],
+    "simulator/index.html": ["Run the real orbit loop", "data-simulator", "runtime-control-state", "canvas", "15-second", "uniform", "data-footer-credits", "data-runtime-panel", "data-runtime-body", "data-runtime-speed", "Frame selected system", "Live physics inspector", "data-inspector-distance", "data-inspector-speed"],
     "body-catalog/index.html": ["Stable IDs prevent duplicate knowledge", "docs/roadmap/", "Phobos", "Deimos", "Vesta", "JPL SBDB solution 36"],
     "source-atlas/index.html": ["The code separates physics from presentation", "docs/architecture/", "src/sim/"],
     "pipeline/index.html": ["Native tests feed a Pages lab bench", "docs/build-and-web/", "make web"],
@@ -41,7 +41,7 @@ ROUTES: dict[str, list[str]] = {
     "docs/architecture/index.html": ["Architecture keeps physics testable", "src/sim/", "src/render/", "src/main.c", "tests/"],
     "docs/simulation-core/index.html": ["Simulation state uses physical units first", "src/sim/physics.c", "src/sim/solar_system.c", "src/sim/vec3d.c"],
     "docs/rendering/index.html": ["Rendering adapts physics for human eyes", "src/render/renderer.c", "src/app/body_trails.c"],
-    "docs/controls/index.html": ["Controls expose the current physics scene", "Tab", "V", "Mouse wheel", "orbit_camera"],
+    "docs/controls/index.html": ["Controls expose the current physics scene", "Space", "N", "R", "Frame", "physical inspector", "simulation_session", "orbit_camera"],
     "docs/build-and-web/index.html": ["Native checks feed the public WebAssembly lab", "make test", "make web", "make dist-wasm", ".github/workflows/build.yml", ".github/workflows/deploy-pages.yml"],
     "docs/roadmap/index.html": ["Expansion stays one body at a time", "Implemented now", "Planned sequence", "Jupiter", "Kuiper belt"],
 }

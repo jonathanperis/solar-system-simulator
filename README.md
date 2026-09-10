@@ -42,7 +42,7 @@ Simulation code lives under `src/sim/` and is independent from raylib.
 - Gravity uses the Newtonian point-mass formula:
   - `a = G * source_mass / distance^3 * displacement`
 - Time stepping uses a velocity-Verlet / kick-drift-kick integrator.
-- The app uses a fixed 15-second simulation step and carries frame remainders in an accumulator. One real second advances one simulated day; display-frame partitioning does not change the sequence of physics steps.
+- The app uses a fixed 15-second simulation step and carries frame remainders in an accumulator. The default speed advances one simulated day per real second; presets also provide one hour or five days per second. Display-frame partitioning does not change the sequence of physics steps.
 - `tests/test_simulation_step.c` verifies less than one degree of isolated Phobos/Deimos phase error over 100 days and less than 1% parent-relative position discrepancy against half-sized steps for the full nine-body scene. These are numerical accuracy checks, not ephemeris validation.
 - The Sun is fixed for this milestone; barycentric Sun motion is deferred.
 - This is a deterministic physics baseline, not an ephemeris-accurate model. It does not include relativistic precession, J2000 state vectors, Vesta's measured inclination, barycentric Earth-Moon initialization, or perturbations from bodies beyond the modeled nine-body scene.
@@ -143,22 +143,33 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 
 The app uses a small stable orbit camera instead of raylib's automatic orbital helper.
 
-- Camera target follows the focused body.
-- The camera slowly auto-orbits around the focused body.
+- Camera target follows the selected body, or the family root while system framing is active.
+- When enabled, camera auto-rotation orbits around the current camera target independently of physics playback.
 - Mouse-wheel input changes only camera distance.
 - Zoom distance is clamped between a minimum and maximum value.
 - Pitch remains fixed at the default viewing angle, so zooming all the way in and then back out does not flip or corrupt the camera orientation.
 
 ## Controls
 
+- `Space`: pause/resume. Paused time does not accumulate for later catch-up.
+- `N`: advance exactly 15 simulated seconds while paused.
+- `R`: restore initial physics, trail history, and clock remainder; retain selection, speed, pause state, render mode, and camera rotation setting.
+- `[` / `]`: change speed among 1 hour, 1 day, and 5 days per real second without changing the integration step.
+- `1`–`9`: select a body directly by catalog position.
+- `A`: toggle camera auto-rotation independently of playback.
+- `F`: frame the selected planet and its moons. A selected moon frames its parent and siblings; the Sun frames all implemented bodies. Framing fits the current rendered bounding sphere to the viewport. Reframe after motion or manual zoom when needed.
 - `V`: toggle visualization mode.
   - Illustrative: physical planetary positions with large visible planet radii, smaller moon radii, and expanded parent-moon visual separation.
   - Real scale: physical orbital positions and physical radii under the same render scale; planets may be nearly invisible.
 - `Tab` or `C`: cycle camera focus across Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, and Vesta in the native app.
 - `C`: cycle camera focus in the web app; `Tab` remains available for browser navigation.
-- Mouse wheel: zoom camera in/out around the focused body.
+- Mouse wheel: zoom camera in/out around the current camera target.
   - Zoom distance is clamped.
   - The viewing pitch remains fixed so max zoom-in does not flip or corrupt the camera orientation.
+
+The browser offers labelled buttons, speed/body selectors, and a camera-rotation checkbox. Shortcuts require canvas focus; Tab and form keys remain browser-native. Direct selection restores the default camera distance; framing adjusts zoom bounds/sensitivity and follows the family root. Resizing or changing scale refits an already framed system.
+
+The live physics inspector displays parent-relative distance (km), parent-relative speed (km/s), mass (kg), and physical radius (km), calculated from C-owned SI state. The Sun's parent-relative measurements are N/A. Physical values are independent of illustrative radii and moon spacing. Elapsed time includes seconds so a single 15-second step remains visible.
 
 ## Build prerequisites
 

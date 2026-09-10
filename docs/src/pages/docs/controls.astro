@@ -7,22 +7,35 @@ import { bodyFocusOrder } from '../../lib/bodies';
   <DocsShell
     title="Controls expose the current physics scene."
     eyebrow="Runtime interaction"
-    lede="The controls stay small because the project is a lab bench. Each input changes the camera or presentation layer, not the physics state."
+    lede="Pause an experiment, advance one fixed physics step, and inspect a selected body. Playback runs in C; camera controls change only presentation."
   >
     <section class="doc-panel">
       <h2>Keyboard and mouse</h2>
       <div class="command-grid">
+        <article><code>Space</code><p>Pause or resume physics. Paused wall time is not accumulated.</p></article>
+        <article><code>N</code><p>Advance exactly 15 simulated seconds while paused; disabled during playback.</p></article>
+        <article><code>R</code><p>Reset physics, clock remainder, and trails to time zero. Selection, speed, pause state, view mode, and camera rotation setting are retained.</p></article>
+        <article><code>[ / ]</code><p>Select a slower or faster preset: 1 hour, 1 day, or 5 days per real second. The physics step stays 15 seconds.</p></article>
         <article><code>Tab</code><p>Cycle camera focus in the native app; continue through page controls on the web.</p></article>
-        <article><code>C</code><p>Cycle camera focus in both native and web builds.</p></article>
+        <article><code>C / 1–9</code><p>Cycle through bodies or select directly by catalog position. The web dropdown lists names from the running C scene.</p></article>
         <article><code>V</code><p>Toggle illustrative scale and real-scale rendering.</p></article>
-        <article><code>Mouse wheel</code><p>Zoom around the focused body with clamp protection.</p></article>
+        <article><code>F</code><p>Frame the selected system: planet and moons, a moon's parent and siblings, or all bodies when the Sun is selected.</p></article>
+        <article><code>A</code><p>Toggle camera auto-rotation independently of physics playback.</p></article>
+        <article><code>Mouse wheel</code><p>Zoom around the selected body or framed system root with clamp protection.</p></article>
       </div>
+      <p>The web page provides buttons, speed/body selectors, and a rotation checkbox for touch and keyboard use. Shortcuts require canvas focus. Tab exits the canvas; ordinary form keys retain browser behavior.</p>
     </section>
 
     <section class="doc-panel">
       <h2>Camera model</h2>
-      <p><code>src/app/orbit_camera.c</code> keeps distance and pitch stable while <code>src/main.c</code> immediately targets the selected body. The camera slowly auto-orbits around that target.</p>
-      <p>Zoom changes distance only. The fixed pitch avoids flip or orientation corruption at maximum zoom.</p>
+      <p><code>src/app/orbit_camera.c</code> preserves viewing pitch. Direct body selection restores the default camera distance; framing uses the current family's rendered bounding sphere and viewport aspect ratio. The framed camera follows the family root while the inspector keeps the selected body.</p>
+      <p>Zoom changes distance only. Framing adjusts zoom limits and sensitivity for planetary or satellite scales; near/far clipping follows camera distance so real-scale systems stay visible. Reframe after motion or manual zoom to fit the family again. A viewport resize or scale toggle refits an already framed system.</p>
+    </section>
+
+    <section class="doc-panel">
+      <h2>Read the physical inspector</h2>
+      <p><code>src/app/simulation_session.c</code> computes distance from the parent's position and speed from the difference between body and parent velocities. Parent lookup uses stable catalog IDs, not array order or body names.</p>
+      <p>The page displays kilometres, kilometres per second, kilograms, and physical radius in kilometres. These values are derived from SI simulation state and remain identical when a paused scene switches render mode. The Sun has no parent, so relative distance and speed display N/A. Camera distance is explicitly labelled in visual render units.</p>
     </section>
 
     <section class="doc-panel">

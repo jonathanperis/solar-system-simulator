@@ -21,5 +21,6 @@ OrbitCameraState orbit_camera_default_state(void);
 OrbitCameraVec3 orbit_camera_position(OrbitCameraVec3 target, const OrbitCameraState *state);
 void orbit_camera_apply_zoom(OrbitCameraState *state, float wheel_move);
 void orbit_camera_advance(OrbitCameraState *state, float dt_seconds);
+void orbit_camera_frame_sphere(OrbitCameraState *state, float radius, float vertical_fov_degrees, float aspect);
 
 #endif

@@ -26,8 +26,12 @@ SIM_SRCS := \
     src/sim/physics.c \
     src/sim/solar_system.c
 
-APP_SRCS := src/main.c src/app/orbit_camera.c src/app/body_trails.c src/app/simulation_step.c src/render/renderer.c $(SIM_SRCS)
+APP_SRCS := src/main.c src/app/orbit_camera.c src/app/body_trails.c src/app/simulation_step.c src/app/simulation_session.c src/render/renderer.c $(SIM_SRCS)
 APP_OBJS := $(APP_SRCS:%.c=build/%.o)
+
+# Shared session/clock layouts must rebuild every native consumer after a header edit.
+-include $(APP_OBJS:.o=.d)
+.DEFAULT_GOAL := all
 
 TEST_VEC3D := $(TEST_DIR)/test_vec3d
 TEST_PHYSICS := $(TEST_DIR)/test_physics
@@ -35,8 +39,9 @@ TEST_SOLAR_SYSTEM := $(TEST_DIR)/test_solar_system
 TEST_ORBIT_CAMERA := $(TEST_DIR)/test_orbit_camera
 TEST_BODY_TRAILS := $(TEST_DIR)/test_body_trails
 TEST_SIMULATION_STEP := $(TEST_DIR)/test_simulation_step
+TEST_SIMULATION_SESSION := $(TEST_DIR)/test_simulation_session
 TEST_RENDERER := $(TEST_DIR)/test_renderer
-TEST_BINS := $(TEST_VEC3D) $(TEST_PHYSICS) $(TEST_SOLAR_SYSTEM) $(TEST_ORBIT_CAMERA) $(TEST_BODY_TRAILS) $(TEST_SIMULATION_STEP) $(TEST_RENDERER)
+TEST_BINS := $(TEST_VEC3D) $(TEST_PHYSICS) $(TEST_SOLAR_SYSTEM) $(TEST_ORBIT_CAMERA) $(TEST_BODY_TRAILS) $(TEST_SIMULATION_STEP) $(TEST_SIMULATION_SESSION) $(TEST_RENDERER)
 
 .PHONY: all run test web raylib-web dist-wasm docs-check clean
 
@@ -83,7 +88,7 @@ $(APP): $(APP_OBJS)
 
 build/%.o: %.c
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(RAYLIB_CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(RAYLIB_CFLAGS) -MMD -MP -c $< -o $@
 
 $(TEST_VEC3D): tests/test_vec3d.c src/sim/vec3d.c src/sim/units.c
 	@mkdir -p $(@D)
@@ -112,6 +117,10 @@ $(TEST_SIMULATION_STEP): tests/test_simulation_step.c src/app/simulation_step.c 
 $(TEST_RENDERER): tests/test_renderer.c src/render/renderer.c src/render/renderer.h src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
 	@mkdir -p $(@D)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(RAYLIB_CFLAGS) tests/test_renderer.c src/render/renderer.c src/app/body_trails.c $(SIM_SRCS) $(RAYLIB_LIBS) -o $@
+
+$(TEST_SIMULATION_SESSION): tests/test_simulation_session.c src/app/simulation_session.c src/app/simulation_session.h src/app/simulation_step.c src/app/simulation_step.h src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
+	@mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_simulation_session.c src/app/simulation_session.c src/app/simulation_step.c src/app/body_trails.c $(SIM_SRCS) $(LDLIBS) -o $@
 
 clean:
 	rm -rf build

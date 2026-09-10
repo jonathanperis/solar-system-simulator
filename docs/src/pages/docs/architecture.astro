@@ -26,7 +26,8 @@ import { sourceSections } from '../../lib/sourceMap';
       <h2>Why the split matters</h2>
       <p><code>src/sim/</code> has no raylib dependency, which means gravity, vectors, body initialization, and Verlet stepping can be tested without opening a window.</p>
       <p><code>src/main.c</code> owns orchestration for native and WebAssembly loops, while <code>src/render/</code> translates the same physical state into readable 3D drawings.</p>
-      <p><code>docs/</code>, <code>web/</code>, <code>tools/</code>, and <code>.github/workflows/</code> publish the public lab without changing the C simulation contract.</p>
+      <p><code>src/app/simulation_session.c</code> owns playback, selection, reset, and parent-relative inspection. Native shortcuts and Astro buttons enter the same command handler in <code>src/main.c</code>.</p>
+      <p><code>docs/</code>, <code>tools/</code>, and <code>.github/workflows/</code> publish the public lab. The web layer sends commands to C and formats physical measurements; it does not integrate orbits.</p>
     </section>
   </DocsShell>
 </BaseLayout>

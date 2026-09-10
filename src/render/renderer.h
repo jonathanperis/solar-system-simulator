@@ -15,6 +15,13 @@ typedef enum RenderScaleMode {
     RENDER_SCALE_REAL
 } RenderScaleMode;
 
+typedef struct RenderSystemFrame {
+    size_t root_index;
+    double radius;
+} RenderSystemFrame;
+
+RenderSystemFrame renderer_system_frame(const SolarSystem *system, size_t selected, RenderScaleMode mode);
+
 const char *renderer_scale_mode_label(RenderScaleMode mode);
 Color renderer_body_color(const Body *body);
 Vec3d renderer_body_position(const SolarSystem *system, size_t body_index, RenderScaleMode mode);

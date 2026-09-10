@@ -55,7 +55,7 @@ export const docsRoutes: DocsRoute[] = [
   { label: 'Architecture', href: 'docs/architecture/', summary: 'The source boundaries that keep physics testable.', code: 'ARCH' },
   { label: 'Simulation core', href: 'docs/simulation-core/', summary: 'Vectors, bodies, gravity, units, and integration.', code: 'SIM' },
   { label: 'Rendering', href: 'docs/rendering/', summary: 'raylib conversion, scale modes, labels, trails, and grids.', code: 'VIEW' },
-  { label: 'Controls', href: 'docs/controls/', summary: 'Camera focus, zoom, view modes, and runtime keys.', code: 'KEYS' },
+  { label: 'Controls', href: 'docs/controls/', summary: 'Playback, physical inspection, system framing, and runtime keys.', code: 'KEYS' },
   { label: 'Build and web', href: 'docs/build-and-web/', summary: 'Native tests, WASM artifacts, Astro, and Pages deployment.', code: 'WASM' },
   { label: 'Roadmap', href: 'docs/roadmap/', summary: 'The one-body-at-a-time expansion model.', code: 'NEXT' }
 ];
