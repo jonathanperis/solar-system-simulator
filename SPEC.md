@@ -195,7 +195,7 @@ T31|x|add C-owned playback, selection, physical inspector, and renderer-only sys
 T32|x|integrate accessible web controls, native shortcuts, state bridge, and source-backed documentation|A6,A7,A8,I.inspection
 T33|x|verify native/WASM/docs/browser boundaries, regression scan, commit/push main, and verify Pages|A8,V14,V16
 T34|x|integrate full-catalog selection/atlas, individual framing, inspector quality and high-speed responsiveness|A11,A13,V9,V18,V20,V24,V25
-T35|~|verify complete moon scene, performance, regressions and main/Pages delivery|A14,V14,V16,V22
+T35|x|verify complete moon scene, performance, regressions and main/Pages delivery|A14,V14,V16,V22
 
 ## §B
 
