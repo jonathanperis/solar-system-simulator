@@ -150,7 +150,7 @@ T26|x|refresh docs dependency tree; add Dependabot coverage|C7,V16,I.ci
 T27|x|ship archival solar-chart atlas: full-screen accessible homepage plates, source-backed body drawer, engraved route system, matched WASM frame, route/check coverage|C7,C8,V13,V16,V18,V20,V21,I.atlas,I.pages,I.web
 T28|x|repair trail retention and fixed-step accuracy using RED tests and 100-day analytical/convergence checks|A1,A2,V8,V9,V22
 T29|x|subdue grid and remove orange wireframes; host runtime in Astro and preserve old links|A3,A4,I.web,I.pages,V10,V12,V13,V18
-T30|~|update documentation, verify all affected boundaries, regression scan, commit/push main and deploy Pages|A5,V14,V16
+T30|x|update documentation, verify all affected boundaries, regression scan, commit/push main and deploy Pages|A5,V14,V16
 
 ## §B
 
