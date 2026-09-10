@@ -1,0 +1,84 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { normalizeBase } from '../lib/base';
+import { buildRevision } from '../lib/site';
+const base = normalizeBase(import.meta.env.BASE_URL);
+---
+<BaseLayout title="Live simulator" description="Run the C11 and raylib solar system in your browser, with fixed-step SI physics and source-backed controls.">
+  <section class="simulator" data-simulator data-runtime-src={`${base}wasm/solar-system-simulator.js?revision=${encodeURIComponent(buildRevision)}`}>
+    <header class="simulator-intro">
+      <div>
+        <p class="eyebrow">Live field station / C11 + WebAssembly</p>
+        <h1>Run the real orbit loop.</h1>
+        <p>Nine bodies. One SI-unit simulation. The chart below is rendered by raylib.</p>
+      </div>
+      <div class="actions">
+        <a class="button" href="#canvas">Focus canvas</a>
+        <a class="button button-secondary" href={`${base}docs/controls/`}>Read controls</a>
+      </div>
+    </header>
+
+    <div class="simulator-readouts">
+      <p data-runtime-status role="status" aria-live="polite">Downloading simulator…</p>
+      <p id="runtime-control-state" data-runtime-controls role="status" aria-live="polite">Waiting for simulation state.</p>
+      <dl>
+        <div><dt>Elapsed time</dt><dd data-runtime-elapsed>—</dd></div>
+        <div><dt>History sample spacing</dt><dd data-runtime-interval>—</dd></div>
+      </dl>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="canvas" tabindex="0" aria-label="Solar System Simulator WebAssembly canvas" aria-describedby="simulator-keys">
+        Your browser needs canvas and WebGL to display the simulation.
+      </canvas>
+    </div>
+    <p id="simulator-keys" class="simulator-keys"><kbd>C</kbd> next body · <kbd>V</kbd> view scale · Mouse wheel to zoom · <kbd>Tab</kbd> continues through the page. Focus the canvas to use simulator controls.</p>
+    <noscript><p class="callout">JavaScript is required to run WebAssembly. The <a href={`${base}docs/simulation-core/`}>physics guide</a> is available without it.</p></noscript>
+
+    <div class="simulator-notes">
+      <section>
+        <h2>Read the scale.</h2>
+        <p>Illustrative mode enlarges bodies and separates close moons. Real-scale mode uses physical radii and distances, so small bodies can become nearly invisible. Each grid cell spans 0.1 AU.</p>
+      </section>
+      <section>
+        <h2>Read the history.</h2>
+        <p>Trails show recorded motion, not complete predicted orbits. Bounded history uses uniform sampling across the full run; spacing increases as time passes. Fine satellite loops become less resolved during long runs.</p>
+      </section>
+      <section>
+        <h2>Read the numbers.</h2>
+        <p>Fixed 15-second physics steps are checked against 100-day orbital-phase and convergence tests. One real second advances one simulated day. This is an educational model, not a dated ephemeris.</p>
+      </section>
+    </div>
+    <p><a href={`${base}docs/build-and-web/`}>How Astro loads the C runtime →</a></p>
+  </section>
+</BaseLayout>
+
+<script>
+  import { mountSimulator } from '../lib/simulator';
+  const root = document.querySelector<HTMLElement>('[data-simulator]');
+  if (root) mountSimulator(root);
+</script>
+
+<style>
+  .simulator { margin: 2rem 0 3rem; }
+  .simulator-intro { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+  .simulator-intro h1 { max-width: none; font-size: clamp(2.5rem, 5vw, 4.5rem); }
+  .simulator-intro p { margin-bottom: 0.5rem; }
+  .simulator-readouts { padding: 1rem; border: 1px solid var(--rule); background: var(--paper-light); }
+  .simulator-readouts p, .simulator-readouts dl { margin: 0; }
+  .simulator-readouts p, dt, dd { font-family: "JetBrains Mono", monospace; font-size: 0.7rem; line-height: 1.7; }
+  .simulator-readouts dl { display: flex; flex-wrap: wrap; gap: 0.75rem 2rem; margin-top: 0.7rem; }
+  dt { color: var(--ink-soft); }
+  dd { margin: 0; font-weight: 700; }
+  .canvas-wrap { width: 100%; aspect-ratio: 16 / 9; background: #000; border: 1px solid var(--rule); }
+  canvas { display: block; width: 100% !important; height: 100% !important; }
+  canvas:focus-visible { outline: 3px solid var(--brass-light); outline-offset: -3px; }
+  .simulator-keys { margin: 0; padding: 0.8rem 0; font-size: 0.95rem; }
+  .simulator-notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); }
+  .simulator-notes h2 { font-size: 1.8rem; }
+  .simulator-notes p { font-size: 1.05rem; }
+  @media (max-width: 680px) {
+    .simulator-notes { grid-template-columns: 1fr; gap: 0.5rem; }
+    .canvas-wrap { aspect-ratio: 4 / 3; }
+  }
+</style>

@@ -11,7 +11,7 @@ A physics-first 3D solar system simulator written in C11 with raylib. This repos
 - **Architecture:** deterministic SI-unit simulation isolated from rendering.
 - **Current scene:** Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta.
 - **Primary goal:** teach and verify orbital mechanics foundations before visual polish.
-- **Current public-site direction:** archival solar chart, source-backed and playful, with an accessible illustrative orrery wrapped around SI-unit physics. The docs hub uses field-guide structure, and standalone WASM page should feel like same atlas rather than raw generated shell.
+- **Current public-site direction:** archival solar chart, source-backed and playful, with an accessible illustrative orrery wrapped around SI-unit physics. The docs hub and Astro-owned `/simulator/` runtime share the atlas layout.
 
 ---
 
@@ -84,8 +84,8 @@ solar-system-simulator/
 - Gravity is Newtonian point-mass acceleration.
 - Time stepping uses velocity-Verlet / kick-drift-kick.
 - The Sun remains fixed at the origin for the current heliocentric baseline.
-- The app currently caps physics substeps at five simulation minutes to keep short-period moons stable under frame-scaled time.
-- Trails are app-owned dynamic arrays and intentionally keep the full recorded motion history for a run.
+- The app accumulates frame-scaled time and advances in fixed 15-second physics steps. Accuracy is checked over 100 days against analytical phase and half-step reference solutions.
+- Trails are bounded app-owned histories. They start at a 300-second sample cadence, double both historical and future spacing at compaction, and keep a live endpoint. Do not reintroduce repeated early-history erosion or claim unlimited trail resolution.
 - Illustrative render mode enlarges bodies and separates close moons visually without changing simulation data.
 
 ---
@@ -109,6 +109,7 @@ The Pages site is live and should preserve archival solar-chart direction unless
 
 - `docs/` Astro static site with cream paper, ink-navy chart surfaces, brass markers, accessible atlas interaction, and source-backed physics copy.
 - WebAssembly build artifacts copied into the Pages output.
+- Astro owns the runtime document and loader integration; Emscripten emits JS/WASM only. The old HTML URL is an Astro-prerendered redirect.
 - Base-path-safe loader for `https://jonathanperis.github.io/solar-system-simulator/`.
 - Docs section that explains the source modules, physics, tests, build pipeline, and future body roadmap.
 - CI split between native/test/WASM artifacts and Pages deployment.

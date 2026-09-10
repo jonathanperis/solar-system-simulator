@@ -8,16 +8,22 @@
 
 #define SOLAR_TRAIL_INITIAL_CAPACITY 512
 #define SOLAR_TRAIL_MAX_POINTS 1025
+#define SOLAR_TRAIL_INITIAL_INTERVAL_SECONDS 300.0
 
 typedef struct BodyTrail {
     Vec3d *points;
     size_t count;
     size_t capacity;
+    Vec3d latest_position_m;
 } BodyTrail;
 
 typedef struct BodyTrails {
     BodyTrail trails[SOLAR_SYSTEM_BODY_CAPACITY];
     bool recording_failed;
+    double sample_interval_seconds;
+    double next_sample_seconds;
+    double last_sample_seconds;
+    double latest_seconds;
 } BodyTrails;
 
 BodyTrails body_trails_create(void);

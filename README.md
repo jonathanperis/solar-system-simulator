@@ -24,10 +24,10 @@ Current milestone behavior:
 - Initializes Vesta at heliocentric perihelion on the +X axis with tangential +Z velocity from the vis-viva equation.
 - Advances Mercury, Venus, Earth, the Moon, Mars, Phobos, Deimos, and Vesta with Newtonian gravity from all simulated bodies using the shared simulation integrator.
 - Supports illustrative/default and real-scale visualization modes.
-- Draws bounded, persistent motion traces for every non-star body. Historical samples decimate as needed while preserving full-run visual span.
+- Draws bounded motion traces for every non-star body, with uniform full-run sampling that coarsens as the run grows and an always-current endpoint.
 - Allows camera focus cycling across every simulated body: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, and Vesta.
 - Clamps mouse-wheel camera zoom while preserving the default viewing pitch, so max zoom-in does not flip or corrupt the camera orientation.
-- Displays elapsed simulation days, view mode, camera focus target, camera zoom, and controls.
+- Displays simulation readouts in the native HUD and accessible Astro page; the browser canvas is reserved for the scene.
 
 ## Physics model
 
@@ -42,6 +42,8 @@ Simulation code lives under `src/sim/` and is independent from raylib.
 - Gravity uses the Newtonian point-mass formula:
   - `a = G * source_mass / distance^3 * displacement`
 - Time stepping uses a velocity-Verlet / kick-drift-kick integrator.
+- The app uses a fixed 15-second simulation step and carries frame remainders in an accumulator. One real second advances one simulated day; display-frame partitioning does not change the sequence of physics steps.
+- `tests/test_simulation_step.c` verifies less than one degree of isolated Phobos/Deimos phase error over 100 days and less than 1% parent-relative position discrepancy against half-sized steps for the full nine-body scene. These are numerical accuracy checks, not ephemeris validation.
 - The Sun is fixed for this milestone; barycentric Sun motion is deferred.
 - This is a deterministic physics baseline, not an ephemeris-accurate model. It does not include relativistic precession, J2000 state vectors, Vesta's measured inclination, barycentric Earth-Moon initialization, or perturbations from bodies beyond the modeled nine-body scene.
 
@@ -132,9 +134,9 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 - Position scale: `1 AU = 10 render units`.
 - Physical radii remain real in simulation data.
 - Illustrative mode is the default: planets keep the previous large visible radius, asteroids use a distinct `0.03` render-unit radius, and moons render smaller in proportion to Earth's physical radius with a small visible floor for tiny moons. Parent-relative moon offsets are expanded only in illustrative mode as needed so the large visual spheres remain readable without changing the underlying physics state.
-- Planet and moon traces retain a decimated full-run span and are drawn before bodies as faint colored line segments.
-- Trail memory remains bounded: oldest samples are decimated when a trail reaches its point budget, preserving the first and newest points plus the full-run visual span.
-- The ground grid keeps a minimum readable square count and expands from the farthest rendered body, so Vesta and later outer planets do not outgrow the visible reference grid.
+- Trails start with one historical sample per 300 simulated seconds. At the 1,025-point budget, historical spacing and future sampling cadence both double. This preserves distributed coverage instead of repeatedly erasing early curvature. The current endpoint updates on every physics step; parent/child sample times stay synchronized.
+- Resolution decreases uniformly during long runs. Fine satellite loops eventually become less resolved; trails are an approximation of recorded motion, not complete predicted orbital ellipses. The browser reports the current historical spacing.
+- The subdued ground grid sits below the orbital plane and expands from the farthest rendered body. Its one-render-unit cells represent 0.1 AU. Solid body colors are not obscured by universal wireframe overlays.
 - Real-scale mode uses the same physical render scale for both positions and radii with no radius clamp. Planets may be nearly invisible in this mode; that is physically expected at solar-system scale.
 
 ## Camera model
@@ -152,7 +154,8 @@ The app uses a small stable orbit camera instead of raylib's automatic orbital h
 - `V`: toggle visualization mode.
   - Illustrative: physical planetary positions with large visible planet radii, smaller moon radii, and expanded parent-moon visual separation.
   - Real scale: physical orbital positions and physical radii under the same render scale; planets may be nearly invisible.
-- `Tab` or `C`: cycle camera focus across Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, and Vesta.
+- `Tab` or `C`: cycle camera focus across Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, and Vesta in the native app.
+- `C`: cycle camera focus in the web app; `Tab` remains available for browser navigation.
 - Mouse wheel: zoom camera in/out around the focused body.
   - Zoom distance is clamped.
   - The viewing pitch remains fixed so max zoom-in does not flip or corrupt the camera orientation.
@@ -177,6 +180,24 @@ make test  # run C test binaries for simulation math/physics and camera math
 make run   # launch the simulator
 make clean # remove build outputs
 ```
+
+## Browser runtime
+
+The [live simulator](https://jonathanperis.github.io/solar-system-simulator/simulator/) is an Astro page using the shared site layout. Emscripten compiles the same C source into a JavaScript loader and `.wasm` binary; Astro owns the canvas, accessible readouts, loading errors, and explanatory content. The previous `/wasm/solar-system-simulator.html` address redirects to `/simulator/`.
+
+```sh
+make web RAYLIB_WEB_SRC=/path/to/raylib/src
+make dist-wasm RAYLIB_WEB_SRC=/path/to/raylib/src
+mkdir -p docs/public/wasm
+cp build/web/solar-system-simulator.js build/web/solar-system-simulator.wasm docs/public/wasm/
+npm ci --prefix docs
+npm test --prefix docs
+npm run check --prefix docs
+npm run build --prefix docs
+make docs-check
+```
+
+`make dist-wasm` packages the two runtime assets, not a standalone HTML app. The Build workflow checks native tests, WASM, and Astro output; Deploy Pages publishes the matching successful revision. No server-side runtime is needed by the published site.
 
 ## Project layout
 

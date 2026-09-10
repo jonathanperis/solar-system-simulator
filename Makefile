@@ -7,7 +7,8 @@ LDLIBS ?= -lm
 APP := build/solar-system-simulator
 TEST_DIR := build/tests
 WEB_DIR := build/web
-WEB_APP := $(WEB_DIR)/solar-system-simulator.html
+WEB_APP := $(WEB_DIR)/solar-system-simulator.js
+WEB_WASM := $(WEB_DIR)/solar-system-simulator.wasm
 WASM_ZIP := build/solar-system-simulator-wasm.zip
 
 RAYLIB_LOCAL_PREFIX ?= $(HOME)/.local
@@ -45,12 +46,12 @@ run: $(APP)
 	$(APP)
 
 test: $(TEST_BINS)
-	@for test_bin in $(TEST_BINS); do \
+	@set -e; for test_bin in $(TEST_BINS); do \
 		echo "Running $$test_bin"; \
 		$$test_bin; \
 	done
 
-web: $(WEB_APP)
+web: $(WEB_APP) $(WEB_WASM)
 	python3 tools/check_wasm_artifacts.py $(WEB_DIR)
 
 raylib-web:
@@ -58,15 +59,20 @@ raylib-web:
 
 dist-wasm: web
 	@rm -f $(WASM_ZIP)
-	python3 -m zipfile -c $(WASM_ZIP) $(WEB_DIR)/solar-system-simulator.html $(WEB_DIR)/solar-system-simulator.js $(WEB_DIR)/solar-system-simulator.wasm
+	python3 -m zipfile -c $(WASM_ZIP) $(WEB_APP) $(WEB_WASM)
 	@echo "Created $(WASM_ZIP)"
 
 docs-check:
 	python3 tools/check_docs_routes.py docs/dist
 
-$(WEB_APP): $(APP_SRCS) web/shell.html $(RAYLIB_WEB_LIB)
+$(WEB_APP): $(APP_SRCS) $(wildcard src/app/*.h src/sim/*.h src/render/*.h) $(RAYLIB_WEB_LIB)
 	@mkdir -p $(@D)
-	emcc $(CPPFLAGS) $(CFLAGS) $(RAYLIB_WEB_CFLAGS) $(APP_SRCS) $(RAYLIB_WEB_LIB) $(RAYLIB_WEB_LDFLAGS) --shell-file web/shell.html -o $@
+	emcc $(CPPFLAGS) $(CFLAGS) $(RAYLIB_WEB_CFLAGS) $(APP_SRCS) $(RAYLIB_WEB_LIB) $(RAYLIB_WEB_LDFLAGS) -o $@
+
+# Emscripten produces both files in one link. Re-link if the companion binary
+# was removed, even when the JS target itself is still up to date.
+$(WEB_WASM): $(WEB_APP)
+	@test -f $@ || { rm -f $(WEB_APP); $(MAKE) $(WEB_APP); }
 
 $(RAYLIB_WEB_LIB):
 	$(MAKE) PLATFORM=PLATFORM_WEB -C $(RAYLIB_WEB_SRC)
