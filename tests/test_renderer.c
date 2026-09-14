@@ -88,6 +88,19 @@ static void test_saturn_uses_planet_scale_ring_extent_and_distinct_color(void)
     assert(color.r == 218 && color.g == 190 && color.b == 130 && color.a == 255);
 }
 
+static void test_outer_planets_use_planet_scale_and_distinct_colors(void)
+{
+    Body bodies[] = {solar_system_create_uranus_at_perihelion(), solar_system_create_neptune_at_perihelion()};
+    const double radii[] = {SOLAR_URANUS_RADIUS_M, SOLAR_NEPTUNE_RADIUS_M};
+    const Color colors[] = {{139, 211, 220, 255}, {72, 113, 216, 255}};
+    for (size_t i = 0; i < 2; ++i) {
+        Color color = renderer_body_color(&bodies[i]);
+        assert_close(renderer_body_radius(&bodies[i], RENDER_SCALE_REAL), meters_to_render_units(radii[i]), 1e-12);
+        assert_close(renderer_body_radius(&bodies[i], RENDER_SCALE_ILLUSTRATIVE), SOLAR_ILLUSTRATIVE_PLANET_RADIUS, 1e-6);
+        assert(color.r == colors[i].r && color.g == colors[i].g && color.b == colors[i].b && color.a == colors[i].a);
+    }
+}
+
 static void test_illustrative_moon_is_smaller_but_still_visible(void)
 {
     Body earth = solar_system_create_earth_at_perihelion();
@@ -334,6 +347,14 @@ static void test_individual_moon_frame_and_unknown_radius_marker(void)
 
 int main(void)
 {
+    /* A 100 m separation at 1000 AU must survive the rendering boundary. */
+    Vec3d far = {1000*SOLAR_AU_METERS,0,0};
+    Vec3d near = {far.x+100,0,0};
+    Vector3 relative = renderer_relative_vector(meters_vec_to_render_vec3d(near), meters_vec_to_render_vec3d(far));
+    assert(fabs(relative.x / meters_to_render_units(100) - 1) < .001);
+    SolarSystem distant = solar_system_create_current();
+    distant.bodies[127].position_m = far;
+    assert(renderer_grid_slices_for_system(&distant, RENDER_SCALE_REAL) <= 512);
     test_saturn_body_frame_contains_renderer_only_rings();
     test_individual_moon_frame_and_unknown_radius_marker();
     test_system_frame_contains_selected_family_in_both_modes();
@@ -344,6 +365,7 @@ int main(void)
     test_vesta_uses_physical_radius_in_real_scale_and_distinct_illustrative_radius();
     test_jupiter_uses_planet_scale_and_distinct_catalog_color();
     test_saturn_uses_planet_scale_ring_extent_and_distinct_color();
+    test_outer_planets_use_planet_scale_and_distinct_colors();
     test_illustrative_moon_is_smaller_but_still_visible();
     test_illustrative_earth_and_moon_do_not_overlap_at_perigee();
     test_illustrative_martian_moons_are_visible_and_outside_mars();

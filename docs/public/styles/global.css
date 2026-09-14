@@ -191,6 +191,8 @@ kbd { border: 1px solid var(--rule); padding: 0.08em 0.35em; background: var(--p
 .atlas-body-asteroid { --body-color: var(--asteroid); }
 .atlas-body-jupiter { --body-color: var(--jupiter); }
 .atlas-body-saturn { --body-color: var(--saturn); }
+.atlas-body-uranus { --body-color: oklch(77% 0.075 210); }
+.atlas-body-neptune { --body-color: oklch(61% 0.13 265); }
 .atlas-body-saturn .atlas-body-orb { outline: 0.12rem solid var(--saturn); outline-offset: 0.15rem; }
 .atlas-body-cyan { --body-color: oklch(55% 0.045 235); }
 .atlas-bearing-control { position: absolute; z-index: 3; display: grid; grid-template-columns: auto minmax(8rem, 12rem) auto; align-items: center; gap: 0.6rem; right: max(2rem, calc((100vw - 1160px) / 2)); bottom: 3.9rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; font-size: 0.59rem; letter-spacing: 0.07em; text-transform: uppercase; }

@@ -2,6 +2,7 @@
 #include <rlgl.h>
 #include <math.h>
 #include <string.h>
+#include <stdio.h>
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
@@ -39,6 +40,10 @@ EM_JS(void, solar_web_report_state, (const char *body_name, const char *parent_n
 
 EM_JS(void, solar_web_add_body, (int index, const char *name, const char *group), {
     Module.addBody(index, UTF8ToString(name), UTF8ToString(group));
+})
+
+EM_JS(void, solar_web_clear_bodies, (int experiment, int count), {
+    Module.clearBodies(!!experiment, count);
 })
 
 EM_JS(void, solar_web_initialization_failed, (void), {
@@ -92,16 +97,6 @@ static Vector3 orbit_camera_vec3_to_raylib(OrbitCameraVec3 vector)
 static OrbitCameraVec3 raylib_vec3_to_orbit_camera(Vector3 vector)
 {
     return (OrbitCameraVec3){vector.x, vector.y, vector.z};
-}
-
-static Vector3 body_camera_target(const SolarSystem *system, size_t body_index, RenderScaleMode mode)
-{
-    Vec3d render_position = renderer_body_position(system, body_index, mode);
-    return (Vector3){
-        (float)render_position.x,
-        (float)render_position.y,
-        (float)render_position.z,
-    };
 }
 
 static RenderScaleMode next_render_scale_mode(RenderScaleMode mode)
@@ -173,6 +168,17 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
 }
 
 #if defined(PLATFORM_WEB)
+static void populate_web_bodies(void)
+{
+    solar_web_clear_bodies(app.session.catalog_experiment, (int)app.session.system.body_count);
+    for (size_t i = 0; i < app.session.system.body_count; ++i) {
+        const Body *body = &app.session.system.bodies[i];
+        const char *group = body->group ? body->group : body->kind == BODY_KIND_MOON ? "Earth and Mars moons"
+            : body->kind == BODY_KIND_PLANET ? "Planets" : "Primary bodies";
+        solar_web_add_body((int)i, body->name, group);
+    }
+}
+
 static void report_web_state(const SolarApp *state)
 {
     const SimulationSession *session = &state->session;
@@ -189,6 +195,26 @@ static void report_web_state(const SolarApp *state)
 EMSCRIPTEN_KEEPALIVE void solar_web_command(int command, int value)
 {
     solar_app_command(&app, (SolarCommand)command, value);
+    report_web_state(&app);
+}
+
+EMSCRIPTEN_KEEPALIVE int solar_web_experiment(const char *text)
+{
+    if (!simulation_session_start_experiment(&app.session, text)) return 0;
+    app.orbit_camera = orbit_camera_default_state();
+    app.system_framed = app.body_framed = false;
+    populate_web_bodies();
+    frame_selected_body(&app);
+    report_web_state(&app);
+    return 1;
+}
+
+EMSCRIPTEN_KEEPALIVE void solar_web_demo(void)
+{
+    simulation_session_demo(&app.session);
+    app.orbit_camera = orbit_camera_default_state();
+    app.system_framed = app.body_framed = false;
+    populate_web_bodies();
     report_web_state(&app);
 }
 #endif
@@ -276,8 +302,8 @@ static void solar_app_update_draw(void *user_data)
     orbit_camera_apply_zoom(&app->orbit_camera, GetMouseWheelMove());
     if (app->auto_rotate) orbit_camera_advance(&app->orbit_camera, frame_time);
     simulation_session_update(&app->session, frame_time);
-    Vector3 camera_target = body_camera_target(&app->session.system, camera_target_index(app), app->render_mode);
-    apply_orbit_camera(&app->camera, &app->orbit_camera, camera_target);
+    Vec3d origin = renderer_body_position(&app->session.system, camera_target_index(app), app->render_mode);
+    apply_orbit_camera(&app->camera, &app->orbit_camera, (Vector3){0,0,0});
 
 #if defined(PLATFORM_WEB)
     report_web_state(app);
@@ -290,7 +316,7 @@ static void solar_app_update_draw(void *user_data)
      * Clip distances follow the camera only; SI positions and radii stay intact. */
     rlSetClipPlanes(fmax(1e-9, app->orbit_camera.distance * 0.001), fmax(1000.0, app->orbit_camera.distance * 4.0));
     BeginMode3D(app->camera);
-    renderer_draw_solar_system(&app->session.system, &app->session.trails, app->render_mode);
+    renderer_draw_solar_system(&app->session.system, &app->session.trails, app->render_mode, origin);
     EndMode3D();
 
 #if !defined(PLATFORM_WEB)
@@ -303,9 +329,9 @@ static void solar_app_update_draw(void *user_data)
     DrawText(TextFormat("Selected: %s | Parent: %s | View: %s", body.name, body.parent_name,
         renderer_scale_mode_label(app->render_mode)), 20, 75, 18, RAYWHITE);
     const char *mass = body.mass_quality == PHYSICAL_UNKNOWN ? "Unknown (test particle)"
-        : TextFormat("%.6g kg%s", body.mass_kg, body.mass_quality == PHYSICAL_ESTIMATED ? " (estimated)" : "");
+        : TextFormat("%.6g kg%s", body.mass_kg, body.mass_quality == PHYSICAL_ESTIMATED ? " (estimated)" : body.mass_quality == PHYSICAL_PUBLISHED ? " (published)" : "");
     const char *radius = body.radius_quality == PHYSICAL_UNKNOWN ? "Unknown (marker only)"
-        : TextFormat("%.3f km%s", body.radius_m / 1000.0, body.radius_quality == PHYSICAL_ESTIMATED ? " (estimated)" : "");
+        : TextFormat("%.3f km%s", body.radius_m / 1000.0, body.radius_quality == PHYSICAL_ESTIMATED ? " (estimated)" : body.radius_quality == PHYSICAL_PUBLISHED ? " (published)" : "");
     DrawText(TextFormat("Mass: %s | Physical radius: %s", mass, radius), 20, 100, 18, RAYWHITE);
     DrawText(body.has_parent ? TextFormat("Parent-relative: %.3f km | %.6f km/s", body.distance_m / 1000.0, body.speed_mps / 1000.0)
         : "Parent-relative distance/speed: N/A (no parent)", 20, 125, 18, RAYWHITE);
@@ -327,7 +353,7 @@ static void solar_app_update_draw(void *user_data)
     EndDrawing();
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     int screen_width = 1280;
     int screen_height = 720;
@@ -359,14 +385,27 @@ int main(void)
     app.auto_rotate = true;
     app.render_mode = RENDER_SCALE_ILLUSTRATIVE;
 
+#if !defined(PLATFORM_WEB)
+    if (argc == 3 && strcmp(argv[1], "--experiment") == 0) {
+        FILE *file = fopen(argv[2], "rb");
+        char input[SOLAR_EXPERIMENT_TEXT_BYTES];
+        size_t bytes = file ? fread(input,1,sizeof(input)-1,file) : 0;
+        bool complete = file && !ferror(file) && fgetc(file) == EOF;
+        if (file) fclose(file);
+        input[bytes] = '\0';
+        if (!complete || !simulation_session_start_experiment(&app.session,input)) {
+            fprintf(stderr,"Invalid or unreadable catalog experiment: %s\n",argv[2]);
+            simulation_session_destroy(&app.session); CloseWindow(); return 1;
+        }
+        frame_selected_body(&app);
+    }
+#else
+    (void)argc; (void)argv;
+#endif
+
 #if defined(PLATFORM_WEB)
     /* Static app storage is shared by the browser loop and exported commands. */
-    for (size_t i = 0; i < app.session.system.body_count; ++i) {
-        const Body *body = &app.session.system.bodies[i];
-        const char *group = body->group ? body->group : body->kind == BODY_KIND_MOON ? "Earth and Mars moons"
-            : body->kind == BODY_KIND_PLANET ? "Planets" : "Primary bodies";
-        solar_web_add_body((int)i, body->name, group);
-    }
+    populate_web_bodies();
     report_web_state(&app);
     emscripten_set_main_loop_arg(solar_app_update_draw, &app, 0, 1);
 #else

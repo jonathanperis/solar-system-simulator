@@ -1,12 +1,14 @@
 #include "simulation_session.h"
 
 #include <ctype.h>
+#include <string.h>
 
 #include "../sim/constants.h"
 
 SimulationSession simulation_session_create(void)
 {
     SimulationSession session = {.trails = body_trails_create(), .speed_preset = 1};
+    session.initial_system = solar_system_create_current();
     simulation_session_reset(&session);
     return session;
 }
@@ -20,12 +22,38 @@ void simulation_session_reset(SimulationSession *session)
 {
     /* Reset the physical experiment, retaining the observer's control settings. */
     body_trails_destroy(&session->trails);
-    session->system = solar_system_create_current();
+    session->system = session->initial_system;
     session->clock = (SimulationClock){0};
     session->achieved_time_scale = 0;
     session->rate_real_seconds = 0;
     session->rate_sim_seconds = 0;
     body_trails_record_system(&session->trails, &session->system);
+}
+
+bool simulation_session_start_experiment(SimulationSession *session, const char *text)
+{
+    SolarSystem trial;
+    char names[SOLAR_EXPERIMENT_CAPACITY][SOLAR_EXPERIMENT_NAME_BYTES];
+    if (!experiment_parse(text, &trial, names)) return false;
+    /* Commit only after every row succeeds. Names belong to the session, not
+     * the temporary parser or the browser's short-lived UTF-8 input buffer. */
+    for (size_t i = 9; i < trial.body_count; ++i) {
+        strcpy(session->imported_names[i-9], names[i-9]);
+        trial.bodies[i].name = session->imported_names[i-9];
+    }
+    session->initial_system = trial;
+    session->catalog_experiment = true;
+    session->selected_body_index = 9;
+    simulation_session_reset(session);
+    return true;
+}
+
+void simulation_session_demo(SimulationSession *session)
+{
+    session->initial_system = solar_system_create_current();
+    session->catalog_experiment = false;
+    session->selected_body_index = 0;
+    simulation_session_reset(session);
 }
 
 double simulation_session_time_scale(const SimulationSession *session)

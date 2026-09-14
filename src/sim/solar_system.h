@@ -6,7 +6,7 @@
 #include "body.h"
 #include "jovian_catalog.h"
 
-#define SOLAR_SYSTEM_BODY_CAPACITY (11 + SOLAR_JOVIAN_MOON_COUNT)
+#define SOLAR_SYSTEM_BODY_CAPACITY (13 + SOLAR_JOVIAN_MOON_COUNT)
 
 typedef struct SolarSystem {
     Body bodies[SOLAR_SYSTEM_BODY_CAPACITY];
@@ -24,6 +24,8 @@ Body solar_system_create_deimos_at_periareion_near_mars(const Body *mars);
 Body solar_system_create_vesta_at_perihelion(void);
 Body solar_system_create_jupiter_at_perihelion(void);
 Body solar_system_create_saturn_at_perihelion(void);
+Body solar_system_create_uranus_at_perihelion(void);
+Body solar_system_create_neptune_at_perihelion(void);
 SolarSystem solar_system_create_sun_only(void);
 SolarSystem solar_system_create_sun_mercury(void);
 SolarSystem solar_system_create_sun_vesta(void);

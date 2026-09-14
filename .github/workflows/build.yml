@@ -83,6 +83,7 @@ jobs:
           path: |
             build/web/solar-system-simulator.js
             build/web/solar-system-simulator.wasm
+            build/web/catalog-orbits.wasm
             build/solar-system-simulator-wasm.zip
 
   docs:
@@ -105,7 +106,9 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           target = Path('docs/public/wasm')
-          for source in list(target.rglob('solar-system-simulator.*')):
+          # Both the raylib runtime and the small standalone C orbit kernel
+          # are required: the atlas must not implement a second physics engine.
+          for source in list(target.rglob('*.wasm')) + list(target.rglob('*.js')):
               destination = target / source.name
               if source.resolve() != destination.resolve():
                   destination.write_bytes(source.read_bytes())
@@ -127,6 +130,11 @@ jobs:
       - name: Run atlas and runtime integration tests
         working-directory: docs
         run: npm run test
+
+      - name: Audit complete offline small-body inventory and orbit module
+        run: |
+          python3 tools/small_body_catalog.py --check
+          node tools/test_catalog_wasm.mjs docs/public/wasm/catalog-orbits.wasm
 
       - name: Build docs site
         working-directory: docs

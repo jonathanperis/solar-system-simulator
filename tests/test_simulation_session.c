@@ -87,7 +87,7 @@ static void test_session_exposes_jupiter_and_appended_saturn(void)
 {
     SimulationSession session = simulation_session_create();
 
-    assert(session.system.body_count == 126);
+    assert(session.system.body_count == 128);
     assert(simulation_session_find_body(&session, "s/2021 j 8", 0) == 124);
     assert(simulation_session_find_body(&session, "Galilean moons", 0) == 10);
     assert(simulation_session_find_body(&session, "Galilean moons", 11) == 11);

@@ -22,11 +22,12 @@ import DocsShell from '../../components/DocsShell.astro';
       <p>Unknown Jovian radii are the explicit exception: wire markers in either view are nonphysical symbols, with Unknown shown in the inspector. Individual-body framing lets you inspect a moon without framing all 115 siblings.</p>
       <p>Saturn's pale ring lines use NASA's ring-system extent and 26.73-degree axial tilt. They affect drawing and camera framing only; gravity and the inspector retain Saturn's JPL mean radius.</p>
       <p>Both modes use the same simulation source. The difference is presentation policy at the raylib boundary.</p>
+      <p>Camera-relative subtraction takes place in double precision before conversion to raylib floats. This preserves local detail at large heliocentric distances. The 0.1-AU grid is a bounded local patch of at most 512 slices; it does not grow without limit for distant objects.</p>
     </section>
 
     <section class="doc-panel">
       <h2>Reference grid and trails</h2>
-      <p>The subdued ground grid expands from the farthest rendered body and sits just below the orbital plane. Solid spheres keep their catalog colors without orange wireframe overlays; each grid cell represents 0.1 AU.</p>
+      <p>The subdued ground grid is a bounded camera-local patch just below the orbital plane. Solid spheres keep their catalog colors without orange wireframe overlays; each grid cell represents 0.1 AU.</p>
       <p>Trail history starts at a 300-second sampling cadence. When its point budget fills, both historical spacing and future cadence double together, retaining uniform full-run coverage and a current endpoint. Parent and moon histories keep matching sample times.</p>
       <p>Longer runs have coarser history: fine satellite loops eventually lose detail. Trails show recorded motion rather than complete predicted orbital ellipses. The Astro runtime reports the historical spacing outside the canvas.</p>
     </section>

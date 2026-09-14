@@ -1,0 +1,93 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { normalizeBase } from '../lib/base';
+import { buildRevision } from '../lib/site';
+import manifest from '../../public/catalog/manifest.json';
+const base = normalizeBase(import.meta.env.BASE_URL);
+---
+<BaseLayout title="Small-body atlas" description="Explore the complete pinned JPL asteroid and trans-Neptunian catalog, then build a selected-body C physics experiment.">
+  <section class="small-atlas" data-small-atlas data-base={base} data-revision={buildRevision}>
+    <header class="atlas-heading">
+      <p class="eyebrow">Small-body field atlas / JPL source inventory</p>
+      <h1>A million worlds, individually inspectable.</h1>
+      <p>{manifest.count.toLocaleString('en-US')} cataloged bodies. Asteroids, Trojans, Centaurs, and the distant trans-Neptunian population, including provisional designations.</p>
+      <p class="fine-print">Snapshot: {manifest.checked.slice(0,10)} · common preview epoch: JD {manifest.epoch} TDB · <a href={manifest.source}>JPL source query</a></p>
+    </header>
+    <div class="atlas-workbench">
+      <section class="chart-panel" aria-labelledby="map-heading">
+        <h2 id="map-heading">Orbital-density map</h2>
+        <canvas width="800" height="600" data-density aria-label="Logarithmic top-down orbital-density overview. All bodies are accessible through the results table."></canvas>
+        <p data-map-status role="status">Loading source-accounted density cells…</p>
+        <p>Top-down J2000 ecliptic projection, logarithmic distance: log₁₀(1 + AU). Density cells account for every mapped object in the chosen orbital class. Search, perihelion, and size filters apply to the results table.</p>
+        <p>Highlighted paths are C-computed two-body previews. Open trajectories show a ±100-year window around perihelion. Preview motion is approximate; the live experiment integrates gravitational forces.</p>
+      </section>
+      <section class="selection-panel" aria-labelledby="selection-heading">
+        <h2 id="selection-heading">Observation card</h2>
+        <p data-object-title>Select a result to inspect its source orbit.</p>
+        <dl data-object-details></dl>
+        <p data-object-source></p>
+        <button type="button" data-add disabled>Add to experiment</button>
+        <h3>Experiment basket <span data-basket-count>0 / 16</span></h3>
+        <ul data-basket></ul>
+        <div class="actions">
+          <button type="button" data-prepare disabled>Prepare live experiment</button>
+          <button type="button" data-export disabled>Download native input</button>
+        </div>
+        <p>Experiments use the Sun, all eight planets, and up to 16 selected bodies at the common epoch. Starting the experiment is an explicit action on the simulator page.</p>
+        <p data-selection-status role="status" aria-live="polite"></p>
+      </section>
+    </div>
+    <section class="search-panel" aria-labelledby="search-heading">
+      <h2 id="search-heading">Find any cataloged body</h2>
+      <form data-catalog-search>
+        <label>Name, designation, or SPK ID<input name="query" type="search" placeholder="Vesta, 1930 BM, 20134340…" /></label>
+        <label>Orbital class<select name="group"><option value="">All classes</option>
+          {Object.entries(manifest.classes).map(([key,count]) => <option value={key}>{manifest.classNames[key as keyof typeof manifest.classNames] ?? key} · {count.toLocaleString('en-US')}</option>)}
+        </select></label>
+        <label>Maximum perihelion (AU)<input name="qmax" type="number" min="0.001" step="any" placeholder="Any" /></label>
+        <label>Physical size<select name="size"><option value="">Any</option><option value="known">Published size available</option><option value="unknown">Size unavailable</option></select></label>
+        <button type="submit">Search catalog</button>
+      </form>
+      <p data-search-status role="status" aria-live="polite">Catalog index loads in bounded chunks. Full-catalog searches report progress.</p>
+      <div class="result-wrap"><table>
+        <thead><tr><th scope="col">Name / designation</th><th scope="col">Class</th><th scope="col">Perihelion</th><th scope="col">Orbit</th></tr></thead>
+        <tbody data-results></tbody>
+      </table></div>
+      <nav class="result-pages" aria-label="Catalog result pages"><button type="button" data-previous disabled>Previous 50</button><span data-page>Page 1</span><button type="button" data-next disabled>Next 50</button></nav>
+    </section>
+    <section class="panel">
+      <h2>Read the source boundary</h2>
+      <p>Cataloged, displayed, and actively simulated counts describe different things. The initial density overview accounts for {manifest.mappable.toLocaleString('en-US')} source orbits; {manifest.unavailableOrbits} records lack usable orbital data. Result pages contain at most 50 rows.</p>
+      <p>Missing mass becomes a massless test particle; missing radius stays Unknown with a wire marker. Published SBDB parameters have unclassified measurement/estimate provenance; explicitly sourced dwarf-planet supplements identify their quality. Known dwarf planets and other trans-Neptunian objects remain distinguished in their observation cards.</p>
+      <p>Source elements are propagated to one epoch using the shared C conic kernel. Their differing original epochs and solution quality remain visible. Planet initial states come from a pinned Sun-centered Horizons snapshot. Fixed-Sun point-mass experiments are educational approximations, especially for close encounters; they are not ephemeris predictions.</p>
+      <p><a href={`${base}simulator/`}>Open core demonstration</a> · <a href={`${base}docs/simulation-core/`}>Read the physical model</a> · <a href={`${base}catalog/manifest.json`}>Download inventory manifest</a></p>
+    </section>
+    <noscript><p>JavaScript and WebAssembly enable search and orbital previews. The source manifest and documentation remain available above.</p></noscript>
+  </section>
+</BaseLayout>
+<script>
+  import { mountCatalog } from '../lib/catalogExplorer';
+  const root = document.querySelector<HTMLElement>('[data-small-atlas]');
+  if (root) mountCatalog(root);
+</script>
+<style>
+  .small-atlas { margin: 2rem 0; }
+  .atlas-heading h1 { max-width: 19ch; }
+  .atlas-workbench { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(17rem, 1fr); gap: 1rem; margin: 2rem 0; }
+  .chart-panel, .selection-panel, .search-panel { padding: 1.25rem; border: 1px solid var(--rule); background: var(--paper-light); min-width: 0; }
+  .chart-panel { background: var(--navy); color: var(--paper); }
+  .chart-panel h2, .chart-panel p { color: inherit; }
+  .chart-panel p, .selection-panel p { font-size: .95rem; }
+  canvas { width: 100%; height: auto; display: block; }
+  dl { font-family: monospace; font-size: .8rem; overflow-wrap: anywhere; }
+  form { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
+  label { display: flex; flex-direction: column; gap: .25rem; font-size: 1rem; }
+  input, select, button { min-height: 44px; padding: .5rem .65rem; border: 1px solid var(--ink-soft); color: var(--ink); background: var(--paper-light); font: inherit; font-size: .9rem; max-width: 100%; }
+  .small-atlas :global(button) { min-height:44px; padding:.5rem .65rem; border:1px solid var(--ink-soft); background:var(--paper-light); color:var(--ink); cursor:pointer; }
+  .small-atlas :global(button:focus-visible) { outline:3px solid var(--brass); outline-offset:3px; }
+  button:disabled { opacity: .5; cursor: default; }
+  :is(input,select,button):focus-visible { outline: 3px solid var(--brass); outline-offset: 3px; }
+  .result-wrap { overflow-x: auto; } table { width: 100%; } th, .result-wrap :global(td) { text-align: left; padding: .55rem; }
+  .result-pages { display: flex; justify-content: space-between; align-items: center; margin: 1rem 0; }
+  @media (max-width: 760px) { .atlas-workbench { grid-template-columns: 1fr; } form label { width: 100%; } }
+</style>

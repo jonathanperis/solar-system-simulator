@@ -9,7 +9,7 @@ A physics-first 3D solar system simulator written in C11 with raylib. This repos
 - **Language:** C11 only for simulator/runtime code.
 - **Graphics/windowing:** raylib.
 - **Architecture:** deterministic SI-unit simulation isolated from rendering.
-- **Current scene:** original ten bodies (Sun through Jupiter), all 115 Jovian moons, and Saturn; 126 bodies total. `data/jovian_moons.json` supplies offline C and Astro catalog data.
+- **Current scene:** original ten bodies, all 115 Jovian moons, Saturn, Uranus and Neptune; 128 core bodies. The separate small-body atlas contains 1,564,244 pinned records in compressed shards, not in the active scene or HTML body list.
 - **Primary goal:** teach and verify orbital mechanics foundations before visual polish.
 - **Current public-site direction:** archival solar chart, source-backed and playful, with an accessible illustrative orrery wrapped around SI-unit physics. The docs hub and Astro-owned `/simulator/` runtime share the atlas layout.
 
@@ -94,6 +94,9 @@ solar-system-simulator/
 - Trails are bounded app-owned histories. They start at a 300-second sample cadence, double both historical and future spacing at compaction, and keep a live endpoint. Do not reintroduce repeated early-history erosion or claim unlimited trail resolution.
 - Illustrative render mode enlarges bodies and separates close moons visually without changing simulation data.
 - Saturn's rings are renderer-only lines. Their outer extent affects camera framing, but Saturn's SI radius and gravity remain unchanged.
+- `src/sim/orbit.c` owns all conic propagation, including standalone WASM previews. Catalog experiments use epoch-aligned Sun/eight planets plus at most 16 selected objects; reset retains their owned names and initial states. Never mix these source-epoch experiments with the perihelion demonstration.
+- Preserve double precision until camera-relative subtraction. Grid and trail drawing remain bounded for distant objects.
+- `python3 tools/small_body_catalog.py --check` audits every pinned catalog shard offline. Full source refresh is explicit and serialized; keep the source cache in task-owned `build/`, not Git. Browser requests use the pinned Pages assets, not JPL APIs.
 - `src/app/simulation_session.*` owns playback, selection, reset, and physical inspection. Paused wall time is excluded; manual steps are exactly 15 seconds; reset preserves observer settings.
 - Web controls call the C command boundary in `src/main.c`. Keep numeric command IDs aligned with `runtimeCommands` in `docs/src/lib/simulator.ts`; the C scene populates the body selector.
 - Frame-system uses renderer-only family bounds and aspect-aware camera fitting. Inspector distances/speeds always use parent-relative SI state, independent of render mode.

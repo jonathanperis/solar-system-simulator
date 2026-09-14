@@ -10,8 +10,9 @@
 #define SOLAR_ILLUSTRATIVE_SATELLITE_GAP_UNITS 0.03
 #define SOLAR_ILLUSTRATIVE_SMALL_MOON_RADIUS 0.012f
 
-static Vector3 vec3d_to_raylib(Vec3d vector)
+Vector3 renderer_relative_vector(Vec3d position, Vec3d origin)
 {
+    Vec3d vector = vec3d_sub(position, origin);
     return (Vector3){
         (float)vector.x,
         (float)vector.y,
@@ -175,6 +176,8 @@ Color renderer_body_color(const Body *body)
             return (Color){206, 164, 118, 255};
         case BODY_ID_SATURN:
             return (Color){218, 190, 130, 255};
+        case BODY_ID_URANUS: return (Color){139, 211, 220, 255};
+        case BODY_ID_NEPTUNE: return (Color){72, 113, 216, 255};
         case BODY_ID_IO: return (Color){230, 205, 94, 255};
         case BODY_ID_EUROPA: return (Color){205, 215, 223, 255};
         case BODY_ID_GANYMEDE: return (Color){164, 152, 129, 255};
@@ -213,7 +216,7 @@ int renderer_grid_slices_for_system(const SolarSystem *system, RenderScaleMode m
         max_horizontal_extent = fmax(max_horizontal_extent, fmax(x_extent, z_extent));
     }
 
-    int slices = (int)ceil((max_horizontal_extent + SOLAR_GRID_PADDING_UNITS) * 2.0);
+    int slices = (int)fmin(512.0, ceil((max_horizontal_extent + SOLAR_GRID_PADDING_UNITS) * 2.0));
     if (slices < SOLAR_MIN_GRID_SLICES) {
         slices = SOLAR_MIN_GRID_SLICES;
     }
@@ -279,7 +282,7 @@ static void draw_saturn_rings(Vector3 center, float body_radius, float outer_rad
     }
 }
 
-void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode)
+void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode, Vec3d origin)
 {
     int slices = renderer_grid_slices_for_system(system, mode);
     float half_width = (float)slices * 0.5f;
@@ -288,8 +291,11 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
     for (int i = 0; i <= slices; ++i) {
         float offset = (float)i - half_width;
         Color grid_color = {45, 57, 69, 255};
-        DrawLine3D((Vector3){offset, -0.02f, -half_width}, (Vector3){offset, -0.02f, half_width}, grid_color);
-        DrawLine3D((Vector3){-half_width, -0.02f, offset}, (Vector3){half_width, -0.02f, offset}, grid_color);
+        double x = floor(origin.x), z = floor(origin.z);
+        DrawLine3D(renderer_relative_vector((Vec3d){x+offset,-.02,z-half_width},origin),
+            renderer_relative_vector((Vec3d){x+offset,-.02,z+half_width},origin),grid_color);
+        DrawLine3D(renderer_relative_vector((Vec3d){x-half_width,-.02,z+offset},origin),
+            renderer_relative_vector((Vec3d){x+half_width,-.02,z+offset},origin),grid_color);
     }
 
     for (size_t i = 0; i < system->body_count; ++i) {
@@ -311,20 +317,20 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
         Vec3d start = renderer_trail_point_position(system, trails, i, 0, mode);
         for (size_t j = stride; j < point_count; j += stride) {
             Vec3d end = renderer_trail_point_position(system, trails, i, j, mode);
-            DrawLine3D(vec3d_to_raylib(start), vec3d_to_raylib(end), trail_color);
+            DrawLine3D(renderer_relative_vector(start, origin), renderer_relative_vector(end, origin), trail_color);
             start = end;
             previous_point = j;
         }
         if (previous_point + 1 < point_count) {
             Vec3d end = renderer_trail_point_position(system, trails, i, point_count - 1, mode);
-            DrawLine3D(vec3d_to_raylib(start), vec3d_to_raylib(end), trail_color);
+            DrawLine3D(renderer_relative_vector(start, origin), renderer_relative_vector(end, origin), trail_color);
         }
     }
 
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
         Color color = renderer_body_color(body);
-        Vector3 position = vec3d_to_raylib(renderer_body_position(system, i, mode));
+        Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
         float radius = renderer_body_radius(body, mode);
 
         if (body->id == BODY_ID_SATURN) {

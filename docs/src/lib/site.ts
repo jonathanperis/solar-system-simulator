@@ -5,8 +5,8 @@ export const liveUrl = 'https://jonathanperis.github.io/solar-system-simulator/'
 export const buildRevision = import.meta.env.PUBLIC_BUILD_SHA || 'local build';
 
 export const currentMilestone = {
-  label: 'Inner planets, Earth/Mars moons, Vesta, the complete Jovian system, and Saturn',
-  shortLabel: 'Milestone 11',
+  label: 'All eight planets, the Jovian moon system, and the complete small-body atlas',
+  shortLabel: 'Small-body atlas',
   integrator: 'velocity-Verlet / kick-drift-kick',
   units: 'SI units: m, kg, s, m/s',
   language: 'C11',
@@ -31,6 +31,7 @@ export const primaryRoutes = [
   { label: 'Docs', href: 'docs/' },
   { label: 'Physics', href: 'physics/' },
   { label: 'Bodies', href: 'body-catalog/' },
+  { label: 'Small bodies', href: 'small-bodies/' },
   { label: 'Source', href: 'source-atlas/' },
   { label: 'Pipeline', href: 'pipeline/' }
 ];

@@ -20,7 +20,9 @@ import DocsShell from '../../components/DocsShell.astro';
         <li><code>src/sim/vec3d.c</code> provides double-precision vector operations.</li>
         <li><code>src/sim/body.c</code> stores mass, radius, position, velocity, and acceleration in SI units.</li>
         <li><code>src/sim/physics.c</code> computes Newtonian point-mass acceleration.</li>
-        <li><code>src/sim/solar_system.c</code> initializes the Sun, planets through Saturn, moons, and Vesta with parent-aware states.</li>
+        <li><code>src/sim/solar_system.c</code> initializes the Sun, all eight planets, moons, and Vesta with parent-aware states.</li>
+        <li><code>src/sim/orbit.c</code> propagates elliptic, parabolic and hyperbolic source orbits with a bracketed universal-variable solver. The atlas uses the same C kernel compiled to a small standalone WASM module.</li>
+        <li><code>src/sim/experiment.c</code> reads bounded selected-body input. Planet states use a pinned Sun-centered Horizons snapshot at JD 2461200.5 TDB; selected source orbits are two-body propagated to that epoch before force integration.</li>
         <li><code>src/sim/satellite.c</code> converts Jovian mean elements and Laplace/ecliptic source frames into parent-relative SI states. The versioned <code>data/jovian_moons.json</code> catalog covers 115 Jupiter moons.</li>
         <li>The integrator is velocity-Verlet / kick-drift-kick, not Euler stepping.</li>
         <li><code>src/app/simulation_step.c</code> accumulates frame time and advances in fixed 15-second simulation steps, retaining the remainder for the next frame.</li>

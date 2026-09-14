@@ -8,7 +8,7 @@ export type ImplementedBody = {
   milestone: string;
   initialization: string;
   source: string;
-  accent: 'solar' | 'cyan' | 'earth' | 'moon' | 'mars' | 'asteroid' | 'jupiter' | 'saturn';
+  accent: 'solar' | 'cyan' | 'earth' | 'moon' | 'mars' | 'asteroid' | 'jupiter' | 'saturn' | 'uranus' | 'neptune';
   chart: {
     plate: 'heliocentric' | 'earth' | 'mars' | 'jupiter';
     angle: number;
@@ -163,14 +163,19 @@ export const implementedBodies: ImplementedBody[] = [
     accent: 'saturn',
     chart: { plate: 'heliocentric', angle: 196, radius: 97 },
     summary: 'Ringed gas giant initialized at heliocentric perihelion; rings are renderer-only.'
-  }
+  },
+  {slug:'uranus',name:'Uranus',kind:'Planet',parent:'Sun',milestone:'Uranus foundation',
+    initialization:'Planar heliocentric perihelion with vis-viva speed.',source:'src/sim/solar_system.c',accent:'uranus',
+    chart:{plate:'heliocentric',angle:270,radius:83},summary:'Ice giant with JPL-sourced mass, mean radius, and orbital elements.'},
+  {slug:'neptune',name:'Neptune',kind:'Planet',parent:'Sun',milestone:'Neptune foundation',
+    initialization:'Planar heliocentric perihelion with vis-viva speed.',source:'src/sim/solar_system.c',accent:'neptune',
+    chart:{plate:'heliocentric',angle:330,radius:91},summary:'Outer giant included in every selected small-body experiment.'}
 ];
 
 export const plannedBodies = [
   'complete Saturnian moons',
-  'Uranus',
-  'Neptune',
-  'dwarf planets / Kuiper belt representatives'
+  'Uranian and Neptunian moon catalogs',
+  'small-body satellite systems'
 ];
 
 export const bodyFocusOrder = implementedBodies.map((body) => body.name);

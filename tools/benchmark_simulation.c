@@ -6,10 +6,21 @@
 #include "app/body_trails.h"
 #include "app/simulation_step.h"
 #include "sim/constants.h"
+#include "sim/experiment.h"
 
-int main(void)
+int main(int argc, char **argv)
 {
     SolarSystem system = solar_system_create_current();
+    char names[SOLAR_EXPERIMENT_CAPACITY][SOLAR_EXPERIMENT_NAME_BYTES];
+    if(argc==2) {
+        FILE *file=fopen(argv[1],"rb");
+        char input[SOLAR_EXPERIMENT_TEXT_BYTES];
+        size_t count=file?fread(input,1,sizeof(input)-1,file):0;
+        bool complete=file && !ferror(file) && fgetc(file)==EOF;
+        if(file)fclose(file);
+        input[count]=0;
+        if(!complete || !experiment_parse(input,&system,names))return 1;
+    }
     BodyTrails trails = body_trails_create();
     body_trails_record_system(&trails, &system);
     struct timespec start, stop;

@@ -1,0 +1,11 @@
+{
+  "source": "https://ssd.jpl.nasa.gov/planets/phys_par.html",
+  "checked": "2026-09-14",
+  "notes": "JPL dwarf-planet table uses mass in 10^18 kg. These explicit supplements avoid treating missing SBDB fields as absence of scientific knowledge. Quality: 0 measured, 1 estimated.",
+  "bodies": {
+    "20134340": {"name":"Pluto","massKg":1.30246e22,"radiusM":1188300,"massQuality":0,"radiusQuality":0,"massReference":"Brozovic et al. 2024 AJ 167:256","radiusReference":"JPL table reference D"},
+    "20136199": {"name":"Eris","massKg":1.66e22,"radiusM":1200000,"massQuality":0,"radiusQuality":0,"massReference":"JPL table reference S","radiusReference":"JPL table reference S"},
+    "20136472": {"name":"Makemake","massKg":3.1e21,"radiusM":714000,"massQuality":1,"radiusQuality":0,"massReference":"JPL table reference U (estimate)","radiusReference":"JPL table reference T"},
+    "20136108": {"name":"Haumea","massKg":4.006e21,"radiusM":715000,"massQuality":0,"radiusQuality":1,"massReference":"JPL table reference V","radiusReference":"JPL table reference W (effective radius)"}
+  }
+}
