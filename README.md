@@ -6,14 +6,14 @@ A bare-bones 3D solar system simulator written in C with [raylib](https://www.ra
 
 This project is intentionally physics-first. The renderer exists to show the simulation, but the core work is mathematical: deterministic celestial-body state, SI-unit physics, and testable orbital mechanics foundations.
 
-## Milestone 10: Complete current-planet moon catalog and faster playback
+## Milestone 11: Saturn
 
-The current scene adds all 115 recognized Jupiter moons from the 2026-09-10 NASA/JPL inventory, including provisional designations, and playback presets up to 15 simulated days per real second. Earth and Mars already have all their moons modeled; Mercury and Venus have none. Saturn is the next planetary milestone.
+The current scene adds Saturn after all 115 recognized Jupiter moons from the 2026-09-10 NASA/JPL inventory. Saturn uses a source-backed planar perihelion state and renderer-only rings; its moons remain the next catalog milestone. Playback presets extend to 15 simulated days per real second.
 
 Current milestone behavior:
 
 - Opens a raylib 3D scene titled `Solar System Simulator`.
-- Models 125 bodies: the original Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta, Jupiter, plus 115 Jovian moons. Known radii render as spheres; unknown radii use explicitly nonphysical wire markers.
+- Models 126 bodies: Sun through Jupiter, 115 Jovian moons, and Saturn. Known radii render as spheres; unknown radii use explicitly nonphysical wire markers.
 - Keeps the Sun fixed at the origin for a stable heliocentric baseline.
 - Initializes Mercury at perihelion on the +X axis with tangential +Z velocity from the vis-viva equation.
 - Initializes Venus at perihelion on the -X axis with tangential -Z velocity from the vis-viva equation.
@@ -24,10 +24,11 @@ Current milestone behavior:
 - Initializes Vesta at heliocentric perihelion on the +X axis with tangential +Z velocity from the vis-viva equation.
 - Initializes Jupiter at heliocentric perihelion on the -X axis with tangential -Z velocity from the vis-viva equation.
 - Initializes Jovian moons from sourced mean orbital elements, preserving inclination and retrograde/prograde direction through a common-frame conversion, then adds Jupiter's absolute position and velocity.
+- Initializes Saturn at heliocentric perihelion on the +Z axis with tangential -X velocity from the vis-viva equation.
 - Advances moving bodies with Newtonian gravity from all nonzero-mass sources using the shared simulation integrator. Unknown-mass moons are test particles, not invented physical masses.
 - Supports illustrative/default and real-scale visualization modes.
 - Draws bounded motion traces for every non-star body, with uniform full-run sampling that coarsens as the run grows and an always-current endpoint.
-- Allows camera focus cycling and name/group search across all 125 bodies, with separate family and individual-body framing.
+- Allows camera focus cycling and name/group search across all 126 bodies, with separate family and individual-body framing.
 - Clamps mouse-wheel camera zoom while preserving the default viewing pitch, so max zoom-in does not flip or corrupt the camera orientation.
 - Displays simulation readouts in the native HUD and accessible Astro page; the browser canvas is reserved for the scene.
 
@@ -45,13 +46,13 @@ Simulation code lives under `src/sim/` and is independent from raylib.
   - `a = G * source_mass / distance^3 * displacement`
 - Time stepping uses a velocity-Verlet / kick-drift-kick integrator.
 - The app uses a fixed 15-second simulation step and carries frame remainders in an accumulator. Requested presets are one hour, one day (default), five days, ten days, and fifteen days per real second. Each update executes at most 2048 steps, retaining unconsumed time and reporting achieved speed/pending time. Display-frame partitioning does not change the sequence of physics steps once pending work is drained.
-- `tests/test_simulation_step.c` verifies less than one degree of isolated Phobos/Deimos phase error over 100 days and less than 1% parent-relative position discrepancy against half-sized steps for the full 125-body scene. These are numerical accuracy checks, not ephemeris validation.
+- `tests/test_simulation_step.c` verifies less than one degree of isolated Phobos/Deimos phase error over 100 days and less than 1% parent-relative position discrepancy against half-sized steps for the full 126-body scene. These are numerical accuracy checks, not ephemeris validation.
 - The Sun is fixed for this milestone; barycentric Sun motion is deferred.
-- This is a deterministic physics baseline, not an ephemeris-accurate model. It does not include relativistic precession, planetary oblateness, dated J2000 state vectors, barycentric Earth-Moon initialization, or perturbations from unmodeled bodies. The original ten-body initialization remains planar; Jovian moon inclinations are modeled from their source frames.
+- This is a deterministic physics baseline, not an ephemeris-accurate model. It does not include relativistic precession, planetary oblateness, dated J2000 state vectors, barycentric Earth-Moon initialization, or perturbations from unmodeled bodies. Legacy planet initialization through Saturn remains planar; Jovian moon inclinations are modeled from their source frames.
 
 Current simulation data:
 
-Baseline planet values follow NASA/JPL references; Jupiter's values use [JPL physical parameters](https://ssd.jpl.nasa.gov/planets/phys_par.html) and [JPL approximate orbital elements](https://ssd.jpl.nasa.gov/planets/approx_pos.html). Satellite values follow JPL Solar System Dynamics. Vesta's physical values and osculating elements use [JPL SBDB solution 36](https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1). Derived periapsis distances and vis-viva speeds are calculated in `src/sim/constants.h`.
+Baseline planet values follow NASA/JPL references; Jupiter and Saturn use [JPL physical parameters](https://ssd.jpl.nasa.gov/planets/phys_par.html) and [JPL approximate orbital elements](https://ssd.jpl.nasa.gov/planets/approx_pos.html). Satellite values follow JPL Solar System Dynamics. Vesta's physical values and osculating elements use [JPL SBDB solution 36](https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1). Derived periapsis distances and vis-viva speeds are calculated in `src/sim/constants.h`.
 
 | Body | Mass | Radius | Initial state |
 |---|---:|---:|---|
@@ -65,6 +66,7 @@ Baseline planet values follow NASA/JPL references; Jupiter's values use [JPL phy
 | Deimos | `1.441349654645431e15 kg` | `6200 m` | Mars-relative periareion offset and tangential relative speed |
 | Vesta | `2.590276793071933e20 kg` | `261385 m` | heliocentric perihelion position and tangential speed |
 | Jupiter | `1.898125e27 kg` | `69911000 m` | heliocentric perihelion position and tangential speed |
+| Saturn | `5.68317e26 kg` | `58232000 m` | heliocentric perihelion position and tangential speed |
 
 ### Jovian satellite data and approximations
 
@@ -156,6 +158,15 @@ Jupiter orbital values used for initialization:
 - perihelion speed: `13705.906982917822 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
 - Jupiter remains in the default X/Z plane. JPL's listed inclination is deliberately deferred until a dedicated orbital-geometry milestone.
 
+Saturn orbital values used for initialization:
+
+- mass: `5.68317e26 kg`; spherical radius from the JPL mean radius: `58232000 m`
+- semi-major axis: `1426666414179.921 m`
+- eccentricity: `0.05386179`
+- perihelion distance: `semi-major axis * (1 - eccentricity)` = `1349823607379.3088 m`
+- perihelion speed: `10179.248179798748 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
+- Saturn remains in the default X/Z plane. Its visible ring system uses [NASA's roughly `282000 km` overall extent and `26.73` degree tilt](https://science.nasa.gov/saturn/facts/) only at the rendering boundary.
+
 ## Rendering model
 
 Rendering code lives under `src/render/` and converts simulation state at the boundary.
@@ -164,6 +175,7 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 - Physics units are isolated from rendering units.
 - Position scale: `1 AU = 10 render units`.
 - Physical radii remain real in simulation data.
+- Saturn's ring lines are renderer-only. Their source-backed outer extent affects camera framing, while the physical body radius and all simulation state remain unchanged.
 - Illustrative mode is the default: planets keep the previous large visible radius, asteroids use a distinct `0.03` render-unit radius, and moons render smaller in proportion to Earth's physical radius with a small visible floor for tiny moons. Parent-relative moon offsets are expanded only in illustrative mode as needed so the large visual spheres remain readable without changing the underlying physics state.
 - Trails start with one historical sample per 300 simulated seconds. At the 1,025-point budget, historical spacing and future sampling cadence both double. This preserves distributed coverage instead of repeatedly erasing early curvature. The current endpoint updates on every physics step; parent/child sample times stay synchronized.
 - Resolution decreases uniformly during long runs. Fine satellite loops eventually become less resolved; trails are an approximation of recorded motion, not complete predicted orbital ellipses. The browser reports the current historical spacing.
@@ -194,7 +206,7 @@ The app uses a small stable orbit camera instead of raylib's automatic orbital h
 - `V`: toggle visualization mode.
   - Illustrative: physical planetary positions with large visible planet radii, smaller moon radii, and expanded parent-moon visual separation.
   - Real scale: physical orbital positions and physical radii under the same render scale; planets may be nearly invisible.
-- `Tab` or `C`: cycle camera focus across all 125 bodies in the native app.
+- `Tab` or `C`: cycle camera focus across all 126 bodies in the native app.
 - `C`: cycle camera focus in the web app; `Tab` remains available for browser navigation.
 - Mouse wheel: zoom camera in/out around the current camera target.
   - Zoom distance is clamped.
@@ -259,8 +271,7 @@ tests/                 # C test binaries for simulation and app math
 
 Each future body should be added one iteration at a time, with physical constants, initial conditions, tests, and rendering checks scoped to that body.
 
-1. Saturn
-2. major Saturnian moons
-3. Uranus
-4. Neptune
-5. dwarf planets / Kuiper belt representatives
+1. complete Saturnian moons
+2. Uranus
+3. Neptune
+4. dwarf planets / Kuiper belt representatives

@@ -363,7 +363,8 @@ int main(void)
     /* Static app storage is shared by the browser loop and exported commands. */
     for (size_t i = 0; i < app.session.system.body_count; ++i) {
         const Body *body = &app.session.system.bodies[i];
-        const char *group = body->group ? body->group : body->kind == BODY_KIND_MOON ? "Earth and Mars moons" : "Primary bodies";
+        const char *group = body->group ? body->group : body->kind == BODY_KIND_MOON ? "Earth and Mars moons"
+            : body->kind == BODY_KIND_PLANET ? "Planets" : "Primary bodies";
         solar_web_add_body((int)i, body->name, group);
     }
     report_web_state(&app);

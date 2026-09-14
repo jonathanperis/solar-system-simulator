@@ -21,7 +21,7 @@ test('V21 cycles body selection in both directions with wraparound', () => {
 });
 
 test('A10 publishes Jupiter as the tenth implemented atlas body', () => {
-  assert.equal(implementedBodies.length, 125);
+  assert.equal(implementedBodies.length, 126);
   assert.deepEqual(implementedBodies[9], {
     slug: 'jupiter',
     name: 'Jupiter',
@@ -34,7 +34,22 @@ test('A10 publishes Jupiter as the tenth implemented atlas body', () => {
     chart: { plate: 'heliocentric', angle: 112, radius: 91 },
     summary: 'First gas giant, initialized at heliocentric perihelion.'
   });
-  assert.equal(plannedBodies[0], 'Saturn');
+});
+
+test('Saturn is the appended heliocentric milestone', () => {
+  assert.deepEqual(implementedBodies[125], {
+    slug: 'saturn',
+    name: 'Saturn',
+    kind: 'Planet',
+    parent: 'Sun',
+    milestone: 'Saturn pass',
+    initialization: 'Planar heliocentric perihelion position with vis-viva tangential speed.',
+    source: 'src/sim/solar_system.c',
+    accent: 'saturn',
+    chart: { plate: 'heliocentric', angle: 196, radius: 97 },
+    summary: 'Ringed gas giant initialized at heliocentric perihelion; rings are renderer-only.'
+  });
+  assert.equal(plannedBodies[0], 'complete Saturnian moons');
 });
 
 test('the Jovian atlas exposes every sourced moon with unique anchors and explicit data quality', () => {

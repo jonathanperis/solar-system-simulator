@@ -46,6 +46,17 @@ float renderer_body_radius(const Body *body, RenderScaleMode mode)
     return SOLAR_ILLUSTRATIVE_PLANET_RADIUS;
 }
 
+float renderer_body_visual_radius(const Body *body, RenderScaleMode mode)
+{
+    float body_radius = renderer_body_radius(body, mode);
+    if (body->id != BODY_ID_SATURN) return body_radius;
+
+    if (mode == RENDER_SCALE_REAL) {
+        return meters_to_render_units(SOLAR_SATURN_RING_OUTER_RADIUS_M);
+    }
+    return body_radius * (float)(SOLAR_SATURN_RING_OUTER_RADIUS_M / SOLAR_SATURN_RADIUS_M);
+}
+
 static Vec3d visible_satellite_position(const Body *body, const Body *parent, Vec3d position, Vec3d parent_position, RenderScaleMode mode)
 {
     Vec3d relative_position = vec3d_sub(position, parent_position);
@@ -127,7 +138,7 @@ RenderSystemFrame renderer_system_frame(const SolarSystem *system, size_t select
     for (size_t i = 0; i < system->body_count; ++i) {
         if (root->kind == BODY_KIND_STAR || i == frame.root_index || system->bodies[i].parent_id == root->id) {
             double extent = vec3d_length(vec3d_sub(renderer_body_position(system, i, mode), center))
-                + renderer_body_radius(&system->bodies[i], mode);
+                + renderer_body_visual_radius(&system->bodies[i], mode);
             frame.radius = fmax(frame.radius, extent);
         }
     }
@@ -136,7 +147,7 @@ RenderSystemFrame renderer_system_frame(const SolarSystem *system, size_t select
 
 RenderSystemFrame renderer_body_frame(const SolarSystem *system, size_t selected, RenderScaleMode mode)
 {
-    return (RenderSystemFrame){selected, renderer_body_radius(&system->bodies[selected], mode)};
+    return (RenderSystemFrame){selected, renderer_body_visual_radius(&system->bodies[selected], mode)};
 }
 
 Color renderer_body_color(const Body *body)
@@ -162,6 +173,8 @@ Color renderer_body_color(const Body *body)
             return LIGHTGRAY;
         case BODY_ID_JUPITER:
             return (Color){206, 164, 118, 255};
+        case BODY_ID_SATURN:
+            return (Color){218, 190, 130, 255};
         case BODY_ID_IO: return (Color){230, 205, 94, 255};
         case BODY_ID_EUROPA: return (Color){205, 215, 223, 255};
         case BODY_ID_GANYMEDE: return (Color){164, 152, 129, 255};
@@ -237,6 +250,35 @@ size_t renderer_trail_draw_segment_count(size_t point_count)
     return drawn_segments;
 }
 
+static Vector3 saturn_ring_point(Vector3 center, float radius, float radians)
+{
+    float tilt = (float)(SOLAR_SATURN_AXIAL_TILT_DEGREES * acos(-1.0) / 180.0);
+    float x = cosf(radians) * radius;
+    return (Vector3){center.x + x * cosf(tilt), center.y + x * sinf(tilt), center.z + sinf(radians) * radius};
+}
+
+static void draw_saturn_rings(Vector3 center, float body_radius, float outer_radius)
+{
+    const int ring_count = 13;
+    const int segments = 96;
+    float inner_radius = body_radius * SOLAR_SATURN_RING_VISUAL_INNER_RATIO;
+    Color ring_color = {205, 184, 145, 180};
+
+    /* Thin concentric lines keep the rings legible without creating physical
+     * geometry. The skipped lines suggest the Cassini Division. */
+    for (int ring = 0; ring < ring_count; ++ring) {
+        if (ring == 9 || ring == 10) continue;
+        float radius = inner_radius + (outer_radius - inner_radius) * (float)ring / (float)(ring_count - 1);
+        Vector3 start = saturn_ring_point(center, radius, 0.0f);
+        for (int segment = 1; segment <= segments; ++segment) {
+            float angle = (float)(2.0 * acos(-1.0) * (double)segment / (double)segments);
+            Vector3 end = saturn_ring_point(center, radius, angle);
+            DrawLine3D(start, end, ring_color);
+            start = end;
+        }
+    }
+}
+
 void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode)
 {
     int slices = renderer_grid_slices_for_system(system, mode);
@@ -285,6 +327,9 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
         Vector3 position = vec3d_to_raylib(renderer_body_position(system, i, mode));
         float radius = renderer_body_radius(body, mode);
 
+        if (body->id == BODY_ID_SATURN) {
+            draw_saturn_rings(position, radius, renderer_body_visual_radius(body, mode));
+        }
         if (body->radius_quality == PHYSICAL_UNKNOWN) DrawSphereWires(position, radius, 4, 4, color);
         else DrawSphere(position, radius, color);
     }

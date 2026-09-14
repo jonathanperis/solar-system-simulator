@@ -30,7 +30,9 @@ typedef enum BodyId {
     BODY_ID_IO = 501,
     BODY_ID_EUROPA = 502,
     BODY_ID_GANYMEDE = 503,
-    BODY_ID_CALLISTO = 504
+    BODY_ID_CALLISTO = 504,
+    /* NAIF's planet-center code cannot collide with 6xx Saturnian moons. */
+    BODY_ID_SATURN = 699
 } BodyId;
 
 typedef enum PhysicalQuality {

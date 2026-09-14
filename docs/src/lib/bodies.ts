@@ -8,7 +8,7 @@ export type ImplementedBody = {
   milestone: string;
   initialization: string;
   source: string;
-  accent: 'solar' | 'cyan' | 'earth' | 'moon' | 'mars' | 'asteroid' | 'jupiter';
+  accent: 'solar' | 'cyan' | 'earth' | 'moon' | 'mars' | 'asteroid' | 'jupiter' | 'saturn';
   chart: {
     plate: 'heliocentric' | 'earth' | 'mars' | 'jupiter';
     angle: number;
@@ -151,12 +151,23 @@ export const implementedBodies: ImplementedBody[] = [
     accent: 'jupiter',
     chart: { plate: 'jupiter', angle: (index % 6) * 60 + 30, radius: 72 },
     summary: `${moon.group}. ${moon.inclination_deg > 90 ? 'Retrograde' : 'Prograde'} in the source frame. Mass: ${moon.mass_quality === 'unknown' ? 'unknown — test particle' : moon.mass_quality}. Radius: ${moon.radius_quality === 'unknown' ? 'unknown — marker only' : moon.radius_quality}.`
-  }))
+  })),
+  {
+    slug: 'saturn',
+    name: 'Saturn',
+    kind: 'Planet',
+    parent: 'Sun',
+    milestone: 'Saturn pass',
+    initialization: 'Planar heliocentric perihelion position with vis-viva tangential speed.',
+    source: 'src/sim/solar_system.c',
+    accent: 'saturn',
+    chart: { plate: 'heliocentric', angle: 196, radius: 97 },
+    summary: 'Ringed gas giant initialized at heliocentric perihelion; rings are renderer-only.'
+  }
 ];
 
 export const plannedBodies = [
-  'Saturn',
-  'major Saturnian moons',
+  'complete Saturnian moons',
   'Uranus',
   'Neptune',
   'dwarf planets / Kuiper belt representatives'
