@@ -76,6 +76,8 @@ static void test_trails_append_new_positions_after_motion(void)
         assert(body_trails_point_count(&trails, i) == 2);
         assert_vec3d_equal(body_trails_point_at(&trails, i, 1), system.bodies[i].position_m);
     }
+    assert(strcmp(system.bodies[125].name, "Saturn") == 0);
+    assert(body_trails_point_count(&trails, 125) == 2);
     body_trails_destroy(&trails);
 }
 

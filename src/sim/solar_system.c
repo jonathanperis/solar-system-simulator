@@ -170,6 +170,21 @@ Body solar_system_create_jupiter_at_perihelion(void)
     );
 }
 
+Body solar_system_create_saturn_at_perihelion(void)
+{
+    return body_create_identified(
+        "Saturn",
+        BODY_KIND_PLANET,
+        BODY_ID_SATURN,
+        BODY_ID_SUN,
+        SOLAR_SATURN_MASS_KG,
+        SOLAR_SATURN_RADIUS_M,
+        (Vec3d){0.0, 0.0, SOLAR_SATURN_PERIHELION_M},
+        (Vec3d){-SOLAR_SATURN_PERIHELION_SPEED_MPS, 0.0, 0.0},
+        false
+    );
+}
+
 SolarSystem solar_system_create_sun_only(void)
 {
     SolarSystem system = {
@@ -217,6 +232,20 @@ SolarSystem solar_system_create_sun_jupiter(void)
         .bodies = {
             create_sun(),
             solar_system_create_jupiter_at_perihelion(),
+        },
+        .body_count = 2,
+        .elapsed_seconds = 0.0,
+    };
+
+    return system;
+}
+
+SolarSystem solar_system_create_sun_saturn(void)
+{
+    SolarSystem system = {
+        .bodies = {
+            create_sun(),
+            solar_system_create_saturn_at_perihelion(),
         },
         .body_count = 2,
         .elapsed_seconds = 0.0,
@@ -333,6 +362,7 @@ SolarSystem solar_system_create_current(void)
     for (size_t i = 0; i < SOLAR_JOVIAN_MOON_COUNT; ++i) {
         system.bodies[system.body_count++] = satellite_create(&solar_jovian_moons[i], &system.bodies[9]);
     }
+    system.bodies[system.body_count++] = solar_system_create_saturn_at_perihelion();
     return system;
 }
 

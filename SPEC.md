@@ -46,7 +46,7 @@ I.sim: `SolarSystem`, `Body`, `solar_system_create_*`, `solar_system_step`
 
 I.app: body trails, stable orbit camera, bounded simulation stepping
 
-I.render: illustrative | real-scale transforms + raylib drawing
+I.render: illustrative | real-scale transforms + raylib drawing; Saturn rings are presentation-only geometry
 
 I.controls: native `Tab` | `C` focus; web `C` focus and browser-native `Tab`; `V` scale; wheel zoom
 
@@ -67,6 +67,9 @@ R6|Jupiter orbit|J2000 a=`5.20288700 AU`; e=`0.04838624`; i=`1.30439695 deg`|htt
 R7|Jovian inventory|115 recognized satellites, including provisional designations; checked 2026-09-10|https://science.nasa.gov/jupiter/moons/
 R8|Jovian mean elements|115 entries, J2000 epoch, Laplace/ecliptic reference frames; shape/orientation baseline, not ephemerides; checked 2026-09-10|https://ssd.jpl.nasa.gov/sats/elem/
 R9|Satellite physical data|available GM and mean-radius values with source/quality metadata; absent values remain unknown; checked 2026-09-10|https://ssd.jpl.nasa.gov/sats/phys_par/
+R10|Saturn physical|mass=`568.317 × 10^24 kg`; mean radius=`58232 km`|https://ssd.jpl.nasa.gov/planets/phys_par.html
+R11|Saturn orbit|J2000 a=`9.53667594 AU`; e=`0.05386179`; i=`2.48599187 deg`|https://ssd.jpl.nasa.gov/planets/approx_pos.html
+R12|Saturn rings|ring system extent is roughly `282000 km`; axial tilt=`26.73 deg`; rings are modeled only as presentation geometry|https://science.nasa.gov/saturn/facts/
 
 ## §V
 
@@ -78,7 +81,7 @@ V3: gravity = `G * source_mass / distance^3 * displacement`; self | zero-distanc
 
 V4: stepping = velocity-Verlet kick-drift-kick; fixed bodies contribute gravity but never move.
 
-V5: shipped scene starts Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta, Jupiter, followed by the 115 cataloged Jovian moons. Existing IDs/indices remain stable; satellite IDs derive from JPL codes; parents match catalog.
+V5: shipped scene starts Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta, Jupiter, followed by the 115 cataloged Jovian moons and Saturn. Existing IDs/indices remain stable; satellite IDs derive from JPL codes; Saturn appends at index 125 with NAIF planet-center ID 699; parents match catalog.
 
 V6: planets + Vesta start heliocentric perihelion; Moon starts Earth-relative perigee; Phobos/Deimos start Mars-relative periareion; speeds use vis-viva.
 
@@ -88,7 +91,7 @@ V8: app accumulates frame-scaled time and advances only in fixed 15-second physi
 
 V9: trails retain full-run temporal coverage and the current endpoint within 1025 visible points/body. History starts at a 300-second simulation-time cadence; each compaction doubles both historical spacing and future sampling cadence. All bodies share sample times for parent-relative rendering. Resolution coarsens uniformly during long runs; this is a history approximation, not a stored ephemeris or complete precomputed orbit.
 
-V10: illustrative transforms affect render output only; asteroid radius=`0.03` render units; real-scale uses same physical scale for positions + known radii with no radius clamp. Unknown-radius wire markers are the explicitly labeled render-only exception described by V25.
+V10: illustrative transforms affect render output only; asteroid radius=`0.03` render units; real-scale uses same physical scale for positions + known radii with no radius clamp. Unknown-radius wire markers are the explicitly labeled render-only exception described by V25. Saturn's ring lines and their framing extent are renderer-only and never replace its physical mean radius.
 
 V11: camera focus covers ∀ bodies; wheel changes clamped distance only; pitch preserved.
 
@@ -116,7 +119,7 @@ V22: 100-day isolated Phobos/Deimos numerical checks compare orbital phase again
 
 V23: pause freezes simulation time and trails without accumulating paused wall time; single-step advances exactly 15 simulated seconds only while paused. Speed presets (1 hour, 1 day, 5 days, 10 days, 15 days per real second) change accumulated time, never the physics step. Reset restores initial physics, trails, clock remainder and achieved-speed measurement while preserving selection, playback settings, and presentation settings.
 
-V24: inspector distance and speed are relative to the identified parent in SI state, independent of render mode; parentless bodies show unavailable relative measurements. Framing is renderer-only: planet plus direct moons, a moon's parent plus siblings, or all bodies for the Sun; fit respects aspect ratio and physical/illustrative radii.
+V24: inspector distance and speed are relative to the identified parent in SI state, independent of render mode; parentless bodies show unavailable relative measurements. Framing is renderer-only: planet plus direct moons, a moon's parent plus siblings, or all bodies for the Sun; fit respects aspect ratio, physical/illustrative radii, and Saturn's visible ring extent.
 
 V25: mass and radius have explicit measured/estimated/unknown provenance. Unknown mass uses a zero-gravitational-mass test particle that feels known-source gravity without backreaction. Unknown physical values display as Unknown, never as measured zero; an unknown-radius marker is explicitly render-only in either view.
 
@@ -158,6 +161,15 @@ A14|Native/WASM accuracy and performance verification, regression scan and sourc
 
 Decision: Jonathan requested both faster presets and all moons of existing planets. On 2026-09-10 he selected “Yes, label approximations” for source-backed estimates and otherwise massless particles/Unknown readouts, then approved the complete 115-moon/125-body plan with “do it”. The plan includes scoped orbital geometry, native/WASM performance work, browser verification and release/deployed-revision verification. This expands T16 beyond the four Galilean moons. Task-local dependency setup and existing raylib reuse follow the approved delivery workflow.
 
+## §A — Saturn milestone, 2026-09-10
+
+id|criterion|verify
+A15|Saturn is the 126th body at stable index 125 with explicit ID 699, Sun parent, JPL-sourced mass/radius/orbit, planar heliocentric perihelion state, and vis-viva speed; indices 0–124 and the fixed 15-second step remain unchanged|solar-system, satellite, and simulation-step C tests
+A16|Saturn is searchable/selectable through native and C-populated web controls; inspector, reset, trails, color, physical/illustrative rendering, ring-aware framing, atlas, catalog, and source-backed docs match the C model|session/trail/renderer C tests, docs tests/checks, native/WASM builds
+A17|Saturn's tilted rings are renderer-only; the 126-body scene remains below 1% half-step discrepancy and retains throughput above 15 simulated days/second|renderer/state tests, 100-day convergence, native throughput benchmark
+
+Decision: Jonathan selected the Saturn-only milestone rather than combining Saturn with its moon system, then approved implementation with “do it” on 2026-09-10. He separately authorized task-local `npm ci` for the locked Astro dependencies. Commit, push, deployment, and browser interaction were not authorized. T18 now targets the complete Saturnian inventory; its source reconciliation remains separate.
+
 ## §T
 
 id|status|task|cites
@@ -177,8 +189,8 @@ T13|x|revert renderer overhaul; retain responsive WASM frame|C9,V10,V12
 T14|x|add 4 Vesta asteroid milestone: sourced constants, planar heliocentric perihelion state, nine-body scene, distinct render visibility, full docs/test surface|C5,C6,V5,V6,V7,V10,V15,V16
 T15|x|add Jupiter milestone: sourced constants, planar heliocentric perihelion state, ten-body scene, selection/render/catalog/docs integration, verification and Pages delivery|A9,A10,C5,C6,V5,V6,V15
 T16|x|add all 115 Jovian moons from a reproducible catalog, orbital geometry, data-quality model and five speed presets|A11,A12,V5,V7,V8,V23,V25
-T17|.|add Saturn milestone|C5,C6,V15
-T18|.|add major Saturnian moons milestone|C5,C6,V15
+T17|x|add Saturn as the 126th body with sourced perihelion state, renderer-only rings, controls/catalog/docs integration, and verification|A15,A16,A17,C5,C6,V5,V6,V10,V15,V24
+T18|.|add complete Saturnian moon catalog after reconciling the NASA/JPL inventory|C5,C6,V15
 T19|.|add Uranus milestone|C5,C6,V15
 T20|.|add Neptune milestone|C5,C6,V15
 T21|.|add dwarf-planet / Kuiper-belt representative milestone|C5,C6,V15

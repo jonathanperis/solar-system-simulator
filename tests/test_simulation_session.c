@@ -83,11 +83,11 @@ static void test_inspector_uses_parent_ids_and_relative_si_motion(void)
     simulation_session_destroy(&session);
 }
 
-static void test_session_exposes_jupiter_as_tenth_body(void)
+static void test_session_exposes_jupiter_and_appended_saturn(void)
 {
     SimulationSession session = simulation_session_create();
 
-    assert(session.system.body_count == 125);
+    assert(session.system.body_count == 126);
     assert(simulation_session_find_body(&session, "s/2021 j 8", 0) == 124);
     assert(simulation_session_find_body(&session, "Galilean moons", 0) == 10);
     assert(simulation_session_find_body(&session, "Galilean moons", 11) == 11);
@@ -99,6 +99,18 @@ static void test_session_exposes_jupiter_as_tenth_body(void)
     assert(fabs(inspection.distance_m - SOLAR_JUPITER_PERIHELION_M) < 0.001);
     assert(inspection.mass_kg == SOLAR_JUPITER_MASS_KG);
     assert(inspection.radius_m == SOLAR_JUPITER_RADIUS_M);
+    assert(simulation_session_find_body(&session, "saturn", 0) == 125);
+    simulation_session_select_body(&session, 125);
+    inspection = simulation_session_inspect(&session);
+    assert(strcmp(inspection.name, "Saturn") == 0);
+    assert(strcmp(inspection.parent_name, "Sun") == 0);
+    assert(fabs(inspection.distance_m - SOLAR_SATURN_PERIHELION_M) < 0.001);
+    assert(inspection.mass_kg == SOLAR_SATURN_MASS_KG);
+    assert(inspection.radius_m == SOLAR_SATURN_RADIUS_M);
+    session.paused = true;
+    simulation_session_reset(&session);
+    assert(session.selected_body_index == 125);
+    assert(body_trails_point_count(&session.trails, 125) == 1);
     simulation_session_destroy(&session);
 }
 
@@ -129,7 +141,7 @@ int main(void)
     test_overloaded_playback_retains_time_and_freezes_while_paused();
     test_playback_pause_step_speed_and_reset();
     test_inspector_uses_parent_ids_and_relative_si_motion();
-    test_session_exposes_jupiter_as_tenth_body();
+    test_session_exposes_jupiter_and_appended_saturn();
     puts("test_simulation_session passed");
     return 0;
 }

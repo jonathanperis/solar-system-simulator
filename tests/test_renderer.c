@@ -73,6 +73,21 @@ static void test_jupiter_uses_planet_scale_and_distinct_catalog_color(void)
     assert(color.r == 206 && color.g == 164 && color.b == 118 && color.a == 255);
 }
 
+static void test_saturn_uses_planet_scale_ring_extent_and_distinct_color(void)
+{
+    Body saturn = solar_system_create_saturn_at_perihelion();
+    Color color = renderer_body_color(&saturn);
+
+    assert_close(renderer_body_radius(&saturn, RENDER_SCALE_REAL), meters_to_render_units(SOLAR_SATURN_RADIUS_M), 1e-12);
+    assert_close(renderer_body_radius(&saturn, RENDER_SCALE_ILLUSTRATIVE), SOLAR_ILLUSTRATIVE_PLANET_RADIUS, 1e-6);
+    assert_close(renderer_body_visual_radius(&saturn, RENDER_SCALE_REAL),
+        meters_to_render_units(SOLAR_SATURN_RING_OUTER_RADIUS_M), 1e-12);
+    assert(renderer_body_visual_radius(&saturn, RENDER_SCALE_ILLUSTRATIVE) >
+        renderer_body_radius(&saturn, RENDER_SCALE_ILLUSTRATIVE));
+    assert_close(SOLAR_SATURN_AXIAL_TILT_DEGREES, 26.73, 1e-12);
+    assert(color.r == 218 && color.g == 190 && color.b == 130 && color.a == 255);
+}
+
 static void test_illustrative_moon_is_smaller_but_still_visible(void)
 {
     Body earth = solar_system_create_earth_at_perihelion();
@@ -263,8 +278,8 @@ static void test_system_frame_contains_selected_family_in_both_modes(void)
 {
     SolarSystem system = solar_system_create_current();
     SolarSystem original = system;
-    const size_t selections[] = {0, 3, 4, 5, 6, 7, 8, 9, 10, 124};
-    const size_t roots[] = {0, 3, 3, 5, 5, 5, 8, 9, 9, 9};
+    const size_t selections[] = {0, 3, 4, 5, 6, 7, 8, 9, 10, 124, 125};
+    const size_t roots[] = {0, 3, 3, 5, 5, 5, 8, 9, 9, 9, 125};
     for (int mode = RENDER_SCALE_ILLUSTRATIVE; mode <= RENDER_SCALE_REAL; ++mode) {
         for (size_t s = 0; s < sizeof(selections) / sizeof(selections[0]); ++s) {
             RenderSystemFrame frame = renderer_system_frame(&system, selections[s], mode);
@@ -274,7 +289,7 @@ static void test_system_frame_contains_selected_family_in_both_modes(void)
             for (size_t i = 0; i < system.body_count; ++i) {
                 if (roots[s] == 0 || i == roots[s] || system.bodies[i].parent_id == system.bodies[roots[s]].id) {
                     double extent = vec3d_length(vec3d_sub(renderer_body_position(&system, i, mode), center))
-                        + renderer_body_radius(&system.bodies[i], mode);
+                        + renderer_body_visual_radius(&system.bodies[i], mode);
                     expected = fmax(expected, extent);
                 }
             }
@@ -284,6 +299,21 @@ static void test_system_frame_contains_selected_family_in_both_modes(void)
     for (size_t i = 0; i < system.body_count; ++i) {
         assert_close(vec3d_length(vec3d_sub(system.bodies[i].position_m, original.bodies[i].position_m)), 0.0, 0.0);
     }
+}
+
+static void test_saturn_body_frame_contains_renderer_only_rings(void)
+{
+    SolarSystem system = solar_system_create_current();
+    SolarSystem original = system;
+
+    for (int mode = RENDER_SCALE_ILLUSTRATIVE; mode <= RENDER_SCALE_REAL; ++mode) {
+        RenderSystemFrame frame = renderer_body_frame(&system, 125, mode);
+        assert(frame.root_index == 125);
+        assert_close(frame.radius, renderer_body_visual_radius(&system.bodies[125], mode), 1e-12);
+        assert(frame.radius > renderer_body_radius(&system.bodies[125], mode));
+    }
+    assert_close(system.bodies[125].radius_m, SOLAR_SATURN_RADIUS_M, 0.0);
+    assert_close(vec3d_length(vec3d_sub(system.bodies[125].position_m, original.bodies[125].position_m)), 0.0, 0.0);
 }
 
 static void test_individual_moon_frame_and_unknown_radius_marker(void)
@@ -304,6 +334,7 @@ static void test_individual_moon_frame_and_unknown_radius_marker(void)
 
 int main(void)
 {
+    test_saturn_body_frame_contains_renderer_only_rings();
     test_individual_moon_frame_and_unknown_radius_marker();
     test_system_frame_contains_selected_family_in_both_modes();
     test_real_scale_radius_uses_physical_meter_scale();
@@ -312,6 +343,7 @@ int main(void)
     test_real_scale_mars_radius_uses_physical_meter_scale();
     test_vesta_uses_physical_radius_in_real_scale_and_distinct_illustrative_radius();
     test_jupiter_uses_planet_scale_and_distinct_catalog_color();
+    test_saturn_uses_planet_scale_ring_extent_and_distinct_color();
     test_illustrative_moon_is_smaller_but_still_visible();
     test_illustrative_earth_and_moon_do_not_overlap_at_perigee();
     test_illustrative_martian_moons_are_visible_and_outside_mars();

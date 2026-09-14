@@ -96,8 +96,10 @@ test('C state drives playback, precise SI readouts, asset pairing, and permanent
 
 test('body filtering matches provisional names and retains the C selection without selecting a different body', () => {
   const bodies = [{ index: 10, name: 'Io', group: 'Galilean moons' },
-    { index: 124, name: 'S/2021 J 8', group: 'Irregular moons' }];
-  assert.deepEqual(filterRuntimeBodies(bodies, '2021 j', '', 10), bodies);
+    { index: 124, name: 'S/2021 J 8', group: 'Irregular moons' },
+    { index: 125, name: 'Saturn', group: 'Planets' }];
+  assert.deepEqual(filterRuntimeBodies(bodies, '2021 j', '', 10), bodies.slice(0, 2));
   assert.deepEqual(filterRuntimeBodies(bodies, '', 'Galilean moons', 10), [bodies[0]]);
   assert.deepEqual(filterRuntimeBodies(bodies, 'missing', '', 124), [bodies[1]]);
+  assert.deepEqual(filterRuntimeBodies(bodies, 'saturn', 'Planets', 125), [bodies[2]]);
 });

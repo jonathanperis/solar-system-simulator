@@ -9,7 +9,7 @@ A physics-first 3D solar system simulator written in C11 with raylib. This repos
 - **Language:** C11 only for simulator/runtime code.
 - **Graphics/windowing:** raylib.
 - **Architecture:** deterministic SI-unit simulation isolated from rendering.
-- **Current scene:** original ten bodies (Sun through Jupiter) plus all 115 Jovian moons; 125 bodies total. `data/jovian_moons.json` supplies offline C and Astro catalog data.
+- **Current scene:** original ten bodies (Sun through Jupiter), all 115 Jovian moons, and Saturn; 126 bodies total. `data/jovian_moons.json` supplies offline C and Astro catalog data.
 - **Primary goal:** teach and verify orbital mechanics foundations before visual polish.
 - **Current public-site direction:** archival solar chart, source-backed and playful, with an accessible illustrative orrery wrapped around SI-unit physics. The docs hub and Astro-owned `/simulator/` runtime share the atlas layout.
 
@@ -93,6 +93,7 @@ solar-system-simulator/
 - `make test` checks generated satellite data offline. Only explicit `python3 tools/jovian_catalog.py --refresh` fetches new source data. Review inventory/frame/epoch changes before accepting them.
 - Trails are bounded app-owned histories. They start at a 300-second sample cadence, double both historical and future spacing at compaction, and keep a live endpoint. Do not reintroduce repeated early-history erosion or claim unlimited trail resolution.
 - Illustrative render mode enlarges bodies and separates close moons visually without changing simulation data.
+- Saturn's rings are renderer-only lines. Their outer extent affects camera framing, but Saturn's SI radius and gravity remain unchanged.
 - `src/app/simulation_session.*` owns playback, selection, reset, and physical inspection. Paused wall time is excluded; manual steps are exactly 15 seconds; reset preserves observer settings.
 - Web controls call the C command boundary in `src/main.c`. Keep numeric command IDs aligned with `runtimeCommands` in `docs/src/lib/simulator.ts`; the C scene populates the body selector.
 - Frame-system uses renderer-only family bounds and aspect-aware camera fitting. Inspector distances/speeds always use parent-relative SI state, independent of render mode.
