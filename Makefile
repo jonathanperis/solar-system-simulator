@@ -17,7 +17,7 @@ RAYLIB_LIBS ?= $(shell pkg-config --libs raylib 2>/dev/null || if [ -f "$(RAYLIB
 RAYLIB_WEB_SRC ?= $(RAYLIB_LOCAL_PREFIX)/src/raylib/src
 RAYLIB_WEB_LIB ?= $(RAYLIB_WEB_SRC)/libraylib.web.a
 RAYLIB_WEB_CFLAGS ?= -I$(RAYLIB_WEB_SRC) -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2
-RAYLIB_WEB_LDFLAGS ?= -s USE_GLFW=3 -s ALLOW_MEMORY_GROWTH=1 -s ASYNCIFY
+RAYLIB_WEB_LDFLAGS ?= -s USE_GLFW=3 -s ALLOW_MEMORY_GROWTH=1 -s ASYNCIFY -s STACK_SIZE=262144 -s EXPORTED_RUNTIME_METHODS=ccall
 
 SIM_SRCS := \
     src/sim/vec3d.c \
@@ -25,6 +25,8 @@ SIM_SRCS := \
     src/sim/body.c \
     src/sim/physics.c \
     src/sim/satellite.c \
+    src/sim/orbit.c \
+    src/sim/experiment.c \
     src/sim/jovian_catalog.c \
     src/sim/solar_system.c
 
@@ -44,7 +46,8 @@ TEST_SIMULATION_STEP := $(TEST_DIR)/test_simulation_step
 TEST_SIMULATION_SESSION := $(TEST_DIR)/test_simulation_session
 TEST_RENDERER := $(TEST_DIR)/test_renderer
 TEST_SATELLITES := $(TEST_DIR)/test_satellites
-TEST_BINS := $(TEST_VEC3D) $(TEST_PHYSICS) $(TEST_SOLAR_SYSTEM) $(TEST_ORBIT_CAMERA) $(TEST_BODY_TRAILS) $(TEST_SIMULATION_STEP) $(TEST_SIMULATION_SESSION) $(TEST_RENDERER) $(TEST_SATELLITES)
+TEST_BINS := $(TEST_VEC3D) $(TEST_PHYSICS) $(TEST_SOLAR_SYSTEM) $(TEST_ORBIT_CAMERA) $(TEST_BODY_TRAILS) $(TEST_SIMULATION_STEP) $(TEST_SIMULATION_SESSION) $(TEST_RENDERER) $(TEST_SATELLITES) $(TEST_DIR)/test_orbit $(TEST_DIR)/test_outer_planets
+TEST_BINS += $(TEST_DIR)/test_experiment
 
 .PHONY: all run test web raylib-web dist-wasm docs-check clean
 
@@ -53,14 +56,16 @@ all: $(APP)
 run: $(APP)
 	$(APP)
 
-test: $(TEST_BINS)
+test: build/catalog-orbits.dylib $(TEST_BINS)
 	python3 tools/jovian_catalog.py --check
+	python3 tools/planet_epoch.py --check
+	python3 tests/test_small_body_catalog.py
 	@set -e; for test_bin in $(TEST_BINS); do \
 		echo "Running $$test_bin"; \
 		$$test_bin; \
 	done
 
-web: $(WEB_APP) $(WEB_WASM)
+web: $(WEB_APP) $(WEB_WASM) $(WEB_DIR)/catalog-orbits.wasm
 	python3 tools/check_wasm_artifacts.py $(WEB_DIR)
 
 raylib-web:
@@ -68,7 +73,7 @@ raylib-web:
 
 dist-wasm: web
 	@rm -f $(WASM_ZIP)
-	python3 -m zipfile -c $(WASM_ZIP) $(WEB_APP) $(WEB_WASM)
+	python3 -m zipfile -c $(WASM_ZIP) $(WEB_APP) $(WEB_WASM) $(WEB_DIR)/catalog-orbits.wasm
 	@echo "Created $(WASM_ZIP)"
 
 docs-check:
@@ -138,3 +143,23 @@ clean:
 build/benchmark_simulation: tools/benchmark_simulation.c src/app/body_trails.c src/app/simulation_step.c $(SIM_SRCS) $(wildcard src/sim/*.h src/sim/*.inc src/app/*.h)
 	@mkdir -p $(@D)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+
+$(TEST_DIR)/test_orbit: tests/test_orbit.c src/sim/orbit.c src/sim/vec3d.c
+	@mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+
+$(TEST_DIR)/test_outer_planets: tests/test_outer_planets.c $(SIM_SRCS)
+	@mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+
+$(TEST_DIR)/test_experiment: tests/test_experiment.c src/app/simulation_session.c src/app/simulation_step.c src/app/body_trails.c $(SIM_SRCS) $(wildcard src/app/*.h)
+	@mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+
+build/catalog-orbits.dylib: src/sim/orbit.c src/sim/vec3d.c src/sim/orbit.h
+	@mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -shared -fPIC $(filter %.c,$^) -lm -o $@
+
+$(WEB_DIR)/catalog-orbits.wasm: src/sim/orbit.c src/sim/vec3d.c src/sim/orbit.h
+	@mkdir -p $(@D)
+	emcc $(CPPFLAGS) -O2 $(filter %.c,$^) -s STANDALONE_WASM --no-entry -Wl,--export=catalog_coordinate -Wl,--export=catalog_period_days -o $@

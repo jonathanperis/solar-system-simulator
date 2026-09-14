@@ -32,6 +32,7 @@ size_t renderer_trail_draw_segment_count(size_t point_count);
 float renderer_body_radius(const Body *body, RenderScaleMode mode);
 float renderer_body_visual_radius(const Body *body, RenderScaleMode mode);
 int renderer_grid_slices_for_system(const SolarSystem *system, RenderScaleMode mode);
-void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode);
+Vector3 renderer_relative_vector(Vec3d position, Vec3d origin);
+void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode, Vec3d origin);
 
 #endif

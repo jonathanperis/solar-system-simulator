@@ -20,7 +20,8 @@ def main() -> int:
     js = web_dir / f"{stem}.js"
     wasm = web_dir / f"{stem}.wasm"
 
-    for path in (js, wasm):
+    orbit_wasm = web_dir / 'catalog-orbits.wasm'
+    for path in (js, wasm, orbit_wasm):
         require(path)
 
     js_text = js.read_text(encoding="utf-8", errors="replace")
@@ -32,13 +33,15 @@ def main() -> int:
 
     if wasm.read_bytes()[:8] != b"\x00asm\x01\x00\x00\x00":
         raise SystemExit(f"{wasm} does not start with the WebAssembly magic and version bytes")
+    if orbit_wasm.read_bytes()[:8] != b"\x00asm\x01\x00\x00\x00":
+        raise SystemExit('invalid standalone catalog orbital module')
 
     for marker in ("solar_web_initial_canvas_width", "solar_web_initial_canvas_height", "solar_web_canvas_has_focus"):
         if marker not in main_text:
             raise SystemExit(f"src/main.c missing web sizing/focus boundary: {marker}")
     if "solar_web_report_state" not in main_text or "reportState" not in js_text:
         raise SystemExit("WebAssembly must report live simulation state to the Astro page")
-    for marker in ("_solar_web_command", "addBody", "distanceM", "speedMps", "massKg", "radiusM", "massQuality", "radiusQuality", "achievedTimeScale", "pendingSeconds"):
+    for marker in ("_solar_web_command", "_solar_web_experiment", "_solar_web_demo", "clearBodies", "ccall", "addBody", "distanceM", "speedMps", "massKg", "radiusM", "massQuality", "radiusQuality", "achievedTimeScale", "pendingSeconds"):
         if marker not in js_text:
             raise SystemExit(f"WebAssembly missing inspection/control bridge: {marker}")
 

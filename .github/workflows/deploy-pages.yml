@@ -45,7 +45,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           target = Path('docs/public/wasm')
-          for source in list(target.rglob('solar-system-simulator.*')):
+          for source in list(target.rglob('*.wasm')) + list(target.rglob('*.js')):
               destination = target / source.name
               if source.resolve() != destination.resolve():
                   destination.write_bytes(source.read_bytes())

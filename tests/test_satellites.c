@@ -51,7 +51,7 @@ static void test_orbital_elements_preserve_geometry_and_parent_motion(void)
 static void test_complete_jovian_catalog_and_initial_orbits(void)
 {
     SolarSystem system = solar_system_create_current();
-    assert(SOLAR_JOVIAN_MOON_COUNT == 115 && system.body_count == 126);
+    assert(SOLAR_JOVIAN_MOON_COUNT == 115 && system.body_count == 128);
     assert(system.bodies[9].id == BODY_ID_JUPITER);
     assert(strcmp(system.bodies[10].name, "Io") == 0);
     assert(strcmp(system.bodies[13].name, "Callisto") == 0);

@@ -81,7 +81,7 @@ V3: gravity = `G * source_mass / distance^3 * displacement`; self | zero-distanc
 
 V4: stepping = velocity-Verlet kick-drift-kick; fixed bodies contribute gravity but never move.
 
-V5: shipped scene starts Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta, Jupiter, followed by the 115 cataloged Jovian moons and Saturn. Existing IDs/indices remain stable; satellite IDs derive from JPL codes; Saturn appends at index 125 with NAIF planet-center ID 699; parents match catalog.
+V5: core scene starts Sun through Jupiter, followed by the 115 Jovian moons, Saturn, Uranus and Neptune (128 bodies). Existing IDs/indices remain stable; outer planets use NAIF center IDs 699/799/899. The complete small-body catalog is separate from the active scene; selected experiments use Sun/eight planets plus at most 16 selected records at one source epoch.
 
 V6: planets + Vesta start heliocentric perihelion; Moon starts Earth-relative perigee; Phobos/Deimos start Mars-relative periareion; speeds use vis-viva.
 
@@ -170,6 +170,19 @@ A17|Saturn's tilted rings are renderer-only; the 126-body scene remains below 1%
 
 Decision: Jonathan selected the Saturn-only milestone rather than combining Saturn with its moon system, then approved implementation with “do it” on 2026-09-10. He separately authorized task-local `npm ci` for the locked Astro dependencies. Commit, push, deployment, and browser interaction were not authorized. T18 now targets the complete Saturnian inventory; its source reconciliation remains separate.
 
+## §A — Complete small-body atlas, 2026-09-14
+
+id|criterion|verify
+A18|The pinned catalog accounts for every asteroid-kind or CEN/TNO record, including provisional designations, without duplicates or silent missing-data omissions|full offline shard/index/density/checksum audit and importer tests
+A19|Uranus and Neptune append at indices 126/127 with sourced mass/radius/orbit; prior IDs and core convergence remain valid|outer-planet, solar-system, satellite and full-scene tests
+A20|The C conic kernel covers elliptic, near-parabolic, parabolic and hyperbolic orbits with independent reference/conservation proofs; WASM previews use that same kernel|C orbit tests and standalone WASM test
+A21|Search/filter/pagination and density mapping expose all catalog records while bounding client memory and HTML/result size; source epochs/quality and active-versus-catalog counts remain explicit|full-catalog worker tests, docs/build/route checks, size audit
+A22|Native/web explicit experiments share a bounded parser, source-epoch planetary states, owned names, identity/quality rules and deterministic reset; failed loads preserve the prior scene|experiment/session tests and artifact bridge checks
+A23|Camera-relative double subtraction preserves distant local detail and grid/trail work remains bounded|renderer tests
+A24|Native/WASM/docs verification, sanitizer and throughput checks, source audit and regression review pass|verification evidence
+
+Decision: Jonathan selected all asteroids plus outer bodies, catalog plus selected simulation, and Uranus/Neptune foundations, then approved autonomous implementation. The 1,564,244-entry snapshot is source-accounted; 4,076 other comet records are outside the chosen scope. Catalog experiments use Sun/eight planets plus up to 16 selected bodies at JD 2461200.5 TDB. They remain a fixed-Sun point-mass approximation. Task-local locked Astro dependency installation and existing raylib archive reuse were explicitly authorized.
+
 ## §T
 
 id|status|task|cites
@@ -191,9 +204,9 @@ T15|x|add Jupiter milestone: sourced constants, planar heliocentric perihelion s
 T16|x|add all 115 Jovian moons from a reproducible catalog, orbital geometry, data-quality model and five speed presets|A11,A12,V5,V7,V8,V23,V25
 T17|x|add Saturn as the 126th body with sourced perihelion state, renderer-only rings, controls/catalog/docs integration, and verification|A15,A16,A17,C5,C6,V5,V6,V10,V15,V24
 T18|.|add complete Saturnian moon catalog after reconciling the NASA/JPL inventory|C5,C6,V15
-T19|.|add Uranus milestone|C5,C6,V15
-T20|.|add Neptune milestone|C5,C6,V15
-T21|.|add dwarf-planet / Kuiper-belt representative milestone|C5,C6,V15
+T19|x|add Uranus milestone|A19,C5,C6,V15
+T20|x|add Neptune milestone|A19,C5,C6,V15
+T21|x|add complete small-body atlas, conic geometry and selected source-epoch experiments|A18,A20,A21,A22,A23,A24,C5,C6,V15
 T22|x|bound full-run trail storage + draw cost; remove allocation abort path|V8,V9
 T23|x|align README/site claims with runtime; remove dead label surface; add constants provenance|V16
 T24|x|harden docs/WASM checks + premerge docs gate; add build provenance|V13,V14,V16,V19,I.docs,I.ci
@@ -224,3 +237,4 @@ B9|2026-09-02|atlas client selectors lacked typed DOM bindings|V21
 B10|2026-09-09|repeatedly thinning old samples while recording new ones at full resolution erased early orbital curvature; endpoint-only straight-line tests missed it|V9,A1
 B11|2026-09-09|one-orbit radius bounds did not detect long-run Phobos phase drift from a five-minute step|V8,V22,A2
 B12|2026-09-10|broad window-capture filtering protected canvas shortcuts but prevented native select arrow/Home navigation; scope interception to GLFW-cancelled keys and give semantic selects an explicit tested navigation path|V18,A7
+B13|2026-09-14|browser fetch transparently decoded gzip responses before client hashing, so compressed-file hashes rejected valid catalog data|manifest schema 2 hashes both gzip and decoded JSON; clients verify the received form and decompress at most once

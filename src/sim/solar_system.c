@@ -363,7 +363,25 @@ SolarSystem solar_system_create_current(void)
         system.bodies[system.body_count++] = satellite_create(&solar_jovian_moons[i], &system.bodies[9]);
     }
     system.bodies[system.body_count++] = solar_system_create_saturn_at_perihelion();
+    system.bodies[system.body_count++] = solar_system_create_uranus_at_perihelion();
+    system.bodies[system.body_count++] = solar_system_create_neptune_at_perihelion();
     return system;
+}
+
+Body solar_system_create_uranus_at_perihelion(void)
+{
+    double q = SOLAR_URANUS_SEMI_MAJOR_AXIS_M * (1-SOLAR_URANUS_ECCENTRICITY);
+    double v = sqrt(SOLAR_G*SOLAR_SUN_MASS_KG*(2/q-1/SOLAR_URANUS_SEMI_MAJOR_AXIS_M));
+    return body_create_identified("Uranus", BODY_KIND_PLANET, BODY_ID_URANUS, BODY_ID_SUN,
+        SOLAR_URANUS_MASS_KG, SOLAR_URANUS_RADIUS_M, (Vec3d){q,0,0}, (Vec3d){0,0,v}, false);
+}
+
+Body solar_system_create_neptune_at_perihelion(void)
+{
+    double q = SOLAR_NEPTUNE_SEMI_MAJOR_AXIS_M * (1-SOLAR_NEPTUNE_ECCENTRICITY);
+    double v = sqrt(SOLAR_G*SOLAR_SUN_MASS_KG*(2/q-1/SOLAR_NEPTUNE_SEMI_MAJOR_AXIS_M));
+    return body_create_identified("Neptune", BODY_KIND_PLANET, BODY_ID_NEPTUNE, BODY_ID_SUN,
+        SOLAR_NEPTUNE_MASS_KG, SOLAR_NEPTUNE_RADIUS_M, (Vec3d){0,0,-q}, (Vec3d){v,0,0}, false);
 }
 
 SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter(void)

@@ -9,11 +9,8 @@ float meters_to_render_units(double meters)
 
 Vec3d meters_vec_to_render_vec3d(Vec3d meters)
 {
-    return (Vec3d){
-        (double)meters_to_render_units(meters.x),
-        (double)meters_to_render_units(meters.y),
-        (double)meters_to_render_units(meters.z),
-    };
+    /* Keep double precision until a camera-relative displacement is formed. */
+    return vec3d_scale(meters, SOLAR_RENDER_UNITS_PER_AU / SOLAR_AU_METERS);
 }
 
 double seconds_to_days(double seconds)

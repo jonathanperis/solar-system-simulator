@@ -21,7 +21,7 @@ test('V21 cycles body selection in both directions with wraparound', () => {
 });
 
 test('A10 publishes Jupiter as the tenth implemented atlas body', () => {
-  assert.equal(implementedBodies.length, 126);
+  assert.equal(implementedBodies.length, 128);
   assert.deepEqual(implementedBodies[9], {
     slug: 'jupiter',
     name: 'Jupiter',

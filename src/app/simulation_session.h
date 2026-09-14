@@ -2,12 +2,16 @@
 #define SOLAR_SIMULATION_SESSION_H
 
 #include "simulation_step.h"
+#include "../sim/experiment.h"
 
 #define SOLAR_SPEED_PRESET_COUNT 5
 #define SOLAR_APP_MAX_STEPS_PER_UPDATE 2048
 
 typedef struct SimulationSession {
     SolarSystem system;
+    SolarSystem initial_system;
+    char imported_names[SOLAR_EXPERIMENT_CAPACITY][SOLAR_EXPERIMENT_NAME_BYTES];
+    bool catalog_experiment;
     BodyTrails trails;
     SimulationClock clock;
     bool paused;
@@ -31,6 +35,8 @@ typedef struct BodyInspection {
 } BodyInspection;
 
 SimulationSession simulation_session_create(void);
+bool simulation_session_start_experiment(SimulationSession *session, const char *text);
+void simulation_session_demo(SimulationSession *session);
 void simulation_session_destroy(SimulationSession *session);
 void simulation_session_reset(SimulationSession *session);
 void simulation_session_update(SimulationSession *session, double real_seconds);

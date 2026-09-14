@@ -309,8 +309,8 @@ static void test_current_scene_appends_saturn_without_identity_collisions(void)
 {
     SolarSystem system = solar_system_create_current();
 
-    assert(SOLAR_SYSTEM_BODY_CAPACITY == 126);
-    assert(system.body_count == 126);
+    assert(SOLAR_SYSTEM_BODY_CAPACITY == 128);
+    assert(system.body_count == 128);
     assert(system.bodies[9].id == BODY_ID_JUPITER);
     assert(strcmp(system.bodies[124].name, "S/2021 J 8") == 0);
     assert(strcmp(system.bodies[125].name, "Saturn") == 0);

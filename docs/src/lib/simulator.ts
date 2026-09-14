@@ -93,6 +93,15 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
 
   return {
     canvas,
+    ccall: undefined as undefined | ((name:string, result:string|null, types:string[], args:unknown[])=>unknown),
+    clearBodies(experiment:boolean, count:number) {
+      bodies.length=0; groups.clear(); reportedBody=-1;
+      controls.body.replaceChildren();
+      controls.group.replaceChildren(new Option('All groups',''));
+      controls.search.value='';
+      const scene=canvas.closest('[data-simulator]')?.querySelector('[data-active-scene]');
+      if(scene) scene.textContent=experiment?`${count} active bodies · catalog epoch JD 2461200.5 TDB`:`${count} active bodies · perihelion demonstration`;
+    },
     _solar_web_command: undefined as ((command: number, value: number) => void) | undefined,
     addBody(index: number, name: string, group: string) {
       bodies.push({ index, name, group });
@@ -140,9 +149,9 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       setText(readouts.distance, state.hasParent ? `${(state.distanceM / 1000).toFixed(3)} km` : 'N/A — no parent');
       setText(readouts.speed, state.hasParent ? `${(state.speedMps / 1000).toFixed(6)} km/s` : 'N/A — no parent');
       setText(readouts.mass, state.massQuality === 2 ? 'Unknown (test particle)'
-        : `${state.massKg.toExponential(6)} kg${state.massQuality === 1 ? ' (estimated)' : ''}`);
+        : `${state.massKg.toExponential(6)} kg${state.massQuality === 1 ? ' (estimated)' : state.massQuality === 3 ? ' (published; quality unclassified)' : ''}`);
       setText(readouts.radius, state.radiusQuality === 2 ? 'Unknown (marker only)'
-        : `${(state.radiusM / 1000).toFixed(3)} km${state.radiusQuality === 1 ? ' (estimated)' : ''}`);
+        : `${(state.radiusM / 1000).toFixed(3)} km${state.radiusQuality === 1 ? ' (estimated)' : state.radiusQuality === 3 ? ' (published; quality unclassified)' : ''}`);
       setText(readouts.camera, `${state.cameraTarget} · ${state.zoom.toPrecision(4)} render units`);
       setText(readouts.achieved, `${(state.paused ? 0 : state.achievedTimeScale / 86400).toFixed(2)} days / second`);
       setText(readouts.pending, `${(state.pendingSeconds / 86400).toFixed(3)} days`);
@@ -204,6 +213,40 @@ export function mountSimulator(root: HTMLElement): void {
     });
   }
   controls.rotate.addEventListener('change', () => send('rotate'));
+
+  const experimentStatus=root.querySelector<HTMLElement>('[data-experiment-status]')!;
+  let prepared: {text:string;snapshot:string;count:number}|undefined;
+  let experimentAction=0;
+  if(new URLSearchParams(location.search).has('experiment')) {
+    try {
+      const stored=sessionStorage.getItem('solar-catalog-experiment');
+      if(!stored) throw new Error('No prepared experiment. Choose bodies in the small-body atlas first.');
+      prepared=JSON.parse(stored);
+      if(!prepared || typeof prepared.text!=='string' || !Number.isInteger(prepared.count) || prepared.count<1 || prepared.count>16)
+        throw new Error('Invalid prepared experiment. Return to the atlas.');
+      experimentStatus.textContent=`Prepared: ${prepared.count} catalog bodies plus Sun/eight planets. Press Start prepared experiment to replace the demonstration.`;
+    } catch(error) {experimentStatus.textContent=String(error);prepared=undefined;}
+  }
+  root.querySelector('[data-start-experiment]')!.addEventListener('click', async()=>{
+    const action=++experimentAction;
+    if(!prepared){experimentStatus.textContent='Choose bodies in the small-body atlas first.';return;}
+    const chosen=prepared;
+    try {
+      const response=await fetch(root.dataset.catalogManifest!,{cache:'no-cache'});
+      if(!response.ok) throw new Error('Could not verify the catalog snapshot. Retry.');
+      const manifest=await response.json();
+      if(action!==experimentAction)return;
+      if(manifest.sourceSha256!==chosen.snapshot || manifest.epoch!==2461200.5) throw new Error('Prepared catalog is stale. Prepare it again in the atlas.');
+      const accepted=runtime.ccall?.('solar_web_experiment','number',['string'],[chosen.text]);
+      if(!accepted) throw new Error('C rejected the experiment input. Return to the atlas to prepare it again.');
+      experimentStatus.textContent=`Catalog experiment started with ${chosen.count+9} active bodies. Reset restores this same experiment.`;
+    } catch(error) {if(action===experimentAction)experimentStatus.textContent=String(error);}
+  });
+  root.querySelector('[data-demo]')!.addEventListener('click',()=>{
+    ++experimentAction;
+    runtime.ccall?.('solar_web_demo',null,[],[]);
+    experimentStatus.textContent='Core perihelion demonstration restored.';
+  });
 
   // Configure the classic Emscripten module before its generated loader runs.
   // Both assets use the page revision so cached builds cannot mix their ABI.

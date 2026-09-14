@@ -38,6 +38,7 @@ ROUTES: dict[str, list[str]] = {
     "physics/index.html": ["Physics stays in SI units", "docs/simulation-core/", "data-footer-credits"],
     "simulator/index.html": ["Run the real orbit loop", "data-simulator", "runtime-control-state", "canvas", "15-second", "uniform", "data-footer-credits", "data-runtime-panel", "data-runtime-body", "data-runtime-speed", "Frame selected system", "Frame selected body", "Live physics inspector", "data-inspector-distance", "data-inspector-speed", "data-runtime-search", "data-runtime-group", "15 days / second", "10 days / second", "data-runtime-achieved", "test particles"],
     "body-catalog/index.html": ["Stable IDs prevent duplicate knowledge", "docs/roadmap/", "Phobos", "Deimos", "Vesta", "Jupiter", "Saturn", "JPL physical parameters", "NASA's Saturn facts", "JPL SBDB solution 36"],
+    "small-bodies/index.html": ["A million worlds", "data-small-atlas", "data-density", "data-catalog-search", "data-results", "data-basket", "data-prepare", "catalog/manifest.json", "1,564,244"],
     "source-atlas/index.html": ["The code separates physics from presentation", "docs/architecture/", "src/sim/"],
     "pipeline/index.html": ["Native tests feed a Pages lab bench", "docs/build-and-web/", "make web"],
     "docs/index.html": ["Trace every orbit wire without one giant scroll", "Solar manual routes", "Every orbit manual page", "docs/architecture/"],
@@ -49,10 +50,10 @@ ROUTES: dict[str, list[str]] = {
     "docs/roadmap/index.html": ["Expansion stays one body at a time", "Implemented now", "Planned sequence", "Jupiter", "Saturn", "Kuiper belt"],
 }
 
-FOOTER_MARKERS = ["data-footer-credits", "Jonathan Peris", "Milestone 11", "raylib", "Emscripten", "Astro", "GitHub Pages"]
+FOOTER_MARKERS = ["data-footer-credits", "Jonathan Peris", "Small-body atlas", "raylib", "Emscripten", "Astro", "GitHub Pages"]
 ATLAS_BODY_ANCHORS = ["sun", "mercury", "venus", "earth", "moon", "mars", "phobos", "deimos", "vesta", "jupiter"]
 ATLAS_BODY_ANCHORS += [moon["slug"] for moon in json.loads((Path(__file__).resolve().parents[1] / "data/jovian_moons.json").read_text())["moons"]]
-ATLAS_BODY_ANCHORS += ["saturn"]
+ATLAS_BODY_ANCHORS += ["saturn", "uranus", "neptune"]
 
 
 class ReferenceParser(HTMLParser):
@@ -137,8 +138,8 @@ def main(argv: list[str]) -> int:
             for tag, attrs in parser.elements
             if tag == "a" and "data-primary-nav-link" in attrs
         ]
-        if len(primary_links) != 7:
-            fail(f"{route} must expose all seven primary navigation links")
+        if len(primary_links) != 8:
+            fail(f"{route} must expose all eight primary navigation links")
         if sum(attrs.get("aria-current") == "page" for attrs in primary_links) != 1:
             fail(f"{route} must identify exactly one current primary navigation link")
         if "rel=\"canonical\"" not in html:

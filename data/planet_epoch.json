@@ -1,0 +1,128 @@
+{
+  "epoch": 2461200.5,
+  "frame": "J2000 ecliptic",
+  "center": "Sun",
+  "checked": "2026-09-14T19:46:49.489527+00:00",
+  "planets": [
+    {
+      "name": "Mercury",
+      "horizons_id": 199,
+      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=199&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
+      "position_km": [
+        -59026548.53916454,
+        -9486287.02554157,
+        4638498.823688048
+      ],
+      "velocity_km_s": [
+        -2.397748847602677,
+        -46.00451992496887,
+        -3.53974008868866
+      ]
+    },
+    {
+      "name": "Venus",
+      "horizons_id": 299,
+      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=299&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
+      "position_km": [
+        -106377424.6986375,
+        15212743.1141425,
+        6346900.015991076
+      ],
+      "velocity_km_s": [
+        -5.146798056053943,
+        -34.8241921299382,
+        -0.1814788513401506
+      ]
+    },
+    {
+      "name": "Earth",
+      "horizons_id": 399,
+      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=399&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
+      "position_km": [
+        -32008618.57770638,
+        -148434291.1413878,
+        8931.701517559588
+      ],
+      "velocity_km_s": [
+        28.63605783940367,
+        -6.402317143354088,
+        -0.0007636327401647769
+      ]
+    },
+    {
+      "name": "Mars",
+      "horizons_id": 499,
+      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=499&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
+      "position_km": [
+        195875234.0447874,
+        81824782.9809442,
+        -3088231.912150782
+      ],
+      "velocity_km_s": [
+        -8.410782839437735,
+        24.42768605121451,
+        0.7181605942489533
+      ]
+    },
+    {
+      "name": "Jupiter",
+      "horizons_id": 599,
+      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=599&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
+      "position_km": [
+        -417320435.4558823,
+        668590441.9914147,
+        6559635.945548117
+      ],
+      "velocity_km_s": [
+        -11.24599020928166,
+        -6.314231278426358,
+        0.2778064885753464
+      ]
+    },
+    {
+      "name": "Saturn",
+      "horizons_id": 699,
+      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=699&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
+      "position_km": [
+        1405085172.100683,
+        170541008.3339945,
+        -58900850.61729871
+      ],
+      "velocity_km_s": [
+        -1.70224259890323,
+        9.564788576110002,
+        -0.0982933171306355
+      ]
+    },
+    {
+      "name": "Uranus",
+      "horizons_id": 799,
+      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=799&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
+      "position_km": [
+        1395843104.322566,
+        2555008584.470428,
+        -8609907.20707643
+      ],
+      "velocity_km_s": [
+        -6.037700002048093,
+        2.944792201521333,
+        0.08922924234043017
+      ]
+    },
+    {
+      "name": "Neptune",
+      "horizons_id": 899,
+      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=899&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
+      "position_km": [
+        4466238590.749162,
+        152694437.1977816,
+        -106066602.3740655
+      ],
+      "velocity_km_s": [
+        -0.232414812890385,
+        5.460646099676543,
+        -0.1074622000300767
+      ]
+    }
+  ]
+}

@@ -6,12 +6,12 @@ import { implementedBodies } from '../lib/bodies';
 const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 <BaseLayout title="Live simulator" description="Run the C11 and raylib solar system in your browser, with fixed-step SI physics and source-backed controls.">
-  <section class="simulator" data-simulator data-runtime-src={`${base}wasm/solar-system-simulator.js?revision=${encodeURIComponent(buildRevision)}`}>
+  <section class="simulator" data-simulator data-catalog-manifest={`${base}catalog/manifest.json`} data-runtime-src={`${base}wasm/solar-system-simulator.js?revision=${encodeURIComponent(buildRevision)}`}>
     <header class="simulator-intro">
       <div>
         <p class="eyebrow">Live field station / C11 + WebAssembly</p>
         <h1>Run the real orbit loop.</h1>
-        <p>{implementedBodies.length} bodies. One SI-unit simulation. The chart below is rendered by raylib.</p>
+        <p>{implementedBodies.length}-body core demonstration, or a selected catalog experiment. The chart below is rendered by raylib.</p>
       </div>
       <div class="actions">
         <a class="button" href="#canvas">Focus canvas</a>
@@ -23,6 +23,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
       <p data-runtime-status role="status" aria-live="polite">Downloading simulator…</p>
       <p id="runtime-control-state" data-runtime-controls role="status" aria-live="polite">Waiting for simulation state.</p>
       <dl>
+        <div><dt>Active scene</dt><dd data-active-scene>Waiting for C runtime…</dd></div>
         <div><dt>Elapsed time</dt><dd data-runtime-elapsed>—</dd></div>
         <div><dt>History sample spacing</dt><dd data-runtime-interval>—</dd></div>
         <div><dt>Achieved speed</dt><dd data-runtime-achieved>—</dd></div>
@@ -32,6 +33,12 @@ const base = normalizeBase(import.meta.env.BASE_URL);
 
     <fieldset class="runtime-panel" data-runtime-panel disabled>
       <legend>Simulation controls</legend>
+      <div class="control-row">
+        <a class="button button-secondary" href={`${base}small-bodies/`}>Choose small bodies</a>
+        <button type="button" data-start-experiment>Start prepared experiment</button>
+        <button type="button" data-demo>Restore core demonstration</button>
+      </div>
+      <p data-experiment-status role="status">Build a catalog experiment in the small-body atlas, then start it here explicitly.</p>
       <div class="control-row">
         <button type="button" data-command="pause">Pause</button>
         <button type="button" data-command="step" disabled>Step +15 s</button>
@@ -88,7 +95,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
     <div class="simulator-notes">
       <section>
         <h2>Read the scale.</h2>
-        <p>Illustrative mode enlarges bodies and separates close moons. Real-scale mode uses physical radii and distances, so small bodies can become nearly invisible. Each grid cell spans 0.1 AU.</p>
+        <p>Illustrative mode enlarges bodies and separates close moons. Real-scale mode uses physical radii and distances, so small bodies can become nearly invisible. Camera-relative drawing preserves local detail at large distances. Each grid cell spans 0.1 AU within a bounded local patch.</p>
       </section>
       <section>
         <h2>Read the history.</h2>
