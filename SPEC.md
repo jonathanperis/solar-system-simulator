@@ -58,7 +58,7 @@ I.inspection: native shortcuts and accessible web buttons share C-owned playback
 
 I.pages: `/`, `/docs/`, `/docs/architecture/`, `/docs/simulation-core/`, `/docs/rendering/`, `/docs/controls/`, `/docs/build-and-web/`, `/docs/roadmap/`, `/docs/experiments/`, `/physics/`, `/body-catalog/`, `/source-atlas/`, `/pipeline/`, `/simulator/`, `/compare/`; `/wasm/solar-system-simulator.html` redirects to `/simulator/`
 
-I.ci: `Build` → native tests + WASM artifact; `Deploy Pages` consumes successful artifact
+I.ci: `Build` runs native tests, WASM validation, and docs/dependency checks. `Deploy Pages` consumes the exact successful artifact and commit from a same-repository `main` push or manual run. `CodeQL` scans C/C++, JavaScript/TypeScript, and Actions on PRs, main pushes, weekly schedules, and manual dispatch.
 
 ## §R
 
@@ -104,7 +104,7 @@ V12: web `InitWindow()` dimensions derive from served `.canvas-wrap` before WebG
 
 V13: ∀ Pages links/assets base-path-safe under `/solar-system-simulator/`.
 
-V14: Pages deploy only after successful native tests + WASM artifact validation.
+V14: Pages deploy only after successful native tests and WASM validation from this repository's `main` branch, triggered by a push or explicit manual run. Fork/PR-origin code must never execute with deployment write permissions; a matching branch name alone is not trusted origin.
 
 V15: each new-body milestone updates constants, initialization, tests, renderer visibility, app/catalog/docs, route checks, verification.
 
@@ -310,3 +310,4 @@ B13|2026-09-14|browser fetch transparently decoded gzip responses before client 
 B14|2026-09-16|configurable lesson steps did not always divide the 300-second trail cadence, and fractional boundary roundoff could postpone a sample by a whole tick|align cadence to whole configured ticks and tolerate only floating-point boundary roundoff; session tests cover 200-second and 1.1-second steps
 B15|2026-09-16|the old all-stars trail exclusion became invalid when the barycentric lesson released the Sun, corrupting parent-relative history|record and draw moving stars, omit only fixed stars, and verify the moving-parent transform
 B16|2026-09-16|managed Chromium could not initialize its sandbox under the ubuntu-latest AppArmor user-namespace policy|pin the docs/browser lane to supported Ubuntu 22.04 and retain chromiumSandbox=true
+B17|2026-09-17|a privileged workflow_run deployment checked success and branch name but not source ownership/event, allowing fork PR code to cross the deployment boundary|verify same repository, main branch, allowed event, successful build, and exact triggering commit/artifact under V14
