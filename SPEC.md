@@ -286,8 +286,10 @@ T42|x|publish guided learning exercises, build/ownership/provenance documentatio
 T43|x|implement descriptor validation, matched-checkpoint comparison, bounded C telemetry and force decomposition|A32,A33,A34,A35,V30,V31,V34
 T44|x|add barycentric core, resonance, encounter and collision lessons with independent physical proofs|A36,V32,V33
 T45|x|integrate comparison WASM/native CLI, live plots, trajectory overlays, save/share/import and guided challenges|A32,A33,A34,A35,V34
-T46|~|add sandboxed pinned automated browser checks to local tooling and CI; update all learning/control/provenance docs|A37,A38
-T47|~|run verification/regression review, commit and push both rounds, and observe branch CI|A38
+T46|x|add sandboxed pinned automated browser checks to local tooling and CI; update all learning/control/provenance docs|A37,A38
+T47|x|run verification/regression review, commit and push both rounds, and observe branch CI|A38
+
+Verification: Build run https://github.com/jonathanperis/solar-system-simulator/actions/runs/35175509807 passed native tests/sanitizers, WASM packaging, complete catalog checks, docs validation and sandboxed browser tests for implementation commit 016f187. PR creation was denied by the credential; branch-plus-CI delivery follows Jonathan's explicit amendment above.
 
 ## §B
 
