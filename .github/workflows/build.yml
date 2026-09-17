@@ -12,6 +12,7 @@ permissions:
 env:
   SOURCE_REVISION: ${{ github.sha }}
   ASTRO_TELEMETRY_DISABLED: 1
+  RAYLIB_REVISION: dbc56a87da87d973a9c5baa4e7438a9d20121d28 # 6.0
 
 jobs:
   native:
@@ -46,7 +47,10 @@ jobs:
 
       - name: Build and install raylib
         run: |
-          git clone --depth 1 --branch 6.0 https://github.com/raysan5/raylib.git /tmp/raylib
+          git init /tmp/raylib
+          git -C /tmp/raylib remote add origin https://github.com/raysan5/raylib.git
+          git -C /tmp/raylib fetch --depth 1 origin "$RAYLIB_REVISION"
+          git -C /tmp/raylib checkout --detach FETCH_HEAD
           cmake -S /tmp/raylib -B /tmp/raylib/build \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=OFF \
@@ -84,7 +88,10 @@ jobs:
 
       - name: Build raylib for WebAssembly
         run: |
-          git clone --depth 1 --branch 6.0 https://github.com/raysan5/raylib.git /tmp/raylib
+          git init /tmp/raylib
+          git -C /tmp/raylib remote add origin https://github.com/raysan5/raylib.git
+          git -C /tmp/raylib fetch --depth 1 origin "$RAYLIB_REVISION"
+          git -C /tmp/raylib checkout --detach FETCH_HEAD
           make PLATFORM=PLATFORM_WEB -C /tmp/raylib/src
 
       - name: Build and smoke-check WebAssembly bundle
