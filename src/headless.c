@@ -126,7 +126,7 @@ int main(int argc, char **argv)
         fputs("Invalid lesson configuration or experiment input.\n", stderr);
         return 2;
     }
-    FILE *stream = output ? fopen(output, "w") : stdout;
+    FILE *stream = output ? simulation_csv_open_output(output) : stdout;
     if (!stream) { perror("CSV output"); simulation_session_destroy(&session); return 1; }
     bool ok = simulation_csv_begin(stream, &session) && simulation_csv_sample(stream, &session);
     /* Stream samples instead of retaining a series. No graphics or wall clock
