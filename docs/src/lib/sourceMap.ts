@@ -7,6 +7,12 @@ export type SourceSection = {
 
 export const sourceSections: SourceSection[] = [
   {
+    label: 'Small-body atlas and source epoch',
+    path: 'docs/public/catalog/ + data/planet_epoch.json',
+    responsibility: 'Pinned shard/index/density inventory, physical-data supplements in data/, and planetary vectors for bounded selected-body experiments. Provenance lives in data/README.md and data/SMALL_BODIES.md.',
+    verification: 'Offline tools/small_body_catalog.py --check and tools/planet_epoch.py --check; conic/experiment C tests and catalog-worker tests.'
+  },
+  {
     label: 'Jovian satellite catalog',
     path: 'data/jovian_moons.json',
     responsibility: 'Versioned source elements, stable JPL codes, physical-data quality and references for all 115 Jupiter moons; shared with C and Astro.',
@@ -21,14 +27,14 @@ export const sourceSections: SourceSection[] = [
   {
     label: 'Simulation core',
     path: 'src/sim/',
-    responsibility: 'raylib-independent bodies, constants, Vec3d math, Newtonian acceleration, Verlet stepping, and scene factories.',
-    verification: 'C tests cover vector math, acceleration, body initialization, and time stepping.'
+    responsibility: 'raylib-independent SI bodies, Newtonian forces, Verlet/Euler stepping, diagnostics, lessons, opt-in head-on contact, conic propagation, and scene factories.',
+    verification: 'make test-core covers initial states, orbital references, convergence, conservation, collisions, and source-catalog contracts without raylib.'
   },
   {
     label: 'Application helpers',
     path: 'src/app/',
-    responsibility: 'C-owned playback/selection session, physical inspector, orbit camera, and bounded full-run trails.',
-    verification: 'C tests exercise pause/reset/single-step, parent-relative inspection, camera framing, 100-day accuracy, and curved trail coverage.'
+    responsibility: 'C-owned sessions, fixed-step playback, physical inspection, camera, synchronized bounded trails, shared SI CSV writer, versioned lesson descriptors, and matched A/B comparison checkpoints.',
+    verification: 'C tests exercise reset/step, inspection, camera framing, 100-day accuracy, trail retention, descriptor validation, and comparison timing/identity.'
   },
   {
     label: 'Rendering boundary',
@@ -43,16 +49,28 @@ export const sourceSections: SourceSection[] = [
     verification: 'Native and WebAssembly builds compile both loop targets; artifact checks validate generated files.'
   },
   {
+    label: 'Headless and comparison entrypoints',
+    path: 'src/headless.c + src/lab_web.c',
+    responsibility: 'The raylib-free solar-lab CLI and the C-only comparison WASM module share sessions, descriptors, measurements, and CSV export. examples/ holds replayable .solar inputs.',
+    verification: 'make test-cli; tools/test_learning_wasm.mjs compares matching native/WASM experiments.'
+  },
+  {
     label: 'Test binaries',
     path: 'tests/',
-    responsibility: 'focused C binaries for physics and app behavior without requiring a desktop window.',
-    verification: 'Run with make test.'
+    responsibility: 'Focused C binaries plus Python CLI, build-graph, catalog-import, and artifact-validation tests; no desktop window is required.',
+    verification: 'make test test-build test-cli test-validators; make test-sanitize for address/undefined-behavior checks.'
   },
   {
     label: 'Public site',
     path: 'docs/',
     responsibility: 'Astro Pages site, documentation routes, public lab shell, and source-backed explanatory content.',
-    verification: 'Run npm run build --prefix docs and the docs route smoke checker.'
+    verification: 'npm test --prefix docs, npm run check --prefix docs, npm run build --prefix docs, and make docs-check; docs/browser-tests/ covers browser interaction.'
+  },
+  {
+    label: 'Catalog and delivery tools',
+    path: 'tools/',
+    responsibility: 'Explicit source refresh/import, offline audits, C/WASM parity checks, runtime artifact provenance/staging, generated-route validation, and the loopback site server.',
+    verification: 'make test-build test-validators, offline catalog checks, WASM checks, and make docs-check.'
   },
   {
     label: 'Browser runtime',
@@ -63,7 +81,7 @@ export const sourceSections: SourceSection[] = [
   {
     label: 'Automation',
     path: '.github/workflows/',
-    responsibility: 'Build workflow for native and WASM gates, plus workflow-run Pages deployment.',
-    verification: 'GitHub Actions Build and Deploy Pages runs must pass for the pushed SHA.'
+    responsibility: 'Read-only Build gates produce a checked Pages tree; trusted workflow-run deployment publishes that exact artifact. CodeQL separately analyzes C/C++, JavaScript/TypeScript, and Actions.',
+    verification: 'Inspect Build/CodeQL for the revision and, on eligible main delivery, Deploy Pages plus the public runtime manifest.'
   }
 ];

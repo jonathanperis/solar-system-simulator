@@ -14,7 +14,9 @@ import json
 from html.parser import HTMLParser
 from pathlib import PurePosixPath
 from pathlib import Path
+from typing import NoReturn
 from urllib.parse import unquote, urlsplit
+from xml.etree import ElementTree
 
 
 BASE_PATH = "/solar-system-simulator/"
@@ -52,7 +54,7 @@ ROUTES: dict[str, list[str]] = {
     "docs/roadmap/index.html": ["Expansion stays one body at a time", "Implemented now", "Planned sequence", "Jupiter", "Saturn", "Kuiper belt"],
 }
 
-FOOTER_MARKERS = ["data-footer-credits", "Jonathan Peris", "Small-body atlas", "raylib", "Emscripten", "Astro", "GitHub Pages"]
+FOOTER_MARKERS = ["data-footer-credits", "Jonathan Peris", "Learning laboratory", "raylib", "Emscripten", "Astro", "GitHub Pages"]
 ATLAS_BODY_ANCHORS = ["sun", "mercury", "venus", "earth", "moon", "mars", "phobos", "deimos", "vesta", "jupiter"]
 ATLAS_BODY_ANCHORS += [moon["slug"] for moon in json.loads((Path(__file__).resolve().parents[1] / "data/jovian_moons.json").read_text())["moons"]]
 ATLAS_BODY_ANCHORS += ["saturn", "uranus", "neptune"]
@@ -71,7 +73,7 @@ class ReferenceParser(HTMLParser):
                 self.references.append(value)
 
 
-def fail(message: str) -> None:
+def fail(message: str) -> NoReturn:
     print(f"docs route check failed: {message}", file=sys.stderr)
     raise SystemExit(1)
 
@@ -115,6 +117,25 @@ def check_internal_references(dist: Path, route: str, html: str) -> None:
                 fail(f"{route} references missing local file: {reference}")
 
 
+def check_sitemap(dist: Path) -> None:
+    # Derive the canonical page inventory from output, so a new route cannot be
+    # silently omitted from both the hand-maintained sitemap and ROUTES above.
+    expected = {
+        "https://jonathanperis.github.io" + BASE_PATH +
+        page.relative_to(dist).as_posix().removesuffix("index.html")
+        for page in dist.rglob("index.html")
+    }
+    try:
+        sitemap = ElementTree.parse(dist / "sitemap.xml")
+    except ElementTree.ParseError as error:
+        fail(f"invalid sitemap.xml: {error}")
+    locations = [node.text for node in sitemap.findall(
+        "{http://www.sitemaps.org/schemas/sitemap/0.9}url/"
+        "{http://www.sitemaps.org/schemas/sitemap/0.9}loc")]
+    if len(locations) != len(expected) or set(locations) != expected:
+        fail("sitemap.xml must list each generated canonical page exactly once")
+
+
 def main(argv: list[str]) -> int:
     dist = Path(argv[1]) if len(argv) > 1 else Path("docs/dist")
     if not dist.is_dir():
@@ -128,6 +149,7 @@ def main(argv: list[str]) -> int:
     for asset in ("robots.txt", "sitemap.xml"):
         if not (dist / asset).is_file():
             fail(f"missing {asset}")
+    check_sitemap(dist)
 
     analytics_id = os.environ.get("PUBLIC_GA_ID", "")
 

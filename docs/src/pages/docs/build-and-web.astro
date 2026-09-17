@@ -20,23 +20,53 @@ import DocsShell from '../../components/DocsShell.astro';
         <article><code>make dist-wasm</code><p>Package JS/WASM assets and their revision/checksum manifest.</p></article>
         <article><code>make docs-assets</code><p>Validate and copy the runtime assets into Astro public output.</p></article>
         <article><code>npm run check --prefix docs</code><p>Type-check Astro source before static output.</p></article>
+        <article><code>make docs-check</code><p>Check generated routes, base-path-safe assets, navigation, and sitemap completeness after the Astro build.</p></article>
       </div>
+    </section>
+
+    <section class="doc-panel">
+      <h2>Build and preview the complete site</h2>
+      <p>Run these commands from the repository root after preparing raylib 6.0 for the web with the same Emscripten SDK. Replace the source path with your checkout. Native raylib object files must be rebuilt for the web platform before reuse.</p>
+      <pre><code>{`make PLATFORM=PLATFORM_WEB -C /absolute/path/to/raylib/src
+make docs-assets RAYLIB_WEB_SRC=/absolute/path/to/raylib/src
+npm ci --prefix docs
+npm test --prefix docs
+npm run check --prefix docs
+npm run build --prefix docs
+make docs-check
+npm run preview --prefix docs`}</code></pre>
+      <p>Open the printed loopback URL under <code>/solar-system-simulator/</code>. Leave <code>PUBLIC_GA_ID</code> unset for local builds. The simulator pair, <code>catalog-orbits.wasm</code>, the learning-lab pair, and <code>build-info.json</code> must all be staged; copying only the main JS/WASM pair leaves the catalog and comparison pages incomplete.</p>
+      <p>Content-only work can reuse an already validated runtime bundle. After edits, rerun docs tests, type-check, build, and route checks; C changes also require fresh runtime assets. For live editing use <code>npm run dev:background --prefix docs</code>, then <code>dev:status</code>, <code>dev:logs</code>, or <code>dev:stop</code> with the same npm prefix to manage that server.</p>
     </section>
 
     <section class="doc-panel">
       <h2>Artifact checks</h2>
       <p><code>tools/check_wasm_artifacts.py</code> confirms the generated <code>solar-system-simulator.js</code> and <code>.wasm</code> files exist, checks the loader/control/export bridge, verifies <code>\0asm\1\0\0\0</code> WebAssembly header bytes, and matches every artifact to <code>build-info.json</code> checksums and source revision.</p>
-      <p>Use raylib 6.0, Emscripten 5.0.7, Python 3.10+, and Node 24+ (CI uses Node 24). Point <code>RAYLIB_WEB_SRC</code> at a raylib source directory built for the same Emscripten version. Build-only provenance is regenerated when the revision changes; local uncommitted edits are labeled dirty.</p>
+      <p>Use raylib 6.0, Emscripten 6.0.9, Python 3.10+, and Node 24+ (CI uses Node 26). Point <code>RAYLIB_WEB_SRC</code> at a raylib source directory built for the same Emscripten version. Build-only provenance is regenerated when the revision changes; local uncommitted edits are labeled dirty.</p>
+      <p>The docs use Astro 7.3.3 and <code>@astrojs/check</code> 0.9.10. TypeScript stays at 6.0.3 because the checker supports TypeScript 5/6, not 7. The lockfile pins the resolved dependency tree.</p>
+      <p>Emscripten 6 raises its generated-code minimums to Chrome 85, Firefox 79, and Safari 14.1. Those are compiler minimums, not an application-wide tested browser matrix: the simulator needs WebGL and the catalog uses modern browser APIs. Use a current browser for the full lab.</p>
       <p><code>docs/src/pages/simulator.astro</code> owns the browser canvas and shared page layout. <code>docs/src/lib/simulator.ts</code> configures Emscripten before loading its JavaScript, sends control actions through the exported <code>solar_web_command</code> function, and formats live C inspector/playback state. Controls stay disabled until C reports readiness and after fatal loading/runtime failures.</p>
       <p>The old <code>/wasm/solar-system-simulator.html</code> URL redirects to <code>/simulator/</code>. Astro renders that compatibility document at build time; the published site remains static.</p>
+      <p>Older local builds may leave a generated <code>docs/public/wasm/solar-system-simulator.html</code>. Move that legacy file outside <code>docs/public/</code> before building: Astro gives public files precedence over its redirect endpoint, and <code>make docs-check</code> rejects the stale page.</p>
       <p><code>learning-lab.mjs</code> and <code>learning-lab.wasm</code> serve the graphics-free comparison page using the same C sessions, configuration parser and measurements as the native CLI. Their checksums join the runtime manifest. <code>tools/test_learning_wasm.mjs</code> compares native and WASM outputs for circular, encounter and collision experiments.</p>
     </section>
 
     <section class="doc-panel">
       <h2>GitHub workflows</h2>
-      <p><code>.github/workflows/build.yml</code> builds native, sanitized, WebAssembly, and Astro/link-check lanes before merge, including a C/TypeScript catalog comparison. Build uses read-only repository permissions and immutable action revisions. Only the canonical main build includes configured analytics; the build and checker share that setting.</p>
-      <p><code>.github/workflows/deploy-pages.yml</code> downloads the already checked Pages tree from that exact successful Build, verifies runtime provenance, and publishes it without rebuilding Astro. Runs for an older main revision are skipped. Deployment retains its narrowly scoped Pages permissions.</p>
+      <p><code>.github/workflows/build.yml</code> runs on main pushes, pull requests, and manual dispatch. Its native, sanitized, WebAssembly, and Astro lanes include dependency auditing, full offline catalog validation, C/TypeScript catalog comparison, and native/WASM comparison checks. Build uses read-only repository permissions and immutable action/raylib revisions. Only the canonical main build includes configured analytics; the build and checker share that setting.</p>
+      <p><code>.github/workflows/deploy-pages.yml</code> accepts only successful same-repository main builds triggered by push or manual dispatch. It downloads that run's already checked Pages tree, verifies runtime provenance, and publishes without rebuilding Astro. Runs for an older main revision are skipped. Deployment retains its narrowly scoped Pages permissions.</p>
+      <p><code>.github/workflows/codeql.yml</code> separately scans C/C++, JavaScript/TypeScript, and Actions with security-and-quality queries on main pushes, PRs targeting main, weekly schedules, and manual dispatch. Its C analysis builds both the native app and headless runner.</p>
       <p>Pinned Playwright browser tests exercise the built Pages site, including parameter sharing/import, collision identity, a 100-day Phobos challenge, mobile hit targets, SI export invariance and real failed asset fixtures. Run <code>PLAYWRIGHT_CHANNEL=chrome npm run test:browser --prefix docs</code> with installed Chrome. CI installs the pinned Chromium build; sandboxing and TLS validation stay enabled.</p>
+    </section>
+
+    <section class="doc-panel">
+      <h2>Keep documentation source-backed</h2>
+      <p>Page content lives in <code>docs/src/pages/</code>; shared navigation/milestone copy lives in <code>docs/src/lib/site.ts</code>, and the ownership map lives in <code>docs/src/lib/sourceMap.ts</code>. Update related README claims when changing a build, model, or control contract. New canonical routes also belong in <code>docs/public/sitemap.xml</code> and the route checker.</p>
+      <p>Use <code>make headless</code> followed by <code>node tools/check_catalog.mjs</code> to cross-check core names, kinds, parents, and order. Use <code>python3 tools/small_body_catalog.py --check</code> for the full pinned catalog. Snapshot counts and retrieval dates come from versioned data; an offline audit does not fetch a newer astronomical inventory.</p>
     </section>
   </DocsShell>
 </BaseLayout>
+
+<style>
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; background: var(--paper-light); }
+</style>

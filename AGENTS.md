@@ -40,8 +40,13 @@ solar-system-simulator/
 ├── README.md              # user-facing project status and physics notes
 ├── src/
 │   ├── main.c             # raylib app loop, camera controls, overlays, simulation stepping
+│   ├── headless.c         # raylib-free solar-lab CSV/comparison runner
+│   ├── lab_web.c          # C-only comparison WebAssembly entrypoint
 │   ├── app/               # app-owned helpers testable without opening a window
-│   │   ├── body_trails.*  # persistent motion-history storage for non-star bodies
+│   │   ├── body_trails.*  # synchronized motion history; only fixed stars omit trails
+│   │   ├── comparison.*  # matched A/B checkpoints and bounded telemetry
+│   │   ├── csv_export.*  # shared native/browser/headless SI export
+│   │   ├── lab_config.*  # bounded versioned lesson descriptor
 │   │   ├── orbit_camera.* # stable orbit camera and family framing math
 │   │   ├── simulation_session.* # playback, selection, reset, physical inspector
 │   │   └── simulation_step.* # fixed-step clock accumulator

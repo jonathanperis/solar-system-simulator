@@ -16,9 +16,9 @@ Solar System Simulator is a learning-first, physics-first C11 + raylib project t
    - Internal simulation state uses SI units, double precision, and raylib-independent data structures.
    - Rendering may be illustrative, but it must never mutate physical state.
 
-2. **One body / one concept per milestone**
-   - Expand the system incrementally: constants, initialization, tests, renderer visibility, docs, then commit.
-   - Avoid jumping to ephemerides, textures, shaders, or catalogs before the current body is physically grounded.
+2. **One physical milestone at a time**
+   - Expand incrementally: sourced constants or catalog inputs, initialization, tests, renderer visibility, docs, then verification.
+   - Keep the complete source catalog separate from the bounded active scene. New physics and visual features need a concrete learning goal and evidence.
 
 3. **Learning by inspection**
    - Code, docs, and the GitHub Pages site should explain why each formula, constant, and transform exists.
@@ -51,6 +51,8 @@ Solar System Simulator is a learning-first, physics-first C11 + raylib project t
 
 - Native app: C11 + raylib, built by `Makefile`.
 - Simulation: Newtonian N-body baseline with velocity-Verlet / kick-drift-kick stepping.
-- Bodies: Sun, Mercury, Venus, Earth, Moon, Mars, Phobos, Deimos, Vesta.
-- Tests: C test binaries for vector math, physics, scene initialization, orbit camera, trails, and renderer helpers.
-- Public site: Astro static GitHub Pages atlas with a base-path-safe WebAssembly runtime, field-guide docs, source atlas, physics notes, body catalog, pipeline docs, footer credits, and route smoke checks.
+- Core scene: 128 bodies — the Sun, all eight planets, Vesta, Earth's Moon, Phobos, Deimos, and 115 Jovian moons. The default Sun is fixed; the explicit barycentric-core lesson releases it.
+- Small-body atlas: 1,564,244 qualifying records in the pinned 2026-09-14 JPL snapshot, separate from the active scene. Selected experiments use epoch-aligned Sun/eight planets plus at most 16 objects.
+- Learning lab: ten guided presets beyond the core, explicit Verlet/Euler comparisons, scientific diagnostics, force inspection, bounded A/B plots, save/share/import descriptors, and SI CSV export. The same C model runs natively, in WebAssembly, and through the raylib-free CLI.
+- Verification: C physics/app/renderer tests, offline source-catalog checks, Python CLI/build/artifact contracts, Node integration tests, Astro type/build/route checks, sanitizers, and sandboxed browser tests in CI.
+- Public site: Astro static GitHub Pages atlas with `/simulator/`, `/compare/`, `/small-bodies/`, field-guide docs, source atlas, physics notes, body catalog, and pipeline docs. Build produces the validated site; Deploy Pages publishes that exact artifact and revision.
