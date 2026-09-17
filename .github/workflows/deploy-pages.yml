@@ -8,9 +8,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-  actions: read
 
 concurrency:
   group: pages
@@ -19,8 +16,18 @@ concurrency:
 jobs:
   deploy:
     name: Deploy the checked Pages artifact
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository
+    # A fork can name its branch main; privileged jobs must also verify origin.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.head_branch == 'main' &&
+      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      actions: read
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
