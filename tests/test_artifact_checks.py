@@ -9,11 +9,32 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from check_docs_routes import check_internal_references
+from check_docs_routes import check_internal_references, check_sitemap
 from check_wasm_artifacts import main as check_wasm
 
 
 class ArtifactChecks(unittest.TestCase):
+    def test_sitemap_matches_generated_pages(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+            root = Path(directory)
+            (root / "index.html").write_text("home")
+            (root / "small-bodies").mkdir()
+            (root / "small-bodies/index.html").write_text("catalog")
+            base = "https://jonathanperis.github.io/solar-system-simulator/"
+            expected = [base, base + "small-bodies/"]
+
+            def sitemap(urls):
+                (root / "sitemap.xml").write_text(
+                    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
+                    "".join(f"<url><loc>{url}</loc></url>" for url in urls) + "</urlset>")
+
+            sitemap(expected)
+            check_sitemap(root)
+            for urls in ([base], expected + [base + "removed/"], expected + [base]):
+                with self.subTest(urls=urls), self.assertRaises(SystemExit):
+                    sitemap(urls)
+                    check_sitemap(root)
+
     def test_missing_assets_and_base_path_escape_are_rejected(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
             root = Path(directory) / "dist"
