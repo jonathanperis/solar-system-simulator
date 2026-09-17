@@ -45,7 +45,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.language == 'c-cpp' && 'manual' || 'none' }}
-          queries: security-extended
+          queries: security-and-quality
       - name: Build native source for analysis
         if: matrix.language == 'c-cpp'
         env:
