@@ -11,11 +11,13 @@ import { bodyFocusOrder } from '../../lib/bodies';
   >
     <section class="doc-panel">
       <h2>Keyboard and mouse</h2>
+      <p>The separate comparison lab pairs run A/B settings at matched checkpoints and provides pause, resume, next-checkpoint, reset, CSV export and share/import controls. Main-runtime collision lessons use a smaller physical timestep and 1/5/10/25/50 simulated-seconds-per-second playback so contact remains observable. The Contact button or native <kbd>M</kbd> switches bounce/merge and restarts the contact lesson.</p>
+      <p>Guided lessons add preset, integrator, timestep and initial-speed controls plus SI snapshot export. Native <kbd>L</kbd> cycles lessons, <kbd>I</kbd> switches the teaching integrator, <kbd>D</kbd> changes the lesson timestep, and <kbd>-</kbd>/<kbd>=</kbd> adjust initial speed. These changes reset the lesson. <kbd>T</kbd> switches trail frame, <kbd>X</kbd> toggles vector directions and <kbd>E</kbd> exports CSV on both targets.</p>
       <div class="command-grid">
         <article><code>Space</code><p>Pause or resume physics. Paused wall time is not accumulated.</p></article>
-        <article><code>N</code><p>Advance exactly 15 simulated seconds while paused; disabled during playback.</p></article>
+        <article><code>N</code><p>Advance one configured physics tick while paused (15 seconds for core/catalog); disabled during playback.</p></article>
         <article><code>R</code><p>Reset physics, clock remainder, and trails to time zero. Selection, speed, pause state, view mode, and camera rotation setting are retained.</p></article>
-        <article><code>[ / ]</code><p>Select a requested speed: 1 hour, 1 day, 5 days, 10 days, or 15 days per real second. The physics step stays 15 seconds. Achieved speed and retained pending time reveal when hardware cannot sustain the target.</p></article>
+        <article><code>[ / ]</code><p>Select a requested speed: 1 hour, 1 day, 5 days, 10 days, or 15 days per real second. The configured physics step stays fixed. Achieved speed and retained pending time reveal when hardware cannot sustain the target.</p></article>
         <article><code>Tab</code><p>Cycle camera focus in the native app; continue through page controls on the web.</p></article>
         <article><code>C / 1–9 / 0</code><p>Cycle through bodies or select directly by catalog position; 0 selects tenth body Jupiter. The web dropdown lists names from the running C scene.</p></article>
         <article><code>/</code><p>Native name/designation/group search: type a query, Down finds the next match, Enter selects, Escape closes. On the web, use Find a body and Body group; filters retain the current C selection.</p></article>

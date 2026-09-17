@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://jonathanperis.github.io/solar-system-simulator/</loc></url>
+  <url><loc>https://jonathanperis.github.io/solar-system-simulator/compare/</loc></url>
   <url><loc>https://jonathanperis.github.io/solar-system-simulator/docs/</loc></url>
+  <url><loc>https://jonathanperis.github.io/solar-system-simulator/docs/experiments/</loc></url>
   <url><loc>https://jonathanperis.github.io/solar-system-simulator/docs/architecture/</loc></url>
   <url><loc>https://jonathanperis.github.io/solar-system-simulator/docs/simulation-core/</loc></url>
   <url><loc>https://jonathanperis.github.io/solar-system-simulator/docs/rendering/</loc></url>

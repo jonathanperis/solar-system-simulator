@@ -15,6 +15,8 @@ typedef enum RenderScaleMode {
     RENDER_SCALE_REAL
 } RenderScaleMode;
 
+typedef enum RenderTrailFrame { RENDER_TRAILS_ABSOLUTE, RENDER_TRAILS_PARENT } RenderTrailFrame;
+
 typedef struct RenderSystemFrame {
     size_t root_index;
     double radius;
@@ -27,12 +29,18 @@ const char *renderer_scale_mode_label(RenderScaleMode mode);
 Color renderer_body_color(const Body *body);
 Vec3d renderer_body_position(const SolarSystem *system, size_t body_index, RenderScaleMode mode);
 Vec3d renderer_trail_point_position(const SolarSystem *system, const BodyTrails *trails, size_t body_index, size_t point_index, RenderScaleMode mode);
+Vec3d renderer_trail_point_in_frame(const SolarSystem *system, const BodyTrails *trails, size_t body_index,
+    size_t point_index, RenderScaleMode mode, RenderTrailFrame frame);
+Vec3d renderer_vector_tip(const SolarSystem *system, size_t body_index, RenderScaleMode mode, bool acceleration);
+double renderer_radius_magnification(const Body *body, RenderScaleMode mode);
+void renderer_draw_vectors(const SolarSystem *system, size_t selected, RenderScaleMode mode, Vec3d origin);
 size_t renderer_trail_sample_stride(size_t point_count);
 size_t renderer_trail_draw_segment_count(size_t point_count);
 float renderer_body_radius(const Body *body, RenderScaleMode mode);
 float renderer_body_visual_radius(const Body *body, RenderScaleMode mode);
 int renderer_grid_slices_for_system(const SolarSystem *system, RenderScaleMode mode);
 Vector3 renderer_relative_vector(Vec3d position, Vec3d origin);
-void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode, Vec3d origin);
+void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode,
+    RenderTrailFrame trail_frame, Vec3d origin);
 
 #endif

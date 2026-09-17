@@ -27,6 +27,11 @@ double vec3d_dot(Vec3d a, Vec3d b)
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
+Vec3d vec3d_cross(Vec3d a, Vec3d b)
+{
+    return (Vec3d){a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+}
+
 double vec3d_length_squared(Vec3d v)
 {
     return vec3d_dot(v, v);

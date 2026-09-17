@@ -59,6 +59,25 @@ void physics_step(Body *bodies, size_t body_count, double dt_seconds)
     physics_step_from_accelerations(bodies, body_count, dt_seconds);
 }
 
+void physics_step_with_integrator(Body *bodies, size_t body_count, double dt_seconds, PhysicsIntegrator method)
+{
+    physics_compute_accelerations(bodies, body_count);
+    if (method == PHYSICS_EULER) physics_step_euler_from_accelerations(bodies, body_count, dt_seconds);
+    else physics_step_from_accelerations(bodies, body_count, dt_seconds);
+}
+
+void physics_step_euler_from_accelerations(Body *bodies, size_t body_count, double dt_seconds)
+{
+    /* Explicit Euler is an intentionally less accurate classroom comparison:
+     * drift with the old velocity, then kick with the old acceleration. */
+    for (size_t i = 0; i < body_count; ++i) {
+        if (bodies[i].fixed) continue;
+        bodies[i].position_m = vec3d_add(bodies[i].position_m, vec3d_scale(bodies[i].velocity_mps, dt_seconds));
+        bodies[i].velocity_mps = vec3d_add(bodies[i].velocity_mps, vec3d_scale(bodies[i].acceleration_mps2, dt_seconds));
+    }
+    physics_compute_accelerations(bodies, body_count);
+}
+
 void physics_step_from_accelerations(Body *bodies, size_t body_count, double dt_seconds)
 {
     /* Velocity-Verlet: half-kick velocities, drift positions, recompute

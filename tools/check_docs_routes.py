@@ -36,6 +36,7 @@ ROUTES: dict[str, list[str]] = {
         "Run live simulator",
     ],
     "physics/index.html": ["Physics stays in SI units", "docs/simulation-core/", "data-footer-credits"],
+    "compare/index.html": ["Compare explanations with evidence", "data-comparison", "learning-lab.mjs", "Guided challenges", "Force-contribution inspector"],
     "simulator/index.html": ["Run the real orbit loop", "data-simulator", "runtime-control-state", "canvas", "15-second", "uniform", "data-footer-credits", "data-runtime-panel", "data-runtime-body", "data-runtime-speed", "Frame selected system", "Frame selected body", "Live physics inspector", "data-inspector-distance", "data-inspector-speed", "data-runtime-search", "data-runtime-group", "15 days / second", "10 days / second", "data-runtime-achieved", "test particles"],
     "body-catalog/index.html": ["Stable IDs prevent duplicate knowledge", "docs/roadmap/", "Phobos", "Deimos", "Vesta", "Jupiter", "Saturn", "JPL physical parameters", "NASA's Saturn facts", "JPL SBDB solution 36"],
     "small-bodies/index.html": ["A million worlds", "data-small-atlas", "data-density", "data-catalog-search", "data-results", "data-basket", "data-prepare", "catalog/manifest.json", "1,564,244"],
@@ -43,6 +44,7 @@ ROUTES: dict[str, list[str]] = {
     "pipeline/index.html": ["Native tests feed a Pages lab bench", "docs/build-and-web/", "make web"],
     "docs/index.html": ["Trace every orbit wire without one giant scroll", "Solar manual routes", "Every orbit manual page", "docs/architecture/"],
     "docs/architecture/index.html": ["Architecture keeps physics testable", "src/sim/", "src/render/", "src/main.c", "tests/"],
+    "docs/experiments/index.html": ["Predict, run, measure, explain", "make headless", "solar-lab", "Barycentric Earth", "normalized_energy_change"],
     "docs/simulation-core/index.html": ["Simulation state uses physical units first", "src/sim/physics.c", "src/sim/solar_system.c", "src/sim/vec3d.c"],
     "docs/rendering/index.html": ["Rendering adapts physics for human eyes", "src/render/renderer.c", "src/app/body_trails.c"],
     "docs/controls/index.html": ["Controls expose the current physics scene", "Space", "N", "R", "Frame", "physical inspector", "simulation_session", "orbit_camera"],
@@ -65,7 +67,7 @@ class ReferenceParser(HTMLParser):
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.elements.append((tag, dict(attrs)))
         for name, value in attrs:
-            if name in {"href", "src", "data-runtime-src"} and value:
+            if name in {"href", "src", "data-runtime-src", "data-lab-src"} and value:
                 self.references.append(value)
 
 
@@ -105,8 +107,12 @@ def check_internal_references(dist: Path, route: str, html: str) -> None:
     parser.feed(html)
     for reference in parser.references:
         target = internal_target(route, reference)
-        if target is not None and not (dist / target).is_file():
-            fail(f"{route} references missing local file: {reference}")
+        if target is not None:
+            resolved = (dist / target).resolve()
+            if not resolved.is_relative_to(dist.resolve()):
+                fail(f"{route} references a file outside the published tree: {reference}")
+            if not resolved.is_file():
+                fail(f"{route} references missing local file: {reference}")
 
 
 def main(argv: list[str]) -> int:
@@ -138,8 +144,8 @@ def main(argv: list[str]) -> int:
             for tag, attrs in parser.elements
             if tag == "a" and "data-primary-nav-link" in attrs
         ]
-        if len(primary_links) != 8:
-            fail(f"{route} must expose all eight primary navigation links")
+        if len(primary_links) != 9:
+            fail(f"{route} must expose all nine primary navigation links")
         if sum(attrs.get("aria-current") == "page" for attrs in primary_links) != 1:
             fail(f"{route} must identify exactly one current primary navigation link")
         if "rel=\"canonical\"" not in html:

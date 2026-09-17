@@ -124,19 +124,16 @@ kbd { border: 1px solid var(--rule); padding: 0.08em 0.35em; background: var(--p
   text-transform: uppercase;
 }
 .button, .atlas-launch { background: var(--navy); color: var(--paper-light); }
-.button-secondary { border-color: var(--brass); background: var(--brass-light); }
+.button-secondary { border-color: var(--brass); background: var(--brass-light); color: var(--navy); }
 .button-tertiary, .atlas-source { background: transparent; }
 .button:hover, .atlas-launch:hover { background: var(--brass-light); color: var(--navy); border-color: var(--brass); }
 .button-secondary:hover, .button-tertiary:hover, .atlas-source:hover { background: var(--paper-light); color: var(--navy); }
 
 /* Homepage atlas */
-.home-page { overflow: hidden; }
+.home-page { overflow: auto; }
 .home-page .site-header { position: fixed; inset: 0 0 auto; z-index: 10; width: calc(100vw - 4rem); padding-block: 1.1rem; background: linear-gradient(var(--paper) 72%, transparent); }
 .home-page main { width: 100vw; }
-.home-page .site-footer { position: fixed; inset: auto 2rem 0; z-index: 8; width: auto; padding: 0.7rem 0; pointer-events: none; }
-.home-page .footer-grid { display: block; border-top: 1px solid var(--rule); padding-top: 0.5rem; }
-.home-page .footer-credit-block, .home-page .footer-links { display: none; }
-.home-page .footer-grid::after { content: "C11 / raylib / Astro / source-backed educational model"; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; font-size: 0.58rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.home-page .site-footer { position: relative; width: var(--measure); }
 .orbital-atlas { position: relative; min-height: 100svh; overflow: hidden; }
 .atlas-copy { position: absolute; z-index: 3; top: clamp(7.4rem, 13vh, 9rem); left: max(2rem, calc((100vw - 1160px) / 2)); width: min(31rem, 40vw); }
 .atlas-copy h1 { margin-bottom: 1rem; }
@@ -166,7 +163,7 @@ kbd { border: 1px solid var(--rule); padding: 0.08em 0.35em; background: var(--p
 .atlas-arm { position: absolute; inset: 0; pointer-events: none; transform: rotate(var(--atlas-bearing, 0deg)); transform-origin: 50% 50%; }
 .atlas-arm span { position: absolute; left: 50%; top: 11%; bottom: 50%; width: 1px; background: var(--brass); transform: translateX(-50%); }
 .atlas-arm i { position: absolute; left: calc(50% - 0.36rem); top: calc(11% - 0.36rem); width: 0.72rem; height: 0.72rem; border: 1px solid var(--brass); border-radius: 50%; background: var(--paper-light); }
-.atlas-body { position: absolute; z-index: 2; display: grid; justify-items: center; gap: 0.3rem; min-width: 3rem; min-height: 2.75rem; border: 0; padding: 0; transform: translate(-50%, -50%); background: transparent; color: var(--navy); cursor: pointer; text-decoration: none; }
+.atlas-body { position: absolute; left: var(--chart-left); top: var(--chart-top); z-index: 2; display: grid; justify-items: center; gap: 0.3rem; min-width: 3rem; min-height: 2.75rem; border: 0; padding: 0; transform: translate(-50%, -50%); background: transparent; color: var(--navy); cursor: pointer; text-decoration: none; }
 .atlas-body-orb { width: 1.05rem; height: 1.05rem; border: 1px solid var(--navy); border-radius: 50%; background: var(--body-color, var(--moon)); box-shadow: 0 0 0 0.18rem var(--paper); }
 .atlas-body-label { padding: 0.1rem 0.25rem; background: var(--paper); font-family: "JetBrains Mono", monospace; font-size: 0.57rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
 .atlas-body:hover .atlas-body-orb, .atlas-body[aria-pressed="true"] .atlas-body-orb { width: 1.35rem; height: 1.35rem; border-color: var(--brass); box-shadow: 0 0 0 0.22rem var(--paper), 0 0 0 0.3rem var(--brass); }
@@ -359,6 +356,8 @@ th { color: var(--brass); }
   .atlas-moon-tools { position: static; order: 3; width: 100%; max-width: none; }
   .atlas-stage { position: relative; inset: auto; order: 4; width: 100%; aspect-ratio: 1; overflow: clip; border-block: 1px solid var(--rule); }
   .atlas-plate, .atlas-engraving::before { top: 50%; right: 0; width: 100%; height: 100%; }
+  .atlas-plate[data-atlas-plate="heliocentric"] .atlas-body { left: var(--compact-left); top: var(--compact-top); }
+  .atlas-body-solar .atlas-body-orb { width: 1.5rem; height: 1.5rem; }
   .atlas-engraving::after { top: 50%; right: -8%; width: 116%; height: 116%; }
   .atlas-figure, .atlas-coordinate { display: none; }
   .atlas-bearing-control { position: static; order: 5; display: grid; grid-template-columns: minmax(0, 1fr) auto; width: 100%; }
