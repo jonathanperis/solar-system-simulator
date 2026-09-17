@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { normalizeBase } from '../lib/base';
 import { buildRevision } from '../lib/site';
 import { implementedBodies } from '../lib/bodies';
+import { lessonNames } from '../lib/simulator';
 const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 <BaseLayout title="Live simulator" description="Run the C11 and raylib solar system in your browser, with fixed-step SI physics and source-backed controls.">
@@ -33,6 +34,21 @@ const base = normalizeBase(import.meta.env.BASE_URL);
 
     <fieldset class="runtime-panel" data-runtime-panel disabled>
       <legend>Simulation controls</legend>
+      <div class="control-row">
+        <label>Lesson preset <select data-lesson>
+          {lessonNames.map((name, index) => <option value={index}>{name}</option>)}
+          <option value="-1" disabled>Prepared catalog experiment</option>
+        </select></label>
+        <label>Integrator <select data-integrator><option value="0">Velocity-Verlet</option><option value="1">Euler — teaching comparison</option></select></label>
+        <label>Physics step (seconds) <input type="number" data-dt min="0.01" max="3600" step="any" value="15" required /></label>
+        <label>Initial speed factor <input type="number" data-velocity-factor min="0.1" max="2" step="any" value="1" required /></label>
+        <button type="button" data-apply-lesson>Start lesson</button>
+        <button type="button" data-export>Export SI snapshot (CSV)</button>
+        <button type="button" data-command="contact" hidden>Contact: Elastic bounce (restart)</button>
+      </div>
+      <p data-lesson-status role="status">Changing a lesson configuration resets its experiment. Core and catalog runs retain 15-second Verlet.</p>
+      <p><a href={`${base}docs/experiments/`}>Predict, run, measure: guided experiments →</a> · Hidden-tab wall time is excluded when you return.</p>
+      <p><a href={`${base}compare/`}>Open the A/B comparison lab: plots, challenges and shareable experiments →</a></p>
       <div class="control-row">
         <a class="button button-secondary" href={`${base}small-bodies/`}>Choose small bodies</a>
         <button type="button" data-start-experiment>Start prepared experiment</button>
@@ -65,6 +81,8 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         <button type="button" data-command="zoom" data-value="1">Zoom in</button>
         <button type="button" data-command="zoom" data-value="-1">Zoom out</button>
         <label class="rotate-control"><input type="checkbox" data-runtime-rotate checked /> Rotate camera</label>
+        <button type="button" data-command="trails">Trails: Absolute</button>
+        <button type="button" data-command="vectors" aria-pressed="false">Vector directions: Off</button>
       </div>
       <p>Filters keep your current selection available. Reset restores time zero and fresh trails while keeping your selection, speed, pause state, and view settings.</p>
     </fieldset>
@@ -74,7 +92,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         Your browser needs canvas and WebGL to display the simulation.
       </canvas>
     </div>
-    <p id="simulator-keys" class="simulator-keys"><kbd>Space</kbd> pause · <kbd>N</kbd> step · <kbd>R</kbd> reset · <kbd>C</kbd> cycle all bodies · <kbd>1–9</kbd> / <kbd>0</kbd> select first ten · <kbd>V</kbd> view · <kbd>F</kbd> frame system · <kbd>B</kbd> frame body · <kbd>A</kbd> camera rotation · Mouse wheel to zoom. Shortcuts require canvas focus; <kbd>Tab</kbd> continues through the page.</p>
+    <p id="simulator-keys" class="simulator-keys"><kbd>Space</kbd> pause · <kbd>N</kbd> step · <kbd>R</kbd> reset · <kbd>C</kbd> cycle all bodies · <kbd>1–9</kbd> / <kbd>0</kbd> select first ten · <kbd>V</kbd> view · <kbd>F</kbd> frame system · <kbd>B</kbd> frame body · <kbd>A</kbd> camera rotation · <kbd>T</kbd> trail frame · <kbd>X</kbd> vectors · <kbd>E</kbd> export · Mouse wheel to zoom. Shortcuts require canvas focus; <kbd>Tab</kbd> continues through the page.</p>
     <noscript><p class="callout">JavaScript is required to run WebAssembly. The <a href={`${base}docs/simulation-core/`}>physics guide</a> is available without it.</p></noscript>
 
     <section class="physics-inspector" aria-labelledby="inspector-heading">
@@ -87,9 +105,33 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         <div><dt>Speed relative to parent</dt><dd data-inspector-speed>—</dd></div>
         <div><dt>Mass</dt><dd data-inspector-mass>—</dd></div>
         <div><dt>Physical radius</dt><dd data-inspector-radius>—</dd></div>
+        <div><dt>Parent-relative acceleration</dt><dd data-inspector-acceleration>—</dd></div>
+        <div><dt>Parent-relative specific energy</dt><dd data-inspector-specific-energy>—</dd></div>
+        <div><dt>Absolute position (X, Y, Z)</dt><dd data-inspector-position>—</dd></div>
+        <div><dt>Absolute velocity (X, Y, Z)</dt><dd data-inspector-velocity>—</dd></div>
+        <div><dt>Visual radius magnification</dt><dd data-magnification>—</dd></div>
         <div><dt>Camera target / distance (visual)</dt><dd data-runtime-camera>—</dd></div>
       </dl>
       <p>Frame selected system fits a planet and its moons; selecting a moon frames its parent and siblings. Framing the Sun includes all implemented bodies. Frame selected body zooms to just that body or its unknown-size marker. Use framing again after motion or zoom to refit the view.</p>
+    </section>
+
+    <section class="physics-inspector" aria-labelledby="diagnostics-heading">
+      <h2 id="diagnostics-heading">Measure numerical behavior</h2>
+      <dl>
+        <div><dt>Integrator / step / ticks</dt><dd data-integration>—</dd></div>
+        <div><dt>Total massive-body energy</dt><dd data-energy>—</dd></div>
+        <div><dt>Normalized energy change</dt><dd data-energy-change>—</dd></div>
+        <div><dt>Linear momentum magnitude</dt><dd data-momentum>—</dd></div>
+        <div><dt>Angular momentum magnitude</dt><dd data-angular-momentum>—</dd></div>
+      </dl>
+      <p>Energy change uses initial kinetic energy plus the absolute potential energy, keeping the escape-threshold comparison meaningful when total energy is near zero. Massless tracers do not contribute to totals. A fixed Sun constrains linear momentum; use the free Earth–Moon lesson to study its conservation. Parent-relative specific energy is an instantaneous two-body diagnostic, not an invariant of the perturbed full scene.</p>
+      <p>Optional vectors show parent-relative velocity in green and acceleration in orange. Their direction is physical; their length is illustrative. Parent-relative trails move historical parent/child pairs to the parent's present position. Both views leave recorded SI state unchanged.</p>
+    </section>
+
+    <section class="physics-inspector" aria-labelledby="forces-heading">
+      <h2 id="forces-heading">Where does the gravity come from?</h2>
+      <p>Top six source contributions, sampled at <span data-forces-time>—</span>. Percentages use the sum of source magnitudes, not net acceleration; vectors can cancel. Fixed bodies can have computed gravity while their positions remain constrained.</p>
+      <div class="table-wrap" tabindex="0"><table><thead><tr><th>Source</th><th>Acceleration</th><th>Magnitude share</th><th>X, Y, Z (m/s²)</th></tr></thead><tbody data-runtime-forces></tbody></table></div>
     </section>
 
     <div class="simulator-notes">
@@ -99,11 +141,11 @@ const base = normalizeBase(import.meta.env.BASE_URL);
       </section>
       <section>
         <h2>Read the history.</h2>
-        <p>Trails show recorded motion, not complete predicted orbits. Bounded history uses uniform sampling across the full run; spacing increases as time passes. Fine satellite loops become less resolved during long runs.</p>
+        <p>Trails show recorded motion, not complete predicted orbits. Bounded history uses uniform sampling across the full run; spacing increases as time passes. Lesson cadence rounds the initial 300 seconds up to whole configured ticks. Fine satellite loops become less resolved during long runs.</p>
       </section>
       <section>
         <h2>Read the numbers.</h2>
-        <p>Fixed 15-second physics steps are checked against 100-day orbital-phase and convergence tests. Requested speeds range from one hour to 15 days per real second. Bounded work per frame keeps controls responsive; slower hardware retains pending time and reports achieved speed. Speed presets never enlarge the integration step. This is an educational model, not a dated ephemeris.</p>
+        <p>The core/catalog 15-second physics steps are checked against 100-day orbital-phase and convergence tests. Lessons can vary their fixed step and method to study numerical error. Requested speeds range from one hour to 15 days per real second. Bounded work per frame keeps controls responsive; slower hardware retains pending time and reports achieved speed. Speed presets never enlarge the integration step. This is an educational model, not a dated ephemeris.</p>
       </section>
     </div>
     <p><a href={`${base}docs/build-and-web/`}>How Astro loads the C runtime →</a></p>

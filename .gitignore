@@ -4,11 +4,15 @@ docs/dist/
 docs/.astro/
 .astro/
 docs/node_modules/
+docs/test-results/
+docs/playwright-report/
 docs/public/wasm/
 playwright-evidence/
 .playwright-cli/
 .specs/
 __pycache__/
+solar-snapshot.csv
+.DS_Store
 
 # Prerequisites
 *.d

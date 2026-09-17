@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import sys
+import hashlib
+import json
 from pathlib import Path
 
 
@@ -21,8 +23,18 @@ def main() -> int:
     wasm = web_dir / f"{stem}.wasm"
 
     orbit_wasm = web_dir / 'catalog-orbits.wasm'
-    for path in (js, wasm, orbit_wasm):
+    lab_js = web_dir / 'learning-lab.mjs'
+    lab_wasm = web_dir / 'learning-lab.wasm'
+    manifest_path = web_dir / "build-info.json"
+    for path in (js, wasm, orbit_wasm, lab_js, lab_wasm, manifest_path):
         require(path)
+
+    manifest = json.loads(manifest_path.read_text())
+    if manifest.get("schema") != 1 or not manifest.get("revision"):
+        raise SystemExit("missing runtime source revision")
+    for path in (js, wasm, orbit_wasm, lab_js, lab_wasm):
+        if manifest.get("files", {}).get(path.name) != hashlib.sha256(path.read_bytes()).hexdigest():
+            raise SystemExit(f"artifact checksum mismatch: {path.name}")
 
     js_text = js.read_text(encoding="utf-8", errors="replace")
     repo_root = Path(__file__).resolve().parents[1]
@@ -35,13 +47,19 @@ def main() -> int:
         raise SystemExit(f"{wasm} does not start with the WebAssembly magic and version bytes")
     if orbit_wasm.read_bytes()[:8] != b"\x00asm\x01\x00\x00\x00":
         raise SystemExit('invalid standalone catalog orbital module')
+    if lab_wasm.read_bytes()[:8] != b"\x00asm\x01\x00\x00\x00":
+        raise SystemExit('invalid comparison module')
+    lab_text = lab_js.read_text()
+    for marker in ('learning-lab.wasm', '_lab_start', '_lab_advance', '_lab_point', '_lab_export_csv'):
+        if marker not in lab_text:
+            raise SystemExit(f'comparison module missing {marker}')
 
     for marker in ("solar_web_initial_canvas_width", "solar_web_initial_canvas_height", "solar_web_canvas_has_focus"):
         if marker not in main_text:
             raise SystemExit(f"src/main.c missing web sizing/focus boundary: {marker}")
     if "solar_web_report_state" not in main_text or "reportState" not in js_text:
         raise SystemExit("WebAssembly must report live simulation state to the Astro page")
-    for marker in ("_solar_web_command", "_solar_web_experiment", "_solar_web_demo", "clearBodies", "ccall", "addBody", "distanceM", "speedMps", "massKg", "radiusM", "massQuality", "radiusQuality", "achievedTimeScale", "pendingSeconds"):
+    for marker in ("_solar_web_command", "_solar_web_experiment", "_solar_web_demo", "_solar_web_lesson", "_solar_web_export", "reportLabState", "downloadCsv", "clearBodies", "ccall", "addBody", "distanceM", "speedMps", "massKg", "radiusM", "massQuality", "radiusQuality", "achievedTimeScale", "pendingSeconds"):
         if marker not in js_text:
             raise SystemExit(f"WebAssembly missing inspection/control bridge: {marker}")
 

@@ -13,8 +13,18 @@ const plates = [
 const chartPosition = (angle: number, radius: number) => {
   const radians = (angle - 90) * Math.PI / 180;
   const distance = radius * 0.43;
-  return `left: ${50 + Math.cos(radians) * distance}%; top: ${50 + Math.sin(radians) * distance}%;`;
+  return `--chart-left: ${50 + Math.cos(radians) * distance}%; --chart-top: ${50 + Math.sin(radians) * distance}%;`;
 };
+// The compact chart is an index, not a scaled orbit plot. Even angular spacing
+// keeps all nine non-star heliocentric controls distinct at a 320px viewport.
+const compactBodies = implementedBodies.filter(body => body.chart.plate === 'heliocentric' && body.slug !== 'sun');
+const compactAngle = (slug: string, angle: number) => {
+  const index = compactBodies.findIndex(body => body.slug === slug);
+  return index < 0 ? angle : 20 + index * 360 / compactBodies.length;
+};
+const compactPosition = (slug: string, angle: number, radius: number) => chartPosition(
+  compactAngle(slug, angle), compactBodies.some(body => body.slug === slug) ? 85 : radius
+).replace('--chart-left:', '--compact-left:').replace('--chart-top:', '--compact-top:');
 ---
 <section class="orbital-atlas" aria-labelledby="atlas-title" data-orbital-atlas data-base={base}>
   <div class="atlas-copy">
@@ -57,8 +67,8 @@ const chartPosition = (angle: number, radius: number) => {
 
   <div class="atlas-stage" data-atlas-stage tabindex="0" aria-label="Interactive illustrative solar-system chart">
     <div class="atlas-engraving" aria-hidden="true">
-      <span class="atlas-coordinate atlas-coordinate-x">right ascension</span>
-      <span class="atlas-coordinate atlas-coordinate-y">declination</span>
+      <span class="atlas-coordinate atlas-coordinate-x">illustrative bearing</span>
+      <span class="atlas-coordinate atlas-coordinate-y">reference plate</span>
       <span class="atlas-figure">fig. i / scale and positions illustrative</span>
     </div>
 
@@ -109,11 +119,12 @@ const chartPosition = (angle: number, radius: number) => {
           <button
             type="button"
             class={`atlas-body atlas-body-${body.accent}`}
-            style={chartPosition(body.chart.angle, body.chart.radius)}
+            style={`${chartPosition(body.chart.angle, body.chart.radius)} ${compactPosition(body.slug, body.chart.angle, body.chart.radius)}`}
             data-atlas-body
             data-slug={body.slug}
             data-plate={body.chart.plate}
             data-angle={body.chart.angle}
+            data-compact-angle={compactAngle(body.slug, body.chart.angle)}
             hidden={body.parent === 'Jupiter' && body.group !== 'Galilean moons'}
             aria-controls="atlas-note"
             aria-pressed={body.slug === 'sun' ? 'true' : 'false'}
@@ -217,6 +228,9 @@ const chartPosition = (angle: number, radius: number) => {
     };
     const selectedBody = (): ImplementedBody => implementedBodies.find((body) => body.slug === selectedSlug) ?? implementedBodies[0];
     const bodyControl = (slug: string): HTMLButtonElement | undefined => bodyControls.find((control) => control.dataset.slug === slug);
+    const compactViewport = window.matchMedia('(max-width: 760px)');
+    const markerAngle = (body: ImplementedBody): number => compactViewport.matches
+      ? Number(bodyControl(body.slug)!.dataset.compactAngle) : body.chart.angle;
     const restoreFocus = (): void => (invokingControl ?? bodyControl(selectedSlug))?.focus();
 
     const setBearing = (value: number | string): void => {
@@ -256,7 +270,7 @@ const chartPosition = (angle: number, radius: number) => {
       if (invokingControl?.matches('[data-atlas-body]')) invokingControl = control ?? null;
       control?.setAttribute('aria-pressed', 'true');
       control?.setAttribute('aria-expanded', String(openNote));
-      setBearing(body.chart.angle);
+      setBearing(markerAngle(body));
       populateNote(body);
       note.hidden = !openNote;
       status.textContent = `${body.name} selected. ${body.summary}`;
@@ -283,9 +297,9 @@ const chartPosition = (angle: number, radius: number) => {
       const rect = plates.find(plate => plate.dataset.atlasPlate === activePlate)!.getBoundingClientRect();
       const degrees = Math.atan2(event.clientY - rect.top - rect.height / 2, event.clientX - rect.left - rect.width / 2) * 180 / Math.PI + 90;
       const bodies = visibleBodies();
-      const index = nearestBodyIndex(bodies.map((body) => ({ chartAngle: body.chart.angle })), degrees);
-      setBearing(degrees);
+      const index = nearestBodyIndex(bodies.map((body) => ({ chartAngle: markerAngle(body) })), degrees);
       selectBody(bodies[index].slug, true);
+      setBearing(degrees);
     };
 
     const closeNote = (): void => {
@@ -315,9 +329,11 @@ const chartPosition = (angle: number, radius: number) => {
     nextPage.addEventListener('click', () => turnPage(1));
     bearingInput.addEventListener('input', () => {
       invokingControl = bearingInput;
-      setBearing(bearingInput.value);
+      const bearing = Number(bearingInput.value);
       const bodies = visibleBodies();
-      selectBody(bodies[nearestBodyIndex(bodies.map((body) => ({ chartAngle: body.chart.angle })), Number(bearingInput.value))].slug, true);
+      selectBody(bodies[nearestBodyIndex(bodies.map((body) => ({ chartAngle: markerAngle(body) })), bearing)].slug, true);
+      // Keep the control continuous between markers, including one-degree keys.
+      setBearing(bearing);
     });
     stage.addEventListener('pointerdown', (event) => {
       if (event.target instanceof Element && event.target.closest('[data-atlas-body]')) return;
@@ -355,6 +371,7 @@ const chartPosition = (angle: number, radius: number) => {
     atlas.querySelector<HTMLButtonElement>('[data-atlas-close]')!.addEventListener('click', closeNote);
     atlas.querySelector<HTMLButtonElement>('[data-atlas-previous]')!.addEventListener('click', () => stepBody(-1));
     atlas.querySelector<HTMLButtonElement>('[data-atlas-next]')!.addEventListener('click', () => stepBody(1));
+    compactViewport.addEventListener('change', () => setBearing(markerAngle(selectedBody())));
     selectBody('sun', false);
   }
 </script>

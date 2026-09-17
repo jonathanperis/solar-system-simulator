@@ -5,6 +5,7 @@
 #include "app/body_trails.h"
 #include "render/renderer.h"
 #include "sim/constants.h"
+#include "sim/lessons.h"
 #include "sim/solar_system.h"
 #include "sim/units.h"
 
@@ -162,6 +163,7 @@ static void test_real_scale_trail_point_uses_physical_meter_scale(void)
     assert_close(actual.x, expected.x, 1e-12);
     assert_close(actual.y, expected.y, 1e-12);
     assert_close(actual.z, expected.z, 1e-12);
+    body_trails_destroy(&trails);
 }
 
 static void test_illustrative_moon_trail_uses_expanded_parent_relative_position(void)
@@ -178,6 +180,7 @@ static void test_illustrative_moon_trail_uses_expanded_parent_relative_position(
     assert_close(actual.x, expected.x, 1e-12);
     assert_close(actual.y, expected.y, 1e-12);
     assert_close(actual.z, expected.z, 1e-12);
+    body_trails_destroy(&trails);
 }
 
 
@@ -193,6 +196,7 @@ static void test_illustrative_phobos_trail_matches_visible_body_position(void)
     assert_close(trail_position.x, body_position.x, 1e-12);
     assert_close(trail_position.y, body_position.y, 1e-12);
     assert_close(trail_position.z, body_position.z, 1e-12);
+    body_trails_destroy(&trails);
 }
 
 static void test_illustrative_satellite_position_uses_parent_metadata_not_name(void)
@@ -345,8 +349,64 @@ static void test_individual_moon_frame_and_unknown_radius_marker(void)
         meters_to_render_units(1821490), 1e-12);
 }
 
+static void test_parent_relative_history_vectors_and_magnification(void)
+{
+    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
+    BodyTrails trails = body_trails_create();
+    body_trails_record_system(&trails, &system);
+    Vec3d shift = {2.0 * SOLAR_AU_METERS, 0, 0};
+    system.bodies[3].position_m = vec3d_add(system.bodies[3].position_m, shift);
+    system.bodies[4].position_m = vec3d_add(system.bodies[4].position_m, shift);
+    system.elapsed_seconds = 300;
+    body_trails_record_system(&trails, &system);
+    SolarSystem unchanged = system;
+    for (int mode = RENDER_SCALE_ILLUSTRATIVE; mode <= RENDER_SCALE_REAL; ++mode) {
+        Vec3d past = renderer_trail_point_in_frame(&system, &trails, 4, 0, (RenderScaleMode)mode, RENDER_TRAILS_PARENT);
+        Vec3d current = renderer_body_position(&system, 4, (RenderScaleMode)mode);
+        assert(vec3d_length(vec3d_sub(past, current)) < 1e-12);
+        Vec3d tip = renderer_vector_tip(&system, 4, (RenderScaleMode)mode, false);
+        assert(tip.z > current.z && fabs(tip.x - current.x) < 1e-12);
+        assert(renderer_radius_magnification(&system.bodies[4], (RenderScaleMode)mode) >= 1);
+    }
+    assert(renderer_radius_magnification(&system.bodies[4], RENDER_SCALE_REAL) == 1);
+    assert(vec3d_length(vec3d_sub(system.bodies[4].position_m, unchanged.bodies[4].position_m)) == 0);
+    body_trails_destroy(&trails);
+}
+
+static void test_encounter_probe_is_visible_and_frames_its_parent(void)
+{
+    SolarSystem system;
+    assert(lesson_create(LESSON_ENCOUNTER, 1, &system));
+    Vec3d physical = system.bodies[2].position_m;
+    Vec3d planet = renderer_body_position(&system, 1, RENDER_SCALE_ILLUSTRATIVE);
+    Vec3d probe = renderer_body_position(&system, 2, RENDER_SCALE_ILLUSTRATIVE);
+    assert(vec3d_length(vec3d_sub(probe, planet)) > renderer_body_radius(&system.bodies[1], RENDER_SCALE_ILLUSTRATIVE)
+        + renderer_body_radius(&system.bodies[2], RENDER_SCALE_ILLUSTRATIVE));
+    assert(renderer_system_frame(&system, 2, RENDER_SCALE_ILLUSTRATIVE).root_index == 1);
+    assert(vec3d_length(vec3d_sub(physical, system.bodies[2].position_m)) == 0);
+}
+
+static void test_moving_sun_history_preserves_parent_relative_frames(void)
+{
+    SolarSystem system;
+    assert(lesson_create(LESSON_BARYCENTRIC_CORE, 1, &system));
+    BodyTrails trails = body_trails_create();
+    body_trails_record_system(&trails, &system);
+    for (size_t i = 0; i < system.body_count; ++i) system.bodies[i].position_m.x += 2 * SOLAR_AU_METERS;
+    system.elapsed_seconds = 300;
+    body_trails_record_system(&trails, &system);
+    assert(body_trails_point_count(&trails, 0) == 2);
+    Vec3d historic = renderer_trail_point_in_frame(&system, &trails, 3, 0, RENDER_SCALE_REAL, RENDER_TRAILS_PARENT);
+    Vec3d current = renderer_body_position(&system, 3, RENDER_SCALE_REAL);
+    assert(vec3d_length(vec3d_sub(historic, current)) < 1e-12);
+    body_trails_destroy(&trails);
+}
+
 int main(void)
 {
+    test_moving_sun_history_preserves_parent_relative_frames();
+    test_encounter_probe_is_visible_and_frames_its_parent();
+    test_parent_relative_history_vectors_and_magnification();
     /* A 100 m separation at 1000 AU must survive the rendering boundary. */
     Vec3d far = {1000*SOLAR_AU_METERS,0,0};
     Vec3d near = {far.x+100,0,0};

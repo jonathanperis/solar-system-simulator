@@ -24,8 +24,10 @@ import DocsShell from '../../components/DocsShell.astro';
         <li><code>src/sim/orbit.c</code> propagates elliptic, parabolic and hyperbolic source orbits with a bracketed universal-variable solver. The atlas uses the same C kernel compiled to a small standalone WASM module.</li>
         <li><code>src/sim/experiment.c</code> reads bounded selected-body input. Planet states use a pinned Sun-centered Horizons snapshot at JD 2461200.5 TDB; selected source orbits are two-body propagated to that epoch before force integration.</li>
         <li><code>src/sim/satellite.c</code> converts Jovian mean elements and Laplace/ecliptic source frames into parent-relative SI states. The versioned <code>data/jovian_moons.json</code> catalog covers 115 Jupiter moons.</li>
-        <li>The integrator is velocity-Verlet / kick-drift-kick, not Euler stepping.</li>
-        <li><code>src/app/simulation_step.c</code> accumulates frame time and advances in fixed 15-second simulation steps, retaining the remainder for the next frame.</li>
+        <li>The core/catalog integrator is velocity-Verlet / kick-drift-kick. Guided lessons also offer explicit Euler as a labeled numerical comparison.</li>
+        <li><code>src/app/simulation_step.c</code> accumulates frame time and advances in fixed 15-second simulation steps for core/catalog runs, retaining the remainder for the next frame. Lessons can select a different fixed step; it never follows frame duration.</li>
+        <li><code>src/sim/diagnostics.c</code> measures energy, momentum and center of mass. <code>src/sim/lessons.c</code> supplies isolated experiments with independently tested convergence and free-pair conservation.</li>
+        <li><code>src/app/comparison.c</code> publishes matched C checkpoints for two runs, with bounded history and analytical references where justified. <code>src/sim/collisions.c</code> implements only the opt-in head-on sphere lesson; other scenes keep point-mass dynamics.</li>
       </ul>
     </section>
 
@@ -33,7 +35,7 @@ import DocsShell from '../../components/DocsShell.astro';
       <h2>Known approximations</h2>
       <p>A moon can stay near its parent while drifting to the wrong place around its orbit. The 100-day checks in <code>tests/test_simulation_step.c</code> require less than one degree of isolated Phobos/Deimos phase error against analytical Kepler solutions, plus less than 1% parent-relative position discrepancy when the full scene is rerun with half-sized steps.</p>
       <p>Physics steps and trail sampling have separate cadences: improving numerical accuracy must not accelerate the loss of historical trail detail.</p>
-      <p>The Sun remains fixed for the current milestone. Jovian moon inclinations and orbital directions come from source elements; legacy planet initialization, including Saturn, remains planar. The project does not claim relativistic precession, planetary oblateness, dated J2000 state vectors, barycentric Earth-Moon initialization, or ephemeris accuracy.</p>
+      <p>The Sun remains fixed in the core/catalog scene. Jovian moon inclinations and orbital directions come from source elements; legacy planet initialization, including Saturn, remains planar. The separate Earth–Moon lesson uses barycentric initialization. The project does not claim relativistic precession, planetary oblateness, or ephemeris accuracy.</p>
       <p>Unknown-mass moons are test particles: they feel gravity without exerting it. Missing mass/radius values display as Unknown and published model estimates are labeled. The 2048-step update budget retains unconsumed time while keeping input responsive.</p>
       <p>That limitation is intentional for the foundation: the goal is inspectable orbital mechanics before catalog scale.</p>
     </section>
