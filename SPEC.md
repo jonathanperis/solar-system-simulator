@@ -238,6 +238,12 @@ V34: browser JavaScript formats/plots C measurements and descriptors; integratio
 
 V35: moving stars record synchronized history like other moving bodies; only fixed stars omit history. Barycentric parent-relative trails subtract historical Sun positions rather than an assumed fixed origin.
 
+## §A — Security PR integration, 2026-09-17
+
+A39|PR #8 preserves the checked Pages artifact, source/checksum and stale-run guards, sandboxed browser lane and current SDK while adding trusted-origin/event restrictions, job-scoped deployment permissions, immutable raylib revisions, nonpersistent checkout credentials, dependency auditing and CodeQL security/quality coverage|trusted/untrusted event matrix, workflow structure checks, Build and CodeQL CI
+
+Decision: Jonathan authorized merging PR #8 after PR #9 reached main, then explicitly approved rebasing its branch onto main, resolving conflicts, and pushing with an exact force-with-lease. Preserve the additional CodeQL security-and-quality commit observed at the branch head. CodeQL's manual C build includes the newly added headless entry point. The root specification remains tracked and .specs/ remains ignored.
+
 ## §T
 
 id|status|task|cites
@@ -288,6 +294,7 @@ T44|x|add barycentric core, resonance, encounter and collision lessons with inde
 T45|x|integrate comparison WASM/native CLI, live plots, trajectory overlays, save/share/import and guided challenges|A32,A33,A34,A35,V34
 T46|x|add sandboxed pinned automated browser checks to local tooling and CI; update all learning/control/provenance docs|A37,A38
 T47|x|run verification/regression review, commit and push both rounds, and observe branch CI|A38
+T48|~|reconcile and verify PR #8 against the learning-lab main; publish the guarded rebase and merge after CI|A39,V14
 
 Verification: Build run https://github.com/jonathanperis/solar-system-simulator/actions/runs/35175509807 passed native tests/sanitizers, WASM packaging, complete catalog checks, docs validation and sandboxed browser tests for implementation commit 016f187. PR creation was denied by the credential; branch-plus-CI delivery follows Jonathan's explicit amendment above.
 

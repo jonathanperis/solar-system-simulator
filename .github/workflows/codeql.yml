@@ -50,7 +50,7 @@ jobs:
         if: matrix.language == 'c-cpp'
         env:
           RAYLIB_LIBS: -lraylib -lm -ldl -lpthread -lGL -lrt -lX11 -lXrandr -lXi -lXinerama -lXcursor
-        run: make
+        run: make all headless
       - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
         with:
           category: /language:${{ matrix.language }}
