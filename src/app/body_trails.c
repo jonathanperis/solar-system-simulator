@@ -1,6 +1,7 @@
 #include "body_trails.h"
 
 #include <stdlib.h>
+#include <float.h>
 
 static bool body_trail_grow(BodyTrail *trail)
 {
@@ -75,14 +76,18 @@ void body_trails_record_system(BodyTrails *trails, const SolarSystem *system)
     for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
         trails->trails[i].latest_position_m = system->bodies[i].position_m;
     }
-    if (system->elapsed_seconds < trails->next_sample_seconds) {
+    /* Fractional lesson ticks can reach the same boundary by multiplication
+     * while the cadence reaches it by addition. Allow roundoff, not a whole
+     * tick of lateness, so 1.1-second experiments do not slowly lose samples. */
+    double roundoff = 8.0 * DBL_EPSILON * trails->next_sample_seconds;
+    if (system->elapsed_seconds < trails->next_sample_seconds - roundoff) {
         return;
     }
 
-    /* Reserve every non-star trail before recording any point. A failed resize
+    /* Reserve every recorded body's trail before appending. A failed resize
      * therefore leaves all body histories on the same sample index. */
     for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
-        if (system->bodies[i].kind == BODY_KIND_STAR) {
+        if (system->bodies[i].kind == BODY_KIND_STAR && system->bodies[i].fixed) {
             continue;
         }
 
@@ -94,7 +99,7 @@ void body_trails_record_system(BodyTrails *trails, const SolarSystem *system)
 
     bool compacted = false;
     for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
-        if (system->bodies[i].kind == BODY_KIND_STAR) {
+        if (system->bodies[i].kind == BODY_KIND_STAR && system->bodies[i].fixed) {
             continue;
         }
 

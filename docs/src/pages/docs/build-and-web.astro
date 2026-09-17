@@ -13,22 +13,30 @@ import DocsShell from '../../components/DocsShell.astro';
       <div class="command-grid">
         <article><code>make</code><p>Build the native raylib app.</p></article>
         <article><code>make test</code><p>Run C test binaries for simulation, app, and renderer helpers.</p></article>
+        <article><code>make headless test-core</code><p>Build the CSV runner and run physics/app tests without raylib.</p></article>
+        <article><code>make test-build test-cli test-validators</code><p>Verify Make dependency/failure behavior, repeatable CSV output and artifact rejection.</p></article>
+        <article><code>make test-sanitize</code><p>Run C binaries and CLI cases with address/undefined-behavior sanitizers.</p></article>
         <article><code>make web</code><p>Compile the browser target with Emscripten.</p></article>
-        <article><code>make dist-wasm</code><p>Package the generated JS and WASM runtime assets.</p></article>
+        <article><code>make dist-wasm</code><p>Package JS/WASM assets and their revision/checksum manifest.</p></article>
+        <article><code>make docs-assets</code><p>Validate and copy the runtime assets into Astro public output.</p></article>
         <article><code>npm run check --prefix docs</code><p>Type-check Astro source before static output.</p></article>
       </div>
     </section>
 
     <section class="doc-panel">
       <h2>Artifact checks</h2>
-      <p><code>tools/check_wasm_artifacts.py</code> confirms the generated <code>solar-system-simulator.js</code> and <code>.wasm</code> files exist, checks the loader reference and state bridge, and verifies <code>\0asm\1\0\0\0</code> WebAssembly header bytes.</p>
+      <p><code>tools/check_wasm_artifacts.py</code> confirms the generated <code>solar-system-simulator.js</code> and <code>.wasm</code> files exist, checks the loader/control/export bridge, verifies <code>\0asm\1\0\0\0</code> WebAssembly header bytes, and matches every artifact to <code>build-info.json</code> checksums and source revision.</p>
+      <p>Use raylib 6.0, Emscripten 5.0.7, Python 3.10+, and Node 24+ (CI uses Node 24). Point <code>RAYLIB_WEB_SRC</code> at a raylib source directory built for the same Emscripten version. Build-only provenance is regenerated when the revision changes; local uncommitted edits are labeled dirty.</p>
       <p><code>docs/src/pages/simulator.astro</code> owns the browser canvas and shared page layout. <code>docs/src/lib/simulator.ts</code> configures Emscripten before loading its JavaScript, sends control actions through the exported <code>solar_web_command</code> function, and formats live C inspector/playback state. Controls stay disabled until C reports readiness and after fatal loading/runtime failures.</p>
       <p>The old <code>/wasm/solar-system-simulator.html</code> URL redirects to <code>/simulator/</code>. Astro renders that compatibility document at build time; the published site remains static.</p>
+      <p><code>learning-lab.mjs</code> and <code>learning-lab.wasm</code> serve the graphics-free comparison page using the same C sessions, configuration parser and measurements as the native CLI. Their checksums join the runtime manifest. <code>tools/test_learning_wasm.mjs</code> compares native and WASM outputs for circular, encounter and collision experiments.</p>
     </section>
 
     <section class="doc-panel">
       <h2>GitHub workflows</h2>
-      <p><code>.github/workflows/build.yml</code> builds native, WebAssembly, and Astro/link-check lanes before merge. <code>.github/workflows/deploy-pages.yml</code> runs after a successful Build workflow on <code>main</code>, normalizes downloaded artifact paths, builds Astro, and publishes to GitHub Pages with its source revision.</p>
+      <p><code>.github/workflows/build.yml</code> builds native, sanitized, WebAssembly, and Astro/link-check lanes before merge, including a C/TypeScript catalog comparison. Build uses read-only repository permissions and immutable action revisions. Only the canonical main build includes configured analytics; the build and checker share that setting.</p>
+      <p><code>.github/workflows/deploy-pages.yml</code> downloads the already checked Pages tree from that exact successful Build, verifies runtime provenance, and publishes it without rebuilding Astro. Runs for an older main revision are skipped. Deployment retains its narrowly scoped Pages permissions.</p>
+      <p>Pinned Playwright browser tests exercise the built Pages site, including parameter sharing/import, collision identity, a 100-day Phobos challenge, mobile hit targets, SI export invariance and real failed asset fixtures. Run <code>PLAYWRIGHT_CHANNEL=chrome npm run test:browser --prefix docs</code> with installed Chrome. CI installs the pinned Chromium build; sandboxing and TLS validation stay enabled.</p>
     </section>
   </DocsShell>
 </BaseLayout>

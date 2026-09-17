@@ -22,7 +22,7 @@ test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolli
 
 test('select arrow and boundary keys use the same change path as pointer selection', () => {
   const changes = [];
-  const select = { selectedIndex: 1, options: { length: 3 }, dispatchEvent: event => changes.push(event.type) };
+  const select = { selectedIndex: 1, options: Array.from({ length: 3 }, () => ({ disabled: false })), dispatchEvent: event => changes.push(event.type) };
   assert.equal(moveSelectByKey(select, 'ArrowDown'), true);
   assert.equal(select.selectedIndex, 2);
   assert.equal(moveSelectByKey(select, 'ArrowDown'), true);
@@ -35,6 +35,9 @@ test('select arrow and boundary keys use the same change path as pointer selecti
   assert.equal(select.selectedIndex, 2);
   assert.equal(moveSelectByKey(select, 'x'), false);
   assert.deepEqual(changes, ['change', 'change', 'change']);
+  select.options[2].disabled = true;
+  assert.equal(moveSelectByKey(select, 'End'), true);
+  assert.equal(select.selectedIndex, 1);
 });
 
 test('C state drives playback, precise SI readouts, asset pairing, and permanent failure state', () => {
@@ -49,7 +52,7 @@ test('C state drives playback, precise SI readouts, asset pairing, and permanent
   const state = { body: 'Phobos', parent: 'Mars', view: 'Illustrative', cameraTarget: 'Mars', selected: 6,
     paused: true, speedPreset: 0, autoRotate: false, elapsedSeconds: 15, intervalSeconds: 300,
     trailsFailed: false, hasParent: true, distanceM: 9233000, speedMps: 2138, massKg: 1.061834e16,
-    radiusM: 11266.7, zoom: 0.5, massQuality: 0, radiusQuality: 0, achievedTimeScale: 864000, pendingSeconds: 43200 };
+    radiusM: 11266.7, zoom: 0.5, massQuality: 0, radiusQuality: 0, achievedTimeScale: 864000, pendingSeconds: 43200, shortTimescale: false };
   runtime.reportState(state);
   assert.equal(readouts.status.textContent, 'Simulation paused');
   assert.equal(readouts.elapsed.textContent, '0.00017 simulated days · 15 s');
@@ -102,4 +105,28 @@ test('body filtering matches provisional names and retains the C selection witho
   assert.deepEqual(filterRuntimeBodies(bodies, '', 'Galilean moons', 10), [bodies[0]]);
   assert.deepEqual(filterRuntimeBodies(bodies, 'missing', '', 124), [bodies[1]]);
   assert.deepEqual(filterRuntimeBodies(bodies, 'saturn', 'Planets', 125), [bodies[2]]);
+});
+
+test('lesson diagnostics distinguish physical units, normalized energy, and editable pending settings', () => {
+  const keys = ['status', 'scene', 'acceleration', 'specificEnergy', 'energy', 'energyChange', 'momentum', 'angularMomentum',
+    'integration', 'magnification', 'position', 'velocity'];
+  const readouts = Object.fromEntries(keys.map(key => [key, { textContent: '' }]));
+  const controls = { lesson: { value: '' }, method: { value: '' }, dt: { value: '' }, factor: { value: '' },
+    step: { textContent: '' }, trails: { textContent: '' }, vectors: { textContent: '', setAttribute() {} }, contact: { textContent: '', hidden: true }, panel: { disabled: false } };
+  const runtime = createSimulatorModule({}, readouts, new URL('https://example.test/runtime.js'), controls);
+  const state = { lesson: 4, method: 1, dt: 30, ticks: 2, factor: 1.1, acceleration: .002,
+    specificEnergy: -1000, energy: -2e28, energyChange: .001, isolated: true, momentum: 0, angularMomentum: 4e34,
+    magnification: 12, trailFrame: 1, vectors: true, position: [1, 2, 3], velocity: [4, 5, 6], contactMode: 0 };
+  runtime.reportLabState(state);
+  assert.match(readouts.integration.textContent, /Euler.*30 s.*2/);
+  assert.match(readouts.energyChange.textContent, /1.000e-3/);
+  assert.match(readouts.momentum.textContent, /isolated/);
+  assert.equal(controls.lesson.value, '4');
+  assert.equal(controls.step.textContent, 'Step +30 s');
+  controls.factor.value = '1.2';
+  runtime.reportLabState(state);
+  assert.equal(controls.factor.value, '1.2');
+  runtime.reportLabState({ ...state, factor: 1.3, isolated: false });
+  assert.equal(controls.factor.value, '1.3');
+  assert.match(readouts.momentum.textContent, /fixed-body constraint/);
 });

@@ -30,6 +30,10 @@ C10: ⊥ ECS, scene format, asset manager, shader stack, ephemeris loader before
 
 I.cli: `make` → native app
 
+I.lab: `make headless` → `build/solar-lab`; scene/duration/dt/sample/integrator/initial-speed options stream reproducible SI CSV; `--catalog` exposes the C body manifest.
+
+I.export: native E and web Export SI snapshot use the same C `solar-lab-v1` CSV writer as headless series, including revision, configuration, physical-data quality, ticks and SI measurements.
+
 I.test: `make test` → all C tests
 
 I.run: `make run` → raylib app
@@ -52,7 +56,7 @@ I.controls: native `Tab` | `C` focus; web `C` focus and browser-native `Tab`; `V
 
 I.inspection: native shortcuts and accessible web buttons share C-owned playback and selection; web readouts use live C physical state. Space pauses, N steps, R resets, A toggles camera rotation, F frames the selected system, B frames only the selected body; native 1–9 and 0 select the first ten catalog bodies and brackets change speed. Search/group selection reaches the full catalog.
 
-I.pages: `/`, `/docs/`, `/docs/architecture/`, `/docs/simulation-core/`, `/docs/rendering/`, `/docs/controls/`, `/docs/build-and-web/`, `/docs/roadmap/`, `/physics/`, `/body-catalog/`, `/source-atlas/`, `/pipeline/`, `/simulator/`; `/wasm/solar-system-simulator.html` redirects to `/simulator/`
+I.pages: `/`, `/docs/`, `/docs/architecture/`, `/docs/simulation-core/`, `/docs/rendering/`, `/docs/controls/`, `/docs/build-and-web/`, `/docs/roadmap/`, `/docs/experiments/`, `/physics/`, `/body-catalog/`, `/source-atlas/`, `/pipeline/`, `/simulator/`, `/compare/`; `/wasm/solar-system-simulator.html` redirects to `/simulator/`
 
 I.ci: `Build` → native tests + WASM artifact; `Deploy Pages` consumes successful artifact
 
@@ -79,7 +83,7 @@ V2: position=m; mass=kg; time=s; velocity=m/s; acceleration=m/s²; simulation ve
 
 V3: gravity = `G * source_mass / distance^3 * displacement`; self | zero-distance contribution=0.
 
-V4: stepping = velocity-Verlet kick-drift-kick; fixed bodies contribute gravity but never move.
+V4: core/catalog stepping = velocity-Verlet kick-drift-kick; isolated learning presets may explicitly select Euler. Fixed bodies contribute gravity but never move.
 
 V5: core scene starts Sun through Jupiter, followed by the 115 Jovian moons, Saturn, Uranus and Neptune (128 bodies). Existing IDs/indices remain stable; outer planets use NAIF center IDs 699/799/899. The complete small-body catalog is separate from the active scene; selected experiments use Sun/eight planets plus at most 16 selected records at one source epoch.
 
@@ -87,9 +91,9 @@ V6: planets + Vesta start heliocentric perihelion; Moon starts Earth-relative pe
 
 V7: legacy no-inclination initial states remain in X/Z. Jovian moon initial states preserve sourced inclination, orbital direction, eccentricity and phase; source frames convert into the common simulation frame before adding Jupiter's absolute position and velocity.
 
-V8: app accumulates frame-scaled time and advances only in fixed 15-second physics steps; unconsumed time remains in the app clock. Per-frame work is bounded to keep controls responsive. Once pending work is drained, equal accumulated time produces the same state regardless of frame partitioning; requested and achieved speeds are distinguished.
+V8: app accumulates frame-scaled time and advances only in fixed physics steps (15 seconds for core/catalog; explicitly configured for lessons); unconsumed time remains in the app clock. Per-frame work is bounded to keep controls responsive. Once pending work is drained, equal accumulated time produces the same state regardless of frame partitioning; requested and achieved speeds are distinguished. Hidden/minimized wall time is excluded.
 
-V9: trails retain full-run temporal coverage and the current endpoint within 1025 visible points/body. History starts at a 300-second simulation-time cadence; each compaction doubles both historical spacing and future sampling cadence. All bodies share sample times for parent-relative rendering. Resolution coarsens uniformly during long runs; this is a history approximation, not a stored ephemeris or complete precomputed orbit.
+V9: trails retain full-run temporal coverage and the current endpoint within 1025 visible points/body. History starts at a 300-second simulation-time cadence, rounded up to whole configured lesson ticks; each compaction doubles both historical spacing and future sampling cadence. All bodies share sample times for parent-relative rendering. Resolution coarsens uniformly during long runs; this is a history approximation, not a stored ephemeris or complete precomputed orbit.
 
 V10: illustrative transforms affect render output only; asteroid radius=`0.03` render units; real-scale uses same physical scale for positions + known radii with no radius clamp. Unknown-radius wire markers are the explicitly labeled render-only exception described by V25. Saturn's ring lines and their framing extent are renderer-only and never replace its physical mean radius.
 
@@ -115,9 +119,9 @@ V20: atlas visual scale/positions are explicitly illustrative; body names, paren
 
 V21: atlas selection works without pointer; body controls expose selected state, drawer closes on `Escape`, focus returns to invoking body, reduced-motion suppresses ornamental motion.
 
-V22: 100-day isolated Phobos/Deimos numerical checks compare orbital phase against an analytical Kepler solution (less than 1 degree error); the shipped scene compares the app step with half-sized reference steps (less than 1% parent-relative position discrepancy).
+V22: 100-day isolated Phobos/Deimos numerical checks compare orbital phase against an analytical Kepler solution (less than 1 degree error); the default core scene compares the app step with half-sized reference steps (less than 1% parent-relative position discrepancy).
 
-V23: pause freezes simulation time and trails without accumulating paused wall time; single-step advances exactly 15 simulated seconds only while paused. Speed presets (1 hour, 1 day, 5 days, 10 days, 15 days per real second) change accumulated time, never the physics step. Reset restores initial physics, trails, clock remainder and achieved-speed measurement while preserving selection, playback settings, and presentation settings.
+V23: pause freezes simulation time and trails without accumulating paused wall time; single-step advances one configured tick (15 seconds for core/catalog) only while paused. Speed presets (1 hour, 1 day, 5 days, 10 days, 15 days per real second) change accumulated time, never the physics step. Reset restores initial physics, trails, clock remainder, ticks, diagnostic baseline and achieved-speed measurement while preserving selection, playback/lesson settings, and presentation settings.
 
 V24: inspector distance and speed are relative to the identified parent in SI state, independent of render mode; parentless bodies show unavailable relative measurements. Framing is renderer-only: planet plus direct moons, a moon's parent plus siblings, or all bodies for the Sun; fit respects aspect ratio, physical/illustrative radii, and Saturn's visible ring extent.
 
@@ -183,6 +187,54 @@ A24|Native/WASM/docs verification, sanitizer and throughput checks, source audit
 
 Decision: Jonathan selected all asteroids plus outer bodies, catalog plus selected simulation, and Uranus/Neptune foundations, then approved autonomous implementation. The 1,564,244-entry snapshot is source-accounted; 4,076 other comet records are outside the chosen scope. Catalog experiments use Sun/eight planets plus up to 16 selected bodies at JD 2461200.5 TDB. They remain a fixed-Sun point-mass approximation. Task-local locked Astro dependency installation and existing raylib archive reuse were explicitly authorized.
 
+## §A — Audit completion and learning laboratory, 2026-09-16
+
+id|criterion|verify
+A25|Retain and verify the repairs already present on 1ad41c2: failure-propagating tests, header rebuilds, fixed stepping, bounded catch-up, uniform trails, live controls, contrast and visible runtime errors; close remaining build dependency and atlas bearing gaps|Make contract checks, existing C/JS suites, local browser interactions
+A26|Small C-owned circular, eccentric, escape, barycentric Earth–Moon and inclined lessons expose a controlled initial-speed factor, Verlet/Euler comparison, physical diagnostics and reset; the core/catalog defaults retain their fixed 15-second Verlet policy|lesson/session tests, independent convergence and free-pair conservation checks
+A27|A raylib-free C runner accepts scene, duration, timestep, sampling and integrator options; native/web snapshot export and headless series share a CSV contract with SI state, configuration and revision; invalid inputs fail visibly|CLI/CSV integration tests, native/WASM comparison
+A28|Native/web render controls expose parent-relative history and optional physical velocity/acceleration directions without modifying SI state; inspector reports acceleration, energy change, timestep/ticks and visual magnification honestly|renderer/session tests, browser controls
+A29|C and TypeScript core catalogs are cross-checked; artifact validators have focused failure tests; Build has read-only permissions and sanitizer verification; analytics build/check settings agree and Pages deploys the already checked artifact with stale-run protection|manifest comparison, Python checker tests, workflow inspection, native/WASM/docs checks
+A30|A guided experiments route and contributor instructions explain prediction, configuration, measurement, numerical/model/render errors, ownership, provenance, native/WASM reproduction and tool prerequisites|docs checks, runnable documented examples
+A31|Focused tests, complete C/docs/catalog/WASM verification, authorized local browser interaction, and regression scan pass; all audit items are accounted for as existing fixes, delivered changes, or explicit verification limitations|verification report and regression scan
+
+Decision: Jonathan requested “work on everything” in the audit on 2026-09-16 and then authorized task-local locked dependency installation, raylib 6.0 build/reuse, and isolated local browser tests. Remote main has advanced from the audited 54a5fdc to 1ad41c2; implementation preserves its 128-body scene and pinned catalog and completes remaining audit work. Existing SPEC.md remains the authoritative tracked specification; .specs/ is already ignored. Newly discovered catalog roadmap items retain their existing milestone scope. Browser tests target only the task-local site and simulator controls/downloads; fault-path verification uses local test fixtures.
+
+V26: lesson physics and diagnostics are C-owned. Euler is an explicitly labeled teaching comparison; core and source-epoch scenes continue using Verlet. Changing lesson parameters creates a fresh initial state, clock and diagnostic baseline; failed configuration leaves the prior experiment intact.
+
+V27: exports contain physical SI coordinates, simulation ticks, step/method/scene parameters and source revision, never illustrative positions. CSV strings are escaped. Headless output streams with bounded memory and a fixed timestep; duration/sample boundaries must align to whole ticks.
+
+V28: total energy includes massive-body kinetic energy and each gravitational pair once. Massless tracers contribute no total energy/momentum. Momentum conservation is asserted only for free systems; parent-relative specific energy is labeled a two-body diagnostic.
+
+V29: parent-relative history subtracts synchronized historical parent positions and anchors at the current parent; physics and stored history are immutable while rendering. Vector glyphs encode direction with an explicitly illustrative length.
+
+## §A — Comparison school and advanced lessons, 2026-09-16
+
+id|criterion|verify
+A32|A C-owned comparison runs identical initial conditions with separate timestep/integrator/collision settings, reports only matched simulation checkpoints, stays responsive through bounded work, and exports both series with run configuration|comparison/config C tests, CLI replay, browser controls
+A33|Live bounded plots show energy change, radius, speed, position discrepancy and analytical phase error where available; overlaid SI trajectories and accessible tabular values distinguish matched checkpoints from in-progress integration|comparison numerical tests, docs/browser tests
+A34|A versioned bounded lesson descriptor saves/imports through files and shareable URLs; native CLI and browser use the same C validation and reset the same experiment; invalid configuration never replaces a valid run|config/CLI tests, URL/file browser round trips
+A35|Guided challenges connect predictions, controlled runs and measured outcomes; force-contribution inspectors expose source acceleration vectors/magnitudes and clearly define percentages of summed magnitudes|force decomposition tests, challenge/UI tests
+A36|Explicit new lessons provide a moving-Sun barycentric core, a perturbed 3:2 period-ratio experiment with resonant-angle diagnostics, a close Earth encounter, and head-on elastic/merging spheres; defaults and original core/catalog semantics remain intact|initial-state, conservation, collision and convergence tests
+A37|Pinned project Playwright tests run against the built local site and in CI, covering comparison/configuration, export, mobile selection and visible failure states while retaining the browser sandbox and TLS validation|local automated browser suite and GitHub checks
+A38|Native/WASM/docs checks, numerical evidence, regression review and source-backed learning docs pass; both local iterations are committed on the feature branch, published as a PR, and CI is observed|verification report and PR checks
+
+Decision: Jonathan approved all six proposed enhancements and the four later physics topics with “do at all”. He then explicitly authorized pinned `@playwright/test` 1.63.0, isolated local Chrome and Chromium installation in CI, plus commit/push/PR creation and CI observation for both rounds. Merge/production deployment awaits review. Continue the existing task checkout/branch and preserve prior work.
+
+I.compare: `/compare/` loads a separate C-only lab WASM module; `solar-lab --compare FILE` runs the same descriptor headlessly. Main simulator retains its raylib runtime and exposes the new presets and force inspector.
+
+V30: A/B runs share initial physical state, compare the same identified subject at common checkpoint times, and never substitute mismatched integration times. Duration/sample spacing must align to each run's ticks. Incremental work and chart history are bounded; full CLI output streams. A missing merged subject is unavailable, never silently replaced by another body.
+
+V31: configuration format `SOLAR_LAB_V1` contains a preset name, initial-speed factor, two methods/timesteps/contact policies, sample spacing and duration. It is a lesson descriptor, not an arbitrary scene format. Parse/validate before replacing a run. Export revision accompanies results; saved links identify their source revision without executing on navigation.
+
+V32: collision response is opt-in for the two-sphere classroom preset only. Positive known masses/radii, head-on initial motion and a small fixed timestep bound prevent tunneling within this lesson's allowed speed factors. Elastic impulses conserve momentum/kinetic energy at contact; merging conserves mass and linear momentum, combines volume, and explicitly changes mechanical energy. No claim of general collision or internal-spin modeling.
+
+V33: barycentric initialization unfixes and translates all core states by their mass-weighted position/velocity while preserving relative state. A period ratio alone is not called proven resonance: the experiment exposes the resonant angle and explains libration versus circulation. Close encounters remain a fixed-step accuracy experiment, not an adaptive solver.
+
+V34: browser JavaScript formats/plots C measurements and descriptors; integration, collision response, force decomposition and analytical reference calculations remain in C. Force percentages divide each source magnitude by the sum of source magnitudes, not by the magnitude of the net vector.
+
+V35: moving stars record synchronized history like other moving bodies; only fixed stars omit history. Barycentric parent-relative trails subtract historical Sun positions rather than an assumed fixed origin.
+
 ## §T
 
 id|status|task|cites
@@ -221,6 +273,18 @@ T32|x|integrate accessible web controls, native shortcuts, state bridge, and sou
 T33|x|verify native/WASM/docs/browser boundaries, regression scan, commit/push main, and verify Pages|A8,V14,V16
 T34|x|integrate full-catalog selection/atlas, individual framing, inspector quality and high-speed responsiveness|A11,A13,V9,V18,V20,V24,V25
 T35|x|verify complete moon scene, performance, regressions and main/Pages delivery|A14,V14,V16,V22
+T36|x|verify existing audit repairs and close build/test dependency gaps with headless and sanitizer entrypoints|A25,A29
+T37|x|add C lesson presets, integrator comparison, scientific diagnostics and independent numerical proofs|A26,V26,V28
+T38|x|add reproducible headless runner and shared native/web CSV export with provenance|A27,V27
+T39|x|integrate lesson controls, diagnostics, parent-relative history and vector presentation in native/web runtime|A26,A28,V26,V29
+T40|x|repair atlas bearing interaction, visible disclosure and remaining accessibility gaps; exercise loader failure states|A25,A31,V18,V21
+T41|x|cross-check catalogs, harden validators and deliver checked Pages artifacts with consistent analytics policy|A29
+T42|x|publish guided learning exercises, build/ownership/provenance documentation, and verify all affected boundaries|A30,A31
+T43|x|implement descriptor validation, matched-checkpoint comparison, bounded C telemetry and force decomposition|A32,A33,A34,A35,V30,V31,V34
+T44|x|add barycentric core, resonance, encounter and collision lessons with independent physical proofs|A36,V32,V33
+T45|x|integrate comparison WASM/native CLI, live plots, trajectory overlays, save/share/import and guided challenges|A32,A33,A34,A35,V34
+T46|~|add sandboxed pinned automated browser checks to local tooling and CI; update all learning/control/provenance docs|A37,A38
+T47|~|run verification/regression review, commit both rounds, open linked PR and observe CI|A38
 
 ## §B
 
@@ -238,3 +302,5 @@ B10|2026-09-09|repeatedly thinning old samples while recording new ones at full 
 B11|2026-09-09|one-orbit radius bounds did not detect long-run Phobos phase drift from a five-minute step|V8,V22,A2
 B12|2026-09-10|broad window-capture filtering protected canvas shortcuts but prevented native select arrow/Home navigation; scope interception to GLFW-cancelled keys and give semantic selects an explicit tested navigation path|V18,A7
 B13|2026-09-14|browser fetch transparently decoded gzip responses before client hashing, so compressed-file hashes rejected valid catalog data|manifest schema 2 hashes both gzip and decoded JSON; clients verify the received form and decompress at most once
+B14|2026-09-16|configurable lesson steps did not always divide the 300-second trail cadence, and fractional boundary roundoff could postpone a sample by a whole tick|align cadence to whole configured ticks and tolerate only floating-point boundary roundoff; session tests cover 200-second and 1.1-second steps
+B15|2026-09-16|the old all-stars trail exclusion became invalid when the barycentric lesson released the Sun, corrupting parent-relative history|record and draw moving stars, omit only fixed stars, and verify the moving-parent transform

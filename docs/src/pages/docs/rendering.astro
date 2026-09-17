@@ -18,6 +18,7 @@ import DocsShell from '../../components/DocsShell.astro';
 
     <section class="doc-panel">
       <h2>Scale modes</h2>
+      <p>Parent-aware visual separation also applies to the encounter probe, so illustrative Earth cannot hide it. Its parent-relative SI state stays unchanged. Real-scale mode retains physical positions and the explicitly nonphysical unknown-radius wire marker.</p>
       <p>Illustrative mode keeps planets readable, renders Vesta as a distinct smaller asteroid, and expands close moon separation only as a visual transform. Real-scale mode uses the same physical scale for positions and radii, so planets and asteroids can become nearly invisible.</p>
       <p>Unknown Jovian radii are the explicit exception: wire markers in either view are nonphysical symbols, with Unknown shown in the inspector. Individual-body framing lets you inspect a moon without framing all 115 siblings.</p>
       <p>Saturn's pale ring lines use NASA's ring-system extent and 26.73-degree axial tilt. They affect drawing and camera framing only; gravity and the inspector retain Saturn's JPL mean radius.</p>
@@ -27,6 +28,7 @@ import DocsShell from '../../components/DocsShell.astro';
 
     <section class="doc-panel">
       <h2>Reference grid and trails</h2>
+      <p>Absolute history shows motion in the simulation frame. Parent-relative history subtracts synchronized historical parent positions and anchors the result at today's parent position. Neither view changes stored SI history. Optional green velocity and orange acceleration markers have physical directions and explicitly illustrative lengths.</p>
       <p>The subdued ground grid is a bounded camera-local patch just below the orbital plane. Solid spheres keep their catalog colors without orange wireframe overlays; each grid cell represents 0.1 AU.</p>
       <p>Trail history starts at a 300-second sampling cadence. When its point budget fills, both historical spacing and future cadence double together, retaining uniform full-run coverage and a current endpoint. Parent and moon histories keep matching sample times.</p>
       <p>Longer runs have coarser history: fine satellite loops eventually lose detail. Trails show recorded motion rather than complete predicted orbital ellipses. The Astro runtime reports the historical spacing outside the canvas.</p>

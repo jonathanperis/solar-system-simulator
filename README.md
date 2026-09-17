@@ -1,10 +1,55 @@
 # solar-system-simulator
 
-A bare-bones 3D solar system simulator written in C with [raylib](https://www.raylib.com/).
+A hands-on orbital mechanics and engineering laboratory written in C11 with [raylib](https://www.raylib.com/).
 
 ## Goal
 
 This project is intentionally physics-first. The renderer exists to show the simulation, but the core work is mathematical: deterministic celestial-body state, SI-unit physics, and testable orbital mechanics foundations.
+
+## Learning laboratory
+
+Start with [guided experiments](https://jonathanperis.github.io/solar-system-simulator/docs/experiments/): predict, configure, run, measure, compare, explain. The same C core runs with graphics, in WebAssembly, and through a raylib-free CLI.
+
+```sh
+make headless
+build/solar-lab --scene circular --days 30 --dt 300 --sample 3600 --output build/verlet.csv
+build/solar-lab --scene circular --days 30 --dt 300 --sample 3600 --integrator euler --output build/euler.csv
+make test-core test-build test-cli test-validators
+```
+
+Lessons include circular, eccentric (`a=1 AU`, `e=0.5`), escape threshold, isolated barycentric Earth–Moon, 30° inclined orbit, and Phobos resolution. Their intentionally artificial initial conditions are separate from the 128-body core and source-epoch catalog experiments. Lessons allow an initial-speed factor from 0.1 to 2 and a fixed timestep from 0.01 to 3600 seconds, with the tighter contact bound described below. Euler is a labeled teaching comparison; core/catalog runs retain 15-second Verlet.
+
+The CLI streams CSV with configuration/revision, SI state, ticks, data quality, energy, momentum and center of mass. Duration and sample spacing must align to whole ticks; the final sample is always emitted. `--experiment build/selected.tsv` runs a prepared catalog input; `--catalog` exposes the C core manifest for cross-language checks. See `build/solar-lab --help`.
+
+Both visual runtimes offer SI snapshot export, parent-relative history, optional velocity/acceleration directions and scientific diagnostics. Energy change uses `ΔE / (K₀ + |U₀|)` so near-zero escape energy is well-conditioned. Massless tracers contribute no totals; linear momentum is conserved only in unconstrained systems. Physical vectors keep SI values; drawn arrow lengths and illustrative radius magnification are explicitly presentation-only.
+
+### Comparison school
+
+The [A/B comparison lab](https://jonathanperis.github.io/solar-system-simulator/compare/) runs identical initial conditions through two C integrators at matched checkpoints. Live charts show overlaid X/Z trajectories, energy change, distance, speed, analytical phase error where applicable, A/B position discrepancy and the resonant angle. Both the browser and CLI use `src/app/comparison.c`; JavaScript only presents C measurements.
+
+```sh
+make headless
+build/solar-lab --compare examples/circular.solar > build/comparison.csv
+build/solar-lab --compare examples/phobos.solar > build/phobos-comparison.csv
+build/solar-lab --compare examples/collision.solar > build/contact-comparison.csv
+```
+
+Use **Save configuration**, **Import configuration**, or **Create share link** to reproduce a lesson. Links load parameters without automatically starting a run and show the source revision. The bounded, versioned descriptor is:
+
+```text
+SOLAR_LAB_V1 preset factor methodA dtA contactA methodB dtB contactB sample_seconds duration_seconds
+```
+
+Methods are `verlet`/`euler`; contact policies are `none`/`bounce`/`merge`. Sample spacing must contain whole ticks for both runs, and duration must contain whole samples. The browser retains at most 1,025 uniformly coarsened points plus its endpoint within that budget; CLI output streams every checkpoint. A disappeared merged subject is unavailable, never substituted by the surviving body. Force inspectors show source vectors and percentages of summed magnitudes, not percentages of the net vector.
+
+Four additional presets explore specific model choices:
+
+- `barycentric-core`: releases the Sun and translates all 128 states into a mass-weighted center-of-mass frame, preserving relative initial states. Moving stars record synchronized history so parent-relative trails use the historical Sun position.
+- `resonance`: a massless particle starts at an interior 3:2 period ratio with a circular Jupiter perturber. Inspect `3λ_J − 2λ_particle − ϖ_particle` over long runs; a starting period ratio alone does not establish resonance.
+- `encounter`: a test particle passes Earth with controlled initial impact geometry. Compare timestep-dependent deflection and minimum integrated distance.
+- `collision`: two chosen classroom spheres (10 kg, 10 m radius) approach head-on. Bounce conserves contact kinetic energy/momentum; merge combines mass/volume and explicitly loses kinetic energy. Its 0.01–0.25 s steps prevent tunneling for the allowed initial speeds; contact timing still has finite-step error. Other presets retain point-mass gravity without contact handling.
+
+The 3D collision preset defaults to real scale and slower 1/5/10/25/50 simulated-seconds-per-second playback. Guided browser challenges include a 100-day Phobos phase budget, escape-energy signs, fixed-Sun momentum constraints and export invariance across display changes.
 
 ## Complete small-body atlas and all eight planets
 
@@ -72,10 +117,10 @@ Simulation code lives under `src/sim/` and is independent from raylib.
 - Simulation vectors use double precision (`Vec3d`) instead of raylib's float `Vector3`.
 - Gravity uses the Newtonian point-mass formula:
   - `a = G * source_mass / distance^3 * displacement`
-- Time stepping uses a velocity-Verlet / kick-drift-kick integrator.
-- The app uses a fixed 15-second simulation step and carries frame remainders in an accumulator. Requested presets are one hour, one day (default), five days, ten days, and fifteen days per real second. Each update executes at most 2048 steps, retaining unconsumed time and reporting achieved speed/pending time. Display-frame partitioning does not change the sequence of physics steps once pending work is drained.
+- Core/catalog time stepping uses velocity-Verlet / kick-drift-kick; isolated lessons can compare explicit Euler.
+- Core/catalog playback uses a fixed 15-second simulation step and carries frame remainders in an accumulator. Requested presets are one hour, one day (default), five days, ten days, and fifteen days per real second. Each update executes at most 2048 steps, retaining unconsumed time and reporting achieved speed/pending time. Display-frame partitioning does not change the sequence of physics steps once pending work is drained. Hidden-tab/minimized-window wall time is excluded, including the first resumed frame.
 - `tests/test_simulation_step.c` verifies less than one degree of isolated Phobos/Deimos phase error over 100 days and less than 1% parent-relative position discrepancy against half-sized steps for the full 128-body scene. These are numerical accuracy checks, not ephemeris validation.
-- The Sun is fixed for this milestone; barycentric Sun motion is deferred.
+- The default core/catalog Sun stays fixed. The explicit barycentric-core lesson releases it and starts in the center-of-mass frame.
 - This is a deterministic physics baseline, not an ephemeris-accurate model. The core perihelion demonstration remains planar through Neptune, with Jovian moon inclinations from their source frames. Catalog experiments align their initial epoch, then use the same fixed-Sun point-mass gravity. Relativity, planetary oblateness and omitted-body perturbations are outside this model.
 
 Current simulation data:
@@ -145,7 +190,7 @@ Moon orbital values used for initialization around Earth:
 - perigee distance: `semi-major axis * (1 - eccentricity)` = `363296440 m`
 - perigee relative speed: `1082.5552631364333 m/s`, computed from `sqrt(G * (EarthMass + MoonMass) * (2 / perigee - 1 / semiMajorAxis))`
 - absolute Moon state: Earth heliocentric state plus the Earth-relative perigee offset and relative tangential velocity
-- Earth-Moon barycentric initialization is deferred; Earth keeps its existing heliocentric perihelion state for this milestone
+- The core keeps Earth's existing heliocentric perihelion state. The separate Earth–Moon lesson initializes an isolated barycentric pair.
 
 Mars orbital values used for initialization:
 
@@ -224,8 +269,11 @@ The app uses a small stable orbit camera instead of raylib's automatic orbital h
 
 ## Controls
 
+- Native `L`: cycle lesson presets; `I`: compare integrators; `D`: cycle lesson step size; `-` / `=`: change initial speed. Configuration changes restart the lesson. Browser controls expose the same C-owned configuration explicitly.
+- `T`: absolute or parent-relative trail history. `X`: vector directions (green velocity, orange acceleration; illustrative lengths).
+- `E`: export an SI snapshot as `solar-snapshot.csv` (browser download or native working directory). Headless series and snapshots share the C writer.
 - `Space`: pause/resume. Paused time does not accumulate for later catch-up.
-- `N`: advance exactly 15 simulated seconds while paused.
+- `N`: advance one configured physics tick while paused (15 seconds in core/catalog scenes).
 - `R`: restore initial physics, trail history, and clock remainder; retain selection, speed, pause state, render mode, and camera rotation setting.
 - `[` / `]`: change requested speed among 1 hour, 1 day, 5 days, 10 days, and 15 days per real second without changing the integration step.
 - `1`–`9`, `0`: select the original ten bodies; `0` selects Jupiter. `C` cycles the complete scene.
@@ -253,6 +301,21 @@ The live physics inspector displays parent-relative distance (km), parent-relati
 - `pkg-config`
 - [raylib](https://www.raylib.com/) development libraries for the app build
 
+Use raylib **6.0** for the visual app (including `rlSetClipPlanes`). The headless runner and `make test-core` do not need raylib or a window. Python **3.10+** runs the offline catalog/build checks. Web builds use Emscripten **5.0.7** and a raylib archive compiled with the same SDK. Docs require Node **24+** (CI uses 24), npm and the committed lockfile.
+
+With a raylib source checkout available, prepare the web library with `make PLATFORM=PLATFORM_WEB -C /absolute/path/to/raylib/src`; force a platform rebuild when reusing native object files. Then:
+
+```sh
+make docs-assets RAYLIB_WEB_SRC=/absolute/path/to/raylib/src
+npm ci --prefix docs
+npm test --prefix docs
+npm run check --prefix docs
+npm run build --prefix docs
+make docs-check
+```
+
+`make docs-assets` validates and copies JS/WASM plus `build-info.json`, which records revision and artifact checksums. Local/fork builds omit analytics. CI gives build and validation the same analytics setting, and Pages publishes that checked tree rather than rebuilding it. Stale successful runs cannot replace newer main output. GitHub Actions dependencies are pinned to immutable commits.
+
 On systems where `pkg-config --libs raylib` is unavailable, the Makefile falls back to:
 
 1. `$(HOME)/.local/include` and `$(HOME)/.local/lib` if a local raylib install exists.
@@ -266,6 +329,16 @@ make test  # run C test binaries for simulation math/physics and camera math
 make run   # launch the simulator
 make clean # remove build outputs
 ```
+
+Additional verification: `make test-build test-cli test-validators`, `make test-sanitize`, and `node tools/check_catalog.mjs` after `make headless`. The catalog check compares C and TypeScript names, kinds, parents and order. Native and web exporters use physical coordinates; changing view scale never changes a CSV observation.
+
+Automated browser coverage uses pinned `@playwright/test` 1.63.0 against the built site:
+
+```sh
+PLAYWRIGHT_CHANNEL=chrome npm run test:browser --prefix docs
+```
+
+Local tests use installed Chrome in isolated contexts; CI installs pinned Chromium. The browser sandbox and TLS validation stay enabled. `tools/serve_site.py` serves only the built tree on loopback; opt-in local failure fixtures exercise missing/invalid assets without network mocking. CI checks the C comparison module against native output before browser tests and Pages packaging.
 
 ## Browser runtime
 

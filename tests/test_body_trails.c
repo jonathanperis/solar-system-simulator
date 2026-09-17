@@ -47,6 +47,7 @@ static void test_trails_record_non_stars(void)
     assert_vec3d_equal(body_trails_point_at(&trails, 7, 0), system.bodies[7].position_m);
     assert_vec3d_equal(body_trails_point_at(&trails, 8, 0), system.bodies[8].position_m);
     assert_vec3d_equal(body_trails_point_at(&trails, 9, 0), system.bodies[9].position_m);
+    body_trails_destroy(&trails);
 }
 
 static void test_trails_append_new_positions_after_motion(void)

@@ -28,6 +28,7 @@ export const techStack = [
 export const primaryRoutes = [
   { label: 'Lab', href: '' },
   { label: 'Simulate', href: 'simulator/' },
+  { label: 'Compare', href: 'compare/' },
   { label: 'Docs', href: 'docs/' },
   { label: 'Physics', href: 'physics/' },
   { label: 'Bodies', href: 'body-catalog/' },
@@ -54,10 +55,11 @@ export const docsRoutes: DocsRoute[] = [
   { label: 'Docs hub', href: 'docs/', summary: 'Choose a reading path through the simulator.', code: 'MAP' },
   { label: 'Architecture', href: 'docs/architecture/', summary: 'The source boundaries that keep physics testable.', code: 'ARCH' },
   { label: 'Simulation core', href: 'docs/simulation-core/', summary: 'Vectors, bodies, gravity, units, and integration.', code: 'SIM' },
-  { label: 'Rendering', href: 'docs/rendering/', summary: 'raylib conversion, scale modes, labels, trails, and grids.', code: 'VIEW' },
+  { label: 'Rendering', href: 'docs/rendering/', summary: 'raylib conversion, scale modes, vector directions, trails, and grids.', code: 'VIEW' },
   { label: 'Controls', href: 'docs/controls/', summary: 'Playback, physical inspection, system framing, and runtime keys.', code: 'KEYS' },
   { label: 'Build and web', href: 'docs/build-and-web/', summary: 'Native tests, WASM artifacts, Astro, and Pages deployment.', code: 'WASM' },
-  { label: 'Roadmap', href: 'docs/roadmap/', summary: 'The one-body-at-a-time expansion model.', code: 'NEXT' }
+  { label: 'Roadmap', href: 'docs/roadmap/', summary: 'The one-body-at-a-time expansion model.', code: 'NEXT' },
+  { label: 'Guided experiments', href: 'docs/experiments/', summary: 'Predict, run, measure and compare reproducible C lessons.', code: 'LAB' }
 ];
 
 export const docsManualGroups: DocsManualGroup[] = [
@@ -65,12 +67,12 @@ export const docsManualGroups: DocsManualGroup[] = [
     id: 'MANUAL_01',
     title: 'Start here',
     description: 'Orient the repo, source boundaries, controls, and first simulator run.',
-    routes: [docsRoutes[0], docsRoutes[1], docsRoutes[4]]
+    routes: [docsRoutes[0], docsRoutes[7], docsRoutes[1], docsRoutes[4]]
   },
   {
     id: 'MANUAL_02',
     title: 'Physics & view',
-    description: 'Trace SI-unit state through integration, rendering scale, labels, and trails.',
+    description: 'Trace SI-unit state through integration, rendering scale, vectors, and trails.',
     routes: [docsRoutes[2], docsRoutes[3]]
   },
   {

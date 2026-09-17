@@ -93,7 +93,7 @@ Vec3d renderer_body_position(const SolarSystem *system, size_t body_index, Rende
 
     const Body *body = &system->bodies[body_index];
     Vec3d position = meters_vec_to_render_vec3d(body->position_m);
-    if (mode == RENDER_SCALE_REAL || body->kind != BODY_KIND_MOON) {
+    if (mode == RENDER_SCALE_REAL) {
         return position;
     }
 
@@ -103,6 +103,7 @@ Vec3d renderer_body_position(const SolarSystem *system, size_t body_index, Rende
     }
 
     const Body *parent = &system->bodies[parent_index];
+    if (body->kind != BODY_KIND_MOON && parent->kind == BODY_KIND_STAR) return position;
     Vec3d parent_position = meters_vec_to_render_vec3d(parent->position_m);
     return visible_satellite_position(body, parent, position, parent_position, mode);
 }
@@ -115,7 +116,7 @@ Vec3d renderer_trail_point_position(const SolarSystem *system, const BodyTrails 
 
     Vec3d position = meters_vec_to_render_vec3d(body_trails_point_at(trails, body_index, point_index));
     const Body *body = &system->bodies[body_index];
-    if (mode == RENDER_SCALE_REAL || body->kind != BODY_KIND_MOON) {
+    if (mode == RENDER_SCALE_REAL) {
         return position;
     }
 
@@ -125,6 +126,7 @@ Vec3d renderer_trail_point_position(const SolarSystem *system, const BodyTrails 
     }
 
     const Body *parent = &system->bodies[parent_index];
+    if (body->kind != BODY_KIND_MOON && parent->kind == BODY_KIND_STAR) return position;
     Vec3d parent_position = meters_vec_to_render_vec3d(body_trails_point_at(trails, (size_t)parent_index, point_index));
     return visible_satellite_position(body, parent, position, parent_position, mode);
 }
@@ -133,17 +135,60 @@ RenderSystemFrame renderer_system_frame(const SolarSystem *system, size_t select
 {
     RenderSystemFrame frame = {.root_index = selected};
     int parent = solar_system_parent_index(system, selected);
-    if (system->bodies[selected].kind == BODY_KIND_MOON && parent >= 0) frame.root_index = (size_t)parent;
+    if (parent >= 0 && system->bodies[parent].kind != BODY_KIND_STAR) frame.root_index = (size_t)parent;
     const Body *root = &system->bodies[frame.root_index];
     Vec3d center = renderer_body_position(system, frame.root_index, mode);
     for (size_t i = 0; i < system->body_count; ++i) {
-        if (root->kind == BODY_KIND_STAR || i == frame.root_index || system->bodies[i].parent_id == root->id) {
+        if (root->parent_id == BODY_ID_NONE || i == frame.root_index || system->bodies[i].parent_id == root->id) {
             double extent = vec3d_length(vec3d_sub(renderer_body_position(system, i, mode), center))
                 + renderer_body_visual_radius(&system->bodies[i], mode);
             frame.radius = fmax(frame.radius, extent);
         }
     }
     return frame;
+}
+
+Vec3d renderer_trail_point_in_frame(const SolarSystem *system, const BodyTrails *trails, size_t body_index,
+    size_t point_index, RenderScaleMode mode, RenderTrailFrame frame)
+{
+    Vec3d position = renderer_trail_point_position(system, trails, body_index, point_index, mode);
+    int parent = solar_system_parent_index(system, body_index);
+    if (frame == RENDER_TRAILS_ABSOLUTE || parent < 0 || system->bodies[parent].fixed) return position;
+    /* Historical parent and child samples share times. Translate the old pair
+     * to today's parent location to expose the relative orbit, never its SI state. */
+    Vec3d then = renderer_trail_point_position(system, trails, (size_t)parent, point_index, mode);
+    Vec3d now = renderer_body_position(system, (size_t)parent, mode);
+    return vec3d_add(vec3d_sub(position, then), now);
+}
+
+double renderer_radius_magnification(const Body *body, RenderScaleMode mode)
+{
+    return body->radius_quality == PHYSICAL_UNKNOWN || body->radius_m <= 0 ? 0
+        : (double)renderer_body_radius(body, mode) / meters_to_render_units(body->radius_m);
+}
+
+Vec3d renderer_vector_tip(const SolarSystem *system, size_t body_index, RenderScaleMode mode, bool acceleration)
+{
+    const Body *body = &system->bodies[body_index];
+    Vec3d direction = acceleration ? body->acceleration_mps2 : body->velocity_mps;
+    if (body->fixed) direction = vec3d_zero();
+    int parent = solar_system_parent_index(system, body_index);
+    if (parent >= 0 && !system->bodies[parent].fixed) direction = vec3d_sub(direction,
+        acceleration ? system->bodies[parent].acceleration_mps2 : system->bodies[parent].velocity_mps);
+    double length = vec3d_length(direction);
+    Vec3d start = renderer_body_position(system, body_index, mode);
+    return length > 0 ? vec3d_add(start, vec3d_scale(direction, 4.0 * renderer_body_radius(body, mode) / length)) : start;
+}
+
+void renderer_draw_vectors(const SolarSystem *system, size_t selected, RenderScaleMode mode, Vec3d origin)
+{
+    Vector3 start = renderer_relative_vector(renderer_body_position(system, selected, mode), origin);
+    for (int acceleration = 0; acceleration < 2; ++acceleration) {
+        Vector3 end = renderer_relative_vector(renderer_vector_tip(system, selected, mode, acceleration != 0), origin);
+        Color color = acceleration ? ORANGE : GREEN;
+        DrawLine3D(start, end, color);
+        DrawSphere(end, renderer_body_radius(&system->bodies[selected], mode) * 0.15f, color);
+    }
 }
 
 RenderSystemFrame renderer_body_frame(const SolarSystem *system, size_t selected, RenderScaleMode mode)
@@ -282,7 +327,8 @@ static void draw_saturn_rings(Vector3 center, float body_radius, float outer_rad
     }
 }
 
-void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode, Vec3d origin)
+void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode,
+    RenderTrailFrame trail_frame, Vec3d origin)
 {
     int slices = renderer_grid_slices_for_system(system, mode);
     float half_width = (float)slices * 0.5f;
@@ -300,7 +346,7 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
 
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
-        if (body->kind == BODY_KIND_STAR) {
+        if (body->kind == BODY_KIND_STAR && body->fixed) {
             continue;
         }
 
@@ -314,15 +360,15 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
         size_t previous_point = 0;
         /* Adjacent segments share an endpoint. Reuse its render transform;
          * the simulation and synchronized history are immutable while drawing. */
-        Vec3d start = renderer_trail_point_position(system, trails, i, 0, mode);
+        Vec3d start = renderer_trail_point_in_frame(system, trails, i, 0, mode, trail_frame);
         for (size_t j = stride; j < point_count; j += stride) {
-            Vec3d end = renderer_trail_point_position(system, trails, i, j, mode);
+            Vec3d end = renderer_trail_point_in_frame(system, trails, i, j, mode, trail_frame);
             DrawLine3D(renderer_relative_vector(start, origin), renderer_relative_vector(end, origin), trail_color);
             start = end;
             previous_point = j;
         }
         if (previous_point + 1 < point_count) {
-            Vec3d end = renderer_trail_point_position(system, trails, i, point_count - 1, mode);
+            Vec3d end = renderer_trail_point_in_frame(system, trails, i, point_count - 1, mode, trail_frame);
             DrawLine3D(renderer_relative_vector(start, origin), renderer_relative_vector(end, origin), trail_color);
         }
     }

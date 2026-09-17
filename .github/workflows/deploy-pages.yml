@@ -18,69 +18,60 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build Astro docs and deploy Pages
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    name: Deploy the checked Pages artifact
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      # An older Build can finish after a newer one. Never move Pages backwards
+      # by publishing a completed run that no longer represents main.
+      - name: Confirm this is the current main revision
+        id: revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [ "$current" = "$EXPECTED_SHA" ]; then
+            printf 'current=true\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'current=false\n' >> "$GITHUB_OUTPUT"
+            printf 'Skipping stale Build revision.\n'
+          fi
 
-      - name: Download WebAssembly artifact
-        uses: actions/download-artifact@v8
+      - name: Download the exact checked site
+        if: steps.revision.outputs.current == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: solar-system-simulator-wasm
-          path: docs/public/wasm
+          name: solar-system-pages
+          path: pages-site
           github-token: ${{ github.token }}
           run-id: ${{ github.event.workflow_run.id }}
 
-      - name: Prepare WebAssembly public assets
+      - name: Verify source provenance before publishing
+        if: steps.revision.outputs.current == 'true'
+        env:
+          EXPECTED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          mkdir -p docs/public/wasm
           python3 - <<'PY'
+          import hashlib, json, os
           from pathlib import Path
-          target = Path('docs/public/wasm')
-          for source in list(target.rglob('*.wasm')) + list(target.rglob('*.js')):
-              destination = target / source.name
-              if source.resolve() != destination.resolve():
-                  destination.write_bytes(source.read_bytes())
+          root = Path('pages-site/wasm')
+          manifest = json.loads((root / 'build-info.json').read_text())
+          assert manifest['revision'] == os.environ['EXPECTED_SHA'], 'WASM/source revision mismatch'
+          for name in ('solar-system-simulator.js', 'solar-system-simulator.wasm', 'catalog-orbits.wasm', 'learning-lab.mjs', 'learning-lab.wasm'):
+              assert hashlib.sha256((root / name).read_bytes()).hexdigest() == manifest['files'][name], name
           PY
-          rm -f docs/public/wasm/solar-system-simulator-wasm.zip
-          python3 tools/check_wasm_artifacts.py docs/public/wasm
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      - name: Package checked files for Pages
+        if: steps.revision.outputs.current == 'true'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: docs/package-lock.json
-
-      - name: Install docs dependencies
-        working-directory: docs
-        run: npm ci
-
-      - name: Build docs site
-        working-directory: docs
-        env:
-          PUBLIC_GA_ID: G-WPC2ZGVDD0
-          PUBLIC_BUILD_SHA: ${{ github.event.workflow_run.head_sha }}
-        run: npm run build
-
-      - name: Smoke-check docs routes
-        env:
-          PUBLIC_GA_ID: G-WPC2ZGVDD0
-        run: python3 tools/check_docs_routes.py docs/dist
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: docs/dist
+          path: pages-site
 
       - name: Deploy to GitHub Pages
+        if: steps.revision.outputs.current == 'true'
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5

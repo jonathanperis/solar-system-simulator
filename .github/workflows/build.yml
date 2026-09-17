@@ -6,6 +6,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+env:
+  SOURCE_REVISION: ${{ github.sha }}
+  ASTRO_TELEMETRY_DISABLED: 1
+
 jobs:
   native:
     name: Native C/raylib build and tests
@@ -15,7 +22,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install compiler and raylib system dependencies
         run: |
@@ -52,18 +59,24 @@ jobs:
       - name: Run C test suite
         run: make test
 
+      - name: Verify headless CLI, build graph, and artifact failure contracts
+        run: make test-build test-cli test-validators
+
+      - name: Check address and undefined behavior sanitizers
+        run: make test-sanitize
+
   wasm:
     name: WebAssembly artifact
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install Emscripten
-        uses: mymindstorm/setup-emsdk@v16
+        uses: mymindstorm/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
         with:
-          version: 3.1.58
+          version: 5.0.7
 
       - name: Build raylib for WebAssembly
         run: |
@@ -77,47 +90,43 @@ jobs:
         run: make dist-wasm RAYLIB_WEB_SRC=/tmp/raylib/src
 
       - name: Upload WebAssembly artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: solar-system-simulator-wasm
           path: |
             build/web/solar-system-simulator.js
             build/web/solar-system-simulator.wasm
             build/web/catalog-orbits.wasm
+            build/web/learning-lab.mjs
+            build/web/learning-lab.wasm
+            build/web/build-info.json
             build/solar-system-simulator-wasm.zip
 
   docs:
     name: Astro docs and Pages artifact checks
     needs: [native, wasm]
     runs-on: ubuntu-latest
+    env:
+      # Only the canonical main build carries analytics. Build and validation
+      # share exactly this configuration; PRs and forks remain analytics-free.
+      PUBLIC_GA_ID: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.repository == 'jonathanperis/solar-system-simulator' && (vars.PUBLIC_GA_ID || 'G-WPC2ZGVDD0') || '' }}
+      PUBLIC_BUILD_SHA: ${{ github.sha }}
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Download WebAssembly artifact
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: solar-system-simulator-wasm
-          path: docs/public/wasm
+          path: build/download-wasm
 
       - name: Prepare WebAssembly public assets
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          target = Path('docs/public/wasm')
-          # Both the raylib runtime and the small standalone C orbit kernel
-          # are required: the atlas must not implement a second physics engine.
-          for source in list(target.rglob('*.wasm')) + list(target.rglob('*.js')):
-              destination = target / source.name
-              if source.resolve() != destination.resolve():
-                  destination.write_bytes(source.read_bytes())
-          PY
-          rm -f docs/public/wasm/solar-system-simulator-wasm.zip
-          python3 tools/check_wasm_artifacts.py docs/public/wasm
+        run: python3 tools/prepare_wasm.py build/download-wasm docs/public/wasm
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: npm
@@ -131,16 +140,19 @@ jobs:
         working-directory: docs
         run: npm run test
 
+      - name: Cross-check C and TypeScript catalogs
+        run: |
+          make headless
+          node tools/check_catalog.mjs
+
       - name: Audit complete offline small-body inventory and orbit module
         run: |
           python3 tools/small_body_catalog.py --check
           node tools/test_catalog_wasm.mjs docs/public/wasm/catalog-orbits.wasm
+          node tools/test_learning_wasm.mjs docs/public/wasm/learning-lab.mjs
 
       - name: Build docs site
         working-directory: docs
-        env:
-          PUBLIC_GA_ID: ${{ vars.PUBLIC_GA_ID }}
-          PUBLIC_BUILD_SHA: ${{ github.sha }}
         run: npm run build
 
       - name: Type-check docs source
@@ -149,3 +161,27 @@ jobs:
 
       - name: Smoke-check docs routes and assets
         run: python3 tools/check_docs_routes.py docs/dist
+
+      - name: Install pinned Chromium and system dependencies
+        working-directory: docs
+        run: npm exec -- playwright install --with-deps chromium
+
+      - name: Verify isolated browser interactions against the built site
+        working-directory: docs
+        run: npm run test:browser
+
+      - name: Preserve browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: browser-failure-evidence
+          path: docs/test-results
+          if-no-files-found: ignore
+
+      - name: Upload the checked Pages tree
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: solar-system-pages
+          path: docs/dist
+          if-no-files-found: error

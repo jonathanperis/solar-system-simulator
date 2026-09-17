@@ -136,8 +136,52 @@ static void test_overloaded_playback_retains_time_and_freezes_while_paused(void)
     simulation_session_destroy(&session);
 }
 
+static void test_lessons_reset_configuration_and_exclude_background_time(void)
+{
+    SimulationSession session = simulation_session_create();
+    assert(simulation_session_start_lesson(&session, LESSON_EARTH_MOON, 1.1, PHYSICS_EULER, 30));
+    SolarSystem initial = session.system;
+    assert(session.clock.step_seconds == 30 && session.clock.integrator == PHYSICS_EULER);
+    assert(session.system.body_count == 2 && session.lesson == LESSON_EARTH_MOON);
+    session.paused = true;
+    simulation_session_single_step(&session);
+    assert(session.clock.ticks == 1 && session.system.elapsed_seconds == 30);
+    session.paused = false;
+    simulation_session_set_background(&session, true);
+    simulation_session_update(&session, 60);
+    simulation_session_set_background(&session, false);
+    simulation_session_update(&session, 60); /* First resumed frame contains hidden wall time. */
+    assert(session.clock.ticks == 1);
+    simulation_session_update(&session, 30.0 / SOLAR_DAY_SECONDS);
+    assert(session.clock.ticks == 2);
+    assert(!simulation_session_start_lesson(&session, LESSON_CORE, 1, PHYSICS_EULER, 15));
+    assert(!simulation_session_start_lesson(&session, LESSON_CORE, 1, PHYSICS_VERLET, 300));
+    assert(!simulation_session_start_lesson(&session, LESSON_CIRCULAR, NAN, PHYSICS_VERLET, 15));
+    assert(session.lesson == LESSON_EARTH_MOON && session.clock.ticks == 2);
+    simulation_session_reset(&session);
+    assert_same_motion(&session.system, &initial);
+    assert(session.clock.ticks == 0 && session.clock.step_seconds == 30);
+    BodyInspection body = simulation_session_inspect(&session);
+    assert(body.acceleration_mps2 > 0 && body.specific_energy_jpkg < 0);
+    assert(simulation_session_start_lesson(&session, LESSON_CIRCULAR, 1, PHYSICS_VERLET, 200));
+    assert(session.trails.sample_interval_seconds == 400);
+    session.paused = true;
+    simulation_session_single_step(&session);
+    simulation_session_single_step(&session);
+    assert(session.trails.last_sample_seconds == 400);
+    assert(simulation_session_start_lesson(&session, LESSON_CIRCULAR, 1, PHYSICS_VERLET, 1.1));
+    for (int i = 0; i < 20000; ++i) simulation_session_single_step(&session);
+    double spacing = session.trails.sample_interval_seconds;
+    assert(fabs(session.trails.last_sample_seconds - floor(session.system.elapsed_seconds / spacing) * spacing) < 1e-8);
+    simulation_session_demo(&session);
+    assert(session.clock.step_seconds == 15 && session.clock.integrator == PHYSICS_VERLET);
+    assert(session.lesson == LESSON_CORE && session.system.body_count == 128);
+    simulation_session_destroy(&session);
+}
+
 int main(void)
 {
+    test_lessons_reset_configuration_and_exclude_background_time();
     test_overloaded_playback_retains_time_and_freezes_while_paused();
     test_playback_pause_step_speed_and_reset();
     test_inspector_uses_parent_ids_and_relative_si_motion();

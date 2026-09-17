@@ -51,6 +51,8 @@ typedef enum PhysicalQuality {
  * from mass and position instead of hard-coded parent relationships.
  */
 typedef struct Body {
+    /* Borrowed strings: literals/catalog storage outlive the body. Imported
+     * names belong to SimulationSession; copying a Body does not copy text. */
     const char *name;
     BodyKind kind;
     BodyId id;

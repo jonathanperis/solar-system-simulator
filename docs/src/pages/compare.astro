@@ -1,0 +1,140 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { normalizeBase } from '../lib/base';
+import { buildRevision } from '../lib/site';
+import { lessonOptions } from '../lib/lessonCatalog';
+const base = normalizeBase(import.meta.env.BASE_URL);
+const plots = [
+  ['trajectory', 'Overlaid trajectories', 'Physical X/Z projection'],
+  ['energy_change', 'Energy change', 'ΔE / (K₀ + |U₀|); includes modeled contact losses'],
+  ['radius_m', 'Orbital distance', 'Meters from parent, or inertial origin for parentless subjects'],
+  ['speed_mps', 'Speed', 'm/s relative to parent, otherwise inertial'],
+  ['phase_error_deg', 'Analytical phase error', 'Angular separation in degrees, 0–180; isolated two-body lessons only'],
+  ['difference', 'A/B position discrepancy', 'Meters; discrepancy is not an independent accuracy reference'],
+  ['resonant_angle_deg', 'Resonant angle', '3λ Jupiter − 2λ particle − ϖ particle, wrapped to ±180°']
+];
+---
+<BaseLayout title="Comparison lab" description="Run matched C physics experiments, compare live measurements, and share reproducible orbital lessons.">
+  <section class="comparison" data-comparison data-lab-src={`${base}wasm/learning-lab.mjs?revision=${encodeURIComponent(buildRevision)}`}>
+    <header class="hero">
+      <p class="eyebrow">Experimental school / two runs, one question</p>
+      <h1>Compare explanations with evidence.</h1>
+      <p>Identical initial conditions, separate numerical choices. Both runs use the same C core as the native CLI. Measurements appear only when A and B reach the same simulation time.</p>
+      <p><a href={`${base}simulator/`}>Open the 3D simulator</a> · <a href={`${base}docs/experiments/`}>Read the experiment guide</a></p>
+    </header>
+    <p role="status" data-lab-status>Loading the C comparison module…</p>
+    <p>C runtime revision: <code data-lab-revision>—</code></p>
+    <form>
+      <fieldset disabled>
+        <legend>Reproducible experiment</legend>
+        <div class="controls">
+          <label>Preset<select name="scene">{lessonOptions.map(([name, label]) => <option value={name}>{label}</option>)}</select></label>
+          <label>Initial speed factor<input name="factor" type="number" min="0.1" max="2" step="any" value="1" required /></label>
+          <label>Sample spacing (seconds)<input name="sample" type="number" min="0.01" step="any" value="3600" required /></label>
+          <label>Duration (seconds)<input name="duration" type="number" min="0.01" step="any" value="86400" required /></label>
+        </div>
+        <div class="runs">
+          {['A', 'B'].map(side => <section>
+            <h2>Run {side}</h2>
+            <div class="controls">
+              <label>Integrator {side}<select name={`method${side}`}><option value="verlet">Velocity-Verlet</option><option value="euler">Euler</option></select></label>
+              <label>Timestep {side} (seconds)<input name={`dt${side}`} type="number" min="0.01" max="3600" step="any" value={side === 'A' ? '300' : '150'} required /></label>
+              <label>Contact policy {side}<select name={`collision${side}`}><option value="none">None</option><option value="bounce">Elastic bounce</option><option value="merge">Inelastic merge</option></select></label>
+            </div>
+          </section>)}
+        </div>
+        <p>Sample spacing must be a whole number of each run's ticks; duration must contain whole samples. The core uses 15-second Verlet; core and barycentric-core preserve initial speed factor 1. The head-on sphere lesson requires bounce/merge and 0.01–0.25-second steps. Its masses, radii and speeds are chosen classroom parameters.</p>
+        <div class="controls">
+          <button type="submit">Start comparison</button><button type="button" data-pause-comparison>Pause comparison</button>
+          <button type="button" data-resume-comparison>Resume comparison</button><button type="button" data-next-checkpoint>Next checkpoint</button>
+          <button type="button" data-reset-comparison>Reset comparison</button><button type="button" data-export-comparison>Export both runs (CSV)</button>
+        </div>
+        <p data-pending-config hidden>Parameters have changed. The plots below still describe the previous run; press Start comparison to apply these parameters.</p>
+        <div class="controls">
+          <button type="button" data-save-config>Save configuration</button><button type="button" data-share-config>Create share link</button>
+          <label>Import configuration<input type="file" accept=".solar,text/plain" data-import-config /></label>
+        </div>
+        <label class="share">Shareable experiment URL<input type="url" data-share-link readonly /></label>
+        <details>
+          <summary>Guided challenges</summary>
+          <div class="controls">
+            <label>Challenge<select name="challenge"><option value="phase">Find Phobos's timestep budget</option><option value="escape">Bound or unbound?</option><option value="momentum">Explain the fixed-Sun constraint</option><option value="scale">Prove display scale changes no physics</option></select></label>
+            <button type="button" data-load-challenge>Load challenge</button>
+          </div>
+          <label class="share">My prediction<textarea rows="3" placeholder="What will change, and why?"></textarea></label>
+          <p data-challenge-feedback>Predict first. Run, measure, then revise your explanation.</p>
+        </details>
+        <label>Trajectory display units<select name="units"><option value="m">Meters</option><option value="au">AU</option></select></label>
+      </fieldset>
+    </form>
+    <noscript><p>JavaScript and WebAssembly are required for live comparisons. The <a href={`${base}docs/experiments/`}>guide and native CLI instructions</a> remain available.</p></noscript>
+    <section class="summary" aria-label="Comparison progress">
+      <label>Completed checkpoints <progress max="1" value="0"></progress></label>
+      <p>Last matched time: <strong data-matched-time>—</strong> · Tracked subject: <strong data-subject>—</strong></p>
+      <p>Displayed results use: <code data-displayed-definition>no run started</code></p>
+      <p data-retention>At most 1,025 chart points; history spacing coarsens uniformly. Native CLI exports every requested checkpoint.</p>
+      <p><span class="legend-a">A — solid blue</span> · <span class="legend-b">B — dashed copper</span>. Runs compute as fast as bounded batches permit; horizontal plot time is simulated seconds.</p>
+    </section>
+    <div class="plots">
+      {plots.map(([field, title, description]) => <figure>
+        <h2>{title}</h2>
+        <svg viewBox="0 0 500 210" role="img" aria-label={`${title}: matched C measurements for runs A and B`} data-plot={field}></svg>
+        <p class="plot-range" data-plot-range>Run a comparison to read axis values.</p>
+        <figcaption {...(field === 'trajectory' ? { 'data-trajectory-units': '' } : {})}>{description}</figcaption>
+      </figure>)}
+    </div>
+    <details open class="measurements">
+      <summary>Accessible numeric measurements</summary>
+      <p>Unavailable analytical references and merged-away subjects are explicit. Merging changes mechanical energy; a zero- or small-error total does not prove accurate phase.</p>
+      <div class="table-wrap" tabindex="0"><table><thead><tr><th>SI measurement</th><th>Run A</th><th>Run B</th></tr></thead><tbody data-measurements></tbody></table></div>
+    </details>
+    <section>
+      <h2>Force-contribution inspector</h2>
+      <p>Top six sources at the matched checkpoint. Each percentage divides the source's acceleration magnitude by the sum of all source magnitudes. Vectors can cancel, so these are not percentages of net acceleration. Unknown-mass tracers feel gravity but contribute none. Fixed bodies may have computed gravity while their positions remain constrained.</p>
+      <div class="runs">{['A', 'B'].map((side, index) => <div class="table-wrap" tabindex="0"><table>
+        <caption>Run {side} — acceleration contributions</caption>
+        <thead><tr><th>Source</th><th>m/s²</th><th>Magnitude share</th><th>X, Y, Z (m/s²)</th></tr></thead>
+        <tbody data-force-side={index}></tbody>
+      </table></div>)}</div>
+    </section>
+    <section class="notes">
+      <h2>Interpret the model.</h2>
+      <ul>
+        <li><strong>Barycentric core:</strong> all masses move, including the Sun; initial relative states are preserved by a mass-weighted translation and velocity shift.</li>
+        <li><strong>Resonance:</strong> a 3:2 initial period ratio is a starting hypothesis. Inspect the resonant angle over long runs for libration versus circulation; angle-wrap gaps are not physical jumps.</li>
+        <li><strong>Close encounter:</strong> reduce the timestep and compare the minimum integrated parent distance and deflection. This is a fixed-step accuracy study, not adaptive integration.</li>
+        <li><strong>Collisions:</strong> a deliberately head-on two-sphere model. Bounce conserves contact kinetic energy and momentum; merge conserves mass and linear momentum and loses kinetic energy. Internal spin and general collision detection are outside this lesson.</li>
+      </ul>
+    </section>
+  </section>
+</BaseLayout>
+<script>
+  import { mountComparison } from '../lib/comparison';
+  const root = document.querySelector<HTMLElement>('[data-comparison]');
+  if (root) void mountComparison(root);
+</script>
+<style>
+  .comparison { margin-bottom: 3rem; }
+  fieldset, .summary, figure, .measurements { min-width: 0; border: 1px solid var(--rule); padding: 1rem; background: var(--paper-light); margin: 1rem 0; }
+  legend, summary { font-weight: 700; }
+  summary { cursor: pointer; min-height: 44px; }
+  .controls { display: flex; gap: .7rem; flex-wrap: wrap; align-items: end; margin: .7rem 0; }
+  label { display: flex; flex-direction: column; font-size: .95rem; gap: .3rem; min-width: 0; max-width: 100%; }
+  button, input, select, textarea { max-width: 100%; min-width: 0; min-height: 44px; padding: .4rem .6rem; border: 1px solid var(--ink-soft); background: var(--paper-light); color: var(--ink); font: inherit; font-size: .9rem; }
+  input[type="number"] { width: 10rem; }
+  input[type="file"] { width: 17rem; }
+  button { cursor: pointer; } button:hover:enabled { background: var(--paper); }
+  .runs, .plots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .runs h2, figure h2 { font-size: 1.5rem; margin-bottom: .5rem; }
+  figure { margin: 0; } svg { display: block; width: 100%; }
+  svg :global(text) { font: 11px monospace; fill: var(--ink); }
+  figcaption { font-size: .9rem; }
+  .plot-range { font: .875rem/1.5 "JetBrains Mono", monospace; overflow-wrap: anywhere; }
+  .legend-a { color: #0e5682; } .legend-b { color: #9a3b17; }
+  .share { margin: .8rem 0; } .share input, textarea { width: 100%; }
+  progress { width: min(30rem, 100%); }
+  td { overflow-wrap: anywhere; font: .7rem/1.5 "JetBrains Mono", monospace; }
+  caption { text-align: left; padding: .5rem; font-weight: 700; }
+  .notes { margin: 2rem 0; }
+  @media (max-width: 760px) { .runs, .plots { grid-template-columns: 1fr; } }
+</style>
