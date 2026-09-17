@@ -105,7 +105,9 @@ jobs:
   docs:
     name: Astro docs and Pages artifact checks
     needs: [native, wasm]
-    runs-on: ubuntu-latest
+    # Playwright supports 22.04. Its user-namespace policy permits managed
+    # Chromium's sandbox; newer Ubuntu AppArmor policy blocked browser startup.
+    runs-on: ubuntu-22.04
     env:
       # Only the canonical main build carries analytics. Build and validation
       # share exactly this configuration; PRs and forks remain analytics-free.
