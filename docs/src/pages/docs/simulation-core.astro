@@ -35,9 +35,9 @@ import DocsShell from '../../components/DocsShell.astro';
       <h2>Known approximations</h2>
       <p>A moon can stay near its parent while drifting to the wrong place around its orbit. The 100-day checks in <code>tests/test_simulation_step.c</code> require less than one degree of isolated Phobos/Deimos phase error against analytical Kepler solutions, plus less than 1% parent-relative position discrepancy when the full scene is rerun with half-sized steps.</p>
       <p>Physics steps and trail sampling have separate cadences: improving numerical accuracy must not accelerate the loss of historical trail detail.</p>
-      <p>The Sun remains fixed in the core/catalog scene. Jovian moon inclinations and orbital directions come from source elements; legacy planet initialization, including Saturn, remains planar. The separate Earth–Moon lesson uses barycentric initialization. The project does not claim relativistic precession, planetary oblateness, or ephemeris accuracy.</p>
+      <p>The Sun remains fixed in the core/catalog scene. Jovian moon inclinations and orbital directions come from source elements; core planet initialization through Neptune remains planar. The isolated Earth–Moon lesson uses barycentric initialization, while the barycentric-core lesson releases the Sun and shifts all 128 initial states into the center-of-mass frame. The project does not claim relativistic precession, planetary oblateness, or ephemeris accuracy.</p>
       <p>Unknown-mass moons are test particles: they feel gravity without exerting it. Missing mass/radius values display as Unknown and published model estimates are labeled. The 2048-step update budget retains unconsumed time while keeping input responsive.</p>
-      <p>That limitation is intentional for the foundation: the goal is inspectable orbital mechanics before catalog scale.</p>
+      <p>The complete source catalog is an exploration dataset, not a million-body active simulation. Selected catalog experiments contain the Sun, eight planets, and at most 16 selected objects so the physical model and its numerical costs remain inspectable.</p>
     </section>
   </DocsShell>
 </BaseLayout>

@@ -2,6 +2,15 @@
 
 A hands-on orbital mechanics and engineering laboratory written in C11 with [raylib](https://www.raylib.com/).
 
+**[Run the simulator](https://jonathanperis.github.io/solar-system-simulator/simulator/)** · **[Compare experiments](https://jonathanperis.github.io/solar-system-simulator/compare/)** · **[Read the field guide](https://jonathanperis.github.io/solar-system-simulator/docs/)**
+
+## Start here
+
+- **Explore:** 128 core bodies — the Sun, all eight planets, Vesta, Earth's Moon, Phobos, Deimos, and 115 Jovian moons. The separate [small-body atlas](https://jonathanperis.github.io/solar-system-simulator/small-bodies/) contains 1,564,244 pinned records; it does not load them all into the physics scene.
+- **Learn:** use [guided experiments](https://jonathanperis.github.io/solar-system-simulator/docs/experiments/) and matched A/B comparisons, then export SI measurements as CSV.
+- **Run locally:** start with the [raylib-free CLI](#learning-laboratory), or check [prerequisites](#build-prerequisites) before `make && make run` for the 3D app.
+- **Contribute:** read [architecture](https://jonathanperis.github.io/solar-system-simulator/docs/architecture/), [build and web](https://jonathanperis.github.io/solar-system-simulator/docs/build-and-web/), and the [project layout](#project-layout). [Data provenance](data/README.md) distinguishes pinned measurements, estimates, and unknowns.
+
 ## Goal
 
 This project is intentionally physics-first. The renderer exists to show the simulation, but the core work is mathematical: deterministic celestial-body state, SI-unit physics, and testable orbital mechanics foundations.
@@ -59,7 +68,7 @@ The core demonstration contains 128 bodies through Neptune. The separate [small-
 
 - The 2026-09-14 bulk snapshot accounts for 1,568,320 source rows: 1,564,244 qualifying bodies and 4,076 other comet records outside the selected scope. All qualifying entries have usable source orbits.
 - Orbital subsets overlap with the overall total: 1,466,940 belt asteroids, 7,287 trans-Neptunian objects and 1,047 Centaurs. The catalog includes named, provisional and hyperbolic objects, including Oumuamua.
-- 203 compressed index/data shards plus a source-accounted density overview total approximately 141 MB. Search scans bounded shards in a worker; each result page contains at most 50 rows. Catalog, density-cell, result and active-physics counts stay distinct.
+- 203 shard pairs (one compressed index and one compressed data file per shard) plus a source-accounted density overview total approximately 141 MB. Search scans bounded shards in a worker; each result page contains at most 50 rows. Catalog, density-cell, result and active-physics counts stay distinct.
 - `src/sim/orbit.c` provides the shared universal-variable conic solver for native/WASM physics and orbital previews. Catalog previews two-body propagate source elements to JD 2461200.5 TDB; their original epochs and quality remain visible.
 - Experiments initialize all eight planets from `data/planet_epoch.json`, a Sun-centered Horizons vector snapshot at the same epoch. They start explicitly and reset to the same session-owned initial state. The 128-body perihelion demonstration remains independently available.
 - Missing mass uses a test particle; missing radius stays Unknown. Bulk SBDB physical values are labeled published with unclassified measurement/estimate quality. `data/small_body_physical.json` adds explicitly sourced dwarf-planet measurements/estimates where the bulk catalog lacks them.
@@ -100,7 +109,7 @@ Current milestone behavior:
 - Initializes Saturn at heliocentric perihelion on the +Z axis with tangential -X velocity from the vis-viva equation.
 - Advances moving bodies with Newtonian gravity from all nonzero-mass sources using the shared simulation integrator. Unknown-mass moons are test particles, not invented physical masses.
 - Supports illustrative/default and real-scale visualization modes.
-- Draws bounded motion traces for every non-star body, with uniform full-run sampling that coarsens as the run grows and an always-current endpoint.
+- Draws bounded motion traces for non-star bodies and moving stars, with uniform full-run sampling that coarsens as the run grows and an always-current endpoint. Only fixed stars omit history.
 - Allows camera focus cycling and name/group search across all active bodies, with separate family and individual-body framing.
 - Clamps mouse-wheel camera zoom while preserving the default viewing pitch, so max zoom-in does not flip or corrupt the camera orientation.
 - Displays simulation readouts in the native HUD and accessible Astro page; the browser canvas is reserved for the scene.
@@ -125,7 +134,7 @@ Simulation code lives under `src/sim/` and is independent from raylib.
 
 Current simulation data:
 
-Baseline planet values follow NASA/JPL references; Jupiter and Saturn use [JPL physical parameters](https://ssd.jpl.nasa.gov/planets/phys_par.html) and [JPL approximate orbital elements](https://ssd.jpl.nasa.gov/planets/approx_pos.html). Satellite values follow JPL Solar System Dynamics. Vesta's physical values and osculating elements use [JPL SBDB solution 36](https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1). Derived periapsis distances and vis-viva speeds are calculated in `src/sim/constants.h`.
+Baseline planet values follow NASA/JPL references; Jupiter through Neptune use [JPL physical parameters](https://ssd.jpl.nasa.gov/planets/phys_par.html) and [JPL approximate orbital elements](https://ssd.jpl.nasa.gov/planets/approx_pos.html). Satellite values follow JPL Solar System Dynamics. Vesta's pinned physical values and osculating elements are attributed to JPL SBDB solution 36; the [live SBDB query](https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1) may return a newer solution. Derived periapsis distances and vis-viva speeds are calculated in `src/sim/constants.h`. See the [provenance and precision policy](data/README.md#provenance-and-precision-policy) for missing legacy retrieval dates and uncertainty limitations.
 
 | Body | Mass | Radius | Initial state |
 |---|---:|---:|---|
@@ -252,7 +261,7 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 - Physical radii remain real in simulation data.
 - Saturn's ring lines are renderer-only. Their source-backed outer extent affects camera framing, while the physical body radius and all simulation state remain unchanged.
 - Illustrative mode is the default: planets keep the previous large visible radius, asteroids use a distinct `0.03` render-unit radius, and moons render smaller in proportion to Earth's physical radius with a small visible floor for tiny moons. Parent-relative moon offsets are expanded only in illustrative mode as needed so the large visual spheres remain readable without changing the underlying physics state.
-- Trails start with one historical sample per 300 simulated seconds. At the 1,025-point budget, historical spacing and future sampling cadence both double. This preserves distributed coverage instead of repeatedly erasing early curvature. The current endpoint updates on every physics step; parent/child sample times stay synchronized.
+- Trails start with one historical sample per 300 simulated seconds, rounded up to whole configured ticks in lessons. At the 1,025-point budget, historical spacing and future sampling cadence both double. This preserves distributed coverage instead of repeatedly erasing early curvature. The current endpoint updates on every physics step; parent/child sample times stay synchronized, including the moving Sun in the barycentric lesson.
 - Resolution decreases uniformly during long runs. Fine satellite loops eventually become less resolved; trails are an approximation of recorded motion, not complete predicted orbital ellipses. The browser reports the current historical spacing.
 - The subdued ground grid sits below the orbital plane as a bounded camera-local patch of at most 512 slices. Its one-render-unit cells represent 0.1 AU. Solid body colors are not obscured by universal wireframe overlays.
 - Real-scale mode uses the same physical render scale for both positions and radii with no radius clamp. Planets may be nearly invisible in this mode; that is physically expected at solar-system scale.
@@ -270,13 +279,14 @@ The app uses a small stable orbit camera instead of raylib's automatic orbital h
 ## Controls
 
 - Native `L`: cycle lesson presets; `I`: compare integrators; `D`: cycle lesson step size; `-` / `=`: change initial speed. Configuration changes restart the lesson. Browser controls expose the same C-owned configuration explicitly.
+- `M`: switch bounce/merge and restart the collision lesson; the browser also provides a Contact button.
 - `T`: absolute or parent-relative trail history. `X`: vector directions (green velocity, orange acceleration; illustrative lengths).
 - `E`: export an SI snapshot as `solar-snapshot.csv` (browser download or native working directory). Headless series and snapshots share the C writer.
 - `Space`: pause/resume. Paused time does not accumulate for later catch-up.
 - `N`: advance one configured physics tick while paused (15 seconds in core/catalog scenes).
 - `R`: restore initial physics, trail history, and clock remainder; retain selection, speed, pause state, render mode, and camera rotation setting.
-- `[` / `]`: change requested speed among 1 hour, 1 day, 5 days, 10 days, and 15 days per real second without changing the integration step.
-- `1`–`9`, `0`: select the original ten bodies; `0` selects Jupiter. `C` cycles the complete scene.
+- `[` / `]`: change requested orbital playback speed among 1 hour, 1 day, 5 days, 10 days, and 15 days per real second without changing the integration step. The collision lesson uses 1/5/10/25/50 simulated seconds per real second instead.
+- `1`–`9`, `0`: select the first ten positions in the active scene; in the core demonstration these are the original ten bodies, with `0` selecting Jupiter. `C` cycles the complete active scene.
 - `B`: frame only the selected body or its unknown-radius marker.
 - `/` in the native app: search by name, provisional designation, or moon group. Down finds the next match, Enter selects, and Escape closes search. Web controls provide a search field and group filter.
 - `A`: toggle camera auto-rotation independently of playback.
@@ -301,20 +311,11 @@ The live physics inspector displays parent-relative distance (km), parent-relati
 - `pkg-config`
 - [raylib](https://www.raylib.com/) development libraries for the app build
 
-Use raylib **6.0** for the visual app (including `rlSetClipPlanes`). The headless runner and `make test-core` do not need raylib or a window. Python **3.10+** runs the offline catalog/build checks. Web builds use Emscripten **5.0.7** and a raylib archive compiled with the same SDK. Docs require Node **24+** (CI uses 24), npm and the committed lockfile.
+Use raylib **6.0** for the visual app (including `rlSetClipPlanes`). The headless runner and `make test-core` do not need raylib or a window. Python **3.10+** runs the offline catalog/build checks. Web builds use Emscripten **6.0.9** and a raylib archive compiled with the same SDK. Docs require Node **24+** (CI uses 26), npm and the committed lockfile.
 
-With a raylib source checkout available, prepare the web library with `make PLATFORM=PLATFORM_WEB -C /absolute/path/to/raylib/src`; force a platform rebuild when reusing native object files. Then:
+The docs use Astro **7.3.3**, `@astrojs/check` **0.9.10**, and TypeScript **6.0.3**. TypeScript 7 is outside the checker's supported peer range; upgrade it when that tooling supports it. Emscripten 6 targets Chrome 85+, Firefox 79+, and Safari 14.1+; the app also requires WebGL and the catalog uses modern browser APIs, so use a current browser rather than treating those compiler minimums as a tested support matrix.
 
-```sh
-make docs-assets RAYLIB_WEB_SRC=/absolute/path/to/raylib/src
-npm ci --prefix docs
-npm test --prefix docs
-npm run check --prefix docs
-npm run build --prefix docs
-make docs-check
-```
-
-`make docs-assets` validates and copies JS/WASM plus `build-info.json`, which records revision and artifact checksums. Local/fork builds omit analytics. CI gives build and validation the same analytics setting, and Pages publishes that checked tree rather than rebuilding it. Stale successful runs cannot replace newer main output. GitHub Actions dependencies are pinned to immutable commits.
+For the web library, use a raylib 6.0 source checkout and the same Emscripten SDK as the app. Run `make PLATFORM=PLATFORM_WEB -C /absolute/path/to/raylib/src`; force a platform rebuild when reusing native object files. Follow the complete [browser runtime recipe](#browser-runtime) below to stage every required artifact.
 
 On systems where `pkg-config --libs raylib` is unavailable, the Makefile falls back to:
 
@@ -325,7 +326,7 @@ On systems where `pkg-config --libs raylib` is unavailable, the Makefile falls b
 
 ```bash
 make       # build the raylib app at build/solar-system-simulator
-make test  # run C test binaries for simulation math/physics and camera math
+make test  # run offline catalog checks and simulation/app/renderer C tests
 make run   # launch the simulator
 make clean # remove build outputs
 ```
@@ -345,30 +346,48 @@ Local tests use installed Chrome in isolated contexts; CI installs pinned Chromi
 The [live simulator](https://jonathanperis.github.io/solar-system-simulator/simulator/) is an Astro page using the shared site layout. Emscripten compiles the same C source into a JavaScript loader and `.wasm` binary; Astro owns the canvas, accessible readouts, loading errors, and explanatory content. The previous `/wasm/solar-system-simulator.html` address redirects to `/simulator/`.
 
 ```sh
-make web RAYLIB_WEB_SRC=/path/to/raylib/src
-make dist-wasm RAYLIB_WEB_SRC=/path/to/raylib/src
-mkdir -p docs/public/wasm
-cp build/web/solar-system-simulator.js build/web/solar-system-simulator.wasm docs/public/wasm/
+make docs-assets RAYLIB_WEB_SRC=/absolute/path/to/raylib/src
 npm ci --prefix docs
 npm test --prefix docs
 npm run check --prefix docs
 npm run build --prefix docs
 make docs-check
+npm run preview --prefix docs
 ```
 
-`make dist-wasm` packages the two runtime assets, not a standalone HTML app. The Build workflow checks native tests, WASM, and Astro output; Deploy Pages publishes the matching successful revision. No server-side runtime is needed by the published site.
+Open the printed loopback URL under `/solar-system-simulator/`. Run commands from the repository root. `make docs-assets` validates and stages all five runtime files — `solar-system-simulator.js`, `solar-system-simulator.wasm`, `catalog-orbits.wasm`, `learning-lab.mjs`, and `learning-lab.wasm` — plus `build-info.json`. The manifest records source revision and checksums. `make dist-wasm RAYLIB_WEB_SRC=/absolute/path/to/raylib/src` optionally packages the same six files into a ZIP; Astro supplies the HTML pages.
+
+Upgrading an older checkout? Move any legacy generated `docs/public/wasm/solar-system-simulator.html` outside `docs/public/` before building. A public HTML file at that path shadows Astro's redirect; `make docs-check` rejects the stale standalone page.
+
+For content-only edits, reuse a validated runtime bundle, then rerun the docs tests, check, build, and `make docs-check`. Rebuild runtime assets after C changes. For live content editing, use `npm run dev:background --prefix docs`; inspect or stop that server with `dev:status`, `dev:logs`, and `dev:stop`. The static site and documentation live together in `docs/`.
+
+Local/fork builds omit analytics. CI gives build and validation the same analytics setting. The Build workflow checks native tests, sanitizers, WASM, catalogs, dependencies, Astro output, and browser interactions. Deploy Pages publishes that exact checked tree after a successful same-repository `main` push or manual Build; stale revisions are skipped. CodeQL separately analyzes C/C++, TypeScript/JavaScript, and Actions. No server-side runtime is needed by the published site.
 
 ## Project layout
 
 ```text
 src/
-├── app/                # small app-level helpers that are testable without opening a window
+├── app/                # sessions, stepping, trails, camera, CSV, comparison and descriptors
+├── headless.c          # raylib-free solar-lab CLI
+├── lab_web.c           # C-only comparison WebAssembly entrypoint
 ├── main.c             # raylib app loop, camera, overlay, simulation stepping
 ├── render/            # raylib drawing code
 └── sim/               # raylib-independent physics/data model
 
-tests/                 # C test binaries for simulation and app math
+docs/src/pages/        # static Astro site, field guide, simulator and comparison pages
+docs/src/lib/          # presentation, C bridges, catalog worker and shared site metadata
+docs/public/catalog/   # pinned compressed small-body snapshot
+docs/tests/            # Node tests; docs/browser-tests/ holds browser checks
+data/                  # source provenance, Jovian catalog and planetary epoch snapshot
+examples/              # replayable SOLAR_LAB_V1 comparison descriptors
+tools/                 # source importers, artifact/route validators and CI helpers
+tests/                 # C tests and Python CLI/build/validator tests
+.github/workflows/     # Build, checked-artifact Pages deployment and CodeQL
+SPEC.md                # current contracts, roadmap, acceptance and audit history
+PRODUCT.md / DESIGN.md # learning goals and archival solar-chart visual direction
 ```
+
+When updating documentation, check shared claims in the README, `docs/src/lib/site.ts`, `docs/src/lib/sourceMap.ts`, and the relevant field-guide page. Keep new page links and `docs/public/sitemap.xml` aligned; `make docs-check` verifies the published routes, assets, and sitemap. Catalog counts describe pinned snapshots, not automatically refreshed live inventories.
 
 ## Next planned iterations
 

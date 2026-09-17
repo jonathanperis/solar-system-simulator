@@ -21,7 +21,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
 
     <section class="doc-panel">
       <h2>Run without graphics</h2>
-      <p>A C11 compiler, Make and Python 3 are enough for the headless laboratory. raylib is unnecessary for this path.</p>
+      <p>A C11 compiler, Make and Python 3.10+ are enough for the headless laboratory. raylib is unnecessary for this path.</p>
       <pre><code>{`make headless
 build/solar-lab --scene circular --days 30 --dt 300 --sample 3600 --output build/verlet.csv
 build/solar-lab --scene circular --days 30 --dt 300 --sample 3600 --integrator euler --output build/euler.csv

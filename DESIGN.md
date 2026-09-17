@@ -4,7 +4,7 @@
 
 Public site is an **archival solar chart**: cream paper, ink navy, brass rules, engraved orbit geometry, editorial serif type. It feels like a maintained astronomical atlas, not a cockpit, dashboard, or space screensaver.
 
-Homepage is a full-screen interactive orrery. It indexes real catalog metadata with illustrative position and scale. Live motion belongs only to browser WASM runtime.
+Homepage is a full-screen interactive orrery. It indexes real core-body metadata with illustrative position and scale. Physical integration belongs to the C WebAssembly simulator and comparison lab; the separate small-body atlas uses C-computed approximate two-body previews.
 
 ## Palette
 
@@ -23,7 +23,7 @@ Homepage is a full-screen interactive orrery. It indexes real catalog metadata w
 ## Components
 
 1. **Orbital atlas**
-   - Full-screen SVG/DOM chart with heliocentric, Earth-relative, Mars-relative plates.
+   - Full-screen SVG/DOM chart with heliocentric, Earth-relative, Mars-relative, and grouped/paginated Jupiter-relative plates.
    - Each body is a semantic button and supports pointer, keyboard, touch, and no-JS catalog fallback.
    - Brass observation arm may select nearest body. It never claims physical orbital state.
 
@@ -39,6 +39,10 @@ Homepage is a full-screen interactive orrery. It indexes real catalog metadata w
    - Archival frame and real loading/error state around unchanged raylib canvas.
    - Canvas remains dark renderer output; no page CSS mutates physics or renderer behavior.
 
+5. **Learning and catalog surfaces**
+   - Comparison plots and accessible tables present matched C measurements, with units, source revision, and explicit unavailable values.
+   - The small-body atlas distinguishes catalog, density, result, and active-physics counts. Its logarithmic map and two-body previews are labeled approximations.
+
 ## Interaction principles
 
 - Body selection: click/tap, `Left`/`Right`, previous/next controls.
@@ -51,6 +55,6 @@ Homepage is a full-screen interactive orrery. It indexes real catalog metadata w
 ## Boundaries
 
 - Chart scale, positions, orbit geometry, and body pigments are illustrative; label this in UI.
-- Names, kinds, parents, initialization, milestone, source derive from `docs/src/lib/bodies.ts`.
+- Core names, kinds, parents, initialization, milestone, and source derive from `docs/src/lib/bodies.ts` and its versioned Jovian input. Small-body metadata derives from the pinned catalog manifest/shards.
 - SI state, integrator, renderer transforms, and runtime controls remain source-backed.
 - Do not add Three.js, p5.js, GSAP, shaders, textures, or asset system for site atlas.

@@ -20,11 +20,18 @@ const base = normalizeBase(import.meta.env.BASE_URL);
     </article>
     <article class="card">
       <h2>Integration</h2>
-      <p>The physics step uses velocity-Verlet: half-kick velocity, drift position, recompute acceleration, then finish the second half-kick.</p>
+      <p>Core and catalog scenes use fixed 15-second velocity-Verlet steps: half-kick velocity, drift position, recompute acceleration, then finish the second half-kick. Guided lessons can choose a different fixed step and compare explicit Euler.</p>
     </article>
     <article class="card">
       <h2>Initial orbits</h2>
-      <p>Planets and moons start from perihelion, perigee, or periareion assumptions with vis-viva speeds relative to their parent frame.</p>
+      <p>The core demonstration starts planets and Vesta at planar perihelion, Earth's Moon at perigee, and Mars's moons at periareion with vis-viva speeds. Jovian moons instead use sourced mean elements and reference-frame conversion. These states do not share a dated ephemeris.</p>
     </article>
+  </section>
+
+  <section class="panel">
+    <h2>Choose the model before interpreting the result.</h2>
+    <p><a href={`${base}small-bodies/`}>Selected catalog experiments</a> align source orbits and pinned planetary vectors to JD 2461200.5 TDB, then integrate with the fixed-Sun point-mass model. Unknown masses are test particles; unknown radii remain explicitly unavailable.</p>
+    <p><a href={`${base}docs/experiments/`}>Guided lessons</a> use controlled initial conditions to study numerical error, free barycentric motion, resonance, encounters, and opt-in head-on contact. The moving-Sun lesson differs from the default fixed-Sun core. Relativity, tides, and planetary oblateness are outside the model.</p>
+    <p>The <a href={`${base}compare/`}>A/B lab</a> compares matched C measurements. A small energy change or a stable-looking orbit alone does not establish accurate orbital phase; use analytical references and timestep convergence where available. Display magnification never changes SI state.</p>
   </section>
 </BaseLayout>

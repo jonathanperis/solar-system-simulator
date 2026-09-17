@@ -5,9 +5,9 @@ export const liveUrl = 'https://jonathanperis.github.io/solar-system-simulator/'
 export const buildRevision = import.meta.env.PUBLIC_BUILD_SHA || 'local build';
 
 export const currentMilestone = {
-  label: 'All eight planets, the Jovian moon system, and the complete small-body atlas',
-  shortLabel: 'Small-body atlas',
-  integrator: 'velocity-Verlet / kick-drift-kick',
+  label: 'Guided C experiments, matched A/B comparisons, and the complete pinned small-body atlas',
+  shortLabel: 'Learning laboratory',
+  integrator: 'velocity-Verlet baseline with explicit Euler lesson comparisons',
   units: 'SI units: m, kg, s, m/s',
   language: 'C11',
   rendering: 'raylib 3D boundary',

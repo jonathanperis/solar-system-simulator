@@ -56,7 +56,7 @@ I.controls: native `Tab` | `C` focus; web `C` focus and browser-native `Tab`; `V
 
 I.inspection: native shortcuts and accessible web buttons share C-owned playback and selection; web readouts use live C physical state. Space pauses, N steps, R resets, A toggles camera rotation, F frames the selected system, B frames only the selected body; native 1–9 and 0 select the first ten catalog bodies and brackets change speed. Search/group selection reaches the full catalog.
 
-I.pages: `/`, `/docs/`, `/docs/architecture/`, `/docs/simulation-core/`, `/docs/rendering/`, `/docs/controls/`, `/docs/build-and-web/`, `/docs/roadmap/`, `/docs/experiments/`, `/physics/`, `/body-catalog/`, `/source-atlas/`, `/pipeline/`, `/simulator/`, `/compare/`; `/wasm/solar-system-simulator.html` redirects to `/simulator/`
+I.pages: `/`, `/docs/`, `/docs/architecture/`, `/docs/simulation-core/`, `/docs/rendering/`, `/docs/controls/`, `/docs/build-and-web/`, `/docs/roadmap/`, `/docs/experiments/`, `/physics/`, `/body-catalog/`, `/small-bodies/`, `/source-atlas/`, `/pipeline/`, `/simulator/`, `/compare/`; `/wasm/solar-system-simulator.html` redirects to `/simulator/`
 
 I.ci: `Build` runs native tests, WASM validation, and docs/dependency checks. `Deploy Pages` consumes the exact successful artifact and commit from a same-repository `main` push or manual run. `CodeQL` scans C/C++, JavaScript/TypeScript, and Actions on PRs, main pushes, weekly schedules, and manual dispatch.
 
@@ -244,6 +244,35 @@ A39|PR #8 preserves the checked Pages artifact, source/checksum and stale-run gu
 
 Decision: Jonathan authorized merging PR #8 after PR #9 reached main, then explicitly approved rebasing its branch onto main, resolving conflicts, and pushing with an exact force-with-lease. Preserve the additional CodeQL security-and-quality commit observed at the branch head. CodeQL's manual C build includes the newly added headless entry point. The root specification remains tracked and .specs/ remains ignored.
 
+## §A — Documentation currency audit, 2026-09-17
+
+id|criterion|verify
+A40|README, authored site routes, shared source/milestone metadata and maintainer context describe the current scene, lessons, trail policy, source provenance and checked-artifact delivery; build instructions include all runtime companions|source-to-claim review, offline catalogs, native CLI examples, Astro tests/type-check/build and generated route checks
+A41|The sitemap lists every canonical generated page, including the small-body atlas; route validation detects missing or stale entries|focused validator regression test and `make docs-check`
+A42|GitHub About has an accurate description, live Pages homepage and relevant topics, with remote values read back after the authorized gh update|`gh repo view` and public build provenance
+
+Decision: Jonathan requested a repository-wide documentation audit, an evidence-backed enhancement/update plan and a GitHub About enhancement through gh, then approved proceeding with “go”. This iteration updates documentation and its sitemap verification on a feature branch. The existing root specification remains authoritative and tracked; .specs/ remains ignored.
+
+Audit baseline: `eb6abd9ac7034103b309b38bdbe3c28a47a134cd`. On 2026-09-17, the public `wasm/build-info.json` reports this same revision and its Build, CodeQL and Deploy Pages runs are successful. Review covers all tracked Markdown, all 16 canonical Astro pages plus the compatibility redirect, shared page copy/navigation, source catalogs, Make/package commands and workflow ownership.
+
+Finding|Evidence|Update
+Outdated project context|PRODUCT.md still lists nine bodies; DESIGN.md omits the Jupiter plate|Align current capabilities and source boundaries with the 128-body core, pinned atlas and learning lab
+Incomplete browser build recipe|README manually copies only the main JS/WASM pair; Makefile packages five runtime files plus build-info.json|Use the validated docs-assets entrypoint and document preview/contributor checks
+Legacy generated HTML collision|An ignored local public/wasm HTML file shadows the Astro-owned redirect and fails the existing route check|Document relocation outside public assets when upgrading an older checkout; preserve the observed file as local audit evidence
+Obsolete delivery summary|pipeline route says Deploy Pages rebuilds Astro; the workflow publishes the exact checked tree|Describe native/WASM/docs gates, trusted deployment and CodeQL accurately
+Overgeneralized physics/trails|physics summary treats every scene as periapsis Verlet; rendering summary excludes moving stars|Distinguish core, Jovian mean elements, source-epoch experiments and lessons; explain synchronized moving-star history and lesson cadence
+Incomplete discovery/ownership|sitemap omits small-bodies; source map omits CLI, comparison and small-body data ownership|Complete sitemap with a regression gate and update navigation/source metadata
+Empty GitHub About|description/homepage/topics were empty|Set concise physics-learning scope, canonical Pages URL and technology/domain topics
+
+### Dependency update amendment
+
+A43|Repository dependencies and CI toolchain versions use current stable compatible releases, with unsupported upgrades explained rather than forced through peer constraints|registry/release/tag evidence, clean locked npm install/audit, docs tests/type-check/build, immutable action revision comparison
+A44|Emscripten 6.0.9 builds all runtime modules; the visual runtime links raylib 6.0 compiled with the same SDK, while conic and comparison modules remain raylib-free; native/WASM parity, artifact checks and the authorized local browser suite preserve existing behavior|native tests, fresh WASM builds, C/WASM comparison, generated-route and browser checks
+
+Decision: Jonathan requested “update everything to the newest version”, selected “Docs + dependencies”, and authorized repository-local dependency installation and verification. He separately selected “Run local browser tests” for the built loopback site, isolated contexts and a task-local pinned Chromium download if needed. Astronomy source snapshots retain their reviewed versions.
+
+Release evidence checked 2026-09-17: npm latest Astro is 7.3.3; @astrojs/check is 0.9.10 with TypeScript peer range `^5.0.0 || ^6.0.0`; TypeScript latest is 7.0.2, so 6.0.3 remains the newest supported compiler for the existing checker. Playwright 1.63.0 is current. GitHub release/tag checks confirm raylib 6.0 and every existing action SHA already resolve to the latest stable releases. Node 26.9.0 is Current and 24.21.0 is LTS; CI moves to Node 26 while the supported minimum stays 24. Emscripten 6.0.9 is the latest tagged SDK; 6.0 raises generated runtime minimums to Chrome 85, Firefox 79 and Safari 14.1. Sources: npm package metadata; https://nodejs.org/en/about/previous-releases ; https://github.com/emscripten-core/emscripten/releases/tag/6.0.9 ; https://github.com/emscripten-core/emscripten/releases/tag/6.0.0 ; immutable GitHub release refs.
+
 ## §T
 
 id|status|task|cites
@@ -295,10 +324,17 @@ T45|x|integrate comparison WASM/native CLI, live plots, trajectory overlays, sav
 T46|x|add sandboxed pinned automated browser checks to local tooling and CI; update all learning/control/provenance docs|A37,A38
 T47|x|run verification/regression review, commit and push both rounds, and observe branch CI|A38
 T48|x|reconcile and verify PR #8's security controls and analysis coverage against the learning-lab pipeline|A39,V14
+T49|x|refresh audited documentation, onboarding and source ownership; verify claims and generated site|A40,V16
+T50|x|repair and guard sitemap completeness|A41,V13
+T51|x|enhance and verify GitHub About metadata through gh|A42
+T52|x|update supported docs dependency releases and Node CI version, install the lockfile and verify|A43
+T53|x|update Emscripten and documentation, rebuild matching raylib/WASM, and verify native/browser contracts|A44
 
 Verification: Build run https://github.com/jonathanperis/solar-system-simulator/actions/runs/35175509807 passed native tests/sanitizers, WASM packaging, complete catalog checks, docs validation and sandboxed browser tests for implementation commit 016f187. PR creation was denied by the credential; branch-plus-CI delivery follows Jonathan's explicit amendment above.
 
 Security integration verification: Build https://github.com/jonathanperis/solar-system-simulator/actions/runs/35243274760 and CodeQL https://github.com/jonathanperis/solar-system-simulator/actions/runs/35243274774 passed for ee35fba. The local policy matrix passed eight trusted/untrusted event cases; runtime/docs sources match the verified learning-lab main.
+
+Documentation/dependency audit verification, 2026-09-17: A40–A44 pass locally. All 478 repository/site links across eight Markdown files and 17 generated HTML documents resolve, including fragments. Offline checks confirm 128 core bodies, 11 presets, 115 Jovian moons and 1,564,244 small-body records. Native raylib 6.0 build, `make test test-build test-cli test-validators`, documented CLI runs, Node 26.9.0 docs tests (15), Astro check/build, sitemap/route checks, Emscripten 6.0.9 packaging, standalone conic and native/WASM comparison checks, and five isolated local Chrome browser tests pass. Clean locked npm installation and audit report zero vulnerabilities. GitHub About description/homepage/11 topics were updated through gh and read back. Read-only browser inspection confirms the revised build/pipeline copy; durable build-guide snapshot/screenshot is in ignored `playwright-evidence/documentation-audit-20260917/`. The old ignored standalone HTML is preserved at `build/documentation-audit/legacy-public-runtime.html`. No source snapshot refresh or remote branch delivery occurred; hosted CI/Pages verification for these uncommitted changes and a fresh sanitizer run are not claimed. Eleven unique external links outside repository/Pages targets were not exhaustively fetched. Regression scan: 12 callers checked, 9 assertions checked, 1 flagged/fixed (A44 wording now distinguishes raylib-linked and raylib-free modules).
 
 ## §B
 
