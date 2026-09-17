@@ -70,14 +70,19 @@ class HeadlessLab(unittest.TestCase):
         self.assertEqual(rows[-1]["subject_present_b"], "0")
 
     @unittest.skipUnless(os.name == "posix", "POSIX file permission contract")
-    def test_new_csv_output_is_private_even_with_a_permissive_umask(self):
+    def test_csv_permissions_preserve_new_and_existing_file_contracts(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
-            output = Path(directory) / "series.csv"
-            result = subprocess.run([str(RUNNER), "--duration", "15", "--sample", "15", "--output", str(output)],
-                                    capture_output=True, text=True, umask=0)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertTrue(output.read_text().startswith("# solar-lab-v1"))
-            self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
+            for index, (mask, existing, expected) in enumerate(((0, None, 0o600), (0o777, None, 0o600), (0, 0o640, 0o640))):
+                with self.subTest(umask=mask, existing=existing):
+                    output = Path(directory) / f"series-{index}.csv"
+                    if existing is not None:
+                        output.write_text("old output")
+                        output.chmod(existing)
+                    result = subprocess.run([str(RUNNER), "--duration", "15", "--sample", "15", "--output", str(output)],
+                                            capture_output=True, text=True, umask=mask)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(stat.S_IMODE(output.stat().st_mode), expected)
+                    self.assertTrue(output.read_text().startswith("# solar-lab-v1"))
 
 
 if __name__ == "__main__":

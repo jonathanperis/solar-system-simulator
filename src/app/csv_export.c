@@ -4,6 +4,7 @@
 
 #include "csv_export.h"
 #include "revision.h"
+#include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #ifdef _WIN32
@@ -22,7 +23,18 @@ FILE *simulation_csv_open_output(const char *path)
     FILE *stream = _fdopen(descriptor, "w");
     if (!stream) _close(descriptor);
 #else
-    int descriptor = open(path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    int descriptor = open(path, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+    if (descriptor >= 0) {
+        /* Override umask only on the file this call created, never an existing destination. */
+        if (fchmod(descriptor, S_IRUSR | S_IWUSR) != 0) {
+            int error = errno;
+            close(descriptor);
+            errno = error;
+            return NULL;
+        }
+    } else if (errno == EEXIST) {
+        descriptor = open(path, O_WRONLY | O_TRUNC);
+    }
     if (descriptor < 0) return NULL;
     FILE *stream = fdopen(descriptor, "w");
     if (!stream) close(descriptor);
