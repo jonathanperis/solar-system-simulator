@@ -3,6 +3,7 @@ import csv
 import io
 import math
 import os
+import stat
 import subprocess
 import tempfile
 import unittest
@@ -67,6 +68,16 @@ class HeadlessLab(unittest.TestCase):
         self.assertEqual(rows[-1]["body_count_b"], "1")
         self.assertEqual(rows[-1]["position_difference_m"], "")
         self.assertEqual(rows[-1]["subject_present_b"], "0")
+
+    @unittest.skipUnless(os.name == "posix", "POSIX file permission contract")
+    def test_new_csv_output_is_private_even_with_a_permissive_umask(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+            output = Path(directory) / "series.csv"
+            result = subprocess.run([str(RUNNER), "--duration", "15", "--sample", "15", "--output", str(output)],
+                                    capture_output=True, text=True, umask=0)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue(output.read_text().startswith("# solar-lab-v1"))
+            self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o600)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,34 @@
+#ifndef _WIN32
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include "csv_export.h"
 #include "revision.h"
+#include <fcntl.h>
+#include <sys/stat.h>
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 const char *solar_build_revision(void) { return SOLAR_BUILD_REVISION; }
+
+FILE *simulation_csv_open_output(const char *path)
+{
+#ifdef _WIN32
+    int descriptor = _open(path, _O_WRONLY | _O_CREAT | _O_TRUNC | _O_TEXT, _S_IREAD | _S_IWRITE);
+    if (descriptor < 0) return NULL;
+    FILE *stream = _fdopen(descriptor, "w");
+    if (!stream) _close(descriptor);
+#else
+    int descriptor = open(path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    if (descriptor < 0) return NULL;
+    FILE *stream = fdopen(descriptor, "w");
+    if (!stream) close(descriptor);
+#endif
+    return stream;
+}
 
 static void csv_string(FILE *stream, const char *text)
 {
