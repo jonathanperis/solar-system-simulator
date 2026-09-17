@@ -203,7 +203,7 @@ Decision: Jonathan requested “work on everything” in the audit on 2026-09-16
 
 V26: lesson physics and diagnostics are C-owned. Euler is an explicitly labeled teaching comparison; core and source-epoch scenes continue using Verlet. Changing lesson parameters creates a fresh initial state, clock and diagnostic baseline; failed configuration leaves the prior experiment intact.
 
-V27: exports contain physical SI coordinates, simulation ticks, step/method/scene parameters and source revision, never illustrative positions. CSV strings are escaped. Headless output streams with bounded memory and a fixed timestep; duration/sample boundaries must align to whole ticks.
+V27: exports contain physical SI coordinates, simulation ticks, step/method/scene parameters and source revision, never illustrative positions. CSV strings are escaped. Headless output streams with bounded memory and a fixed timestep; duration/sample boundaries must align to whole ticks. New native CSV files use explicit owner-read/write POSIX permissions independently of the process umask.
 
 V28: total energy includes massive-body kinetic energy and each gravitational pair once. Massless tracers contribute no total energy/momentum. Momentum conservation is asserted only for free systems; parent-relative specific energy is labeled a two-body diagnostic.
 

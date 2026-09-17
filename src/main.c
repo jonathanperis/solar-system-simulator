@@ -190,7 +190,7 @@ static bool export_snapshot(const SolarApp *state)
 #if defined(PLATFORM_WEB)
     FILE *stream = tmpfile();
 #else
-    FILE *stream = fopen("solar-snapshot.csv", "w");
+    FILE *stream = simulation_csv_open_output("solar-snapshot.csv");
 #endif
     if (!stream) return false;
     bool ok = simulation_csv_begin(stream, &state->session) && simulation_csv_sample(stream, &state->session);

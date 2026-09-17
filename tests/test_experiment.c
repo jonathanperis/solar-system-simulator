@@ -39,6 +39,19 @@ int main(void)
     assert(!simulation_session_start_experiment(&session,
         "SOLAR_EXPERIMENT_V1 2461200.5\n20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n"
         "20000004\tDuplicate\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n"));
+    char name[SOLAR_EXPERIMENT_NAME_BYTES + 1], named_input[512];
+    for (size_t length = SOLAR_EXPERIMENT_NAME_BYTES - 1; length <= SOLAR_EXPERIMENT_NAME_BYTES; ++length) {
+        memset(name, 'x', length);
+        name[length] = '\0';
+        snprintf(named_input, sizeof(named_input),
+            "SOLAR_EXPERIMENT_V1 2461200.5\n20000004\t%s\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n", name);
+        bool accepted = simulation_session_start_experiment(&session, named_input);
+        assert(accepted == (length < SOLAR_EXPERIMENT_NAME_BYTES));
+        assert(session.system.body_count == 10);
+        assert(strlen(session.system.bodies[9].name) == SOLAR_EXPERIMENT_NAME_BYTES - 1);
+        simulation_session_reset(&session);
+        assert(strlen(session.system.bodies[9].name) == SOLAR_EXPERIMENT_NAME_BYTES - 1);
+    }
     simulation_session_destroy(&session);
     puts("test_experiment passed");
 }

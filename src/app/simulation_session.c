@@ -1,6 +1,7 @@
 #include "simulation_session.h"
 
 #include <ctype.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "../sim/constants.h"
@@ -99,7 +100,7 @@ bool simulation_session_start_experiment(SimulationSession *session, const char 
     /* Commit only after every row succeeds. Names belong to the session, not
      * the temporary parser or the browser's short-lived UTF-8 input buffer. */
     for (size_t i = 9; i < trial.body_count; ++i) {
-        strcpy(session->imported_names[i-9], names[i-9]);
+        snprintf(session->imported_names[i-9], sizeof(session->imported_names[i-9]), "%s", names[i-9]);
         trial.bodies[i].name = session->imported_names[i-9];
     }
     session->initial_system = trial;
