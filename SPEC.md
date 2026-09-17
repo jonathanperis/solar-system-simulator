@@ -74,6 +74,7 @@ R9|Satellite physical data|available GM and mean-radius values with source/quali
 R10|Saturn physical|mass=`568.317 × 10^24 kg`; mean radius=`58232 km`|https://ssd.jpl.nasa.gov/planets/phys_par.html
 R11|Saturn orbit|J2000 a=`9.53667594 AU`; e=`0.05386179`; i=`2.48599187 deg`|https://ssd.jpl.nasa.gov/planets/approx_pos.html
 R12|Saturn rings|ring system extent is roughly `282000 km`; axial tilt=`26.73 deg`; rings are modeled only as presentation geometry|https://science.nasa.gov/saturn/facts/
+R13|Sandboxed browser CI|Playwright supports Ubuntu 22.04; Ubuntu 23.10+ AppArmor restrictions can prevent downloaded Chromium from starting its user-namespace sandbox. Pin the docs/browser job to supported 22.04 while retaining sandbox/TLS checks; checked 2026-09-16|https://playwright.dev/docs/intro#system-requirements ; https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md
 
 ## §V
 
@@ -217,9 +218,11 @@ A34|A versioned bounded lesson descriptor saves/imports through files and sharea
 A35|Guided challenges connect predictions, controlled runs and measured outcomes; force-contribution inspectors expose source acceleration vectors/magnitudes and clearly define percentages of summed magnitudes|force decomposition tests, challenge/UI tests
 A36|Explicit new lessons provide a moving-Sun barycentric core, a perturbed 3:2 period-ratio experiment with resonant-angle diagnostics, a close Earth encounter, and head-on elastic/merging spheres; defaults and original core/catalog semantics remain intact|initial-state, conservation, collision and convergence tests
 A37|Pinned project Playwright tests run against the built local site and in CI, covering comparison/configuration, export, mobile selection and visible failure states while retaining the browser sandbox and TLS validation|local automated browser suite and GitHub checks
-A38|Native/WASM/docs checks, numerical evidence, regression review and source-backed learning docs pass; both local iterations are committed on the feature branch, published as a PR, and CI is observed|verification report and PR checks
+A38|Native/WASM/docs checks, numerical evidence, regression review and source-backed learning docs pass; both local iterations are committed and pushed on the feature branch, and CI is observed|verification report and branch CI checks
 
 Decision: Jonathan approved all six proposed enhancements and the four later physics topics with “do at all”. He then explicitly authorized pinned `@playwright/test` 1.63.0, isolated local Chrome and Chromium installation in CI, plus commit/push/PR creation and CI observation for both rounds. Merge/production deployment awaits review. Continue the existing task checkout/branch and preserve prior work.
+
+Delivery amendment: after GitHub denied PR creation with the current credential, Jonathan explicitly selected “Finish branch and CI only”. The authorized delivery is the pushed feature branch with observed CI; no PR or merge is required.
 
 I.compare: `/compare/` loads a separate C-only lab WASM module; `solar-lab --compare FILE` runs the same descriptor headlessly. Main simulator retains its raylib runtime and exposes the new presets and force inspector.
 
@@ -284,7 +287,7 @@ T43|x|implement descriptor validation, matched-checkpoint comparison, bounded C 
 T44|x|add barycentric core, resonance, encounter and collision lessons with independent physical proofs|A36,V32,V33
 T45|x|integrate comparison WASM/native CLI, live plots, trajectory overlays, save/share/import and guided challenges|A32,A33,A34,A35,V34
 T46|~|add sandboxed pinned automated browser checks to local tooling and CI; update all learning/control/provenance docs|A37,A38
-T47|~|run verification/regression review, commit both rounds, open linked PR and observe CI|A38
+T47|~|run verification/regression review, commit and push both rounds, and observe branch CI|A38
 
 ## §B
 
@@ -304,3 +307,4 @@ B12|2026-09-10|broad window-capture filtering protected canvas shortcuts but pre
 B13|2026-09-14|browser fetch transparently decoded gzip responses before client hashing, so compressed-file hashes rejected valid catalog data|manifest schema 2 hashes both gzip and decoded JSON; clients verify the received form and decompress at most once
 B14|2026-09-16|configurable lesson steps did not always divide the 300-second trail cadence, and fractional boundary roundoff could postpone a sample by a whole tick|align cadence to whole configured ticks and tolerate only floating-point boundary roundoff; session tests cover 200-second and 1.1-second steps
 B15|2026-09-16|the old all-stars trail exclusion became invalid when the barycentric lesson released the Sun, corrupting parent-relative history|record and draw moving stars, omit only fixed stars, and verify the moving-parent transform
+B16|2026-09-16|managed Chromium could not initialize its sandbox under the ubuntu-latest AppArmor user-namespace policy|pin the docs/browser lane to supported Ubuntu 22.04 and retain chromiumSandbox=true
