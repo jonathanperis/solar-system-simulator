@@ -62,7 +62,6 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
     get('[data-object-title]').textContent = 'Loading object…';
     get('[data-object-details]').replaceChildren(); get('[data-object-source]').replaceChildren();
     if (!dialog.open) dialog.showModal();
-    root.querySelectorAll<HTMLButtonElement>('[data-catalog-id]').forEach(button => button.setAttribute('aria-pressed', String(Number(button.dataset.catalogId) === id)));
     const token=++selectionRequest; selectedController?.abort(); selectedController=new AbortController();
     selected=undefined; add.disabled=true; selectionStatus.textContent='Loading source record…';
     try {
@@ -140,7 +139,7 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
       const resultKey = hits.map(({row}) => row[0]).join(',');
       if (resultKey !== shownResults) get('[data-results]').replaceChildren(...hits.map(({row,group})=>{
         const tr=document.createElement('tr'),td=document.createElement('td'),button=document.createElement('button');
-        button.textContent=row[1];button.dataset.catalogId=String(row[0]);button.setAttribute('aria-haspopup','dialog');button.setAttribute('aria-pressed',String(row[0]===inspectedId));button.onclick=()=>void inspect(row[0],group);td.append(button);tr.append(td);
+        button.textContent=row[1];button.dataset.catalogId=String(row[0]);button.setAttribute('aria-haspopup','dialog');button.onclick=()=>void inspect(row[0],group);td.append(button);tr.append(td);
         for(const [label,text] of [['Class',manifest.classNames[group]??group],['Perihelion',row[3]==null?'Unknown':`${row[3].toFixed(3)} AU`],['Orbit',row[5]?'Available':'Unavailable']]){const cell=document.createElement('td');cell.dataset.label=label;cell.textContent=text;tr.append(cell);}
         return tr;
       }));
