@@ -383,13 +383,41 @@ export function mountSimulator(root: HTMLElement): void {
   };
   controls.lesson.addEventListener('change', setLessonDefaults);
   const lessonStatus = root.querySelector<HTMLElement>('[data-lesson-status]')!;
+  const lessonInputs = [controls.lesson, controls.method, controls.dt, controls.factor];
+  const clearLessonValidity = () => lessonInputs.forEach(input => input.setCustomValidity(''));
+  for (const input of lessonInputs) {
+    input.addEventListener('input', clearLessonValidity);
+    input.addEventListener('change', clearLessonValidity);
+  }
   const loadLesson = () => {
+    clearLessonValidity();
     if (!controls.dt.checkValidity() || !controls.factor.checkValidity()) controls.dt.closest('details')!.open = true;
     if (!controls.dt.reportValidity() || !controls.factor.reportValidity()) return;
     const accepted = runtime.ccall?.('solar_web_lesson', 'number', ['number', 'number', 'number', 'number'],
       [Number(controls.lesson.value), Number(controls.factor.value), Number(controls.method.value), Number(controls.dt.value)]);
     lessonStatus.textContent = accepted ? 'Lesson loaded from its initial state. Close this panel to watch; if paused, press Resume. Restart repeats this configuration.'
       : 'Configuration rejected. Core uses 15-second Verlet; core/barycentric-core require speed factor 1; collision steps are 0.01–0.25 s; catalog scenes start through the atlas.';
+    if (!accepted) {
+      // Explain C's lesson-specific rejection after validation; ordinary bounds
+      // are already handled by the numeric inputs. C still owns acceptance.
+      const lesson = Number(controls.lesson.value);
+      const rejectAt = (input: HTMLInputElement | HTMLSelectElement, message: string) => {
+        const details = input.closest('details');
+        if (details) details.open = true;
+        lessonStatus.textContent = message;
+        input.setCustomValidity(message);
+        input.reportValidity();
+      };
+      if (lesson < 0) rejectAt(controls.lesson, 'Choose a lesson preset. Prepared catalog experiments start through Advanced tools.');
+      else if ([0, barycentricLesson].includes(lesson) && Number(controls.factor.value) !== 1)
+        rejectAt(controls.factor, 'This preset keeps its starting speed unchanged. Use a multiplier of 1.');
+      else if (lesson === 0 && Number(controls.method.value) !== 0)
+        rejectAt(controls.method, 'The core demonstration uses Velocity-Verlet. Choose a lesson to compare calculation methods.');
+      else if (lesson === 0 && Number(controls.dt.value) !== 15)
+        rejectAt(controls.dt, 'The core demonstration uses a 15-second timestep. Choose a lesson to vary it.');
+      else if (lesson === collisionLesson && Number(controls.dt.value) > .25)
+        rejectAt(controls.dt, 'The contact lesson needs a timestep from 0.01 to 0.25 seconds. Try 0.1 seconds.');
+    }
   };
   root.querySelector('[data-apply-lesson]')!.addEventListener('click', loadLesson);
   root.querySelectorAll<HTMLButtonElement>('[data-activity]').forEach(button => {

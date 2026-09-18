@@ -75,6 +75,8 @@ test('mobile small-body details are visible and return to the refreshed result',
   await page.getByRole('button', { name: 'Search catalog', exact: true }).click();
   const result = page.getByRole('button', { name: '1 Ceres (A801 AA)', exact: true });
   await result.click({ timeout: 60000 });
+  await expect(result).toHaveAttribute('aria-haspopup', 'dialog');
+  await expect(result).not.toHaveAttribute('aria-pressed');
   await expect(page.getByRole('dialog', { name: 'Object details' })).toBeVisible();
   await expect(page.locator('[data-object-title]')).toHaveText('1 Ceres (A801 AA)');
   await expect(page.getByRole('button', { name: 'Add to experiment', exact: true })).toBeEnabled();

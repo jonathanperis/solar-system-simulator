@@ -129,6 +129,15 @@ test('3D controls export the same SI snapshot across render scales', async ({ pa
   await page.getByRole('button', { name: 'Close advanced tools' }).click();
   await page.getByRole('button', { name: 'Learn', exact: true }).click();
   await page.getByRole('combobox', { name: 'Lesson preset', exact: true }).selectOption({ label: 'Head-on collisions' });
+  await page.getByText('Advanced physics settings', { exact: true }).click();
+  const timestep = page.getByLabel('Time per calculation (seconds)');
+  await timestep.fill('0.5');
+  await page.getByText('Advanced physics settings', { exact: true }).click();
+  await page.getByRole('button', { name: 'Load lesson', exact: true }).click();
+  await expect(timestep).toBeFocused();
+  await expect(page.locator('[data-lesson-status]')).toContainText('0.01 to 0.25 seconds');
+  await expect(page.locator('[data-active-scene]')).toContainText('Circular orbit');
+  await timestep.fill('0.1');
   await page.getByRole('button', { name: 'Load lesson', exact: true }).click();
   await page.getByRole('button', { name: 'Contact: Elastic bounce (restart)', exact: true }).click();
   await page.getByRole('button', { name: 'Close learning activities' }).click();
@@ -142,6 +151,14 @@ test('3D controls export the same SI snapshot across render scales', async ({ pa
   await expect(bodies).toHaveCount(2);
   await page.getByRole('button', { name: 'Learn', exact: true }).click();
   await page.getByRole('combobox', { name: 'Lesson preset', exact: true }).selectOption({ label: 'Moving-Sun barycentric core' });
+  const factor = page.getByLabel('Starting speed multiplier');
+  await factor.fill('1.1');
+  await page.getByText('Advanced physics settings', { exact: true }).click();
+  await page.getByRole('button', { name: 'Load lesson', exact: true }).click();
+  await expect(factor).toBeFocused();
+  await expect(page.locator('[data-lesson-status]')).toContainText('multiplier of 1');
+  await expect(page.locator('[data-active-scene]')).toContainText('Head-on collisions');
+  await factor.fill('1');
   await page.getByRole('button', { name: 'Load lesson', exact: true }).click();
   await expect(page.locator('[data-active-scene]')).toContainText('128 active bodies');
   await expect(page.getByLabel('Time per calculation (seconds)')).toHaveValue('15');
@@ -159,7 +176,9 @@ test('real missing/invalid local assets fail visibly and disable runtime control
   ]) {
     await page.goto(path);
     await expect(page.locator(status)).toContainText(/Runtime error|Comparison runtime unavailable/);
-    for (const fieldset of await page.locator(panel).all()) await expect(fieldset).toHaveAttribute('disabled', '');
-    await expect(page.locator(panel).first().locator('button').first()).toBeDisabled();
+    for (const fieldset of await page.locator(panel).all()) {
+      await expect(fieldset).toHaveAttribute('disabled', '');
+      await expect(fieldset.locator('button').first()).toBeDisabled();
+    }
   }
 });
