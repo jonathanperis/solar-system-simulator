@@ -2,7 +2,6 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { normalizeBase } from '../lib/base';
 import { buildRevision } from '../lib/site';
-import { implementedBodies } from '../lib/bodies';
 import { lessonNames } from '../lib/simulator';
 const base = normalizeBase(import.meta.env.BASE_URL);
 ---
@@ -10,55 +9,31 @@ const base = normalizeBase(import.meta.env.BASE_URL);
   <section class="simulator" data-simulator data-catalog-manifest={`${base}catalog/manifest.json`} data-runtime-src={`${base}wasm/solar-system-simulator.js?revision=${encodeURIComponent(buildRevision)}`}>
     <header class="simulator-intro">
       <div>
-        <p class="eyebrow">Live field station / C11 + WebAssembly</p>
-        <h1>Run the real orbit loop.</h1>
-        <p>{implementedBodies.length}-body core demonstration, or a selected catalog experiment. The chart below is rendered by raylib.</p>
+        <p class="eyebrow">Explore / live simulation</p>
+        <h1>Explore the solar system.</h1>
+        <p>Choose a world. Watch its motion. Follow your curiosity.</p>
       </div>
       <div class="actions">
-        <a class="button" href="#canvas">Focus canvas</a>
-        <a class="button button-secondary" href={`${base}docs/controls/`}>Read controls</a>
+        <a href={`${base}docs/experiments/`}>New here? Your first orbit →</a>
       </div>
     </header>
 
     <div class="simulator-readouts">
       <p data-runtime-status role="status" aria-live="polite">Downloading simulator…</p>
       <p id="runtime-control-state" data-runtime-controls role="status" aria-live="polite">Waiting for simulation state.</p>
-      <dl>
-        <div><dt>Active scene</dt><dd data-active-scene>Waiting for C runtime…</dd></div>
-        <div><dt>Elapsed time</dt><dd data-runtime-elapsed>—</dd></div>
-        <div><dt>History sample spacing</dt><dd data-runtime-interval>—</dd></div>
-        <div><dt>Achieved speed</dt><dd data-runtime-achieved>—</dd></div>
-        <div><dt>Pending simulation time</dt><dd data-runtime-pending>—</dd></div>
-      </dl>
+      <p class="elapsed">Time elapsed: <span data-runtime-elapsed>—</span></p>
     </div>
 
+    <div class="canvas-wrap">
+      <canvas id="canvas" tabindex="0" aria-label="Solar System Simulator WebAssembly canvas" aria-describedby="scale-note">
+        Your browser needs canvas and WebGL to display the simulation.
+      </canvas>
+    </div>
     <fieldset class="runtime-panel" data-runtime-panel disabled>
-      <legend>Simulation controls</legend>
-      <div class="control-row">
-        <label>Lesson preset <select data-lesson>
-          {lessonNames.map((name, index) => <option value={index}>{name}</option>)}
-          <option value="-1" disabled>Prepared catalog experiment</option>
-        </select></label>
-        <label>Integrator <select data-integrator><option value="0">Velocity-Verlet</option><option value="1">Euler — teaching comparison</option></select></label>
-        <label>Physics step (seconds) <input type="number" data-dt min="0.01" max="3600" step="any" value="15" required /></label>
-        <label>Initial speed factor <input type="number" data-velocity-factor min="0.1" max="2" step="any" value="1" required /></label>
-        <button type="button" data-apply-lesson>Start lesson</button>
-        <button type="button" data-export>Export SI snapshot (CSV)</button>
-        <button type="button" data-command="contact" hidden>Contact: Elastic bounce (restart)</button>
-      </div>
-      <p data-lesson-status role="status">Changing a lesson configuration resets its experiment. Core and catalog runs retain 15-second Verlet.</p>
-      <p><a href={`${base}docs/experiments/`}>Predict, run, measure: guided experiments →</a> · Hidden-tab wall time is excluded when you return.</p>
-      <p><a href={`${base}compare/`}>Open the A/B comparison lab: plots, challenges and shareable experiments →</a></p>
-      <div class="control-row">
-        <a class="button button-secondary" href={`${base}small-bodies/`}>Choose small bodies</a>
-        <button type="button" data-start-experiment>Start prepared experiment</button>
-        <button type="button" data-demo>Restore core demonstration</button>
-      </div>
-      <p data-experiment-status role="status">Build a catalog experiment in the small-body atlas, then start it here explicitly.</p>
-      <div class="control-row">
+      <legend class="sr-only">Simulation controls</legend>
+      <div class="control-row playback">
         <button type="button" data-command="pause">Pause</button>
-        <button type="button" data-command="step" disabled>Step +15 s</button>
-        <button type="button" data-command="reset">Reset time</button>
+        <button type="button" data-command="reset">Restart</button>
         <label>Simulation speed
           <select data-runtime-speed>
             <option value="0">1 hour / second</option>
@@ -68,15 +43,42 @@ const base = normalizeBase(import.meta.env.BASE_URL);
             <option value="4">15 days / second</option>
           </select>
         </label>
+        <button type="button" data-whole-system>Show whole system</button>
       </div>
-      <div class="control-row">
+      <div class="control-row panel-launchers">
+        <button type="button" data-open-panel="objects-panel" aria-haspopup="dialog">Find an object</button>
+        <button type="button" data-open-panel="view-panel" aria-haspopup="dialog">View options</button>
+        <button type="button" data-open-panel="learn-panel" aria-haspopup="dialog">Learn</button>
+        <button type="button" data-open-panel="advanced-panel" aria-haspopup="dialog">Advanced</button>
+      </div>
+    </fieldset>
+    <p id="scale-note" class="scale-note">Illustrative mode enlarges bodies and moon spacing; Real scale uses physical sizes and distances. This model is not the sky on a particular date.</p>
+
+    <dialog id="objects-panel" class="option-sheet" aria-labelledby="objects-heading">
+      <header><h2 id="objects-heading">Find an object</h2><button type="button" data-close-panel aria-label="Close object picker">Close</button></header>
+      <fieldset data-runtime-panel disabled>
+       <legend class="sr-only">Object selection</legend>
+       <div class="control-row">
         <label>Find a body <input type="search" data-runtime-search placeholder="Name or designation" /></label>
         <label>Body group <select data-runtime-group><option value="">All groups</option></select></label>
+        <button type="button" data-clear-filters>Clear filters</button>
       </div>
+      <p data-body-filter-status role="status"></p>
       <div class="control-row">
         <label>Selected body <select data-runtime-body aria-describedby="inspector-description"></select></label>
-        <button type="button" data-command="frame">Frame selected system</button>
-        <button type="button" data-command="frameBody">Frame selected body</button>
+        <button type="button" data-command="frame">Show this system</button>
+        <button type="button" data-command="frameBody">Center on this object</button>
+      </div>
+      <p>Select a planet to explore its moons. “Show this system” fits the selected family; “Center on this object” fits just one body.</p>
+      <button type="button" data-close-panel>View selected object</button>
+      </fieldset>
+    </dialog>
+
+    <dialog id="view-panel" class="option-sheet" aria-labelledby="view-heading">
+      <header><h2 id="view-heading">View options</h2><button type="button" data-close-panel aria-label="Close view options">Close</button></header>
+      <fieldset data-runtime-panel disabled>
+       <legend class="sr-only">Scene appearance</legend>
+       <div class="control-row">
         <button type="button" data-command="view">View: Illustrative</button>
         <button type="button" data-command="zoom" data-value="1">Zoom in</button>
         <button type="button" data-command="zoom" data-value="-1">Zoom out</button>
@@ -84,19 +86,66 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         <button type="button" data-command="trails">Trails: Absolute</button>
         <button type="button" data-command="vectors" aria-pressed="false">Vector directions: Off</button>
       </div>
-      <p>Filters keep your current selection available. Reset restores time zero and fresh trails while keeping your selection, speed, pause state, and view settings.</p>
-    </fieldset>
+      <p>Illustrative scale makes small worlds easier to see. Real scale uses physical sizes and distances. Absolute trails show motion relative to the scene origin; parent-relative trails reveal motion around a parent. Vectors show velocity and acceleration directions, with illustrative lengths.</p>
+      <p>These choices change the view, never the physical measurements.</p>
+      </fieldset>
+    </dialog>
 
-    <div class="canvas-wrap">
-      <canvas id="canvas" tabindex="0" aria-label="Solar System Simulator WebAssembly canvas" aria-describedby="simulator-keys">
-        Your browser needs canvas and WebGL to display the simulation.
-      </canvas>
-    </div>
+    <dialog id="learn-panel" class="option-sheet" aria-labelledby="learn-heading">
+      <header><h2 id="learn-heading">Choose an activity</h2><button type="button" data-close-panel aria-label="Close learning activities">Close</button></header>
+      <fieldset data-runtime-panel disabled>
+        <legend class="sr-only">Guided activities</legend>
+        <p>Choose a question, predict what you will see, then load a lesson. Playback stays paused if you paused it.</p>
+        <div class="activity-list">
+          <button type="button" data-activity="4"><strong>How do Earth and Moon move together?</strong><span>Watch an isolated pair orbit their shared center of mass.</span></button>
+          <button type="button" data-activity="1"><strong>Why does an orbit curve?</strong><span>Compare the direction of motion with the pull of gravity.</span></button>
+          <button type="button" data-activity="3"><strong>When can a world escape?</strong><span>Explore the boundary between returning and escaping.</span></button>
+        </div>
+        <label>Lesson preset <select data-lesson>
+          {lessonNames.map((name, index) => <option value={index}>{name}</option>)}
+          <option value="-1" disabled>Prepared catalog experiment</option>
+        </select></label>
+        <details class="lesson-settings"><summary>Advanced physics settings</summary>
+          <div class="control-row">
+            <label>Calculation method <select data-integrator><option value="0">Velocity-Verlet</option><option value="1">Euler — teaching comparison</option></select></label>
+            <label>Time per calculation (seconds) <input type="number" data-dt min="0.01" max="3600" step="any" value="15" required /></label>
+            <label>Starting speed multiplier <input type="number" data-velocity-factor min="0.1" max="2" step="any" value="1" required /></label>
+          </div>
+          <p>1× keeps the lesson's starting speed. Changing it changes the orbit; playback speed only changes how quickly you watch. Core and catalog scenes use 15-second Verlet.</p>
+        </details>
+        <div class="control-row"><button type="button" data-apply-lesson>Load lesson</button><button type="button" data-command="contact" hidden>Contact: Elastic bounce (restart)</button></div>
+        <p data-lesson-status role="status">Loading a lesson restarts its physical state. Restart repeats the current lesson.</p>
+        <p><a href={`${base}docs/experiments/`}>Your first orbit →</a> · <a href={`${base}compare/`}>Compare two experiments →</a></p>
+      </fieldset>
+    </dialog>
+
+    <dialog id="advanced-panel" class="option-sheet" aria-labelledby="advanced-heading">
+      <header><h2 id="advanced-heading">Advanced tools</h2><button type="button" data-close-panel aria-label="Close advanced tools">Close</button></header>
+      <fieldset data-runtime-panel disabled>
+        <legend class="sr-only">Measurements and custom experiments</legend>
+        <div class="control-row"><button type="button" data-command="step" disabled>Step +15 s</button><button type="button" data-export>Download measurements (CSV)</button></div>
+        <p>Pause to advance one calculation at a time. Downloads contain physical SI values in meters, kilograms and seconds.</p>
+        <p data-export-status role="status"></p>
+        <h3>Build a catalog experiment</h3>
+        <p>Choose up to 16 small bodies, then load their prepared experiment here.</p>
+        <div class="control-row">
+          <a href={`${base}small-bodies/`}>Choose small bodies →</a>
+          <button type="button" data-start-experiment>Start prepared experiment</button>
+          <button type="button" data-demo>Restore core demonstration</button>
+        </div>
+        <p data-experiment-status role="status">Choose bodies in the small-body atlas to prepare an experiment.</p>
+        <p><a href="#diagnostics-heading" data-close-panel data-open-diagnostics>Read numerical diagnostics ↓</a></p>
+      </fieldset>
+    </dialog>
+
+    <details class="reference-disclosure"><summary>Keyboard shortcuts and playback help</summary>
     <p id="simulator-keys" class="simulator-keys"><kbd>Space</kbd> pause · <kbd>N</kbd> step · <kbd>R</kbd> reset · <kbd>C</kbd> cycle all bodies · <kbd>1–9</kbd> / <kbd>0</kbd> select first ten · <kbd>V</kbd> view · <kbd>F</kbd> frame system · <kbd>B</kbd> frame body · <kbd>A</kbd> camera rotation · <kbd>T</kbd> trail frame · <kbd>X</kbd> vectors · <kbd>E</kbd> export · Mouse wheel to zoom. Shortcuts require canvas focus; <kbd>Tab</kbd> continues through the page.</p>
+    <p>Restart restores time zero and fresh trails while keeping selection, speed, pause state, and view settings. Hidden-tab time is excluded. Touch users can use the buttons above; no keyboard is needed.</p>
+    <a href={`${base}docs/controls/`}>All controls and camera help →</a>
+    </details>
     <noscript><p class="callout">JavaScript is required to run WebAssembly. The <a href={`${base}docs/simulation-core/`}>physics guide</a> is available without it.</p></noscript>
 
-    <section class="physics-inspector" aria-labelledby="inspector-heading">
-      <h2 id="inspector-heading">Live physics inspector</h2>
+    <details class="physics-inspector"><summary id="inspector-heading">Selected object: physical measurements</summary>
       <p id="inspector-description">Measurements come from the C simulation in physical units. Distance and speed are relative to the selected body's parent, independent of illustrative size and moon spacing.</p>
       <p>Published model estimates are labeled. Unknown masses use test particles that feel gravity without exerting it. Unknown radii use wire markers in both views; their drawn size is not a physical measurement.</p>
       <dl>
@@ -112,12 +161,15 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         <div><dt>Visual radius magnification</dt><dd data-magnification>—</dd></div>
         <div><dt>Camera target / distance (visual)</dt><dd data-runtime-camera>—</dd></div>
       </dl>
-      <p>Frame selected system fits a planet and its moons; selecting a moon frames its parent and siblings. Framing the Sun includes all implemented bodies. Frame selected body zooms to just that body or its unknown-size marker. Use framing again after motion or zoom to refit the view.</p>
-    </section>
+      <p>Show this system fits a planet and its moons; selecting a moon frames its parent and siblings. Show whole system selects the scene's first body (the Sun in the core demonstration) and restores its family view. Center on this object zooms to just that body or its unknown-size marker. Use framing again after motion or zoom to refit the view.</p>
+    </details>
 
-    <section class="physics-inspector" aria-labelledby="diagnostics-heading">
-      <h2 id="diagnostics-heading">Measure numerical behavior</h2>
+    <details class="physics-inspector"><summary id="diagnostics-heading">Numerical diagnostics</summary>
       <dl>
+        <div><dt>Active scene</dt><dd data-active-scene>Waiting for C runtime…</dd></div>
+        <div><dt>History sample spacing</dt><dd data-runtime-interval>—</dd></div>
+        <div><dt>Achieved speed</dt><dd data-runtime-achieved>—</dd></div>
+        <div><dt>Pending simulation time</dt><dd data-runtime-pending>—</dd></div>
         <div><dt>Integrator / step / ticks</dt><dd data-integration>—</dd></div>
         <div><dt>Total massive-body energy</dt><dd data-energy>—</dd></div>
         <div><dt>Normalized energy change</dt><dd data-energy-change>—</dd></div>
@@ -126,15 +178,14 @@ const base = normalizeBase(import.meta.env.BASE_URL);
       </dl>
       <p>Energy change uses initial kinetic energy plus the absolute potential energy, keeping the escape-threshold comparison meaningful when total energy is near zero. Massless tracers do not contribute to totals. A fixed Sun constrains linear momentum; use the free Earth–Moon lesson to study its conservation. Parent-relative specific energy is an instantaneous two-body diagnostic, not an invariant of the perturbed full scene.</p>
       <p>Optional vectors show parent-relative velocity in green and acceleration in orange. Their direction is physical; their length is illustrative. Parent-relative trails move historical parent/child pairs to the parent's present position. Both views leave recorded SI state unchanged.</p>
-    </section>
+    </details>
 
-    <section class="physics-inspector" aria-labelledby="forces-heading">
-      <h2 id="forces-heading">Where does the gravity come from?</h2>
+    <details class="physics-inspector"><summary id="forces-heading">Where does the gravity come from?</summary>
       <p>Top six source contributions, sampled at <span data-forces-time>—</span>. Percentages use the sum of source magnitudes, not net acceleration; vectors can cancel. Fixed bodies can have computed gravity while their positions remain constrained.</p>
       <div class="table-wrap" tabindex="0"><table><thead><tr><th>Source</th><th>Acceleration</th><th>Magnitude share</th><th>X, Y, Z (m/s²)</th></tr></thead><tbody data-runtime-forces></tbody></table></div>
-    </section>
+    </details>
 
-    <div class="simulator-notes">
+    <details class="reference-disclosure"><summary>How to read the model</summary><div class="simulator-notes">
       <section>
         <h2>Read the scale.</h2>
         <p>Illustrative mode enlarges bodies and separates close moons. Real-scale mode uses physical radii and distances, so small bodies can become nearly invisible. Camera-relative drawing preserves local detail at large distances. Each grid cell spans 0.1 AU within a bounded local patch.</p>
@@ -147,7 +198,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         <h2>Read the numbers.</h2>
         <p>The core/catalog 15-second physics steps are checked against 100-day orbital-phase and convergence tests. Lessons can vary their fixed step and method to study numerical error. Requested orbital playback speeds range from one hour to 15 days per real second; the collision lesson uses 1/5/10/25/50 simulated seconds per real second. Bounded work per frame keeps controls responsive; slower hardware retains pending time and reports achieved speed. Speed presets never enlarge the integration step. This is an educational model, not a dated ephemeris.</p>
       </section>
-    </div>
+    </div></details>
     <p><a href={`${base}docs/build-and-web/`}>How Astro loads the C runtime →</a></p>
   </section>
 </BaseLayout>
@@ -159,19 +210,21 @@ const base = normalizeBase(import.meta.env.BASE_URL);
 </script>
 
 <style>
-  .simulator { margin: 2rem 0 3rem; }
-  .simulator-intro { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
-  .simulator-intro h1 { max-width: none; font-size: clamp(2.5rem, 5vw, 4.5rem); }
-  .simulator-intro p { margin-bottom: 0.5rem; }
-  .simulator-readouts { padding: 1rem; border: 1px solid var(--rule); background: var(--paper-light); }
+  .simulator { margin: 1rem 0 3rem; }
+  .simulator-intro { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
+  .simulator-intro h1 { max-width: none; font-size: clamp(2rem, 4vw, 3rem); margin: .25rem 0; }
+  .simulator-intro p { margin: 0; font-size: 1rem; }
+  .simulator-intro .eyebrow { font-size: .67rem; }
+  .simulator-intro .actions { margin-top: 0; }
+  .simulator-readouts { padding: .5rem .75rem; border: 1px solid var(--rule); background: var(--paper-light); display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
   .simulator-readouts p, .simulator-readouts dl { margin: 0; }
   .simulator-readouts p, dt, dd { font-family: "JetBrains Mono", monospace; font-size: 0.7rem; line-height: 1.7; }
   .simulator-readouts dl { display: flex; flex-wrap: wrap; gap: 0.75rem 2rem; margin-top: 0.7rem; }
   dt { color: var(--ink-soft); }
   dd { margin: 0; font-weight: 700; }
-  .runtime-panel { margin: 1rem 0; padding: 1rem; border: 1px solid var(--rule); min-width: 0; background: var(--paper-light); }
+  .runtime-panel { margin: 0; padding: .6rem; border: 1px solid var(--rule); min-width: 0; background: var(--paper-light); }
   .runtime-panel legend { font-weight: 700; padding: 0 0.4rem; }
-  .control-row { display: flex; flex-wrap: wrap; align-items: end; gap: 0.75rem; margin-bottom: 0.75rem; }
+  .control-row { display: flex; flex-wrap: wrap; align-items: end; gap: .5rem; margin-bottom: .5rem; }
   .control-row label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.95rem; min-width: 0; max-width: 100%; }
   .control-row button, .control-row select, .control-row input[type="search"] { min-height: 44px; max-width: 100%; padding: 0.5rem 0.7rem; border: 1px solid var(--ink-soft); border-radius: 3px; background: var(--paper-light); color: var(--ink); font: inherit; font-size: 0.9rem; }
   .control-row button { cursor: pointer; }
@@ -186,16 +239,38 @@ const base = normalizeBase(import.meta.env.BASE_URL);
   .physics-inspector p { font-size: 1rem; }
   .physics-inspector dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
   .physics-inspector dd { overflow-wrap: anywhere; }
-  .canvas-wrap { width: 100%; aspect-ratio: 16 / 9; background: #000; border: 1px solid var(--rule); }
+  .canvas-wrap { width: 100%; height: clamp(240px, 48svh, 560px); background: #000; border: 1px solid var(--rule); }
   canvas { display: block; width: 100% !important; height: 100% !important; }
   canvas:focus-visible { outline: 3px solid var(--brass-light); outline-offset: -3px; }
   .simulator-keys { margin: 0; padding: 0.8rem 0; font-size: 0.95rem; }
   .simulator-notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); }
   .simulator-notes h2 { font-size: 1.8rem; }
   .simulator-notes p { font-size: 1.05rem; }
+  .scale-note { font-size: .9rem; margin: .5rem 0; }
+  .reference-disclosure { margin: .75rem 0; }
+  summary { cursor: pointer; min-height: 44px; padding: .5rem 0; font-weight: 600; }
+  .option-sheet { width: min(42rem, calc(100% - 2rem)); max-height: 85dvh; overflow-y: auto; padding: 1.25rem; border: 1px solid var(--ink); background: var(--paper-light); color: var(--ink); }
+  .option-sheet::backdrop { background: rgb(10 24 44 / .55); }
+  .option-sheet header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; position: sticky; top: 0; z-index: 1; padding: .5rem 0; background: var(--paper-light); }
+  .option-sheet h2 { font-size: 1.9rem; margin: 0; }
+  .option-sheet fieldset { border: 0; padding: .75rem 0 0; min-width: 0; }
+  .option-sheet :is(button, select, input) { min-height: 44px; max-width: 100%; padding: .5rem .7rem; border: 1px solid var(--ink-soft); background: var(--paper-light); color: var(--ink); font: inherit; font-size: .95rem; }
+  .option-sheet button { cursor: pointer; }
+  .option-sheet label { display: flex; flex-direction: column; gap: .25rem; }
+  .option-sheet p { font-size: 1rem; }
+  .activity-list { display: grid; gap: .5rem; margin: 1rem 0; }
+  .activity-list button { text-align: left; }
+  .activity-list span { display: block; margin-top: .25rem; }
+  .panel-launchers { margin: .5rem 0 0; }
+  .panel-launchers button { flex: 1; }
   @media (max-width: 680px) {
     .simulator-notes { grid-template-columns: 1fr; gap: 0.5rem; }
-    .canvas-wrap { aspect-ratio: 4 / 3; }
+    .canvas-wrap { height: clamp(210px, 32svh, 320px); }
     .physics-inspector dl { grid-template-columns: 1fr; }
+    .playback { display: grid; grid-template-columns: 1fr 1fr; }
+    .playback label { grid-column: 1; grid-row: 2; }
+    .playback button { align-self: end; }
+    .panel-launchers { display: grid; grid-template-columns: 1fr 1fr; }
+    .option-sheet { width: 100%; max-width: none; max-height: 85dvh; margin: auto 0 0; border-radius: 1rem 1rem 0 0; }
   }
 </style>

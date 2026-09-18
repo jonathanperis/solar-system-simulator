@@ -1,4 +1,5 @@
 import { lessonOptions } from './lessonCatalog.ts';
+import { implementedBodies } from './bodies.ts';
 type Readout = Pick<HTMLElement, 'textContent'>;
 interface RuntimeReadouts {
   status: Readout;
@@ -27,7 +28,8 @@ interface RuntimeReadouts {
 }
 
 interface RuntimeControls {
-  panel: HTMLFieldSetElement;
+  panels: HTMLFieldSetElement[];
+  filterStatus: Readout;
   pause: HTMLButtonElement;
   step: HTMLButtonElement;
   rotate: HTMLInputElement;
@@ -80,6 +82,13 @@ export function filterRuntimeBodies(bodies: RuntimeBody[], search: string, group
     ((!group || body.group === group) && body.name.toLowerCase().includes(query)));
 }
 
+export function runtimeBodyFilterStatus(bodies: RuntimeBody[], search: string, group: string, selected: number): string {
+  const matches = filterRuntimeBodies(bodies, search, group, -1);
+  const current = bodies.find(body => body.index === selected);
+  const retained = current && !matches.includes(current) ? ` ${current.name} remains selected.` : '';
+  return `${matches.length ? `${matches.length} matching ${matches.length === 1 ? 'body' : 'bodies'}.` : 'No matching bodies.'}${retained}`;
+}
+
 function setText(element: Readout, text: string): void {
   if (element.textContent !== text) element.textContent = text;
 }
@@ -108,7 +117,7 @@ export function moveSelectByKey(select: Pick<HTMLSelectElement, 'selectedIndex' 
 }
 
 /** Emscripten calls this boundary; all physics remains inside the C runtime. */
-export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: RuntimeReadouts, artifactUrl: URL, controls: RuntimeControls) {
+export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: RuntimeReadouts, artifactUrl: URL, controls: RuntimeControls, requestedBody?: string) {
   let failed = false;
   let reportedBody = -1;
   let reportedSpeed = -1;
@@ -116,6 +125,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
   let hasParent = false;
   let activeBodyCount = 0;
   let shortTimescale = false, lastForceTime = -Infinity, lastForceBody = -1;
+  let initialSelectionApplied = false;
   const bodies: RuntimeBody[] = [];
   const groups = new Set<string>();
   const filterBodies = (): void => {
@@ -123,10 +133,11 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
     const options = visible.map(body => new Option(`${body.name} — ${body.group}`, String(body.index)));
     controls.body.replaceChildren(...options);
     controls.body.value = String(reportedBody);
+    setText(controls.filterStatus, runtimeBodyFilterStatus(bodies, controls.search.value, controls.group.value, reportedBody));
   };
   const fail = (reason: unknown): void => {
     failed = true;
-    controls.panel.disabled = true;
+    controls.panels.forEach(panel => { panel.disabled = true; panel.closest<HTMLDialogElement>('dialog')?.close(); });
     setText(readouts.status, `Runtime error: ${String(reason)}`);
   };
 
@@ -230,7 +241,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
         [...controls.speed.options].forEach((option, index) => { option.textContent = labels[index]; });
       }
       hasParent = state.hasParent;
-      controls.panel.disabled = false;
+      controls.panels.forEach(panel => { panel.disabled = false; });
       controls.step.disabled = !state.paused;
       setText(controls.pause, state.paused ? 'Resume' : 'Pause');
       setText(controls.view, `View: ${state.view}`);
@@ -261,6 +272,16 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       setText(readouts.achieved, shortTimescale ? `${(state.paused ? 0 : state.achievedTimeScale).toFixed(2)} seconds / second`
         : `${(state.paused ? 0 : state.achievedTimeScale / 86400).toFixed(2)} days / second`);
       setText(readouts.pending, `${(state.pendingSeconds / 86400).toFixed(3)} days`);
+      // Resolve a core-catalog link once, after C has published its actual list.
+      // Later lesson changes and resets keep the runtime's own selection policy.
+      if (!initialSelectionApplied) {
+        initialSelectionApplied = true;
+        const target = bodies.find(body => body.name === requestedBody);
+        if (target) {
+          this._solar_web_command!(runtimeCommands.select, target.index);
+          this._solar_web_command!(runtimeCommands.frame, 0);
+        }
+      }
     }
   };
 }
@@ -275,7 +296,8 @@ export function mountSimulator(root: HTMLElement): void {
   const canvas = root.querySelector<HTMLCanvasElement>('canvas')!;
   const artifactUrl = new URL(root.dataset.runtimeSrc!, document.baseURI);
   const controls: RuntimeControls = {
-    panel: root.querySelector<HTMLFieldSetElement>('[data-runtime-panel]')!,
+    panels: [...root.querySelectorAll<HTMLFieldSetElement>('[data-runtime-panel]')],
+    filterStatus: root.querySelector<HTMLElement>('[data-body-filter-status]')!,
     pause: root.querySelector<HTMLButtonElement>('[data-command="pause"]')!,
     step: root.querySelector<HTMLButtonElement>('[data-command="step"]')!,
     rotate: root.querySelector<HTMLInputElement>('[data-runtime-rotate]')!,
@@ -316,10 +338,10 @@ export function mountSimulator(root: HTMLElement): void {
     magnification: root.querySelector<HTMLElement>('[data-magnification]')!,
     position: root.querySelector<HTMLElement>('[data-inspector-position]')!,
     velocity: root.querySelector<HTMLElement>('[data-inspector-velocity]')!
-  }, artifactUrl, controls);
+  }, artifactUrl, controls, implementedBodies.find(body => body.slug === new URLSearchParams(location.search).get('body'))?.name);
 
   const send = (command: keyof typeof runtimeCommands, value = 0): void => {
-    if (!controls.panel.disabled) runtime._solar_web_command!(runtimeCommands[command], value);
+    if (!controls.panels[0].disabled) runtime._solar_web_command!(runtimeCommands[command], value);
   };
   root.querySelectorAll<HTMLButtonElement>('[data-command]').forEach(button => {
     button.addEventListener('click', () => send(button.dataset.command as keyof typeof runtimeCommands, Number(button.dataset.value ?? 0)));
@@ -328,6 +350,19 @@ export function mountSimulator(root: HTMLElement): void {
   controls.speed.addEventListener('change', () => send('speed', Number(controls.speed.value)));
   controls.search.addEventListener('input', runtime.filterBodies);
   controls.group.addEventListener('change', runtime.filterBodies);
+  root.querySelector('[data-clear-filters]')!.addEventListener('click', () => {
+    controls.search.value = ''; controls.group.value = ''; runtime.filterBodies(); controls.search.focus();
+  });
+  root.querySelector('[data-whole-system]')!.addEventListener('click', () => { send('select', 0); send('frame'); });
+  root.querySelectorAll<HTMLButtonElement>('[data-open-panel]').forEach(button => {
+    button.addEventListener('click', () => root.querySelector<HTMLDialogElement>(`#${button.dataset.openPanel}`)!.showModal());
+  });
+  root.querySelectorAll<HTMLElement>('[data-close-panel]').forEach(button => {
+    button.addEventListener('click', () => {
+      button.closest('dialog')!.close();
+      if (button.hasAttribute('data-open-diagnostics')) root.querySelector('#diagnostics-heading')!.closest('details')!.open = true;
+    });
+  });
   for (const select of [controls.body, controls.speed, controls.group, controls.lesson, controls.method]) {
     select.addEventListener('keydown', event => {
       if (moveSelectByKey(select, event.key)) {
@@ -339,30 +374,40 @@ export function mountSimulator(root: HTMLElement): void {
   controls.rotate.addEventListener('change', () => send('rotate'));
 
   document.addEventListener('visibilitychange', () => send('background', document.hidden ? 1 : 0));
-  controls.lesson.addEventListener('change', () => {
+  const setLessonDefaults = () => {
     controls.dt.value = Number(controls.lesson.value) === collisionLesson ? '0.1' : '15';
     if (controls.lesson.value === '0') {
       controls.method.value = '0'; controls.dt.value = '15'; controls.factor.value = '1';
     }
     if ([collisionLesson, barycentricLesson].includes(Number(controls.lesson.value))) controls.factor.value = '1';
-  });
+  };
+  controls.lesson.addEventListener('change', setLessonDefaults);
   const lessonStatus = root.querySelector<HTMLElement>('[data-lesson-status]')!;
-  root.querySelector('[data-apply-lesson]')!.addEventListener('click', () => {
+  const loadLesson = () => {
+    if (!controls.dt.checkValidity() || !controls.factor.checkValidity()) controls.dt.closest('details')!.open = true;
     if (!controls.dt.reportValidity() || !controls.factor.reportValidity()) return;
     const accepted = runtime.ccall?.('solar_web_lesson', 'number', ['number', 'number', 'number', 'number'],
       [Number(controls.lesson.value), Number(controls.factor.value), Number(controls.method.value), Number(controls.dt.value)]);
-    lessonStatus.textContent = accepted ? 'Lesson started from its initial state. Reset repeats this configuration.'
+    lessonStatus.textContent = accepted ? 'Lesson loaded from its initial state. Close this panel to watch; if paused, press Resume. Restart repeats this configuration.'
       : 'Configuration rejected. Core uses 15-second Verlet; core/barycentric-core require speed factor 1; collision steps are 0.01–0.25 s; catalog scenes start through the atlas.';
+  };
+  root.querySelector('[data-apply-lesson]')!.addEventListener('click', loadLesson);
+  root.querySelectorAll<HTMLButtonElement>('[data-activity]').forEach(button => {
+    button.addEventListener('click', () => {
+      controls.lesson.value = button.dataset.activity!;
+      controls.method.value = '0'; controls.factor.value = '1'; setLessonDefaults(); loadLesson();
+    });
   });
   root.querySelector('[data-export]')!.addEventListener('click', () => {
     const accepted = runtime.ccall?.('solar_web_export', 'number', [], []);
-    lessonStatus.textContent = accepted ? 'CSV snapshot downloaded with physical SI state and run metadata.' : 'Could not export the snapshot.';
+    root.querySelector('[data-export-status]')!.textContent = accepted ? 'CSV snapshot downloaded with physical SI state and run metadata.' : 'Could not export the snapshot.';
   });
 
   const experimentStatus=root.querySelector<HTMLElement>('[data-experiment-status]')!;
   let prepared: {text:string;snapshot:string;count:number}|undefined;
   let experimentAction=0;
   if(new URLSearchParams(location.search).has('experiment')) {
+    root.querySelector<HTMLDialogElement>('#advanced-panel')!.showModal();
     try {
       const stored=sessionStorage.getItem('solar-catalog-experiment');
       if(!stored) throw new Error('No prepared experiment. Choose bodies in the small-body atlas first.');

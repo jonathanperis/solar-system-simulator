@@ -13,7 +13,8 @@ const base = normalizeBase(import.meta.env.BASE_URL);
       <p>{manifest.count.toLocaleString('en-US')} cataloged bodies. Asteroids, Trojans, Centaurs, and the distant trans-Neptunian population, including provisional designations.</p>
       <p class="fine-print">Snapshot: {manifest.checked.slice(0,10)} · common preview epoch: JD {manifest.epoch} TDB · <a href={manifest.source}>JPL source query</a></p>
     </header>
-    <div class="atlas-workbench">
+    <p>Search for a world, open its details, then add it to an experiment. The catalog is an index; only the bodies you choose will enter the live simulation.</p>
+    <details class="map-disclosure"><summary>Explore the orbital-density map</summary>
       <section class="chart-panel" aria-labelledby="map-heading">
         <h2 id="map-heading">Orbital-density map</h2>
         <canvas width="800" height="600" data-density aria-label="Logarithmic top-down orbital-density overview. All bodies are accessible through the results table."></canvas>
@@ -21,22 +22,25 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         <p>Top-down J2000 ecliptic projection, logarithmic distance: log₁₀(1 + AU). Density cells account for every mapped object in the chosen orbital class. Search, perihelion, and size filters apply to the results table.</p>
         <p>Highlighted paths are C-computed two-body previews. Open trajectories show a ±100-year window around perihelion. Preview motion is approximate; the live experiment integrates gravitational forces.</p>
       </section>
-      <section class="selection-panel" aria-labelledby="selection-heading">
-        <h2 id="selection-heading">Observation card</h2>
-        <p data-object-title>Select a result to inspect its source orbit.</p>
+    </details>
+      <dialog class="selection-panel" data-object-dialog aria-labelledby="selection-heading">
+        <header><h2 id="selection-heading">Object details</h2><button type="button" data-close-object>Back to results</button></header>
+        <h3 data-object-title>Select a result to inspect its source orbit.</h3>
+        <p data-selection-status role="status" aria-live="polite"></p>
+        <button type="button" data-add disabled>Add to experiment</button>
         <dl data-object-details></dl>
         <p data-object-source></p>
-        <button type="button" data-add disabled>Add to experiment</button>
-        <h3>Experiment basket <span data-basket-count>0 / 16</span></h3>
+        <p>Preview motion is approximate. Adding a body prepares a choice; it does not start physics.</p>
+      </dialog>
+      <details class="experiment-basket"><summary data-basket-summary>Experiment basket · <span data-basket-count>0 / 16</span> selected</summary>
         <ul data-basket></ul>
         <div class="actions">
           <button type="button" data-prepare disabled>Prepare live experiment</button>
           <button type="button" data-export disabled>Download native input</button>
         </div>
         <p>Experiments use the Sun, all eight planets, and up to 16 selected bodies at the common epoch. Starting the experiment is an explicit action on the simulator page.</p>
-        <p data-selection-status role="status" aria-live="polite"></p>
-      </section>
-    </div>
+        <p data-basket-status role="status" aria-live="polite"></p>
+      </details>
     <section class="search-panel" aria-labelledby="search-heading">
       <h2 id="search-heading">Find any cataloged body</h2>
       <form data-catalog-search>
@@ -44,7 +48,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         <label>Orbital class<select name="group"><option value="">All classes</option>
           {Object.entries(manifest.classes).map(([key,count]) => <option value={key}>{manifest.classNames[key as keyof typeof manifest.classNames] ?? key} · {count.toLocaleString('en-US')}</option>)}
         </select></label>
-        <label>Maximum perihelion (AU)<input name="qmax" type="number" min="0.001" step="any" placeholder="Any" /></label>
+        <label>Closest approach to Sun (AU)<input name="qmax" type="number" min="0.001" step="any" placeholder="Any" /><small>Maximum perihelion; 1 AU is about Earth’s distance from the Sun.</small></label>
         <label>Physical size<select name="size"><option value="">Any</option><option value="known">Published size available</option><option value="unknown">Size unavailable</option></select></label>
         <button type="submit">Search catalog</button>
       </form>
@@ -73,9 +77,14 @@ const base = normalizeBase(import.meta.env.BASE_URL);
 <style>
   .small-atlas { margin: 2rem 0; }
   .atlas-heading h1 { max-width: 19ch; }
-  .atlas-workbench { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(17rem, 1fr); gap: 1rem; margin: 2rem 0; }
+  .map-disclosure, .experiment-basket { margin: 1rem 0; border: 1px solid var(--rule); padding: .75rem; background: var(--paper-light); }
+  summary { min-height: 44px; padding: .5rem; cursor: pointer; font-weight: 600; }
   .chart-panel, .selection-panel, .search-panel { padding: 1.25rem; border: 1px solid var(--rule); background: var(--paper-light); min-width: 0; }
   .chart-panel { background: var(--navy); color: var(--paper); }
+  .selection-panel { width: min(40rem, calc(100% - 2rem)); max-height: 85dvh; overflow-y: auto; color: var(--ink); }
+  .selection-panel::backdrop { background: rgb(10 24 44 / .55); }
+  .selection-panel header { display: flex; justify-content: space-between; align-items: center; gap: .5rem; position: sticky; top: 0; z-index: 1; padding: .5rem 0; background: var(--paper-light); }
+  .selection-panel h2 { font-size: 1.8rem; margin: 0; }
   .chart-panel h2, .chart-panel p { color: inherit; }
   .chart-panel p, .selection-panel p { font-size: .95rem; }
   canvas { width: 100%; height: auto; display: block; }
@@ -89,5 +98,12 @@ const base = normalizeBase(import.meta.env.BASE_URL);
   :is(input,select,button):focus-visible { outline: 3px solid var(--brass); outline-offset: 3px; }
   .result-wrap { overflow-x: auto; } table { width: 100%; } th, .result-wrap :global(td) { text-align: left; padding: .55rem; }
   .result-pages { display: flex; justify-content: space-between; align-items: center; margin: 1rem 0; }
-  @media (max-width: 760px) { .atlas-workbench { grid-template-columns: 1fr; } form label { width: 100%; } }
+   @media (max-width: 760px) {
+     form label { width: 100%; }
+     .selection-panel { width: 100%; max-width: none; margin: auto 0 0; border-radius: 1rem 1rem 0 0; }
+     .result-wrap table, .result-wrap :global(tbody), .result-wrap :global(tr), .result-wrap :global(td) { display: block; }
+     .result-wrap thead { display: none; }
+     .result-wrap :global(tr) { border-bottom: 1px solid var(--rule); padding: .5rem 0; }
+     .result-wrap :global(td[data-label]::before) { content: attr(data-label) ': '; font-weight: 600; }
+   }
 </style>

@@ -5,6 +5,8 @@ type Kernel = {catalog_coordinate:(...v:number[])=>number; catalog_period_days:(
 export async function mountCatalog(root: HTMLElement): Promise<void> {
   const get = <T extends HTMLElement>(selector:string) => root.querySelector<T>(selector)!;
   const status = get('[data-search-status]'), selectionStatus = get('[data-selection-status]');
+  const dialog = get<HTMLDialogElement>('[data-object-dialog]'), basketStatus = get('[data-basket-status]');
+  let inspectedId: number | undefined, shownResults = '';
   const form = get<HTMLFormElement>('[data-catalog-search]');
   const group = form.elements.namedItem('group') as HTMLSelectElement;
   const canvas = get<HTMLCanvasElement>('[data-density]'), context = canvas.getContext('2d')!;
@@ -50,12 +52,17 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
     get('[data-basket]').replaceChildren(...Array.from(basket.values(),r => {
       const li=document.createElement('li'), remove=document.createElement('button');
       li.append(document.createTextNode(r[1]+' ')); remove.textContent='Remove'; remove.setAttribute('aria-label',`Remove ${r[1]}`);
-      remove.onclick=()=>{basket.delete(r[0]);updateBasket();}; li.append(remove); return li;
+      remove.onclick=()=>{basket.delete(r[0]);updateBasket();basketStatus.textContent=`${r[1]} removed. ${basket.size} bodies selected.`;get<HTMLElement>('[data-basket-summary]').focus();}; li.append(remove); return li;
     }));
     prepare.disabled=download.disabled=basket.size===0;
     add.disabled=!selected || basket.has(selected[0]) || basket.size>=16;
   };
   const inspect = async (id:number, orbitClass:string) => {
+    inspectedId = id;
+    get('[data-object-title]').textContent = 'Loading object…';
+    get('[data-object-details]').replaceChildren(); get('[data-object-source]').replaceChildren();
+    if (!dialog.open) dialog.showModal();
+    root.querySelectorAll<HTMLButtonElement>('[data-catalog-id]').forEach(button => button.setAttribute('aria-pressed', String(Number(button.dataset.catalogId) === id)));
     const token=++selectionRequest; selectedController?.abort(); selectedController=new AbortController();
     selected=undefined; add.disabled=true; selectionStatus.textContent='Loading source record…';
     try {
@@ -89,13 +96,20 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
       if(token===selectionRequest) {selectionStatus.textContent=String(error);add.disabled=true;path=[];point=undefined;draw();}
     }
   };
-  add.onclick=()=>{if(selected&&basket.size<16){basket.set(selected[0],selected);updateBasket();}};
+  get('[data-close-object]').onclick = () => dialog.close();
+  dialog.addEventListener('close', () => {
+    // Search streams can replace a result while its source record is loading.
+    // Resolve the current control instead of restoring a detached old node.
+    const result = root.querySelector<HTMLButtonElement>(`[data-catalog-id="${inspectedId}"]`);
+    (result ?? form.querySelector<HTMLInputElement>('input[type="search"]'))?.focus();
+  });
+  add.onclick=()=>{if(selected&&basket.size<16){basket.set(selected[0],selected);updateBasket();selectionStatus.textContent=`${selected[1]} added. ${basket.size} / 16 bodies selected. Return to results to choose another world, or open the experiment basket.`;}};
   prepare.onclick=()=>{
     try {
       const text=experimentText([...basket.values()],manifest.epoch);
       sessionStorage.setItem('solar-catalog-experiment',JSON.stringify({text,snapshot:manifest.sourceSha256,count:basket.size}));
       location.href=`${base}simulator/?experiment=1`;
-    } catch(error) {selectionStatus.textContent=String(error);}
+    } catch(error) {basketStatus.textContent=String(error);}
   };
   download.onclick=()=>{
     const blob=new Blob([experimentText([...basket.values()],manifest.epoch)],{type:'text/tab-separated-values'});
@@ -123,12 +137,14 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
       const message=event.data;if(message.request!==request)return;
       if(message.error){status.textContent=message.error;return;}
       const hits=message.hits as {row:IndexRow;group:string}[];
-      get('[data-results]').replaceChildren(...hits.map(({row,group})=>{
+      const resultKey = hits.map(({row}) => row[0]).join(',');
+      if (resultKey !== shownResults) get('[data-results]').replaceChildren(...hits.map(({row,group})=>{
         const tr=document.createElement('tr'),td=document.createElement('td'),button=document.createElement('button');
-        button.textContent=row[1];button.onclick=()=>void inspect(row[0],group);td.append(button);tr.append(td);
-        for(const text of [manifest.classNames[group]??group,row[3]==null?'Unknown':`${row[3].toFixed(3)} AU`,row[5]?'Available':'Unavailable']){const cell=document.createElement('td');cell.textContent=text;tr.append(cell);}
+        button.textContent=row[1];button.dataset.catalogId=String(row[0]);button.setAttribute('aria-haspopup','dialog');button.setAttribute('aria-pressed',String(row[0]===inspectedId));button.onclick=()=>void inspect(row[0],group);td.append(button);tr.append(td);
+        for(const [label,text] of [['Class',manifest.classNames[group]??group],['Perihelion',row[3]==null?'Unknown':`${row[3].toFixed(3)} AU`],['Orbit',row[5]?'Available':'Unavailable']]){const cell=document.createElement('td');cell.dataset.label=label;cell.textContent=text;tr.append(cell);}
         return tr;
       }));
+      shownResults = resultKey;
       status.textContent=message.done?`${number(message.total)} ${message.total===1?'match':'matches'}; ${hits.length} ${hits.length===1?'row':'rows'} displayed. No catalog objects are simulated by this map.`:`${message.progress}; ${number(message.total)} matches so far.`;
       if(message.done){previous.disabled=page===0;next.disabled=(page+1)*50>=message.total;}
     };
