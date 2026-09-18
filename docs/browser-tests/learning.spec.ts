@@ -13,12 +13,13 @@ async function downloadText(download: Download): Promise<string> {
 test('comparison, save/share/import and display units retain reproducible C measurements', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto(`${base}compare/`);
-  await expect(page.getByRole('status')).toContainText('Comparison lab ready');
+  await expect(page.locator('[data-lab-status]')).toContainText('Comparison lab ready');
   await page.getByRole('button', { name: 'Start comparison', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText('Comparison complete.');
   await expect(page.locator('[data-matched-time]')).toHaveText('86400 s');
   await expect(page.locator('[data-plot="trajectory"] [data-series]')).toHaveCount(2);
   await expect(page.locator('[data-force-side="0"]')).toContainText('Sun');
+  await page.getByText('Save, share, or download', { exact: true }).click();
   const csvBefore = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export both runs (CSV)' }).click();
   const before = await downloadText(await csvBefore);
@@ -37,6 +38,7 @@ test('comparison, save/share/import and display units retain reproducible C meas
   await expect(page.getByRole('status')).toContainText('Shared configuration loaded');
   await expect(page.getByLabel('Timestep A (seconds)')).toHaveValue('300');
   await expect(page.locator('[data-matched-time]')).toHaveText('—');
+  await page.getByText('Save, share, or download', { exact: true }).click();
   await page.getByLabel('Import configuration').setInputFiles(resolve('../examples/collision.solar'));
   await expect(page.getByRole('status')).toContainText('Configuration imported');
   await page.getByRole('button', { name: 'Start comparison', exact: true }).click();
@@ -55,14 +57,16 @@ test('comparison, save/share/import and display units retain reproducible C meas
 
 test('Phobos challenge uses analytical measurements rather than visual plausibility', async ({ page }) => {
   await page.goto(`${base}compare/`);
-  await expect(page.getByRole('status')).toContainText('Comparison lab ready');
-  await page.getByText('Guided challenges', { exact: true }).click();
+  await expect(page.locator('[data-lab-status]')).toContainText('Comparison lab ready');
+  await page.getByLabel('Guided challenges').selectOption('phase');
   await page.getByRole('button', { name: 'Load challenge' }).click();
   await expect(page.locator('[data-challenge-feedback]')).toContainText('100 simulated days');
+  await page.getByText('Write a prediction (optional)', { exact: true }).click();
   await page.getByLabel('My prediction').fill('Reducing the timestep should reduce phase error.');
   await page.getByRole('button', { name: 'Start comparison', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText('Comparison complete.', { timeout: 45000 });
   await expect(page.locator('[data-challenge-feedback]')).toContainText('Budget exceeded');
+  await page.getByText('Adjust experiment settings', { exact: true }).click();
   await page.getByLabel('Timestep A (seconds)').fill('15');
   await page.getByRole('button', { name: 'Start comparison', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText('Comparison complete.', { timeout: 45000 });
@@ -83,6 +87,14 @@ test('mobile atlas controls remain distinct and keyboard bearing stays continuou
     for (const name of ['Vesta', 'Uranus']) {
       await page.getByRole('button', { name, exact: true }).click();
       await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+      if (name === 'Uranus') {
+        await page.getByText('Model and sources', { exact: true }).click();
+        await page.getByRole('link', { name: 'Open catalog', exact: true }).scrollIntoViewIfNeeded();
+        const sheet = await page.locator('[data-atlas-note]').boundingBox();
+        const close = await page.getByRole('button', { name: 'Close body detail' }).boundingBox();
+        expect(close!.y).toBeGreaterThanOrEqual(sheet!.y);
+        expect(close!.y + close!.height).toBeLessThanOrEqual(sheet!.y + sheet!.height);
+      }
       await page.getByRole('button', { name: 'Close body detail' }).focus();
       await page.keyboard.press('Escape');
       await expect(page.getByRole('button', { name, exact: true })).toBeFocused();
@@ -97,31 +109,44 @@ test('3D controls export the same SI snapshot across render scales', async ({ pa
   await page.goto(`${base}simulator/`);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
   await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  await page.getByRole('button', { name: 'Learn', exact: true }).click();
   await page.getByRole('combobox', { name: 'Lesson preset', exact: true }).selectOption('1');
-  await page.getByRole('button', { name: 'Start lesson', exact: true }).click();
+  await page.getByRole('button', { name: 'Load lesson', exact: true }).click();
+  await page.getByRole('button', { name: 'Close learning activities' }).click();
+  await page.getByRole('button', { name: 'Advanced', exact: true }).click();
   await page.getByRole('button', { name: 'Step +15 s', exact: true }).click();
   await expect(page.locator('[data-runtime-elapsed]')).toContainText('15 s');
   await expect(page.locator('[data-runtime-forces]')).toContainText('Sun');
-  const first = page.waitForEvent('download'); await page.getByRole('button', { name: 'Export SI snapshot (CSV)' }).click();
+  const first = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download measurements (CSV)' }).click();
   const before = await downloadText(await first);
+  await page.getByRole('button', { name: 'Close advanced tools' }).click();
+  await page.getByRole('button', { name: 'View options', exact: true }).click();
   await page.getByRole('button', { name: 'View: Illustrative', exact: true }).click();
-  const second = page.waitForEvent('download'); await page.getByRole('button', { name: 'Export SI snapshot (CSV)' }).click();
+  await page.getByRole('button', { name: 'Close view options' }).click();
+  await page.getByRole('button', { name: 'Advanced', exact: true }).click();
+  const second = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download measurements (CSV)' }).click();
   expect(await downloadText(await second)).toBe(before);
+  await page.getByRole('button', { name: 'Close advanced tools' }).click();
+  await page.getByRole('button', { name: 'Learn', exact: true }).click();
   await page.getByRole('combobox', { name: 'Lesson preset', exact: true }).selectOption({ label: 'Head-on collisions' });
-  await page.getByRole('button', { name: 'Start lesson', exact: true }).click();
+  await page.getByRole('button', { name: 'Load lesson', exact: true }).click();
   await page.getByRole('button', { name: 'Contact: Elastic bounce (restart)', exact: true }).click();
+  await page.getByRole('button', { name: 'Close learning activities' }).click();
   await page.getByRole('combobox', { name: 'Simulation speed', exact: true }).selectOption('4');
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
-  const bodies = page.getByRole('combobox', { name: 'Selected body', exact: true }).locator('option');
+  const bodies = page.getByRole('combobox', { name: 'Selected body', exact: true, includeHidden: true }).locator('option');
   await expect(bodies).toHaveCount(1);
   await expect(page.locator('[data-runtime-forces]')).toContainText('No other known-mass gravitational sources.');
   await page.getByRole('button', { name: 'Pause', exact: true }).click();
-  await page.getByRole('button', { name: 'Reset time', exact: true }).click();
+  await page.getByRole('button', { name: 'Restart', exact: true }).click();
   await expect(bodies).toHaveCount(2);
+  await page.getByRole('button', { name: 'Learn', exact: true }).click();
   await page.getByRole('combobox', { name: 'Lesson preset', exact: true }).selectOption({ label: 'Moving-Sun barycentric core' });
-  await page.getByRole('button', { name: 'Start lesson', exact: true }).click();
+  await page.getByRole('button', { name: 'Load lesson', exact: true }).click();
   await expect(page.locator('[data-active-scene]')).toContainText('128 active bodies');
-  await expect(page.getByLabel('Physics step (seconds)')).toHaveValue('15');
+  await expect(page.getByLabel('Time per calculation (seconds)')).toHaveValue('15');
+  await page.getByRole('button', { name: 'Close learning activities' }).click();
+  await page.getByRole('button', { name: 'Advanced', exact: true }).click();
   await page.getByRole('button', { name: 'Step +15 s', exact: true }).click();
   await expect(page.locator('[data-runtime-elapsed]')).toContainText('15 s');
 });
@@ -134,7 +159,7 @@ test('real missing/invalid local assets fail visibly and disable runtime control
   ]) {
     await page.goto(path);
     await expect(page.locator(status)).toContainText(/Runtime error|Comparison runtime unavailable/);
-    await expect(page.locator(panel)).toHaveAttribute('disabled', '');
-    await expect(page.locator(panel).locator('button').first()).toBeDisabled();
+    for (const fieldset of await page.locator(panel).all()) await expect(fieldset).toHaveAttribute('disabled', '');
+    await expect(page.locator(panel).first().locator('button').first()).toBeDisabled();
   }
 });

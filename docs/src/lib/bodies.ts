@@ -18,6 +18,13 @@ export type ImplementedBody = {
   group?: string;
 };
 
+/** Beginner copy uses the same identity and parent relationship as the catalog. */
+export function bodyIntroduction(body: ImplementedBody): string {
+  if (body.kind === 'Star') return 'The Sun is the central star of this model. Watch the planets travel around it; the core demonstration holds the Sun fixed.';
+  if (body.kind === 'Moon') return `${body.name} orbits ${body.parent}. Explore its family to see a moon’s motion alongside its parent.`;
+  return `${body.name} orbits the ${body.parent}. Watch its path, change your view, and compare its motion with other worlds.`;
+}
+
 export const implementedBodies: ImplementedBody[] = [
   {
     slug: 'sun',

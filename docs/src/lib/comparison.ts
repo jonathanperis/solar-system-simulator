@@ -39,6 +39,28 @@ function download(text: string, filename: string, type: string): void {
 
 const compact = (value: number) => Number.isFinite(value) ? value.toExponential(4) : 'Unavailable';
 
+// Explain a rejected form at its field. C remains the authority for accepting
+// descriptors (including imported/shared ones); this is not a second validator.
+export function comparisonInputIssue(values: Record<string, string>): { field: string; message: string } | undefined {
+  const wholeTicks = (seconds: number, step: number) => Number.isFinite(seconds / step) && seconds / step >= 1 && Math.abs(seconds / step - Math.round(seconds / step)) <= 1e-8;
+  if (['core', 'barycentric-core'].includes(values.scene) && Number(values.factor) !== 1)
+    return { field: 'factor', message: 'This preset keeps its starting speed unchanged. Use a multiplier of 1.' };
+  for (const side of ['A', 'B']) {
+    const dt = Number(values[`dt${side}`]);
+    if (values.scene === 'core' && dt !== 15) return { field: `dt${side}`, message: `Core run ${side} uses a fixed 15-second timestep. Try a circular-orbit lesson to vary it.` };
+    if (values.scene === 'core' && values[`method${side}`] !== 'verlet') return { field: `method${side}`, message: `Core run ${side} uses Velocity-Verlet. Choose a lesson to compare methods.` };
+    if (values.scene === 'collision' && (dt < .01 || dt > .25)) return { field: `dt${side}`, message: `Contact run ${side} needs a timestep from 0.01 to 0.25 seconds. Try 0.1 seconds.` };
+    if ((values.scene === 'collision') === (values[`collision${side}`] === 'none')) return { field: `collision${side}`, message: values.scene === 'collision' ? `Choose bounce or merge for contact run ${side}.` : `Choose None for run ${side}; contact policies belong to the head-on collision lesson.` };
+  }
+  const sample = Number(values.sample), duration = Number(values.duration), a = Number(values.dtA), b = Number(values.dtB);
+  if (!wholeTicks(sample, a) || !wholeTicks(sample, b)) {
+    const suggestion = Math.ceil(sample / Math.max(a, b)) * Math.max(a, b);
+    return { field: 'sample', message: `Sample spacing must be a whole multiple of both timesteps.${wholeTicks(suggestion, a) && wholeTicks(suggestion, b) ? ` Try ${Number(suggestion.toPrecision(12))} seconds.` : ' Choose a common whole multiple of the two steps.'}` };
+  }
+  if (!wholeTicks(duration, sample)) return { field: 'duration', message: `Duration must contain whole samples. Try ${Number((Math.ceil(duration / sample) * sample).toPrecision(12))} seconds.` };
+  return undefined;
+}
+
 export async function mountComparison(root: HTMLElement): Promise<void> {
   const form = root.querySelector<HTMLFormElement>('form')!;
   const panel = root.querySelector<HTMLFieldSetElement>('fieldset')!;
@@ -46,6 +68,13 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
   const progress = root.querySelector<HTMLProgressElement>('progress')!;
   const input = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement;
   const names = ['scene', 'factor', 'methodA', 'dtA', 'collisionA', 'methodB', 'dtB', 'collisionB', 'sample', 'duration'];
+  const settings = root.querySelector<HTMLDetailsElement>('[data-config-settings]')!;
+  const errorMessage = root.querySelector<HTMLElement>('[data-config-error]')!;
+  const clearIssue = () => {
+    errorMessage.hidden = true;
+    for (const name of names) { input(name).removeAttribute('aria-invalid'); input(name).removeAttribute('aria-describedby'); }
+  };
+  form.addEventListener('invalid', () => { settings.open = true; }, true);
   let lab: LabModule, activeDefinition = '', running = false, stepping = false, stepStart = 0, frame = 0, lastDraw = 0;
   const fail = (error: unknown): void => { running = stepping = false; panel.disabled = true; status.textContent = `Comparison runtime unavailable: ${String(error)}`; };
   try {
@@ -62,7 +91,19 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
     if (typeof normalized !== 'string' || !normalized) throw new Error('Invalid configuration. Sample spacing must be a whole multiple of both timesteps, duration a whole multiple of sample spacing, and collision steps 0.01–0.25 s with bounce/merge policies.');
     return normalized;
   };
-  const readForm = (): string => normalize(`SOLAR_LAB_V1 ${names.map(name => input(name).value).join(' ')}`);
+  const readForm = (): string => {
+    clearIssue();
+    try { return normalize(`SOLAR_LAB_V1 ${names.map(name => input(name).value).join(' ')}`); }
+    catch (error) {
+      const issue = comparisonInputIssue(Object.fromEntries(names.map(name => [name, input(name).value])));
+      if (issue) {
+        settings.open = true; errorMessage.hidden = false; errorMessage.textContent = issue.message;
+        input(issue.field).setAttribute('aria-invalid', 'true'); input(issue.field).setAttribute('aria-describedby', 'config-error'); input(issue.field).focus();
+        throw new Error(issue.message);
+      }
+      throw error;
+    }
+  };
   const markPending = (): void => {
     const values = activeDefinition.split(/\s+/).slice(1);
     const changed = activeDefinition && names.some((name, i) => ['factor', 'dtA', 'dtB', 'sample', 'duration'].includes(name)
@@ -71,9 +112,15 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
   };
   const fill = (definition: string): void => {
     const values = normalize(definition).trim().split(/\s+/).slice(1);
+    clearIssue();
     names.forEach((name, index) => { input(name).value = ['factor', 'dtA', 'dtB', 'sample', 'duration'].includes(name)
       ? String(Number(values[index])) : values[index]; });
     markPending();
+  };
+  const describeCustomExperiment = (title: string): void => {
+    root.querySelector('[data-question]')!.textContent = title;
+    root.querySelector('[data-question-description]')!.textContent = 'Review the settings before starting. Change one variable, then compare measurements at the same simulated time.';
+    settings.open = true;
   };
   const setStatus = (text: string) => { if (status.textContent !== text) status.textContent = text; };
 
@@ -152,7 +199,10 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
     }
     const feedback = root.querySelector<HTMLElement>('[data-challenge-feedback]')!;
     const scene = activeDefinition.split(/\s+/)[1];
-    if (input('challenge').value === 'phase') {
+    if (input('challenge').value === 'timestep') {
+      feedback.textContent = scene === 'circular' ? `Analytical phase error: A ${compact(latest.values[0].phase_error_deg)}°, B ${compact(latest.values[1].phase_error_deg)}°. Compare both at this same time; small energy change alone does not prove accurate motion.`
+        : 'These measurements describe your selected preset. Load the circular-orbit question to compare timestep accuracy.';
+    } else if (input('challenge').value === 'phase') {
       feedback.textContent = scene !== 'phobos' || Number(activeDefinition.split(/\s+/)[2]) !== 1 ? 'Load the Phobos challenge with initial speed factor 1 to measure its analytical phase error.'
         : latest.time < 8640000 ? 'Complete 100 simulated days before judging the phase budget.'
         : `Run A maximum sampled phase error: ${lab._lab_status(7).toFixed(6)}°. ${lab._lab_status(7) < 1 ? 'Budget met: below 1°.' : 'Budget exceeded: reduce A timestep and repeat.'} Run B: ${lab._lab_status(8).toFixed(6)}°.`;
@@ -192,7 +242,10 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
     if (!activeDefinition) return;
     running = stepping = false; lab.ccall('lab_start', 'number', ['string'], [activeDefinition]); render(); setStatus('Comparison reset and paused.');
   });
-  input('scene').addEventListener('change', () => fill(comparisonPresets[input('scene').value]));
+  input('scene').addEventListener('change', () => {
+    fill(comparisonPresets[input('scene').value]);
+    describeCustomExperiment((input('scene') as HTMLSelectElement).selectedOptions[0].text);
+  });
   form.addEventListener('input', markPending);
   form.addEventListener('change', markPending);
   input('units').addEventListener('change', render);
@@ -215,13 +268,15 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
     const file = (event.target as HTMLInputElement).files?.[0]; if (!file) return;
     try {
       if (file.size >= 512) throw new Error('Configuration must be smaller than 512 bytes.');
-      fill(await file.text()); setStatus('Configuration imported. Press Start comparison to run it.');
+      fill(await file.text()); describeCustomExperiment('Explore an imported experiment'); setStatus('Configuration imported. Press Start comparison to run it.');
     } catch (error) { setStatus(`${String(error)} Previous configuration retained.`); }
   });
   root.querySelector('[data-load-challenge]')!.addEventListener('click', () => {
     const choice = input('challenge').value;
     fill(comparisonPresets[choice === 'phase' ? 'phobos' : choice === 'escape' ? 'escape' : choice === 'momentum' ? 'barycentric-core' : 'circular']);
-    root.querySelector('[data-challenge-feedback]')!.textContent = choice === 'phase'
+    root.querySelector('[data-question]')!.textContent = (input('challenge') as HTMLSelectElement).selectedOptions[0].text;
+    root.querySelector('[data-question-description]')!.textContent = choice === 'timestep' ? 'Run A calculates motion every 300 seconds; run B every 150 seconds. Which will stay closer to an ideal circular orbit?' : 'Change one variable, predict the outcome, then compare measurements at the same simulated time.';
+    root.querySelector('[data-challenge-feedback]')!.textContent = choice === 'timestep' ? 'Settings are ready. Start the comparison, then look at analytical phase error and energy change.' : choice === 'phase'
       ? 'Goal: complete 100 simulated days with initial speed factor 1 and maximum sampled phase error below 1°. Reduce run A timestep; keep the initial conditions fixed.'
       : choice === 'escape' ? 'Goal: run the escape preset at factors 0.99 and 1.01, then explain the specific-energy sign.'
       : choice === 'momentum' ? 'Goal: compare momentum behavior in the moving-Sun and constrained core presets. Explain the external constraint and floating-point scale.'
@@ -232,6 +287,7 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
   const params = new URL(location.href).searchParams;
   try {
     fill(params.get('lab') ?? comparisonPresets.circular);
-    setStatus(params.has('lab') ? `Shared configuration loaded; press Start comparison. Created revision: ${params.get('revision') ?? 'not recorded'}; running revision: ${revision}.` : 'Comparison lab ready. Choose parameters and start.');
+    if (params.has('lab')) describeCustomExperiment('Explore a shared experiment');
+    setStatus(params.has('lab') ? `Shared configuration loaded; press Start comparison. Created revision: ${params.get('revision') ?? 'not recorded'}; running revision: ${revision}.` : 'Comparison lab ready. Your first experiment is configured; press Start comparison.');
   } catch (error) { fill(comparisonPresets.circular); setStatus(`Shared configuration rejected: ${String(error)}`); }
 }

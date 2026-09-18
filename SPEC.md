@@ -32,7 +32,7 @@ I.cli: `make` → native app
 
 I.lab: `make headless` → `build/solar-lab`; scene/duration/dt/sample/integrator/initial-speed options stream reproducible SI CSV; `--catalog` exposes the C body manifest.
 
-I.export: native E and web Export SI snapshot use the same C `solar-lab-v1` CSV writer as headless series, including revision, configuration, physical-data quality, ticks and SI measurements.
+I.export: native E and web Advanced → Download measurements (CSV) use the same C `solar-lab-v1` CSV writer as headless series, including revision, configuration, physical-data quality, ticks and SI measurements.
 
 I.test: `make test` → all C tests
 
@@ -273,6 +273,25 @@ Decision: Jonathan requested “update everything to the newest version”, sele
 
 Release evidence checked 2026-09-17: npm latest Astro is 7.3.3; @astrojs/check is 0.9.10 with TypeScript peer range `^5.0.0 || ^6.0.0`; TypeScript latest is 7.0.2, so 6.0.3 remains the newest supported compiler for the existing checker. Playwright 1.63.0 is current. GitHub release/tag checks confirm raylib 6.0 and every existing action SHA already resolve to the latest stable releases. Node 26.9.0 is Current and 24.21.0 is LTS; CI moves to Node 26 while the supported minimum stays 24. Emscripten 6.0.9 is the latest tagged SDK; 6.0 raises generated runtime minimums to Chrome 85, Firefox 79 and Safari 14.1. Sources: npm package metadata; https://nodejs.org/en/about/previous-releases ; https://github.com/emscripten-core/emscripten/releases/tag/6.0.9 ; https://github.com/emscripten-core/emscripten/releases/tag/6.0.0 ; immutable GitHub release refs.
 
+## §A — Beginner-first website UX, 2026-09-18
+
+id|criterion|verify
+A45|The simulator presents the live scene and compact playback/recovery controls before configuration; object, view, lesson and advanced controls remain accessible on desktop/mobile with clear focus and close behavior|Astro checks and local desktop/mobile browser journeys, existing C bridge tests
+A46|Explore/Learn/Experiments/Reference navigation preserves every existing route; homepage and searchable/grouped core catalog hand off the selected object to the C-populated simulator; zero-match filtering distinguishes retained selection|Node and browser selection/search/navigation tests, generated route checks
+A47|Small-body result selection visibly opens its details and experiment action with return focus, including loading/error states; basket feedback remains visible and catalog work stays bounded|local catalog browser journey and existing catalog tests
+A48|Comparison questions and valid defaults precede optional configuration; rejected form values receive field-specific guidance while C remains authoritative and previous results are retained; help supports task terms such as pause|focused comparison tests and browser validation/help journeys
+A49|First-orbit learning and web/touch controls precede numerical/developer reference, with accurate labels and progressive disclosure across the site; all eleven audit findings are addressed and verified|source/copy review, Astro/route checks, browser evidence and regression scan
+
+Decision: Jonathan approved the full 2026-09-18 UX audit with “go and work on everything”. Preserve the archival visual direction, C-owned physics/validation, existing source provenance, fixed-step semantics, catalog bounds, base-path-safe routes and keyboard accessibility. Implement in the existing checkout on `feature/beginner-friendly-site-ux`. The tracked root specification remains authoritative; `.specs/` is ignored and no replacement specification is created. Audit evidence is in ignored `playwright-evidence/ux-audit-20260918/UX-AUDIT.md`. Commit/push and deployment are not part of this authorization.
+
+UX interfaces: simulator panel dialogs use native modal focus/escape behavior; object links use `simulator/?body=<core-slug>` and resolve against the current C body list after readiness. Unknown slugs leave the normal scene selection intact. Catalog details open immediately on selection and show loading before source resolution; closing does not mutate the experiment basket. Comparison form diagnostics explain C rejection rather than replacing C validation. Existing routes and catalog fragment IDs remain valid.
+
+Verification authorization: Jonathan explicitly selected “Yes, run full local checks” for isolated local browser interaction, generated CSV/config downloads, repository fixture imports and local share links. No external submissions are involved. The pre-implementation review was GO with explicit checks for modal failure visibility, refreshed catalog focus restoration and revealing invalid fields inside collapsed settings.
+
+Delivery amendment: Jonathan subsequently requested “open pr, evaluate, merge, deploy, report”. This authorizes committing and pushing the UX branch, opening its PR, evaluating the complete diff and checks, merging after verification, and publishing through the existing Build → Deploy Pages pipeline. Confirm the production revision matches the merged main commit. The earlier local-only delivery boundary is superseded by this request.
+
+A50|The UX PR is reviewed against its complete diff, required checks pass before merge, and the existing Pages pipeline publishes the merged revision with public provenance verified|PR/check readback, Build and Deploy Pages results, public build-info and site verification
+
 ## §T
 
 id|status|task|cites
@@ -329,12 +348,19 @@ T50|x|repair and guard sitemap completeness|A41,V13
 T51|x|enhance and verify GitHub About metadata through gh|A42
 T52|x|update supported docs dependency releases and Node CI version, install the lockfile and verify|A43
 T53|x|update Emscripten and documentation, rebuild matching raylib/WASM, and verify native/browser contracts|A44
+T54|x|reorganize simulator into scene-first controls and accessible object/view/lesson/advanced panels|A45,V18,V23,V24
+T55|x|group navigation and improve homepage/core-catalog object discovery and simulator handoffs|A46,V13,V20,V21
+T56|x|make small-body details, selection recovery and basket feedback visible|A47,V18,A21
+T57|x|lead comparisons with questions, explain invalid fields, and publish beginner-first help|A48,A49,V31,V34
+T58|x|verify all eleven UX findings, route/bridge contracts, desktop/mobile journeys and regression scan|A45,A46,A47,A48,A49
 
 Verification: Build run https://github.com/jonathanperis/solar-system-simulator/actions/runs/35175509807 passed native tests/sanitizers, WASM packaging, complete catalog checks, docs validation and sandboxed browser tests for implementation commit 016f187. PR creation was denied by the credential; branch-plus-CI delivery follows Jonathan's explicit amendment above.
 
 Security integration verification: Build https://github.com/jonathanperis/solar-system-simulator/actions/runs/35243274760 and CodeQL https://github.com/jonathanperis/solar-system-simulator/actions/runs/35243274774 passed for ee35fba. The local policy matrix passed eight trusted/untrusted event cases; runtime/docs sources match the verified learning-lab main.
 
 Documentation/dependency audit verification, 2026-09-17: A40–A44 pass locally. All 478 repository/site links across eight Markdown files and 17 generated HTML documents resolve, including fragments. Offline checks confirm 128 core bodies, 11 presets total (10 guided presets plus the core preset), 115 Jovian moons and 1,564,244 small-body records. Native raylib 6.0 build, `make test test-build test-cli test-validators`, documented CLI runs, Node 26.9.0 docs tests (15), Astro check/build, sitemap/route checks, Emscripten 6.0.9 packaging, standalone conic and native/WASM comparison checks, and five isolated local Chrome browser tests pass. Clean locked npm installation and audit report zero vulnerabilities. GitHub About description/homepage/11 topics were updated through gh and read back. Read-only browser inspection confirms the revised build/pipeline copy; durable build-guide snapshot/screenshot is in ignored `playwright-evidence/documentation-audit-20260917/`. The old ignored standalone HTML is preserved at `build/documentation-audit/legacy-public-runtime.html`. No source snapshot refresh or remote branch delivery occurred; hosted CI/Pages verification for these uncommitted changes and a fresh sanitizer run are not claimed. Eleven unique external links outside repository/Pages targets were not exhaustively fetched. Regression scan: 12 callers checked, 9 assertions checked, 1 flagged/fixed (A44 wording now distinguishes raylib-linked and raylib-free modules).
+
+Beginner-first UX verification, 2026-09-18: A45–A49 pass locally; all eleven audit findings are closed. The scene begins at y=231 on 1440×1000 desktop and y=349 on 390×844 mobile, with everyday controls in the same viewport. Sixteen Node tests, Astro check/build, generated routes, three artifact-validator tests, all nine sandboxed Chrome browser journeys, and `make test` pass. After the 16-page local visual/semantic tour found scrolling mobile Close controls, sticky dismissal was added and the three affected mobile tests passed; the final compact comparison heading passed its focused browser journey and route check. The full Ceres preparation/confirmation path produced 10 active bodies. Named CLI evidence and the itemized report are in ignored `playwright-evidence/ux-audit-20260918/IMPLEMENTATION.md`. Existing JS/WASM companions were used (reported revision `eb6abd9ac703-dirty`; tracked C source is unchanged since that base). Fresh WASM packaging, native-app packaging, sanitizers, physical-device/cross-browser checks and a full accessibility certification were not run. No commit, push or deployment occurred. Regression scan: 24 callers checked, 148 assertions checked, 5 flagged/fixed.
 
 ## §B
 

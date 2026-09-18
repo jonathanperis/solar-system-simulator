@@ -6,33 +6,30 @@ const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 <BaseLayout title="Guided experiments">
   <DocsShell title="Predict, run, measure, explain." eyebrow="Learning laboratory"
-    lede="One small C core, several experiments. Change one variable, record the configuration, and distinguish the physical model from numerical error and visual scale.">
+    lede="Start by watching a world move. Then ask a question, make a prediction, and use an experiment to find out.">
     <section class="doc-panel">
-      <h2>Your first ten minutes</h2>
+      <h2>Your first orbit · about five minutes</h2>
       <ol>
-        <li>Open the <a href={`${base}simulator/`}>live simulator</a>, pause, select <strong>Circular orbit</strong>, and press <strong>Start lesson</strong>.</li>
-        <li>Predict the velocity direction and the inward acceleration. Enable vector directions: green is velocity, orange is acceleration; their lengths are illustrative.</li>
-        <li>Step once. Inspect the seconds, ticks, SI position and velocity. Switch scale: the physical readings must stay the same.</li>
-        <li>Export an SI snapshot. Reset and repeat: the same configuration and tick should reproduce the same state.</li>
-        <li>Change the initial speed factor to <code>1.1</code>, start again, and explain why the orbit is no longer circular.</li>
+        <li><strong>Meet the Earth–Moon family.</strong> <a href={`${base}simulator/?body=earth`}>Open Earth in the simulator</a>. The view fits Earth and its Moon. Sizes and moon spacing are enlarged so you can see both.</li>
+        <li><strong>Take your time.</strong> Press <strong>Pause</strong>. Under <strong>Find an object</strong>, search for Moon and select it. Choose <strong>Show this system</strong>, then <strong>View selected object</strong> to close the picker.</li>
+        <li><strong>Make a prediction.</strong> Where will the Moon move next? Press <strong>Resume</strong> and watch. Change <strong>Simulation speed</strong> to see more or less time pass.</li>
+        <li><strong>Change your viewpoint.</strong> Open <strong>View options</strong> and switch trails from Absolute to Parent-relative. Close the panel. Notice how the Moon’s motion is easier to read relative to Earth.</li>
+        <li><strong>Explore again.</strong> Press <strong>Show whole system</strong> to return to the wide view. <strong>Restart</strong> returns to time zero; if you were paused, press Resume to watch again.</li>
       </ol>
-      <p>Lesson changes reset physical state and its diagnostic baseline while preserving pause and requested playback speed. Reset repeats the current lesson. The core and catalog scenes retain their 15-second Verlet policy.</p>
+      <p>No keyboard or programming knowledge is needed. If the view keeps turning while physics is paused, turn off <strong>Rotate camera</strong> in View options. Need help? <a href={`${base}docs/controls/`}>Find a control →</a></p>
     </section>
 
     <section class="doc-panel">
-      <h2>Run without graphics</h2>
-      <p>A C11 compiler, Make and Python 3.10+ are enough for the headless laboratory. raylib is unnecessary for this path.</p>
-      <pre><code>{`make headless
-build/solar-lab --scene circular --days 30 --dt 300 --sample 3600 --output build/verlet.csv
-build/solar-lab --scene circular --days 30 --dt 300 --sample 3600 --integrator euler --output build/euler.csv
-build/solar-lab --help`}</code></pre>
-      <p>Duration and sample spacing must be whole multiples of the timestep. Lessons accept steps from 0.01 to 3600 seconds and initial-speed factors from 0.1 to 2, with the tighter 0.01–0.25-second contact bound below. These ranges permit intentionally inaccurate experiments; they are not promises of orbital accuracy. Invalid inputs fail before emitting CSV.</p>
-      <p>CSV includes revision, configuration, physical-data quality, simulation time/ticks, every body's absolute SI vectors, total energy, momentum and center of mass. Unknown physical values remain empty with an explicit <code>unknown</code> quality. Each sample streams directly to the output, so long runs do not retain an unbounded series in memory.</p>
-      <p>Web <strong>Export SI snapshot</strong> and native <kbd>E</kbd> use the same C CSV writer. The browser downloads <code>solar-snapshot.csv</code>; native writes that name in the working directory. Compare matching lesson, parameters and ticks across native/WASM within floating-point tolerance, not different frame durations.</p>
+      <h2>What would you like to discover?</h2>
+      <ul>
+        <li><strong>Why does an orbit curve?</strong> Open Learn in the <a href={`${base}simulator/`}>simulator</a> and load the circular-orbit activity. In View options, enable vectors: green shows motion, orange shows acceleration. Their lengths are illustrative.</li>
+        <li><strong>What happens if a world moves faster?</strong> Load Circular orbit, then expand Advanced physics settings in Learn. Change Starting speed multiplier from 1 to 1.1 and Load lesson again. Predict how its path changes.</li>
+        <li><strong>Does a smaller calculation step help?</strong> The <a href={`${base}compare/`}>comparison lab</a> is already configured for this question. Press Start comparison and inspect the phase-error measurements for A and B.</li>
+      </ul>
+      <p>Loading a lesson returns it to its initial state and keeps your pause setting. Close Learn to watch, then Resume if paused. Changing playback speed only changes how quickly you watch; changing starting speed changes the physical experiment.</p>
     </section>
 
-    <section class="doc-panel">
-      <h2>Choose a question</h2>
+    <details class="doc-panel"><summary>Lesson reference: predictions and measurements</summary>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Lesson</th><th>Predict</th><th>Measure and explain</th></tr></thead>
@@ -46,10 +43,9 @@ build/solar-lab --help`}</code></pre>
           </tbody>
         </table>
       </div>
-    </section>
+    </details>
 
-    <section class="doc-panel">
-      <h2>Why Verlet behaves differently</h2>
+    <details class="doc-panel"><summary>Go deeper: why Verlet behaves differently</summary>
       <p>For timestep <code>h</code>, the integrator performs:</p>
       <ol>
         <li><code>v_half = v + a(x) h/2</code></li>
@@ -60,27 +56,24 @@ build/solar-lab --help`}</code></pre>
       <pre><code>{`make build/tests/test_learning_lab
 build/tests/test_learning_lab`}</code></pre>
       <p>Energy change is normalized by <code>K₀ + |U₀|</code>, not total initial energy, so the escape lesson does not divide by a nearly zero quantity. Low total-energy error alone does not prove accurate satellite phase: large bodies dominate the total. Massless tracers contribute no energy or momentum. A fixed Sun constrains total linear momentum; use the free pair for a conservation experiment.</p>
-    </section>
+    </details>
 
-    <section class="doc-panel">
-      <h2>Read and plot the evidence</h2>
+    <details class="doc-panel"><summary>Read and plot downloaded measurements</summary>
       <p>Open CSV in a spreadsheet, skipping the leading <code>#</code> metadata lines. Filter one body, then plot <code>normalized_energy_change</code> against <code>time_s</code> for Euler and Verlet. Plot <code>x_m</code> against <code>z_m</code> with equal axis scales. For a moon, subtract its parent's coordinates at the same tick.</p>
       <p>Record the lesson, speed factor, timestep, method, duration and revision alongside your conclusion. An initial-speed factor changes physics; playback speed changes how quickly fixed ticks are requested; illustrative magnification changes only drawing.</p>
       <p>Orbital presets have point masses without tides or relativity; contact handling belongs only to the explicit two-sphere lesson. The exact-overlap gravity guard contributes zero acceleration and is a numerical convention, not a collision law. Close encounters can exceed a fixed step's useful resolution; a stable-looking picture is not sufficient proof.</p>
-    </section>
+    </details>
 
-    <section class="doc-panel">
-      <h2>Compare, save and share</h2>
+    <details class="doc-panel"><summary>Compare, save and share</summary>
       <p>The <a href={`${base}compare/`}>A/B comparison lab</a> runs two C integrators from identical initial conditions. Choose a timestep or method difference, then compare matched checkpoints. Save a small <code>.solar</code> descriptor or create a link; opening it loads parameters without starting physics. Use the same source revision for a reproducible result; a local dirty revision does not uniquely identify uncommitted source changes.</p>
       <pre><code>{`build/solar-lab --compare examples/circular.solar > build/comparison.csv
 build/solar-lab --compare examples/phobos.solar > build/phobos-comparison.csv
 build/solar-lab --compare examples/collision.solar > build/contact-comparison.csv`}</code></pre>
       <p>Browser charts retain at most 1,025 uniformly coarsened points, including the current endpoint. The CLI streams every checkpoint. Physics step, measurement spacing and display-history resolution are separate choices: sparse straight segments are not a complete predicted orbit. A/B discrepancy is not itself ground truth; the analytical phase reference is available only for isolated two-body lessons.</p>
       <p>Guided challenges ask you to meet a maximum sampled phase error below one degree over 100 simulated 24-hour days in the Phobos lesson, explain bound/unbound specific-energy signs, investigate the fixed-Sun momentum constraint, and prove that display changes leave exported SI data identical. Write a prediction before running.</p>
-    </section>
+    </details>
 
-    <section class="doc-panel">
-      <h2>Advanced model questions</h2>
+    <details class="doc-panel"><summary>Advanced model questions</summary>
       <ul>
         <li><strong>Moving-Sun barycentric core:</strong> initial relative states stay the same while the mass-weighted position and velocity are subtracted from all bodies and the Sun is released. Compare momentum vectors, not only their magnitude; constant magnitude alone does not prove conservation.</li>
         <li><strong>Resonance:</strong> Jupiter perturbs a massless particle initialized at a 3:2 period ratio. Inspect <code>3λ_J − 2λ_particle − ϖ_particle</code> for bounded libration versus circulation over long runs. Period commensurability is a hypothesis, not proof of resonance.</li>
@@ -88,10 +81,20 @@ build/solar-lab --compare examples/collision.solar > build/contact-comparison.cs
         <li><strong>Head-on contact:</strong> two chosen 10 kg, 10 m spheres approach at 10 m/s times the initial-speed factor. Steps are restricted to 0.01–0.25 s to prevent tunneling in this geometry. Elastic impulses conserve contact kinetic energy and momentum; merging conserves mass/linear momentum and combines volume while losing kinetic energy. Contact timing has finite-step error; there is no general collision or internal-spin model.</li>
       </ul>
       <p>The force inspector exposes individual source acceleration vectors. For the Moon, solar acceleration can exceed Earth's contribution, yet Earth shares nearly the same solar acceleration. Subtract the parent's acceleration before interpreting relative binding. Percentages use the sum of magnitudes because source vectors may cancel.</p>
-    </section>
+    </details>
 
-    <section class="doc-panel">
-      <h2>Engineering exercises</h2>
+    <details class="doc-panel"><summary>Developer reference: run without graphics</summary>
+      <p>A C11 compiler, Make and Python 3.10+ are enough for the headless laboratory. raylib is unnecessary for this path.</p>
+      <pre><code>{`make headless
+build/solar-lab --scene circular --days 30 --dt 300 --sample 3600 --output build/verlet.csv
+build/solar-lab --scene circular --days 30 --dt 300 --sample 3600 --integrator euler --output build/euler.csv
+build/solar-lab --help`}</code></pre>
+      <p>Duration and sample spacing must be whole multiples of the timestep. Lessons accept steps from 0.01 to 3600 seconds and initial-speed factors from 0.1 to 2, with the tighter 0.01–0.25-second contact bound. These ranges permit intentionally inaccurate experiments; they are not promises of orbital accuracy. Invalid inputs fail before emitting CSV.</p>
+      <p>CSV includes revision, configuration, physical-data quality, simulation time/ticks, every body's absolute SI vectors, total energy, momentum and center of mass. Unknown physical values remain empty with an explicit <code>unknown</code> quality. Each sample streams directly to the output, so long runs do not retain an unbounded series in memory.</p>
+      <p>Web <strong>Advanced → Download measurements (CSV)</strong> and native <kbd>E</kbd> use the same C CSV writer. The browser downloads <code>solar-snapshot.csv</code>; native writes that name in the working directory. Compare matching lesson, parameters and ticks across native/WASM within floating-point tolerance, not different frame durations.</p>
+    </details>
+
+    <details class="doc-panel"><summary>Developer reference: engineering exercises</summary>
       <ul>
         <li><strong>C ownership:</strong> follow borrowed <code>Body.name</code> pointers, session-owned imported names, and trail allocation/destruction. Copying a struct containing an owned pointer does not duplicate its allocation.</li>
         <li><strong>Build graphs:</strong> edit a header and use <code>make -n</code> to see affected consumers. Run <code>make test-build</code> to verify dependency and exit-status contracts.</li>
@@ -99,11 +102,12 @@ build/solar-lab --compare examples/collision.solar > build/contact-comparison.cs
         <li><strong>Delivery:</strong> compile native and WASM from one revision, compare matching exported ticks, and inspect the checked artifact's provenance. <code>make test-sanitize</code> exercises memory and undefined-behavior boundaries.</li>
         <li><strong>Further research:</strong> use the existing Jupiter/moon scene and selected small-body experiments to study perturbations. Propose a measured bottleneck before trying a different data layout or approximate solver.</li>
       </ul>
-    </section>
+    </details>
   </DocsShell>
 </BaseLayout>
 
 <style>
   pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; background: var(--paper-light); border: 1px solid var(--rule); }
   th, td { min-width: 9rem; }
+  summary { min-height: 44px; cursor: pointer; font-weight: 600; padding: .5rem 0; }
 </style>

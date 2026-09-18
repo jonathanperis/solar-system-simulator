@@ -31,14 +31,14 @@ const compactPosition = (slug: string, angle: number, radius: number) => chartPo
     <p class="eyebrow">Field plate 01 / illustrative index</p>
     <h1 id="atlas-title">A solar system, drawn for inspection.</h1>
     <p>
-      {implementedBodies.length} core bodies. Select a marker, or explore the <a href={`${base}small-bodies/`}>complete small-body atlas</a> to prepare a live C11/raylib experiment.
+      Meet {implementedBodies.length} worlds in an illustrated chart. Select a marker to discover a body, then watch it move in the live simulator.
     </p>
     <p class="atlas-hint">Select a body. Drag chart. Use <kbd>Left</kbd> <kbd>Right</kbd> to step markers.</p>
   </div>
 
   <div class="atlas-tools" aria-label="Atlas actions">
     <a class="atlas-launch" href={`${base}simulator/`}>Run live simulator</a>
-    <a class="atlas-source" href={`${base}source-atlas/`}>Read source atlas</a>
+    <a class="atlas-source" href={`${base}body-catalog/`}>Find a world</a>
   </div>
 
   <div class="atlas-plate-tabs" role="group" aria-label="Reference plates">
@@ -156,12 +156,13 @@ const compactPosition = (slug: string, angle: number, radius: number) => chartPo
     <p class="eyebrow" data-atlas-kind></p>
     <h2 data-atlas-name></h2>
     <p class="atlas-note-summary" data-atlas-summary></p>
-    <dl>
+    <a class="atlas-explore" data-atlas-explore href={`${base}simulator/`}>Explore in the simulator →</a>
+    <details><summary>Model and sources</summary><dl>
       <div><dt>Parent</dt><dd data-atlas-parent></dd></div>
       <div><dt>Milestone</dt><dd data-atlas-milestone></dd></div>
       <div><dt>Seed state</dt><dd data-atlas-initialization></dd></div>
       <div><dt>Source</dt><dd><code data-atlas-source></code></dd></div>
-    </dl>
+    </dl></details>
     <div class="atlas-note-actions">
       <a data-atlas-catalog href={`${base}body-catalog/`}>Open catalog</a>
       <button type="button" data-atlas-previous>Previous</button>
@@ -175,7 +176,7 @@ const compactPosition = (slug: string, angle: number, radius: number) => chartPo
 <script>
   import { cycleIndex, nearestBodyIndex, normalizeDegrees } from '../lib/orbitalAtlas';
   import { moveSelectByKey } from '../lib/simulator';
-  import { implementedBodies, type ImplementedBody } from '../lib/bodies';
+   import { implementedBodies, bodyIntroduction, type ImplementedBody } from '../lib/bodies';
 
   type Plate = ImplementedBody['chart']['plate'];
   const atlas = document.querySelector<HTMLElement>('[data-orbital-atlas]');
@@ -202,7 +203,8 @@ const compactPosition = (slug: string, angle: number, radius: number) => chartPo
       milestone: atlas.querySelector<HTMLElement>('[data-atlas-milestone]')!,
       initialization: atlas.querySelector<HTMLElement>('[data-atlas-initialization]')!,
       source: atlas.querySelector<HTMLElement>('[data-atlas-source]')!,
-      catalog: atlas.querySelector<HTMLAnchorElement>('[data-atlas-catalog]')!
+      catalog: atlas.querySelector<HTMLAnchorElement>('[data-atlas-catalog]')!,
+      explore: atlas.querySelector<HTMLAnchorElement>('[data-atlas-explore]')!
     };
     let activePlate: Plate = 'heliocentric';
     let selectedSlug = 'sun';
@@ -242,14 +244,16 @@ const compactPosition = (slug: string, angle: number, radius: number) => chartPo
     };
 
     const populateNote = (body: ImplementedBody): void => {
-      fields.kind.textContent = `${body.kind} / ${body.parent === 'None' ? 'origin anchor' : `${body.parent}-relative catalog`}`;
+      fields.kind.textContent = body.kind;
       fields.name.textContent = body.name;
-      fields.summary.textContent = body.summary;
+      fields.summary.textContent = bodyIntroduction(body);
       fields.parent.textContent = body.parent;
       fields.milestone.textContent = body.milestone;
       fields.initialization.textContent = body.initialization;
       fields.source.textContent = body.source;
       fields.catalog.href = `${atlas.dataset.base}body-catalog/#${body.slug}`;
+      fields.explore.href = `${atlas.dataset.base}simulator/?body=${encodeURIComponent(body.slug)}`;
+      fields.explore.textContent = `Explore ${body.name} in the simulator →`;
     };
 
     const selectBody = (slug: string, openNote = true, focusBody = false): void => {
@@ -273,7 +277,7 @@ const compactPosition = (slug: string, angle: number, radius: number) => chartPo
       setBearing(markerAngle(body));
       populateNote(body);
       note.hidden = !openNote;
-      status.textContent = `${body.name} selected. ${body.summary}`;
+      status.textContent = `${body.name} selected. ${bodyIntroduction(body)}`;
       if (focusBody) control?.focus();
     };
 
