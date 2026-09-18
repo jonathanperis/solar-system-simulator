@@ -38,18 +38,18 @@ ROUTES: dict[str, list[str]] = {
         "Run live simulator",
     ],
     "physics/index.html": ["Physics stays in SI units", "docs/simulation-core/", "data-footer-credits"],
-    "compare/index.html": ["Compare explanations with evidence", "data-comparison", "learning-lab.mjs", "Guided challenges", "Force-contribution inspector"],
-    "simulator/index.html": ["Run the real orbit loop", "data-simulator", "runtime-control-state", "canvas", "15-second", "uniform", "data-footer-credits", "data-runtime-panel", "data-runtime-body", "data-runtime-speed", "Frame selected system", "Frame selected body", "Live physics inspector", "data-inspector-distance", "data-inspector-speed", "data-runtime-search", "data-runtime-group", "15 days / second", "10 days / second", "data-runtime-achieved", "test particles"],
-    "body-catalog/index.html": ["Stable IDs prevent duplicate knowledge", "docs/roadmap/", "Phobos", "Deimos", "Vesta", "Jupiter", "Saturn", "JPL physical parameters", "NASA's Saturn facts", "JPL SBDB solution 36"],
+    "compare/index.html": ["One question. Two experiments", "data-comparison", "learning-lab.mjs", "Guided challenges", "Force-contribution inspector", "data-config-error"],
+    "simulator/index.html": ["Explore the solar system", "data-simulator", "runtime-control-state", "canvas", "15-second", "uniform", "data-footer-credits", "data-runtime-panel", "data-runtime-body", "data-runtime-speed", "Show this system", "Center on this object", "physical measurements", "data-inspector-distance", "data-inspector-speed", "data-runtime-search", "data-runtime-group", "15 days / second", "10 days / second", "data-runtime-achieved", "test particles", "data-body-filter-status"],
+    "body-catalog/index.html": ["Find your next world", "data-body-search", "data-body-family", "docs/roadmap/", "Phobos", "Deimos", "Vesta", "Jupiter", "Saturn", "JPL physical parameters", "NASA's Saturn facts", "JPL SBDB solution 36"],
     "small-bodies/index.html": ["A million worlds", "data-small-atlas", "data-density", "data-catalog-search", "data-results", "data-basket", "data-prepare", "catalog/manifest.json", "1,564,244"],
     "source-atlas/index.html": ["The code separates physics from presentation", "docs/architecture/", "src/sim/"],
     "pipeline/index.html": ["Native tests feed a Pages lab bench", "docs/build-and-web/", "make web"],
-    "docs/index.html": ["Trace every orbit wire without one giant scroll", "Solar manual routes", "Every orbit manual page", "docs/architecture/"],
+    "docs/index.html": ["Find your way around the solar system", "Solar manual routes", "Every orbit manual page", "docs/architecture/", "Your first orbit"],
     "docs/architecture/index.html": ["Architecture keeps physics testable", "src/sim/", "src/render/", "src/main.c", "tests/"],
     "docs/experiments/index.html": ["Predict, run, measure, explain", "make headless", "solar-lab", "Barycentric Earth", "normalized_energy_change"],
     "docs/simulation-core/index.html": ["Simulation state uses physical units first", "src/sim/physics.c", "src/sim/solar_system.c", "src/sim/vec3d.c"],
     "docs/rendering/index.html": ["Rendering adapts physics for human eyes", "src/render/renderer.c", "src/app/body_trails.c"],
-    "docs/controls/index.html": ["Controls expose the current physics scene", "Space", "N", "R", "Frame", "physical inspector", "simulation_session", "orbit_camera"],
+    "docs/controls/index.html": ["Make the view your own", "Space", "N", "R", "Frame", "physical inspector", "simulation_session", "orbit_camera", "Everyday controls"],
     "docs/build-and-web/index.html": ["Native checks feed the public WebAssembly lab", "make test", "make web", "make dist-wasm", ".github/workflows/build.yml", ".github/workflows/deploy-pages.yml"],
     "docs/roadmap/index.html": ["Expansion stays one body at a time", "Implemented now", "Planned sequence", "Jupiter", "Saturn", "Kuiper belt"],
 }
@@ -166,9 +166,10 @@ def main(argv: list[str]) -> int:
             for tag, attrs in parser.elements
             if tag == "a" and "data-primary-nav-link" in attrs
         ]
-        if len(primary_links) != 9:
-            fail(f"{route} must expose all nine primary navigation links")
-        if sum(attrs.get("aria-current") == "page" for attrs in primary_links) != 1:
+        primary_paths = {BASE_PATH + path for path in ("simulator/", "docs/experiments/", "compare/", "docs/")}
+        if len(primary_links) != 4 or {attrs.get("href") for attrs in primary_links} != primary_paths:
+            fail(f"{route} must expose Explore, Learn, Experiments and Reference navigation destinations")
+        if sum(attrs.get("aria-current") in {"page", "location"} for attrs in primary_links) != 1:
             fail(f"{route} must identify exactly one current primary navigation link")
         if "rel=\"canonical\"" not in html:
             fail(f"{route} missing canonical URL")

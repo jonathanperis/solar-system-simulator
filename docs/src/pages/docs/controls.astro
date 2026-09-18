@@ -2,15 +2,34 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import DocsShell from '../../components/DocsShell.astro';
 import { bodyFocusOrder } from '../../lib/bodies';
+import { normalizeBase } from '../../lib/base';
+const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 <BaseLayout title="Controls docs">
   <DocsShell
-    title="Controls expose the current physics scene."
-    eyebrow="Runtime interaction"
-    lede="Pause an experiment, advance one fixed physics step, and inspect a selected body. Playback runs in C; camera controls change only presentation."
+    title="Make the view your own."
+    eyebrow="Help / simulator controls"
+    lede="Pause, choose a world, adjust the view, and start again. The same visible controls work with a mouse, keyboard, or touch."
   >
     <section class="doc-panel">
-      <h2>Keyboard and mouse</h2>
+      <h2>Everyday controls</h2>
+      <ul>
+        <li><strong>Pause / Resume:</strong> stop or continue the physical motion. Camera rotation is independent; turn it off in View options if needed.</li>
+        <li><strong>Simulation speed:</strong> choose how much simulated time passes per real second. The calculation step stays fixed.</li>
+        <li><strong>Restart:</strong> return to time zero with fresh trails. Your selection, speed, pause state, and view settings stay the same.</li>
+        <li><strong>Find an object:</strong> search by name and filter by family. Your current selection remains available even if no objects match.</li>
+        <li><strong>Show this system:</strong> fit a planet and its moons. For a selected moon, this includes its parent and siblings.</li>
+        <li><strong>Center on this object:</strong> fit one body or its unknown-size marker. <strong>Show whole system</strong> selects the scene's first body (the Sun in the core) and restores the wide family view.</li>
+        <li><strong>View options:</strong> zoom, stop camera rotation, switch scale, or reveal trails and vector directions. Real scale can make small bodies hard to see; switch back to Illustrative or center on the body.</li>
+      </ul>
+      <p>Close a panel to return to the scene. Escape also closes it and returns keyboard focus to the button that opened it. <a href={`${base}simulator/`}>Try the controls →</a></p>
+    </section>
+    <section class="doc-panel">
+      <h2>Learn and measure</h2>
+      <p><strong>Learn</strong> provides activities and lesson presets. Expand Advanced physics settings there to change the calculation method, timestep, or starting-speed multiplier, then press <strong>Load lesson</strong>. This starts a fresh physical state while keeping your pause setting; close Learn and press Resume if needed.</p>
+      <p><strong>Advanced</strong> provides one-step playback while paused, physical CSV downloads, and prepared small-body experiments. Expand the measurement and diagnostic sections below the scene to inspect the numbers. <a href={`${base}docs/experiments/`}>Follow your first orbit →</a></p>
+    </section>
+    <details class="doc-panel"><summary>Keyboard shortcuts and native controls</summary>
       <p>The separate comparison lab pairs run A/B settings at matched checkpoints and provides pause, resume, next-checkpoint, reset, CSV export and share/import controls. Main-runtime collision lessons use a smaller physical timestep and 1/5/10/25/50 simulated-seconds-per-second playback so contact remains observable. The Contact button or native <kbd>M</kbd> switches bounce/merge and restarts the contact lesson.</p>
       <p>Guided lessons add preset, integrator, timestep and initial-speed controls plus SI snapshot export. Native <kbd>L</kbd> cycles lessons, <kbd>I</kbd> switches the teaching integrator, <kbd>D</kbd> changes the lesson timestep, and <kbd>-</kbd>/<kbd>=</kbd> adjust initial speed. These changes reset the lesson. <kbd>T</kbd> switches trail frame, <kbd>X</kbd> toggles vector directions and <kbd>E</kbd> exports CSV on both targets.</p>
       <div class="command-grid">
@@ -28,23 +47,21 @@ import { bodyFocusOrder } from '../../lib/bodies';
         <article><code>Mouse wheel</code><p>Zoom around the selected body or framed system root with clamp protection.</p></article>
       </div>
       <p>The web page provides buttons, speed/body selectors, and a rotation checkbox for touch and keyboard use. Shortcuts require canvas focus. Tab exits the canvas; ordinary form keys retain browser behavior.</p>
-    </section>
+    </details>
 
-    <section class="doc-panel">
-      <h2>Camera model</h2>
+    <details class="doc-panel"><summary>Camera model and source</summary>
       <p><code>src/app/orbit_camera.c</code> preserves viewing pitch. Direct body selection restores the default camera distance; framing uses the current family's rendered bounding sphere and viewport aspect ratio. The framed camera follows the family root while the inspector keeps the selected body.</p>
       <p>Zoom changes distance only. Framing adjusts zoom limits and sensitivity for planetary or satellite scales; near/far clipping follows camera distance so real-scale systems stay visible. Reframe after motion or manual zoom to fit the family again. A viewport resize or scale toggle refits an already framed system.</p>
-    </section>
+    </details>
 
-    <section class="doc-panel">
-      <h2>Read the physical inspector</h2>
+    <details class="doc-panel"><summary>Read the physical inspector</summary>
       <p><code>src/app/simulation_session.c</code> computes distance from the parent's position and speed from the difference between body and parent velocities. Parent lookup uses stable catalog IDs, not array order or body names.</p>
       <p>The page displays kilometres, kilometres per second, kilograms, and physical radius in kilometres. These values are derived from SI simulation state and remain identical when a paused scene switches render mode. The Sun has no parent, so relative distance and speed display N/A. Camera distance is explicitly labelled in visual render units.</p>
-    </section>
+    </details>
 
-    <section class="doc-panel">
-      <h2>Core demonstration focus order</h2>
+    <details class="doc-panel"><summary>Developer reference: core demonstration focus order</summary>
       <p>{bodyFocusOrder.join(' → ')}</p>
-    </section>
+    </details>
   </DocsShell>
 </BaseLayout>
+<style>summary { min-height: 44px; padding: .5rem 0; cursor: pointer; font-weight: 600; }</style>

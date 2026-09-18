@@ -1,36 +1,33 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import DocsShell from '../../components/DocsShell.astro';
-import { currentMilestone, docsManualGroups, docsRoutes, repoUrl, withBase } from '../../lib/site';
+import { docsManualGroups, docsRoutes, repoUrl, withBase } from '../../lib/site';
 import { normalizeBase } from '../../lib/base';
 
 const base = normalizeBase(import.meta.env.BASE_URL);
 const totalRoutes = docsRoutes.length;
-const firstRoute = docsRoutes.find((route) => route.href === 'docs/architecture/') ?? docsRoutes[0];
 const wasmRoute = withBase(base, 'simulator/');
 ---
 <BaseLayout title="Orbital field guide">
   <DocsShell
-    eyebrow="Orbital field guide / source atlas"
-    title="Trace every orbit wire without one giant scroll."
-    lede="Read the atlas as a field guide: start with source boundaries, inspect gravity and rendering, then verify controls, WebAssembly, and the roadmap."
+    eyebrow="Reference / orbital field guide"
+    title="Find your way around the solar system."
+    lede="Start with your first orbit, find a control, or follow a question into the physics. Source and build references are here when you need them."
   >
     <section class="manual-hero" aria-label="Orbit manual summary">
       <div class="manual-hero-copy">
         <p class="eyebrow">ORBIT MANUAL / FIELD NOTES</p>
-        <h2>Open the simulator one layer at a time.</h2>
+        <h2>New here? Watch your first orbit.</h2>
         <p>
-          Every route answers one maintainer question: where the physics lives, what the renderer bends for readability, how the browser bundle is produced, and what work is still intentionally unfinished.
+          Choose Earth and the Moon, pause the scene, and discover how motion changes your view. You do not need to know the equations or write any code to begin.
         </p>
         <div class="manual-chip-row" aria-label="Manual diagnostics">
-          <span>{totalRoutes} focused orbit routes</span>
-          <span>{currentMilestone.language} + raylib</span>
-          <span>{currentMilestone.units}</span>
-          <span>WASM lab bench</span>
+          <span>Explore at your own pace</span>
+          <span>Desktop, keyboard, and touch</span>
         </div>
         <div class="manual-actions" aria-label="Primary manual actions">
-          <a class="button" href={withBase(base, firstRoute.href)}>Start with architecture</a>
-          <a class="button button-secondary" href={wasmRoute}>Open WASM field station</a>
+          <a class="button" href={withBase(base, 'docs/experiments/')}>Your first orbit</a>
+          <a class="button button-secondary" href={wasmRoute}>Open simulator</a>
         </div>
       </div>
       <aside class="manual-stats" aria-label="Documentation stats">
@@ -63,7 +60,7 @@ const wasmRoute = withBase(base, 'simulator/');
                 <a
                   class="manual-route-link"
                   href={withBase(base, route.href)}
-                  data-doc-route={`${route.code} ${route.label} ${route.summary} ${group.title}`}
+                   data-doc-route={`${route.code} ${route.label} ${route.summary} ${route.keywords ?? ''} ${group.title}`}
                 >
                   <span>{route.code}</span>
                   <strong>{route.label}</strong>
@@ -88,7 +85,7 @@ const wasmRoute = withBase(base, 'simulator/');
           <a
             class="manual-index-row"
             href={withBase(base, route.href)}
-            data-doc-route={`${route.code} ${route.label} ${route.summary}`}
+            data-doc-route={`${route.code} ${route.label} ${route.summary} ${route.keywords ?? ''}`}
           >
             <span>{String(index + 1).padStart(2, '0')}</span>
             <strong>{route.label}</strong>
@@ -96,6 +93,17 @@ const wasmRoute = withBase(base, 'simulator/');
           </a>
         ))}
       </div>
+    </section>
+    <section class="doc-panel">
+      <h2>Atlases and reference collections</h2>
+      <ul>
+        <li><a href={`${base}`}>Illustrated solar atlas</a> — select a world and discover its family.</li>
+        <li><a href={`${base}body-catalog/`}>Bodies in the simulator</a> — search planets, moons, and Vesta.</li>
+        <li><a href={`${base}small-bodies/`}>Small-body atlas</a> — explore the pinned catalog and build an experiment.</li>
+        <li><a href={`${base}physics/`}>Physics and model limits</a> — understand what the simulation measures.</li>
+        <li><a href={`${base}source-atlas/`}>Source atlas</a> — locate the code behind each feature.</li>
+        <li><a href={`${base}pipeline/`}>Build and delivery pipeline</a> — follow verification through to publication.</li>
+      </ul>
     </section>
   </DocsShell>
 </BaseLayout>

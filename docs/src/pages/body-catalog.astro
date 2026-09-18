@@ -1,33 +1,47 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { implementedBodies } from '../lib/bodies';
+import { implementedBodies, bodyIntroduction } from '../lib/bodies';
 import { normalizeBase } from '../lib/base';
 import { repoUrl } from '../lib/site';
 const base = normalizeBase(import.meta.env.BASE_URL);
+const groupFor = (body: typeof implementedBodies[number]) => body.kind === 'Moon' ? `${body.parent} moons` : body.kind === 'Planet' ? 'Planets' : 'Sun and asteroids';
+const groups = [...new Set(implementedBodies.map(groupFor))];
 ---
 <BaseLayout title="Body catalog">
   <section class="hero page-hero">
     <div>
-      <p class="eyebrow">Catalog state</p>
-      <h1>Stable IDs prevent duplicate knowledge.</h1>
-      <p class="lede">The simulator gives each current body a stable <code>BodyId</code> and parent relationship. Renderer colors and moon separation derive from that metadata rather than body-name matching.</p>
-      <div class="actions"><a class="button-secondary" href={`${base}docs/roadmap/`}>Read body-by-body roadmap</a></div>
+      <p class="eyebrow">Explore / body catalog</p>
+      <h1>Find your next world.</h1>
+      <p class="lede">Explore the {implementedBodies.length} bodies in the core simulation. Find a planet or moon, discover its family, and open it in the live scene.</p>
+      <div class="actions"><a href={`${base}small-bodies/`}>Looking for an asteroid or distant object? Small-body atlas →</a></div>
     </div>
   </section>
 
+  <section class="panel" aria-label="Find a core body">
+    <div class="body-filters">
+      <label>Search bodies<input type="search" data-body-search placeholder="Try Earth, Io, or S/2021 J 8" /></label>
+      <label>Body family<select data-body-family><option value="">All families</option>{groups.map(group => <option>{group}</option>)}</select></label>
+      <button type="button" data-body-clear>Clear filters</button>
+    </div>
+    <p data-body-count role="status">{implementedBodies.length} bodies found.</p>
+    <p data-body-empty hidden>No bodies match. Try a shorter name or clear the family filter.</p>
+    <noscript><p>All bodies are listed below. Use your browser's Find command to search.</p></noscript>
+  </section>
   <section class="panel table-wrap science-table">
     <table aria-label="Implemented body initialization catalog">
       <thead>
-        <tr><th>Body</th><th>Kind</th><th>Parent</th><th>Milestone</th><th>Initialization note</th></tr>
+        <tr><th>Body</th><th>Kind</th><th>Parent</th><th>Explore and learn</th></tr>
       </thead>
       <tbody>
         {implementedBodies.map((body) => (
-          <tr id={body.slug}>
+          <tr id={body.slug} data-core-body data-name={body.name.toLowerCase()} data-family={groupFor(body)}>
             <td data-label="Body">{body.name}</td>
             <td data-label="Kind">{body.kind}</td>
             <td data-label="Parent">{body.parent}</td>
-            <td data-label="Milestone">{body.milestone}</td>
-             <td data-label="Initialization note">{body.initialization}{body.group && <p>{body.summary}</p>}</td>
+            <td data-label="Explore and learn">
+              <a href={`${base}simulator/?body=${encodeURIComponent(body.slug)}`}>Explore {body.name}</a>
+              <details><summary>About {body.name}</summary><p>{bodyIntroduction(body)}</p><p><strong>Model:</strong> {body.initialization}</p>{body.group && <p>{body.summary}</p>}<p>Milestone: {body.milestone} · <a href={`${repoUrl}/blob/main/${body.source}`}>Source</a></p></details>
+            </td>
           </tr>
         ))}
       </tbody>
@@ -36,8 +50,35 @@ const base = normalizeBase(import.meta.env.BASE_URL);
 
   <section class="panel">
     <h2>Data provenance</h2>
+    <p>Stable IDs keep selection and parent relationships consistent. See the <a href={`${base}docs/roadmap/`}>body-by-body roadmap</a> for future additions.</p>
     <p>The table above is the 128-body core scene. The <a href={`${base}small-bodies/`}>complete small-body atlas</a> separately exposes 1,564,244 JPL catalog entries through bounded search and orbital previews, with explicit selected-body experiments.</p>
     <p>The 115 Jovian moons use <a href="https://ssd.jpl.nasa.gov/sats/elem/">JPL mean orbital elements</a> and the <a href={`${repoUrl}/blob/main/data/jovian_moons.json`}>versioned satellite snapshot</a>. Mass is derived from published GM / G. Missing physical values remain Unknown; 106 moons are modeled as massless test particles with nonphysical wire markers. Published estimates are labeled. These are representative orbital shapes and orientations, not dated ephemeris states.</p>
     <p>Current constants are educational baseline values, not epoch state vectors. Jupiter through Neptune use <a href="https://ssd.jpl.nasa.gov/planets/phys_par.html">JPL physical parameters</a> and <a href="https://ssd.jpl.nasa.gov/planets/approx_pos.html">JPL approximate orbital elements</a>. Saturn's visible ring extent and tilt follow <a href="https://science.nasa.gov/saturn/facts/">NASA's Saturn facts</a>, but the rings remain renderer-only. Satellite values use <a href="https://ssd.jpl.nasa.gov/sats/phys_par/">JPL Solar System Dynamics physical parameters</a>; Vesta's pinned values are attributed to JPL SBDB solution 36, while the <a href="https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1">live SBDB query</a> can change. Derived periapsis distances and vis-viva speeds remain in <a href={`${repoUrl}/blob/main/src/sim/constants.h`}>the source constants</a>. The <a href={`${repoUrl}/blob/main/data/README.md#provenance-and-precision-policy`}>provenance policy</a> records legacy retrieval-date and uncertainty gaps.</p>
   </section>
 </BaseLayout>
+<script>
+  const search = document.querySelector<HTMLInputElement>('[data-body-search]')!;
+  const family = document.querySelector<HTMLSelectElement>('[data-body-family]')!;
+  const rows = [...document.querySelectorAll<HTMLElement>('[data-core-body]')];
+  const filter = () => {
+    const query = search.value.trim().toLowerCase();
+    let count = 0;
+    rows.forEach(row => {
+      row.hidden = !row.dataset.name!.includes(query) || Boolean(family.value && family.value !== row.dataset.family);
+      if (!row.hidden) count++;
+    });
+    document.querySelector('[data-body-count]')!.textContent = `${count} ${count === 1 ? 'body' : 'bodies'} found.`;
+    document.querySelector<HTMLElement>('[data-body-empty]')!.hidden = count > 0;
+  };
+  search.addEventListener('input', filter);
+  family.addEventListener('change', filter);
+  document.querySelector('[data-body-clear]')!.addEventListener('click', () => { search.value = ''; family.value = ''; filter(); search.focus(); });
+</script>
+<style>
+  .body-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; }
+  label { display: flex; flex-direction: column; gap: .3rem; }
+  input, select, button { min-height: 44px; padding: .5rem; max-width: 100%; font: inherit; color: var(--ink); background: var(--paper-light); border: 1px solid var(--rule); }
+  button, summary { cursor: pointer; }
+  summary { padding: .5rem 0; }
+  td > a { display: inline-block; padding: .5rem 0; }
+</style>

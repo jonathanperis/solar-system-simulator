@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createSimulatorModule, filterRuntimeBodies, moveSelectByKey, routeSimulatorKeyboard } from '../src/lib/simulator.ts';
+import { createSimulatorModule, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard } from '../src/lib/simulator.ts';
 
 test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolling', () => {
   for (const [key, focused, reachesGlfw, cancelled] of [
@@ -43,7 +43,8 @@ test('select arrow and boundary keys use the same change path as pointer selecti
 test('C state drives playback, precise SI readouts, asset pairing, and permanent failure state', () => {
   const readouts = Object.fromEntries(['status', 'controls', 'elapsed', 'interval', 'parent', 'distance', 'speed', 'mass', 'radius', 'camera', 'achieved', 'pending']
     .map(key => [key, { textContent: '' }]));
-  const controls = { panel: { disabled: true }, pause: { textContent: '' }, step: { disabled: true },
+  let modalClosed = false;
+  const controls = { panels: [{ disabled: true, closest: () => null }, { disabled: true, closest: () => ({ close: () => { modalClosed = true; } }) }], filterStatus: { textContent: '' }, pause: { textContent: '' }, step: { disabled: true },
     rotate: { checked: true }, body: { value: '', replaceChildren() {} }, speed: { value: '' }, view: { textContent: '' }, search: { value: '' }, group: { value: '' } };
   const runtime = createSimulatorModule({}, readouts,
     new URL('https://example.test/solar-system-simulator/wasm/solar-system-simulator.js?revision=abc123'), controls);
@@ -63,7 +64,7 @@ test('C state drives playback, precise SI readouts, asset pairing, and permanent
   assert.equal(readouts.radius.textContent, '11.267 km');
   assert.equal(controls.body.value, '6');
   assert.equal(controls.speed.value, '0');
-  assert.equal(controls.panel.disabled, false);
+  assert.ok(controls.panels.every(panel => !panel.disabled));
   assert.equal(controls.step.disabled, false);
   assert.equal(controls.pause.textContent, 'Resume');
   assert.equal(controls.rotate.checked, false);
@@ -94,7 +95,8 @@ test('C state drives playback, precise SI readouts, asset pairing, and permanent
   runtime.setStatus('');
   runtime.reportState(state);
   assert.equal(readouts.status.textContent, 'Runtime error: Unable to load WebAssembly');
-  assert.equal(controls.panel.disabled, true);
+  assert.ok(controls.panels.every(panel => panel.disabled));
+  assert.equal(modalClosed, true);
 });
 
 test('body filtering matches provisional names and retains the C selection without selecting a different body', () => {
@@ -105,6 +107,9 @@ test('body filtering matches provisional names and retains the C selection witho
   assert.deepEqual(filterRuntimeBodies(bodies, '', 'Galilean moons', 10), [bodies[0]]);
   assert.deepEqual(filterRuntimeBodies(bodies, 'missing', '', 124), [bodies[1]]);
   assert.deepEqual(filterRuntimeBodies(bodies, 'saturn', 'Planets', 125), [bodies[2]]);
+  assert.equal(runtimeBodyFilterStatus(bodies, 'missing', '', 124), 'No matching bodies. S/2021 J 8 remains selected.');
+  assert.equal(runtimeBodyFilterStatus(bodies, 'saturn', '', 10), '1 matching body. Io remains selected.');
+  assert.equal(runtimeBodyFilterStatus(bodies, '', 'Planets', 125), '1 matching body.');
 });
 
 test('lesson diagnostics distinguish physical units, normalized energy, and editable pending settings', () => {

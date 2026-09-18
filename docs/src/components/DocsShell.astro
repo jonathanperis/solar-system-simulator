@@ -15,14 +15,17 @@ const isActive = (href: string) => currentPath === hrefFor(href) || currentPath.
       <span>SS</span>
       <strong>ORBIT MANUAL</strong>
     </a>
-    <p class="docs-sidebar-copy">Filter the orbital field guide: physics, rendering, controls, web build, and next bodies.</p>
+    <p class="docs-sidebar-copy">Find help by task, then go deeper into the physics or source.</p>
 
     <details class="docs-menu" data-doc-menu open>
       <summary>Browse documentation</summary>
       <div class="docs-menu-content">
-        <label class="docs-filter-label" for="docs-route-filter">Filter pages</label>
-        <input id="docs-route-filter" class="docs-filter" type="search" placeholder={`Filter all ${docsRoutes.length} orbit routes`} data-doc-filter />
-        <p class="docs-route-count" data-doc-count>{docsRoutes.length} routes ready</p>
+        <label class="docs-filter-label" for="docs-route-filter">Find a help page</label>
+        <input id="docs-route-filter" class="docs-filter" type="search" placeholder="Try pause, zoom, or build" data-doc-filter aria-describedby="docs-search-hint" />
+        <p id="docs-search-hint" class="docs-route-count">Searches page titles, summaries, and task keywords.</p>
+        <p class="docs-route-count" data-doc-count role="status">{docsRoutes.length} pages ready</p>
+        <p data-doc-empty hidden>No matching pages. Try “controls” or “physics”, or clear the search to browse.</p>
+        <button type="button" data-doc-clear hidden>Clear search</button>
 
         <nav aria-label="Documentation sections">
           {docsManualGroups.map((group) => (
@@ -34,7 +37,7 @@ const isActive = (href: string) => currentPath === hrefFor(href) || currentPath.
                     class={`docs-nav-link${isActive(route.href) ? ' is-active' : ''}`}
                     href={hrefFor(route.href)}
                     aria-current={isActive(route.href) ? 'page' : undefined}
-                    data-doc-route={`${route.code} ${route.label} ${route.summary} ${group.title}`}
+                    data-doc-route={`${route.code} ${route.label} ${route.summary} ${route.keywords ?? ''} ${group.title}`}
                   >
                     <span>{route.code}</span>
                     {route.label}
@@ -46,7 +49,7 @@ const isActive = (href: string) => currentPath === hrefFor(href) || currentPath.
         </nav>
 
         <div class="docs-sidebar-actions" aria-label="Manual utility links">
-          <a href={hrefFor('')}>← Lab home</a>
+          <a href={hrefFor('')}>← Solar atlas</a>
           <a href={hrefFor('simulator/')}>Launch simulator</a>
           <a href={repoUrl}>GitHub source</a>
         </div>
@@ -92,11 +95,14 @@ const isActive = (href: string) => currentPath === hrefFor(href) || currentPath.
         const children = Array.from(group.querySelectorAll('[data-doc-route]'));
         group.hidden = children.length > 0 && children.every((child) => child.hidden);
       });
-      const routeNoun = visible === 1 ? 'route' : 'routes';
+      const routeNoun = visible === 1 ? 'page' : 'pages';
       count.textContent = query ? `${visible} matching ${routeNoun}` : `${visible} ${routeNoun} ready`;
+      document.querySelector('[data-doc-empty]').hidden = visible > 0;
+      document.querySelector('[data-doc-clear]').hidden = !query;
     };
 
     input.addEventListener('input', applyFilter);
+    document.querySelector('[data-doc-clear]').addEventListener('click', () => { input.value = ''; applyFilter(); input.focus(); });
     applyFilter();
   })();
 </script>

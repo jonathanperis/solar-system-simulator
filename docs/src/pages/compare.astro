@@ -18,15 +18,32 @@ const plots = [
   <section class="comparison" data-comparison data-lab-src={`${base}wasm/learning-lab.mjs?revision=${encodeURIComponent(buildRevision)}`}>
     <header class="hero">
       <p class="eyebrow">Experimental school / two runs, one question</p>
-      <h1>Compare explanations with evidence.</h1>
-      <p>Identical initial conditions, separate numerical choices. Both runs use the same C core as the native CLI. Measurements appear only when A and B reach the same simulation time.</p>
+      <h1>One question. Two experiments.</h1>
+      <p>Make a prediction, run a ready-made experiment, and compare what happened. Both runs start from the same physical state.</p>
       <p><a href={`${base}simulator/`}>Open the 3D simulator</a> · <a href={`${base}docs/experiments/`}>Read the experiment guide</a></p>
     </header>
     <p role="status" data-lab-status>Loading the C comparison module…</p>
-    <p>C runtime revision: <code data-lab-revision>—</code></p>
     <form>
       <fieldset disabled>
-        <legend>Reproducible experiment</legend>
+        <legend>Choose a question</legend>
+        <section class="guided-challenge" aria-labelledby="question-heading">
+          <h2 id="question-heading" data-question>Does a smaller timestep improve an orbit?</h2>
+          <p data-question-description>Run A calculates motion every 300 seconds; run B every 150 seconds. Which will stay closer to an ideal circular orbit?</p>
+          <div class="controls">
+            <label>Guided challenges<select name="challenge"><option value="timestep">Does a smaller timestep improve an orbit?</option><option value="escape">Can an object escape?</option><option value="momentum">What changes when the Sun can move?</option><option value="phase">Find Phobos's timestep budget</option><option value="scale">Does display scale change the physics?</option></select></label>
+            <button type="button" data-load-challenge>Load challenge</button>
+          </div>
+          <details><summary>Write a prediction (optional)</summary><label class="share">My prediction<textarea rows="3" placeholder="I think… because…"></textarea></label></details>
+          <p data-challenge-feedback>Settings are ready. Start the comparison, then look at analytical phase error and energy change.</p>
+        </section>
+        <div class="controls">
+          <button type="submit">Start comparison</button><button type="button" data-pause-comparison>Pause comparison</button>
+          <button type="button" data-resume-comparison>Resume comparison</button><button type="button" data-next-checkpoint>Next checkpoint</button>
+          <button type="button" data-reset-comparison>Reset comparison</button>
+        </div>
+        <p data-pending-config hidden>Parameters have changed. The plots below still describe the previous run; press Start comparison to apply these parameters.</p>
+        <details data-config-settings><summary>Adjust experiment settings</summary>
+        <p>Change one variable at a time. A smaller timestep means more calculations; it does not change how quickly plot time passes.</p>
         <div class="controls">
           <label>Preset<select name="scene">{lessonOptions.map(([name, label]) => <option value={name}>{label}</option>)}</select></label>
           <label>Initial speed factor<input name="factor" type="number" min="0.1" max="2" step="any" value="1" required /></label>
@@ -44,25 +61,15 @@ const plots = [
           </section>)}
         </div>
         <p>Sample spacing must be a whole number of each run's ticks; duration must contain whole samples. The core uses 15-second Verlet; core and barycentric-core preserve initial speed factor 1. The head-on sphere lesson requires bounce/merge and 0.01–0.25-second steps. Its masses, radii and speeds are chosen classroom parameters.</p>
+        <p id="config-error" data-config-error role="alert" hidden></p>
+        </details>
+        <details data-save-tools><summary>Save, share, or download</summary>
         <div class="controls">
-          <button type="submit">Start comparison</button><button type="button" data-pause-comparison>Pause comparison</button>
-          <button type="button" data-resume-comparison>Resume comparison</button><button type="button" data-next-checkpoint>Next checkpoint</button>
-          <button type="button" data-reset-comparison>Reset comparison</button><button type="button" data-export-comparison>Export both runs (CSV)</button>
-        </div>
-        <p data-pending-config hidden>Parameters have changed. The plots below still describe the previous run; press Start comparison to apply these parameters.</p>
-        <div class="controls">
+          <button type="button" data-export-comparison>Export both runs (CSV)</button>
           <button type="button" data-save-config>Save configuration</button><button type="button" data-share-config>Create share link</button>
           <label>Import configuration<input type="file" accept=".solar,text/plain" data-import-config /></label>
         </div>
         <label class="share">Shareable experiment URL<input type="url" data-share-link readonly /></label>
-        <details>
-          <summary>Guided challenges</summary>
-          <div class="controls">
-            <label>Challenge<select name="challenge"><option value="phase">Find Phobos's timestep budget</option><option value="escape">Bound or unbound?</option><option value="momentum">Explain the fixed-Sun constraint</option><option value="scale">Prove display scale changes no physics</option></select></label>
-            <button type="button" data-load-challenge>Load challenge</button>
-          </div>
-          <label class="share">My prediction<textarea rows="3" placeholder="What will change, and why?"></textarea></label>
-          <p data-challenge-feedback>Predict first. Run, measure, then revise your explanation.</p>
         </details>
         <label>Trajectory display units<select name="units"><option value="m">Meters</option><option value="au">AU</option></select></label>
       </fieldset>
@@ -71,8 +78,11 @@ const plots = [
     <section class="summary" aria-label="Comparison progress">
       <label>Completed checkpoints <progress max="1" value="0"></progress></label>
       <p>Last matched time: <strong data-matched-time>—</strong> · Tracked subject: <strong data-subject>—</strong></p>
+      <details><summary>Run configuration and provenance</summary>
+      <p>C runtime revision: <code data-lab-revision>—</code></p>
       <p>Displayed results use: <code data-displayed-definition>no run started</code></p>
       <p data-retention>At most 1,025 chart points; history spacing coarsens uniformly. Native CLI exports every requested checkpoint.</p>
+      </details>
       <p><span class="legend-a">A — solid blue</span> · <span class="legend-b">B — dashed copper</span>. Runs compute as fast as bounded batches permit; horizontal plot time is simulated seconds.</p>
     </section>
     <div class="plots">
@@ -115,6 +125,12 @@ const plots = [
 </script>
 <style>
   .comparison { margin-bottom: 3rem; }
+  .comparison .hero { margin: 1.5rem 0 1rem; padding-block: 1rem; min-height: auto; display: block; }
+  .comparison .hero h1 { max-width: none; margin-bottom: 1rem; font-size: clamp(2rem, 4vw, 3rem); }
+  .guided-challenge h2 { font-size: 1.8rem; }
+  .guided-challenge { border-left: 3px solid var(--brass); padding-left: 1rem; }
+  [data-config-error] { border-left: 3px solid #9a3b17; padding: .75rem; }
+  [aria-invalid="true"] { border: 2px solid #9a3b17; }
   fieldset, .summary, figure, .measurements { min-width: 0; border: 1px solid var(--rule); padding: 1rem; background: var(--paper-light); margin: 1rem 0; }
   legend, summary { font-weight: 700; }
   summary { cursor: pointer; min-height: 44px; }
@@ -124,6 +140,8 @@ const plots = [
   input[type="number"] { width: 10rem; }
   input[type="file"] { width: 17rem; }
   button { cursor: pointer; } button:hover:enabled { background: var(--paper); }
+  button[type="submit"] { background: var(--navy); color: var(--paper-light); }
+  button[type="submit"]:hover:enabled { background: var(--ink-soft); }
   .runs, .plots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
   .runs h2, figure h2 { font-size: 1.5rem; margin-bottom: .5rem; }
   figure { margin: 0; } svg { display: block; width: 100%; }

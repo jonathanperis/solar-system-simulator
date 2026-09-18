@@ -12,10 +12,8 @@ const defaultDescription = 'A C11 orbital mechanics lab with a raylib/WebAssembl
 const description = Astro.props.description || (pageTitle ? `${pageTitle}. ${defaultDescription}` : defaultDescription);
 const canonicalUrl = new URL(Astro.url.pathname, 'https://jonathanperis.github.io').href;
 const currentPath = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
-const isPrimaryRouteActive = (href: string) => {
-  const routePath = withBase(base, href);
-  return href ? currentPath.startsWith(routePath) : currentPath === routePath;
-};
+const activeRoute = primaryRoutes.find(route => route.paths.some(path => currentPath === withBase(base, path)))
+  ?? primaryRoutes.find(route => route.paths.some(path => path && currentPath.startsWith(withBase(base, path))));
 ---
 <!doctype html>
 <html lang="en">
@@ -51,7 +49,7 @@ const isPrimaryRouteActive = (href: string) => {
         {primaryRoutes.map((route) => (
           <a
             href={withBase(base, route.href)}
-            aria-current={isPrimaryRouteActive(route.href) ? 'page' : undefined}
+            aria-current={activeRoute === route ? currentPath === withBase(base, route.href) ? 'page' : 'location' : undefined}
             data-primary-nav-link
           >
             {route.label}
