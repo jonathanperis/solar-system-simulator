@@ -2,6 +2,7 @@
 import os
 import re
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -22,6 +23,38 @@ class BuildContract(unittest.TestCase):
         self.assertEqual(dry_run.returncode, 0, dry_run.stderr)
         for flag in ("-Isrc", "-std=c11", "-Wall", "-ffp-contract=off", "-O3", "-I/opt/example/include"):
             self.assertIn(flag, dry_run.stdout)
+
+    def test_web_builds_use_required_flags_without_native_debug_info(self):
+        # Shipped WebAssembly must not inherit the native `-O2 -g` default:
+        # DWARF sections quadruple the download and embed absolute build paths.
+        # Every emcc compile still carries the C11/warning/no-FMA contract.
+        env = {**os.environ, "CFLAGS": "-O0 -g"}
+        targets = ["build/web/solar-system-simulator.js", "build/web/learning-lab.mjs", "build/web/catalog-orbits.wasm"]
+        # A stand-in raylib checkout whose Makefile does nothing keeps the dry
+        # run independent of a real Emscripten raylib build.
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as raylib:
+            (Path(raylib) / "Makefile").write_text("all:\n\t@true\n")
+            dry_run = self.make("-n", "-B", *targets, f"RAYLIB_WEB_SRC={raylib}", env=env)
+        self.assertEqual(dry_run.returncode, 0, dry_run.stderr)
+        emcc = [line for line in dry_run.stdout.splitlines() if line.startswith("emcc ")]
+        self.assertEqual(len(emcc), 3, dry_run.stdout)
+        for line in emcc:
+            with self.subTest(line=line[:80]):
+                flags = line.split()
+                for flag in ("-std=c11", "-Wall", "-Wextra", "-Wpedantic", "-ffp-contract=off", "-O2", "-Isrc"):
+                    self.assertIn(flag, flags)
+                self.assertNotIn("-g", flags)
+                self.assertNotIn("-O0", flags)
+
+    def test_recursive_make_does_not_duplicate_required_flags(self):
+        dry_run = self.make("-n", "-B", "test-sanitize")
+        self.assertEqual(dry_run.returncode, 0, dry_run.stderr)
+        compiles = [line for line in dry_run.stdout.splitlines() if "-fsanitize=" in line and " -o " in line]
+        self.assertTrue(compiles, dry_run.stdout)
+        for line in compiles:
+            with self.subTest(line=line[:80]):
+                self.assertEqual(line.split().count("-std=c11"), 1)
+                self.assertEqual(line.split().count("-Isrc"), 1)
 
     def test_tests_refuse_to_compile_without_assert(self):
         # The C tests use assert() for every check; -DNDEBUG would silently turn

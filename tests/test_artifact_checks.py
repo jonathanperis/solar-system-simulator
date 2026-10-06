@@ -161,6 +161,29 @@ class ArtifactChecks(unittest.TestCase):
             (root / "build-info.json").write_text(json.dumps(manifest))
             with patch.object(sys, "argv", ["checker", str(root)]):
                 self.assertEqual(check_wasm(), 0)
+                # A custom section is id 0, then its byte size, name length and name.
+                def custom(name, payload=b"x"):
+                    body = bytes([len(name)]) + name + payload
+                    return b"\x00" + bytes([len(body)]) + body
+                for name, debug in ((names[1], True), (names[2], True), (names[4], True), (names[1], False)):
+                    section = custom(b".debug_info" if debug else b"producers")
+                    with self.subTest(module=name, debug=debug):
+                        (root / name).write_bytes(b"\x00asm\x01\x00\x00\x00" + section)
+                        manifest["files"][name] = hashlib.sha256((root / name).read_bytes()).hexdigest()
+                        (root / "build-info.json").write_text(json.dumps(manifest))
+                        if debug:
+                            with self.assertRaisesRegex(SystemExit, "debug"):
+                                check_wasm()
+                        else:
+                            self.assertEqual(check_wasm(), 0)
+                        (root / name).write_bytes(b"\x00asm\x01\x00\x00\x00")
+                        manifest["files"][name] = hashlib.sha256((root / name).read_bytes()).hexdigest()
+                        (root / "build-info.json").write_text(json.dumps(manifest))
+                (root / names[1]).write_bytes(b"\x00asm\x01\x00\x00\x00" + b"\x00\x05")
+                manifest["files"][names[1]] = hashlib.sha256((root / names[1]).read_bytes()).hexdigest()
+                (root / "build-info.json").write_text(json.dumps(manifest))
+                with self.assertRaisesRegex(SystemExit, "truncated"):
+                    check_wasm()
                 (root / names[1]).write_bytes(b"not wasm")
                 with self.assertRaisesRegex(SystemExit, "checksum mismatch"):
                     check_wasm()

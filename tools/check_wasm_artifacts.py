@@ -16,6 +16,47 @@ def require(path: Path) -> None:
         raise SystemExit(f"empty artifact: {path}")
 
 
+def read_leb128(data: bytes, offset: int) -> tuple[int, int]:
+    """Decode one unsigned LEB128 integer (7 bits per byte, high bit = more)."""
+    value = shift = 0
+    while True:
+        if offset >= len(data):
+            raise SystemExit("truncated WebAssembly section header")
+        byte = data[offset]
+        offset += 1
+        value |= (byte & 0x7F) << shift
+        if not byte & 0x80:
+            return value, offset
+        shift += 7
+
+
+def custom_section_names(data: bytes) -> list[str]:
+    """List custom-section names. After the 8-byte header a module is a
+    sequence of (id byte, LEB128 size, payload); custom sections (id 0) begin
+    their payload with a LEB128-length-prefixed name."""
+    names, offset = [], 8
+    while offset < len(data):
+        section_id = data[offset]
+        size, payload = read_leb128(data, offset + 1)
+        end = payload + size
+        if end > len(data):
+            raise SystemExit("truncated WebAssembly section")
+        if section_id == 0:
+            length, start = read_leb128(data, payload)
+            names.append(data[start:start + length].decode("utf-8", errors="replace"))
+        offset = end
+    return names
+
+
+def reject_debug_info(path: Path) -> None:
+    # DWARF (.debug_*) and source maps are for local debugging only: they
+    # multiply the download and embed absolute build-machine paths.
+    debug = [name for name in custom_section_names(path.read_bytes())
+             if name.startswith(".debug") or name in ("sourceMappingURL", "external_debug_info")]
+    if debug:
+        raise SystemExit(f"{path.name} ships debug sections {debug}; build release WASM without -g")
+
+
 def main() -> int:
     web_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("build/web")
     stem = "solar-system-simulator"
@@ -49,6 +90,8 @@ def main() -> int:
         raise SystemExit('invalid standalone catalog orbital module')
     if lab_wasm.read_bytes()[:8] != b"\x00asm\x01\x00\x00\x00":
         raise SystemExit('invalid comparison module')
+    for module in (wasm, orbit_wasm, lab_wasm):
+        reject_debug_info(module)
     lab_text = lab_js.read_text()
     for marker in ('learning-lab.wasm', '_lab_start', '_lab_advance', '_lab_point', '_lab_export_csv'):
         if marker not in lab_text:

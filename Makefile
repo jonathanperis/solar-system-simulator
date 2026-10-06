@@ -1,8 +1,10 @@
 CC ?= cc
 # CFLAGS/CPPFLAGS from the environment or command line tune the build
 # (optimization, debug info, extra include paths) but cannot replace the
-# project contract below. `override` lets this Makefile prepend required flags
-# even to a command-line value.
+# project contract below. Recipes use ALL_CFLAGS/ALL_CPPFLAGS, which put the
+# required flags first and the caller's flags after them. Leaving CFLAGS
+# itself untouched (rather than rewriting it with `override`) also means a
+# recursive $(MAKE) never sees the required flags twice.
 #
 # -ffp-contract=off forbids fusing a*b+c into one FMA instruction. Clang on
 # arm64 fuses by default while WebAssembly never does; fused and unfused
@@ -10,8 +12,14 @@ CC ?= cc
 # would drift apart in their last digits.
 CFLAGS ?= -O2 -g
 REQUIRED_CFLAGS := -std=c11 -Wall -Wextra -Wpedantic -ffp-contract=off
-override CFLAGS := $(REQUIRED_CFLAGS) $(CFLAGS)
-override CPPFLAGS := -Isrc -Ibuild $(CPPFLAGS)
+ALL_CFLAGS = $(REQUIRED_CFLAGS) $(CFLAGS)
+ALL_CPPFLAGS = -Isrc -Ibuild $(CPPFLAGS)
+# Shipped WebAssembly gets its own tuning knob. The native default carries -g,
+# and in emcc that embeds DWARF sections with absolute build paths and keeps
+# the JS glue unminified (about 4x the download). Override WEB_CFLAGS='-O2 -g'
+# locally to debug the browser build.
+WEB_CFLAGS ?= -O2
+WEB_ALL_CFLAGS = $(REQUIRED_CFLAGS) $(WEB_CFLAGS)
 LDFLAGS ?=
 LDLIBS ?= -lm
 
@@ -86,7 +94,7 @@ build/revision.h: FORCE
 
 $(LAB): src/headless.c $(LAB_SRCS) $(SOURCE_HEADERS) build/revision.h
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 test-cli: $(LAB)
 	python3 tests/test_headless.py
@@ -150,7 +158,7 @@ docs-check:
 
 $(WEB_APP): $(APP_SRCS) $(SOURCE_HEADERS) build/revision.h $(RAYLIB_WEB_LIB)
 	@mkdir -p $(@D)
-	emcc $(CPPFLAGS) $(CFLAGS) $(RAYLIB_WEB_CFLAGS) $(APP_SRCS) $(RAYLIB_WEB_LIB) $(RAYLIB_WEB_LDFLAGS) -o $@
+	emcc $(ALL_CPPFLAGS) $(WEB_ALL_CFLAGS) $(RAYLIB_WEB_CFLAGS) $(APP_SRCS) $(RAYLIB_WEB_LIB) $(RAYLIB_WEB_LDFLAGS) -o $@
 
 # Emscripten produces both files in one link. Re-link if the companion binary
 # was removed, even when the JS target itself is still up to date.
@@ -166,7 +174,7 @@ $(APP): $(APP_OBJS)
 
 build/%.o: %.c
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(RAYLIB_CFLAGS) -MMD -MP -c $< -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(RAYLIB_CFLAGS) -MMD -MP -c $< -o $@
 
 build/src/app/csv_export.o: build/revision.h
 
@@ -174,86 +182,86 @@ $(TEST_BINS): $(SOURCE_HEADERS)
 
 $(TEST_VEC3D): tests/test_vec3d.c src/sim/vec3d.c src/sim/units.c src/render/render_scale.c
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(TEST_PHYSICS): tests/test_physics.c src/sim/vec3d.c src/sim/body.c src/sim/physics.c
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(TEST_SOLAR_SYSTEM): tests/test_solar_system.c $(SIM_SRCS)
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(TEST_SATELLITES): tests/test_satellites.c $(SIM_SRCS)
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(TEST_ORBIT_CAMERA): tests/test_orbit_camera.c src/app/orbit_camera.c src/app/orbit_camera.h
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_orbit_camera.c src/app/orbit_camera.c $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) tests/test_orbit_camera.c src/app/orbit_camera.c $(LDLIBS) -o $@
 
 $(TEST_BODY_TRAILS): tests/test_body_trails.c src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_body_trails.c src/app/body_trails.c $(SIM_SRCS) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) tests/test_body_trails.c src/app/body_trails.c $(SIM_SRCS) $(LDLIBS) -o $@
 
 $(TEST_SIMULATION_STEP): tests/test_simulation_step.c src/app/simulation_step.c src/app/simulation_step.h src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_simulation_step.c src/app/simulation_step.c src/app/body_trails.c $(SIM_SRCS) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) tests/test_simulation_step.c src/app/simulation_step.c src/app/body_trails.c $(SIM_SRCS) $(LDLIBS) -o $@
 
 $(TEST_RENDERER): tests/test_renderer.c src/render/renderer.c src/render/renderer.h src/render/render_scale.c src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(RAYLIB_CFLAGS) tests/test_renderer.c src/render/renderer.c src/render/render_scale.c src/app/body_trails.c $(SIM_SRCS) $(RAYLIB_LIBS) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(RAYLIB_CFLAGS) tests/test_renderer.c src/render/renderer.c src/render/render_scale.c src/app/body_trails.c $(SIM_SRCS) $(RAYLIB_LIBS) $(LDLIBS) -o $@
 
 $(TEST_SIMULATION_SESSION): tests/test_simulation_session.c src/app/simulation_session.c src/app/simulation_session.h src/app/simulation_step.c src/app/simulation_step.h src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_simulation_session.c src/app/simulation_session.c src/app/simulation_step.c src/app/body_trails.c $(SIM_SRCS) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) tests/test_simulation_session.c src/app/simulation_session.c src/app/simulation_step.c src/app/body_trails.c $(SIM_SRCS) $(LDLIBS) -o $@
 
 clean:
 	rm -rf build
 
 build/benchmark_simulation: tools/benchmark_simulation.c src/app/body_trails.c src/app/simulation_step.c $(SIM_SRCS) $(wildcard src/sim/*.h src/sim/*.inc src/app/*.h)
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(TEST_DIR)/test_orbit: tests/test_orbit.c src/sim/orbit.c src/sim/vec3d.c
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(TEST_DIR)/test_outer_planets: tests/test_outer_planets.c $(SIM_SRCS)
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(TEST_DIR)/test_experiment: tests/test_experiment.c src/app/simulation_session.c src/app/simulation_step.c src/app/body_trails.c $(SIM_SRCS) $(wildcard src/app/*.h)
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 build/catalog-orbits.dylib: src/sim/orbit.c src/sim/vec3d.c $(wildcard src/sim/*.h)
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -shared -fPIC $(filter %.c,$^) -lm -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -shared -fPIC $(filter %.c,$^) -lm -o $@
 
 $(WEB_DIR)/catalog-orbits.wasm: src/sim/orbit.c src/sim/vec3d.c $(wildcard src/sim/*.h)
 	@mkdir -p $(@D)
-	emcc $(CPPFLAGS) -O2 -ffp-contract=off $(filter %.c,$^) -s STANDALONE_WASM --no-entry -Wl,--export=catalog_coordinate -Wl,--export=catalog_period_days -o $@
+	emcc $(ALL_CPPFLAGS) $(WEB_ALL_CFLAGS) $(filter %.c,$^) -s STANDALONE_WASM --no-entry -Wl,--export=catalog_coordinate -Wl,--export=catalog_period_days -o $@
 
 $(TEST_DIR)/test_learning_lab: tests/test_learning_lab.c $(SIM_SRCS)
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(TEST_DIR)/test_advanced_lessons: tests/test_advanced_lessons.c $(SESSION_SRCS) $(SIM_SRCS)
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(TEST_DIR)/test_comparison: tests/test_comparison.c $(LAB_SRCS) build/revision.h
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(TEST_DIR)/test_input_file: tests/test_input_file.c src/app/input_file.c
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(LAB_WEB_JS): src/lab_web.c $(LAB_SRCS) $(SOURCE_HEADERS) build/revision.h
 	@mkdir -p $(@D)
-	emcc $(CPPFLAGS) -O2 -ffp-contract=off -DPLATFORM_WEB $(filter %.c,$^) --no-entry -s MODULARIZE=1 -s EXPORT_ES6=1 -s EXPORT_NAME=createLearningLab -s ALLOW_MEMORY_GROWTH=1 -s STACK_SIZE=1048576 -s EXPORTED_RUNTIME_METHODS=ccall,UTF8ToString -o $@
+	emcc $(ALL_CPPFLAGS) $(WEB_ALL_CFLAGS) -DPLATFORM_WEB $(filter %.c,$^) --no-entry -s MODULARIZE=1 -s EXPORT_ES6=1 -s EXPORT_NAME=createLearningLab -s ALLOW_MEMORY_GROWTH=1 -s STACK_SIZE=1048576 -s EXPORTED_RUNTIME_METHODS=ccall,UTF8ToString -o $@
 
 $(LAB_WEB_WASM): $(LAB_WEB_JS)
 	@test -f $@ || { rm -f $(LAB_WEB_JS); $(MAKE) $(LAB_WEB_JS); }
