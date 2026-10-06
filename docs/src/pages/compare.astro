@@ -5,7 +5,7 @@ import { buildRevision } from '../lib/site';
 import { lessonOptions } from '../lib/lessonCatalog';
 const base = normalizeBase(import.meta.env.BASE_URL);
 const plots = [
-  ['trajectory', 'Overlaid trajectories', 'Physical X/Z projection'],
+  ['trajectory', 'Overlaid trajectories', 'Physical ecliptic-plane projection seen from north'],
   ['energy_change', 'Energy change', 'ΔE / (K₀ + |U₀|); includes modeled contact losses'],
   ['radius_m', 'Orbital distance', 'Meters from parent, or inertial origin for parentless subjects'],
   ['speed_mps', 'Speed', 'm/s relative to parent, otherwise inertial'],

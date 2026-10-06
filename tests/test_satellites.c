@@ -6,7 +6,10 @@
 #include <string.h>
 
 #include "sim/constants.h"
+#include "sim/experiment.h"
 #include "sim/jovian_catalog.h"
+#include "sim/lessons.h"
+#include "sim/orbit.h"
 #include "sim/solar_system.h"
 
 static void test_orbital_elements_preserve_geometry_and_parent_motion(void)
@@ -25,19 +28,20 @@ static void test_orbital_elements_preserve_geometry_and_parent_motion(void)
         assert(fabs(r.x - 9e8) < 0.001);
         assert(fabs(r.y) < 0.001 && fabs(r.z) < 0.001);
         assert(fabs(v.x) < 1e-8);
+        /* In-plane ecliptic +Y is simulation -Z; inclination tilts it north (+Y). */
         assert(fabs(v.y - speed * sin(inclinations[k] * acos(-1) / 180)) < 1e-8);
-        assert(fabs(v.z - speed * cos(inclinations[k] * acos(-1) / 180)) < 1e-8);
+        assert(fabs(v.z + speed * cos(inclinations[k] * acos(-1) / 180)) < 1e-8);
     }
     SatelliteDefinition laplace = {.name = "Plane", .code = 502, .a_km = 1000000,
         .frame = SATELLITE_FRAME_LAPLACE, .pole_ra_deg = 0, .pole_dec_deg = 0};
     Body body = satellite_create(&laplace, &parent);
     Vec3d r = vec3d_sub(body.position_m, parent.position_m);
     /* Pole +ICRF X means reference node +ICRF Y. Obliquity rotates it into
-     * ecliptic Y/Z, then simulator Y=ec.Z and Z=ec.Y. */
+     * ecliptic Y/Z, then simulator (x, y, z) = ecliptic (X, Z, -Y). */
     const double obliquity = 23.439291111 * acos(-1) / 180;
     assert(fabs(r.x) < 0.001);
     assert(fabs(r.y + 1e9 * sin(obliquity)) < 0.001);
-    assert(fabs(r.z - 1e9 * cos(obliquity)) < 0.001);
+    assert(fabs(r.z + 1e9 * cos(obliquity)) < 0.001);
 
     /* At M=180 degrees we are at apoapsis. Two quarter-turns about the
      * reference normal put it on +X, independently checking phase and angles. */
@@ -47,12 +51,14 @@ static void test_orbital_elements_preserve_geometry_and_parent_motion(void)
     r = vec3d_sub(body.position_m, parent.position_m);
     Vec3d v = vec3d_sub(body.velocity_mps, parent.velocity_mps);
     assert(fabs(r.x - 1.1e9) < 0.001 && fabs(r.y) < 0.001 && fabs(r.z) < 0.001);
-    assert(fabs(v.z - sqrt(SOLAR_G * parent.mass_kg * (2 / 1.1e9 - 1 / 1e9))) < 1e-8);
+    assert(fabs(v.z + sqrt(SOLAR_G * parent.mass_kg * (2 / 1.1e9 - 1 / 1e9))) < 1e-8);
 }
 
 /* Parent-relative states produced by the former fixed-12-iteration
  * eccentric-anomaly solver in satellite.c, captured before orbit.c became the
- * only Kepler solver (A58). Aoede has the catalog's largest eccentricity. */
+ * only Kepler solver (A58). Aoede has the catalog's largest eccentricity.
+ * They were captured in the former reflected axes (X, Z, Y); the proper
+ * rotation (X, Z, -Y) adopted later negates only their z components. */
 static void test_shared_conic_solver_reproduces_former_jovian_states(void)
 {
     const struct { int code; Vec3d r, v; } former[] = {
@@ -73,6 +79,8 @@ static void test_shared_conic_solver_reproduces_former_jovian_states(void)
             Body moon = satellite_create(d, &jupiter);
             Vec3d r = vec3d_sub(moon.position_m, jupiter.position_m);
             Vec3d v = vec3d_sub(moon.velocity_mps, jupiter.velocity_mps);
+            r.z = -r.z;
+            v.z = -v.z;
             /* The former values were differences of ~7e11 m absolute
              * positions, so they carry ~1e-4 m roundoff of their own. */
             assert(vec3d_length(vec3d_sub(r, former[k].r)) / vec3d_length(former[k].r) < 1e-11);
@@ -116,8 +124,73 @@ static void test_complete_jovian_catalog_and_initial_orbits(void)
     assert(system.bodies[10].radius_m == 1821490);
 }
 
+/* +1 when an orbit is prograde (counterclockwise seen from ecliptic north),
+ * -1 when retrograde. Jovian moons use their source-frame inclination. */
+static int expected_direction(const Body *body)
+{
+    for (size_t i = 0; i < SOLAR_JOVIAN_MOON_COUNT; ++i)
+        if ((int)body->id == solar_jovian_moons[i].code) return solar_jovian_moons[i].inclination_deg > 90 ? -1 : 1;
+    return 1;
+}
+
+/* Simulation Y is ecliptic north. A proper (right-handed) frame makes the
+ * parent-relative specific angular momentum r x v point to +Y for prograde
+ * motion, which raylib's right-handed camera with up=+Y draws counterclockwise. */
+static void assert_orbit_directions(const SolarSystem *system, const int *override)
+{
+    size_t checked = 0;
+    for (size_t i = 0; i < system->body_count; ++i) {
+        int parent = solar_system_parent_index(system, i);
+        if (parent < 0) continue;
+        const Body *body = &system->bodies[i], *center = &system->bodies[parent];
+        Vec3d r = vec3d_sub(body->position_m, center->position_m);
+        Vec3d v = vec3d_sub(body->velocity_mps, center->velocity_mps);
+        Vec3d h = vec3d_cross(r, v);
+        int expected = override && override[i] ? override[i] : expected_direction(body);
+        assert(h.y * expected > 1e-6 * vec3d_length(h));
+        ++checked;
+    }
+    assert(checked > 0);
+}
+
+static void test_ecliptic_frame_is_a_proper_rotation_with_prograde_plus_y(void)
+{
+    Vec3d x = orbit_ecliptic_to_simulation((Vec3d){1, 0, 0});
+    Vec3d y = orbit_ecliptic_to_simulation((Vec3d){0, 1, 0});
+    Vec3d z = orbit_ecliptic_to_simulation((Vec3d){0, 0, 1});
+    /* Ecliptic north is simulation +Y, and X x Y = Z survives the mapping
+     * (determinant +1): a rotation, not a mirror image. */
+    assert(z.x == 0 && z.y == 1 && z.z == 0);
+    assert(vec3d_length(vec3d_sub(vec3d_cross(x, y), z)) == 0);
+
+    SolarSystem core = solar_system_create_current();
+    assert_orbit_directions(&core, NULL);
+    size_t retrograde = 0;
+    for (size_t i = 0; i < SOLAR_JOVIAN_MOON_COUNT; ++i) retrograde += solar_jovian_moons[i].inclination_deg > 90;
+    assert(retrograde > 0 && retrograde < SOLAR_JOVIAN_MOON_COUNT);
+
+    for (int preset = 0; preset < LESSON_COUNT; ++preset) {
+        if (preset == LESSON_COLLISION) continue; /* head-on, parentless spheres */
+        SolarSystem lesson;
+        assert(lesson_create((LessonPreset)preset, 1, &lesson));
+        assert_orbit_directions(&lesson, NULL);
+    }
+
+    /* Catalog experiment: Horizons planets are prograde; a source inclination
+     * above 90 degrees (1I/'Oumuamua, 122.7) must stay retrograde. */
+    SolarSystem experiment;
+    char names[SOLAR_EXPERIMENT_CAPACITY][SOLAR_EXPERIMENT_NAME_BYTES];
+    assert(experiment_parse("SOLAR_EXPERIMENT_V1 2461200.5\n"
+        "20000004\tVesta\t2.148\t0.09\t7.14\t103.7\t151.4\t2461000.5\t0\t0\t2\t2\n"
+        "50788063\tOumuamua\t0.2559\t1.201\t122.7\t24.6\t241.8\t2458006\t0\t0\t2\t2\n", &experiment, names));
+    int directions[SOLAR_SYSTEM_BODY_CAPACITY] = {0};
+    directions[10] = -1;
+    assert_orbit_directions(&experiment, directions);
+}
+
 int main(void)
 {
+    test_ecliptic_frame_is_a_proper_rotation_with_prograde_plus_y();
     test_orbital_elements_preserve_geometry_and_parent_motion();
     test_shared_conic_solver_reproduces_former_jovian_states();
     test_complete_jovian_catalog_and_initial_orbits();

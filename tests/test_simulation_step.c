@@ -107,9 +107,11 @@ static void test_martian_moons_keep_phase_over_100_days(void)
             eccentric_anomaly -= (eccentric_anomaly - e * sin(eccentric_anomaly) - mean_anomaly)
                 / (1.0 - e * cos(eccentric_anomaly));
         }
+        /* Prograde motion runs from periapsis toward ecliptic +Y, which is
+         * simulation -Z; Deimos starts on the opposite side (-X). */
         double direction = moon == 0 ? 1.0 : -1.0;
         Vec3d expected = {direction * a * (cos(eccentric_anomaly) - e), 0.0,
-            direction * a * sqrt(1.0 - e * e) * sin(eccentric_anomaly)};
+            -direction * a * sqrt(1.0 - e * e) * sin(eccentric_anomaly)};
 
         for (double t = 0.0; t < duration; t += SOLAR_APP_MAX_PHYSICS_STEP_SECONDS) {
             solar_system_step(&system, fmin(SOLAR_APP_MAX_PHYSICS_STEP_SECONDS, duration - t));

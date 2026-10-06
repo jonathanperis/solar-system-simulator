@@ -147,7 +147,8 @@
 #define SOLAR_SATURN_AXIAL_TILT_DEGREES 26.73
 
 /* JPL physical parameters and approximate-position Table 1, checked 2026-09-14.
- * Like the earlier demo planets these start in the X/Z perihelion plane. */
+ * Like the earlier demo planets these start at perihelion in the ecliptic
+ * (simulation X/Z) plane. */
 #define SOLAR_URANUS_MASS_KG 86.8099e24
 #define SOLAR_URANUS_RADIUS_M 25362000.0
 #define SOLAR_URANUS_SEMI_MAJOR_AXIS_M (19.18916464 * SOLAR_AU_METERS)

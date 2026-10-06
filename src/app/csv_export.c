@@ -168,7 +168,7 @@ static void csv_string(FILE *stream, const char *text)
 bool simulation_csv_begin(FILE *stream, const SimulationSession *session)
 {
     fprintf(stream, "# solar-lab-v1\n# revision: %s\n# scene: %s\n# integrator: %s\n# dt_seconds: %.17g\n"
-        "# velocity_factor: %.17g\n# frame: absolute simulation SI; X/Z reference plane\n"
+        "# velocity_factor: %.17g\n# frame: absolute simulation SI; (x, y, z) = J2000 ecliptic (X, Z, -Y), +y north\n"
         "# initial_energy_j: %.17g\n# energy_normalization_j: %.17g\n",
         solar_build_revision(), session->catalog_experiment ? "catalog" : lesson_name(session->lesson),
         session->clock.integrator == PHYSICS_EULER ? "euler" : "verlet",

@@ -38,7 +38,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
             <tr><td>Eccentric orbit</td><td>The artificial orbit has <code>a = 1 AU</code> and <code>e = 0.5</code>; periapsis is 0.5 AU.</td><td>Use <code>v² = μ(2/r − 1/a)</code>. Speed is greatest near periapsis. Compare normalized energy change at smaller steps.</td></tr>
             <tr><td>Escape threshold</td><td><code>v_escape = sqrt(2 G M / r)</code>; specific energy is near zero.</td><td>Compare factors 0.99, 1 and 1.01. Explain bound, marginal and unbound trajectories. These lessons use Earth's mass/radius on deliberately artificial orbits.</td></tr>
             <tr><td>Barycentric Earth–Moon</td><td>Both bodies move around their shared center of mass.</td><td>Inspect total linear/angular momentum and toggle absolute/parent-relative trails. This isolated pair contains no Sun or third-body perturbations.</td></tr>
-            <tr><td>Inclined orbit</td><td>A 30° rotation changes orientation, not orbital energy.</td><td>Observe nonzero Y motion and compare radius/energy with the circular lesson. The common reference plane is X/Z.</td></tr>
+            <tr><td>Inclined orbit</td><td>A 30° rotation changes orientation, not orbital energy.</td><td>Observe nonzero Y (north) motion and compare radius/energy with the circular lesson. The common reference plane is the ecliptic, simulation X/Z; +Y is ecliptic north.</td></tr>
             <tr><td>Phobos resolution</td><td>Smaller steps improve phase even when all runs stay bound.</td><td>Export 100 days at 300, 150 and 75 seconds; compare relative position. The normal runtime's 15-second step has a separate 100-day accuracy check.</td></tr>
           </tbody>
         </table>
@@ -59,7 +59,7 @@ build/tests/test_learning_lab`}</code></pre>
     </details>
 
     <details class="doc-panel"><summary>Read and plot downloaded measurements</summary>
-      <p>Open CSV in a spreadsheet, skipping the leading <code>#</code> metadata lines. Filter one body, then plot <code>normalized_energy_change</code> against <code>time_s</code> for Euler and Verlet. Plot <code>x_m</code> against <code>z_m</code> with equal axis scales. For a moon, subtract its parent's coordinates at the same tick.</p>
+      <p>Open CSV in a spreadsheet, skipping the leading <code>#</code> metadata lines. Filter one body, then plot <code>normalized_energy_change</code> against <code>time_s</code> for Euler and Verlet. Plot <code>x_m</code> against <code>-z_m</code> (ecliptic Y) with equal axis scales so prograde orbits run counterclockwise, as seen from ecliptic north. For a moon, subtract its parent's coordinates at the same tick.</p>
       <p>Record the lesson, speed factor, timestep, method, duration and revision alongside your conclusion. An initial-speed factor changes physics; playback speed changes how quickly fixed ticks are requested; illustrative magnification changes only drawing.</p>
       <p>Orbital presets have point masses without tides or relativity; contact handling belongs only to the explicit two-sphere lesson. The exact-overlap gravity guard contributes zero acceleration and is a numerical convention, not a collision law. Close encounters can exceed a fixed step's useful resolution; a stable-looking picture is not sufficient proof.</p>
     </details>
