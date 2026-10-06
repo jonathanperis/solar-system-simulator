@@ -1,7 +1,10 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import OrbitalAtlas from '../components/OrbitalAtlas.astro';
+import { normalizeBase } from '../lib/base';
+const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 <BaseLayout>
+  <link slot="head" rel="stylesheet" href={`${base}styles/atlas-positions.css`} />
   <OrbitalAtlas />
 </BaseLayout>
