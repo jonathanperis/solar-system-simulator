@@ -32,7 +32,7 @@ C-catalog: regenerated small-body shards ⊥ committed to `main` history; next r
 
 I.cli: `make` → native app
 
-I.lab: `make headless` → `build/solar-lab`; scene/duration/dt/sample/integrator/initial-speed options stream reproducible SI CSV; `--catalog` exposes the C body manifest; session CSV carries `contact_detected`, and comparison CSV carries `contact_detected_a/b`.
+I.lab: `make headless` → `build/solar-lab`; scene/duration/dt/sample/integrator/initial-speed options stream reproducible SI CSV; `--catalog` exposes the C body manifest; session CSV carries `contact_sphere_crossed`, and comparison CSV carries `contact_sphere_crossed_a/b`.
 
 I.export: native E and web Advanced → Download measurements (CSV) use the same C `solar-lab-v1` CSV writer as headless series, including revision, configuration, physical-data quality, ticks and SI measurements.
 
@@ -246,7 +246,9 @@ V37: catalog search cost is proportional to the query: digits-only queries route
 
 V38: browser session data is untrusted: a prepared experiment is validated and its UTF-8 text kept below `SOLAR_EXPERIMENT_TEXT_BYTES` before `ccall`.
 
-V39: lesson speed factors are at least `lesson_minimum_velocity_factor` (two-body closest approach ≥ sum of radii, rounded up to 0.01) and at most 2; native, web and headless inputs respect the C limit. Lesson runs flag swept sphere contact; after contact, analytical lesson errors are withheld and CSV/inspector show `contact_detected`. Scene capacity is compile-time checked and appends are bounded. Render-scale policy lives in `src/render/`.
+V39: lesson speed factors are at least `lesson_minimum_velocity_factor` (two-body closest approach ≥ sum of radii, rounded up to 0.01) and at most 2; native, web and headless inputs respect the C limit. Orbital lessons and catalog experiments run a conservative swept check: once any step's straight-line drift crosses a contact sphere (possibly a coarse-step artifact), analytical lesson errors and the maximum phase error are withheld and CSV/inspector show `contact_sphere_crossed`. Scene capacity is compile-time checked and appends are bounded. Render-scale policy lives in `src/render/`.
+
+V40: catalog experiments start the eight planets from Horizons system barycenters at JD 2461200.5 TDB (199/299 for moonless Mercury/Venus, 3–8 otherwise) with DE440 system GMs, because their moons are absent; `tools/planet_epoch.py --check` enforces the IDs and targets. Experiment rows are bounded (mass ≤ 1e23 kg, radius ≤ 2,400 km, q ≤ 1,000 AU). Shipped WebAssembly carries no debug sections (`WEB_CFLAGS`, artifact checker), every emcc rule uses the required C flags, and the browser runtime links without Asyncify.
 
 ## §A — Security PR integration, 2026-09-17
 
@@ -437,3 +439,16 @@ B31|2026-10-06|one 0.1–2 factor range for every lesson let point-mass trajecto
 B32|2026-10-06|moons were added around a parent that kept its own heliocentric velocity, so family barycenters drifted (~12 m/s Earth–Moon)|place the family barycenter on the intended state (A58, V6)
 B33|2026-10-06|sscanf `\t` matched any whitespace and `%[^\t]` accepted newlines in experiment names; a second fixed-iteration Kepler solver lived in satellite.c|strict tab split with strtod end-pointer and control-byte rejection; satellites propagate through `orbit.c` (A58)
 B34|2026-10-06|the new no-third-party browser test ran only against analytics-free PR builds, so it failed on every main push (main embeds PUBLIC_GA_ID) and blocked Pages deploys; CI browser runs also sent real page views|a shared Playwright fixture stubs analytics hosts for every test, the security test admits exactly the CSP-listed loader only in analytics builds, and PRs rerun it against a dummy-ID build (A51, V17)
+B35|2026-10-06|catalog experiments started Earth at Horizons 399 although no Moon is present, carrying a 12.4 m/s lunar reflex wobble (B32 still live in experiments)|reviewed refresh to system barycenters with DE440 system GMs; `--check` enforces barycenter IDs/targets (A58, V40)
+B36|2026-10-06|the swept contact flag was described as "bodies touched" although a coarse step's chord can cross the sphere with every sample outside; monitoring silently skipped scenes over 3 bodies and the maximum phase error survived contact|rename to `contact_sphere_crossed` with conservative wording, capacity-sized monitoring including experiments, NaN maximum phase after a crossing (A54, V39)
+B37|2026-10-06|`orbit_closest_approach_m` derived e from sqrt(1+2Eh²/μ²), losing ~1e-8 for circles, and the resonant-angle test passed in a mirrored frame|eccentricity-vector form with pinned conic cases; signed resonant-angle test (A53, A54)
+B38|2026-10-06|catalog download progress was tied to the search that started it, so a superseding search hid progress and Stop while index downloads continued; a cancel during the last file could still install the index|worker reports download status independently of searches and re-checks Stop after every awaited file and before installing (A59, V37)
+B39|2026-10-06|every download-progress message rewrote the `role=status` region (~200 announcements)|non-live progress bar plus a throttled announcer (start, each 10% or 5 s, completion) (A59, V18)
+B40|2026-10-06|an invalid record message got a search-typed error and a worker crash left record lookups pending, so the dialog could hang on Loading|errors echo the request type; worker errors reject pending lookups (A59)
+B41|2026-10-06|the comparison status echoed the URL `revision` parameter verbatim|only commit-hash-shaped values are shown, otherwise "unrecognized revision" (A59, V38)
+B42|2026-10-06|missing URLs had no Astro-rendered 404 page and the ownership check ignored scriptable SVG/XHTML/SHTML files|`src/pages/404.astro` (noindex, not in sitemap) and an allow-list-only rule for scriptable document types in `check_docs_routes.py` (A60, V19)
+B43|2026-10-06|the web app's emcc compile inherited native CFLAGS (-O2 -g), shipping DWARF with absolute build paths and unminified glue (850 KB WASM), while lab/catalog modules skipped the C11/warning flags|`WEB_CFLAGS ?= -O2` with required flags on every emcc rule, `ALL_CFLAGS` instead of override, checker rejects debug sections; Asyncify dropped after a full browser run (A56, V40)
+B44|2026-10-06|`test_input_file` hardcoded build/tests fixtures, so a clean `make test-sanitize` aborted|fixtures live beside the running binary (A56)
+B45|2026-10-06|the atomic replace silently overwrote read-only destinations, an interrupted run left its temporary, empty or '/'-terminated `--output` reached the filesystem, and non-finite headless runs exited 0|write-access refusal, async-signal-safe cleanup with re-raise, early usage errors, shared finite-state check, physical bounds on experiment rows (A57, V36, V40)
+B46|2026-10-06|`lab_advance` reported work remaining when nothing was configured, and native snapshot failures gave no reason|return 0 when unconfigured (the comparison loop stops on it); testable numbered snapshot creation with strerror and exhaustion messages (A57)
+B47|2026-10-06|`src/lab_web.c` compiled only under emcc, so CodeQL never analyzed the browser descriptor boundary|native analysis build with an Emscripten stub in the CodeQL C/C++ job (A52)
