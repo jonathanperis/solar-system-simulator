@@ -94,7 +94,7 @@ V6: planets + Vesta start heliocentric perihelion; Moon starts Earth-relative pe
 
 V7: legacy no-inclination initial states remain in X/Z. Jovian moon initial states preserve sourced inclination, orbital direction, eccentricity and phase; source frames convert into the common simulation frame before adding Jupiter's absolute position and velocity.
 
-V8: app accumulates frame-scaled time and advances only in fixed physics steps (15 seconds for core/catalog; explicitly configured for lessons); unconsumed time remains in the app clock. Per-frame work is bounded to keep controls responsive. Once pending work is drained, equal accumulated time produces the same state regardless of frame partitioning; requested and achieved speeds are distinguished. Hidden/minimized wall time is excluded.
+V8: app accumulates frame-scaled time and advances only in fixed physics steps (15 seconds for core/catalog; explicitly configured for lessons); unconsumed time remains in the app clock. Per-frame work is bounded to keep controls responsive. Once pending work is drained, equal accumulated time produces the same state regardless of frame partitioning; requested and achieved speeds are distinguished. Hidden/minimized wall time is excluded, and so is any single frame delta above `SOLAR_APP_STALL_FRAME_SECONDS` (1 s) or a negative/non-finite one: sleep and debugger stalls are discarded like a background resume. Frames at or below 1 s are never dropped.
 
 V9: trails retain full-run temporal coverage and the current endpoint within 1025 visible points/body. History starts at a 300-second simulation-time cadence, rounded up to whole configured lesson ticks; each compaction doubles both historical spacing and future sampling cadence. All bodies share sample times for parent-relative rendering. Resolution coarsens uniformly during long runs; this is a history approximation, not a stored ephemeris or complete precomputed orbit.
 
@@ -129,6 +129,8 @@ V23: pause freezes simulation time and trails without accumulating paused wall t
 V24: inspector distance and speed are relative to the identified parent in SI state, independent of render mode; parentless bodies show unavailable relative measurements. Framing is renderer-only: planet plus direct moons, a moon's parent plus siblings, or all bodies for the Sun; fit respects aspect ratio, physical/illustrative radii, and Saturn's visible ring extent.
 
 V25: mass and radius have explicit measured/estimated/unknown provenance. Unknown mass uses a zero-gravitational-mass test particle that feels known-source gravity without backreaction. Unknown physical values display as Unknown, never as measured zero; an unknown-radius marker is explicitly render-only in either view.
+
+V26: a comparison side or headless run contains at most `SOLAR_LAB_MAX_TICKS` = 10⁹ fixed ticks. Experiment and descriptor files are read by one bounded reader that rejects oversized or NUL-containing input. Headless `--output` accepts only a missing path or an existing regular file and replaces it atomically after a complete run (new files 0600, existing mode kept); a failed run leaves the previous file or none. Native snapshot export creates the next free `solar-snapshot-NNN.csv` exclusively and never replaces an existing file.
 
 ## §A — Runtime accuracy repair, 2026-09-09
 
@@ -378,7 +380,7 @@ T58|x|verify all eleven UX findings, route/bridge contracts, desktop/mobile jour
 
 T59|x|restore green CI dependency gate, group CodeQL updates, share/cache the raylib pin, bound/cancel CI runs, harden Make flags and replay every example natively and in WASM|A51,A52,A56,B18,B19
 T60| |correct scene handedness, lesson contact policy, scene capacity, strict experiment parsing, single Kepler solver, render-policy placement, GM-derived masses and barycentric families|A53,A54,A58
-T61| |discard stalled frames, bound camera yaw, harden CSV targets and work limits, share input reading, fix comparison subject measurement and check command alignment|A55,A57
+T61|x|discard stalled frames, bound camera yaw, harden CSV targets and work limits, share input reading, fix comparison subject measurement and check command alignment|A55,A57
 T62| |make catalog search/lookup proportional to the query, keep non-fatal runtime warnings non-fatal, close accessibility/CSP/font/count/download findings and guarantee Astro ownership of every page|A59,A60
 T63|x|prune local packs, move screenshots, harden data tools and document data usage|A61
 T64| |integrate all rounds, run complete verification, update docs, commit/push main and observe CI/Pages|A51–A61
@@ -414,3 +416,8 @@ B16|2026-09-16|managed Chromium could not initialize its sandbox under the ubunt
 B17|2026-09-17|a privileged workflow_run deployment checked success and branch name but not source ownership/event, allowing fork PR code to cross the deployment boundary|verify same repository, main branch, allowed event, successful build, and exact triggering commit/artifact under V14
 B18|2026-10-03|new advisories in build-time docs dependencies failed the strict `npm audit` gate on every PR, and a Dependabot TypeScript 7 bump violated the `@astrojs/check` peer range|refresh the lockfile, keep TypeScript 6, ignore unsupported majors and gate at moderate severity (A51)
 B19|2026-10-06|extending native/WASM replay to every example exposed last-digit drift in the phobos lesson: clang on arm64 fused multiply-adds while WebAssembly does not|compile all C with `-ffp-contract=off` and replay every shipped example (A52, A56)
+B20|2026-10-06|a visible-window stall (sleep, debugger) arrived as one huge frame delta, queuing ~3.7e10 s of capped catch-up at 15 days/s|discard frames above 1 s or non-finite like a background resume (A55, V8)
+B21|2026-10-06|unbounded float camera yaw lost its per-frame increment after days of auto-rotation and froze|wrap yaw into [0, 2π) (A57)
+B22|2026-10-06|CSV export reopened existing paths with O_TRUNC, truncating symlink targets, blocking on FIFOs and leaving partial files on failure|lstat-checked regular targets, sibling mkstemp + fsync + rename, exclusive numbered snapshots (A57, V26)
+B23|2026-10-06|comparison speed/specific energy came from the inspector selection rather than the subject index, and unchecked returns could print an uninitialized descriptor|measure by subject index, fail closed on start/format failures (A57)
+B24|2026-10-06|tick counts up to 2^53 let descriptors and --dt/--duration pairs run essentially forever|cap ticks per side at 10⁹ in `lab_ticks_for` (A57, V26)
