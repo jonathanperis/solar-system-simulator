@@ -23,6 +23,40 @@ static Vec3d ecliptic_plane(double x_m, double y_m)
     return orbit_ecliptic_to_simulation((Vec3d){x_m, y_m, 0.0});
 }
 
+/* Moons are created around their parent's intended heliocentric state. Left
+ * there, the parent would carry that state while its moons add momentum, so
+ * the family's center of mass would drift off the intended orbit (about
+ * 12 m/s for Earth-Moon). Instead the intended state belongs to the family
+ * barycenter: shift the parent and its direct moons together by minus the
+ * mass-weighted mean offset. Parent-relative states are unchanged, and
+ * massless test particles carry zero weight. Call once, right after the
+ * family's moons are appended, while the parent still has its intended state. */
+static void place_family_barycenter(SolarSystem *system, size_t parent_index)
+{
+    const Body *parent = &system->bodies[parent_index];
+    const BodyId parent_id = parent->id;
+    const Vec3d intended_position = parent->position_m, intended_velocity = parent->velocity_mps;
+    double family_mass = 0.0;
+    Vec3d weighted_offset = vec3d_zero(), weighted_velocity = vec3d_zero();
+    for (size_t i = 0; i < system->body_count; ++i) {
+        const Body *body = &system->bodies[i];
+        if (i != parent_index && body->parent_id != parent_id) continue;
+        /* Offsets from the intended state keep the sum small and precise. */
+        family_mass += body->mass_kg;
+        weighted_offset = vec3d_add(weighted_offset, vec3d_scale(vec3d_sub(body->position_m, intended_position), body->mass_kg));
+        weighted_velocity = vec3d_add(weighted_velocity, vec3d_scale(vec3d_sub(body->velocity_mps, intended_velocity), body->mass_kg));
+    }
+    if (family_mass <= 0.0) return;
+    Vec3d shift = vec3d_scale(weighted_offset, 1.0 / family_mass);
+    Vec3d drift = vec3d_scale(weighted_velocity, 1.0 / family_mass);
+    for (size_t i = 0; i < system->body_count; ++i) {
+        Body *body = &system->bodies[i];
+        if (i != parent_index && body->parent_id != parent_id) continue;
+        body->position_m = vec3d_sub(body->position_m, shift);
+        body->velocity_mps = vec3d_sub(body->velocity_mps, drift);
+    }
+}
+
 static Body create_sun(void)
 {
     return body_create_identified(
@@ -321,6 +355,7 @@ SolarSystem solar_system_create_sun_mercury_venus_earth_moon(void)
         .elapsed_seconds = 0.0,
     };
 
+    place_family_barycenter(&system, 3);
     return system;
 }
 
@@ -341,6 +376,7 @@ SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars(void)
         .elapsed_seconds = 0.0,
     };
 
+    place_family_barycenter(&system, 3);
     return system;
 }
 
@@ -364,6 +400,8 @@ SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos(
         .elapsed_seconds = 0.0,
     };
 
+    place_family_barycenter(&system, 3);
+    place_family_barycenter(&system, 5);
     return system;
 }
 
@@ -384,6 +422,7 @@ SolarSystem solar_system_create_current(void)
     for (size_t i = 0; i < SOLAR_JOVIAN_MOON_COUNT; ++i) {
         fits = fits && solar_system_append(&system, satellite_create(&solar_jovian_moons[i], &system.bodies[9]));
     }
+    place_family_barycenter(&system, 9);
     fits = fits && solar_system_append(&system, solar_system_create_saturn_at_perihelion());
     fits = fits && solar_system_append(&system, solar_system_create_uranus_at_perihelion());
     fits = fits && solar_system_append(&system, solar_system_create_neptune_at_perihelion());
