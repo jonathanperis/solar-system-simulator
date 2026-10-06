@@ -54,8 +54,10 @@ bool lesson_create(LessonPreset preset, double velocity_factor, SolarSystem *res
         double radius = preset == LESSON_RESONANCE ? SOLAR_JUPITER_SEMI_MAJOR_AXIS_M : SOLAR_AU_METERS;
         double theta = preset == LESSON_RESONANCE ? acos(-1.0) / 3 : 0;
         double speed = sqrt(SOLAR_G * SOLAR_SUN_MASS_KG / radius);
-        planet.position_m = (Vec3d){radius * cos(theta), 0, radius * sin(theta)};
-        planet.velocity_mps = (Vec3d){-speed * sin(theta), 0, speed * cos(theta)};
+        /* Lesson states are written in ecliptic axes (prograde = counterclockwise
+         * from north) and mapped once, exactly like the core scene. */
+        planet.position_m = orbit_ecliptic_to_simulation((Vec3d){radius * cos(theta), radius * sin(theta), 0});
+        planet.velocity_mps = orbit_ecliptic_to_simulation((Vec3d){-speed * sin(theta), speed * cos(theta), 0});
         Body probe = body_create_identified(preset == LESSON_RESONANCE ? "3:2 test particle" : "Encounter probe",
             BODY_KIND_ASTEROID, (BodyId)1000001, preset == LESSON_RESONANCE ? BODY_ID_SUN : BODY_ID_EARTH,
             0, 0, vec3d_zero(), vec3d_zero(), false);
@@ -63,11 +65,16 @@ bool lesson_create(LessonPreset preset, double velocity_factor, SolarSystem *res
         probe.group = "Controlled test particles";
         if (preset == LESSON_RESONANCE) {
             double a = radius * pow(2.0 / 3.0, 2.0 / 3.0), q = a * .9;
-            probe.position_m = (Vec3d){q, 0, 0};
-            probe.velocity_mps = (Vec3d){0, 0, velocity_factor * sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * (2 / q - 1 / a))};
+            probe.position_m = orbit_ecliptic_to_simulation((Vec3d){q, 0, 0});
+            probe.velocity_mps = orbit_ecliptic_to_simulation(
+                (Vec3d){0, velocity_factor * sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * (2 / q - 1 / a)), 0});
         } else {
-            probe.position_m = vec3d_add(planet.position_m, (Vec3d){4 * SOLAR_EARTH_RADIUS_M, 0, -40 * SOLAR_EARTH_RADIUS_M});
-            probe.velocity_mps = vec3d_add(planet.velocity_mps, (Vec3d){0, 0, 10000 * velocity_factor});
+            /* Start 40 Earth radii behind Earth along its motion, offset 4 radii
+             * sunward-outward, and overtake it at 10 km/s times the factor. */
+            probe.position_m = vec3d_add(planet.position_m,
+                orbit_ecliptic_to_simulation((Vec3d){4 * SOLAR_EARTH_RADIUS_M, -40 * SOLAR_EARTH_RADIUS_M, 0}));
+            probe.velocity_mps = vec3d_add(planet.velocity_mps,
+                orbit_ecliptic_to_simulation((Vec3d){0, 10000 * velocity_factor, 0}));
         }
         system.bodies[1] = planet; system.bodies[2] = probe; system.body_count = 3;
     } else if (preset == LESSON_EARTH_MOON || preset == LESSON_PHOBOS) {
@@ -97,8 +104,10 @@ bool lesson_create(LessonPreset preset, double velocity_factor, SolarSystem *res
         double speed = sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * (2.0 / distance - 1.0 / SOLAR_AU_METERS));
         if (preset == LESSON_ESCAPE) speed = sqrt(2.0 * SOLAR_G * SOLAR_SUN_MASS_KG / distance);
         double inclination = preset == LESSON_INCLINED ? acos(-1.0) / 6.0 : 0.0;
-        planet.position_m = (Vec3d){distance, 0, 0};
-        planet.velocity_mps = (Vec3d){0, speed * velocity_factor * sin(inclination), speed * velocity_factor * cos(inclination)};
+        /* Ecliptic in-plane velocity tilted toward north by the inclination. */
+        planet.position_m = orbit_ecliptic_to_simulation((Vec3d){distance, 0, 0});
+        planet.velocity_mps = orbit_ecliptic_to_simulation((Vec3d){0, speed * velocity_factor * cos(inclination),
+            speed * velocity_factor * sin(inclination)});
         system.bodies[1] = planet;
         system.body_count = 2;
     }
@@ -107,14 +116,21 @@ bool lesson_create(LessonPreset preset, double velocity_factor, SolarSystem *res
     return true;
 }
 
+/* Longitude in the ecliptic plane, counterclockwise from +X seen from north.
+ * Simulation -Z is ecliptic +Y (see orbit_ecliptic_to_simulation). */
+static double ecliptic_longitude(Vec3d v)
+{
+    return atan2(-v.z, v.x);
+}
+
 static double mean_longitude(Vec3d r, Vec3d v, double mu, double *periapsis)
 {
     double distance = vec3d_length(r);
     Vec3d evec = vec3d_sub(vec3d_scale(vec3d_cross(v, vec3d_cross(r, v)), 1 / mu), vec3d_scale(r, 1 / distance));
     double e = vec3d_length(evec);
-    *periapsis = e > 1e-10 ? atan2(evec.z, evec.x) : 0;
+    *periapsis = e > 1e-10 ? ecliptic_longitude(evec) : 0;
     if (e >= 1) return NAN;
-    double anomaly = atan2(r.z, r.x) - *periapsis;
+    double anomaly = ecliptic_longitude(r) - *periapsis;
     double eccentric_anomaly = atan2(sqrt(1 - e * e) * sin(anomaly), e + cos(anomaly));
     return eccentric_anomaly - e * sin(eccentric_anomaly) + *periapsis;
 }

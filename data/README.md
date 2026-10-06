@@ -17,8 +17,10 @@ are massless test particles with unknown radii in this model.
 Mean elements describe representative orbital shape and orientation, not dated
 ephemerides. Laplace-plane nodes are measured from the reference plane's node
 on the ICRF equator; its pole is specified by ICRF RA/declination. The initializer
-rotates into J2000 ecliptic coordinates (obliquity 23°26′21.448″), then maps
-ecliptic `(x,y,z)` to simulator `(x,z,y)`, matching the existing X/Z orbit plane.
+rotates into J2000 ecliptic coordinates (obliquity 23°26′21.448″), then applies
+the proper rotation ecliptic `(X,Y,Z)` → simulator `(X,Z,−Y)`: the ecliptic is the
+simulator x/z plane, `+y` is ecliptic north, and prograde orbits keep `+y`
+angular momentum. (Before 2026-10-06 the mapping `(X,Z,Y)` mirrored the scene.)
 The legacy perihelion scene is not a simultaneous J2000 ephemeris. Jupiter's
 absolute position and velocity are added only after the relative conversion.
 

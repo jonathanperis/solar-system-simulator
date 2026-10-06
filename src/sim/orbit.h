@@ -13,7 +13,8 @@ bool orbit_state(double q_m, double e, double mu, double seconds_from_perihelion
  * reference pole. The same rotation turns a reference plane given by its pole
  * into its parent frame (satellite.c uses it for Laplace planes). */
 Vec3d orbit_rotate_to_reference(Vec3d v, double inclination, double node, double periapsis);
-/* J2000 ecliptic (X toward the equinox, Z toward ecliptic north) to simulation axes. */
+/* J2000 ecliptic (X toward the equinox, Z toward ecliptic north) to simulation
+ * axes: (x, y, z)_sim = (X, Z, -Y). Simulation +Y is ecliptic north. */
 Vec3d orbit_ecliptic_to_simulation(Vec3d ecliptic);
 /* Perifocal vector with J2000 ecliptic angles (degrees) to simulation axes. */
 Vec3d orbit_orient(Vec3d v, double inclination, double node, double periapsis);

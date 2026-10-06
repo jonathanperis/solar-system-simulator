@@ -49,7 +49,8 @@ static double circular_error(int steps, PhysicsIntegrator method, double *energy
     double omega = sqrt(SOLAR_G * SOLAR_SUN_MASS_KG / pow(SOLAR_AU_METERS, 3));
     double duration = 0.25 * 2.0 * acos(-1.0) / omega;
     for (int i = 0; i < steps; ++i) physics_step_with_integrator(system.bodies, system.body_count, duration / steps, method);
-    Vec3d expected = {0, 0, SOLAR_AU_METERS};
+    /* A quarter prograde orbit from +X reaches ecliptic +Y, simulation -Z. */
+    Vec3d expected = {0, 0, -SOLAR_AU_METERS};
     *energy_error = fabs((physics_diagnostics(&system).total_energy_j - initial_energy) / initial_energy);
     return vec3d_length(vec3d_sub(system.bodies[1].position_m, expected)) / SOLAR_AU_METERS;
 }

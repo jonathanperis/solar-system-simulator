@@ -372,7 +372,7 @@ static void test_mercury_body_starts_at_perihelion_with_tangential_velocity(void
     assert_close(mercury.position_m.z, 0.0, 1e-12);
     assert_close(mercury.velocity_mps.x, 0.0, 1e-12);
     assert_close(mercury.velocity_mps.y, 0.0, 1e-12);
-    assert_close(mercury.velocity_mps.z, SOLAR_MERCURY_PERIHELION_SPEED_MPS, 1e-6);
+    assert_close(mercury.velocity_mps.z, -SOLAR_MERCURY_PERIHELION_SPEED_MPS, 1e-6);
 }
 
 static void test_venus_body_starts_at_perihelion_with_tangential_velocity(void)
@@ -389,7 +389,7 @@ static void test_venus_body_starts_at_perihelion_with_tangential_velocity(void)
     assert_close(venus.position_m.z, 0.0, 1e-12);
     assert_close(venus.velocity_mps.x, 0.0, 1e-12);
     assert_close(venus.velocity_mps.y, 0.0, 1e-12);
-    assert_close(venus.velocity_mps.z, -SOLAR_VENUS_PERIHELION_SPEED_MPS, 1e-6);
+    assert_close(venus.velocity_mps.z, SOLAR_VENUS_PERIHELION_SPEED_MPS, 1e-6);
 }
 
 static void test_earth_body_starts_at_perihelion_with_tangential_velocity(void)
@@ -403,7 +403,7 @@ static void test_earth_body_starts_at_perihelion_with_tangential_velocity(void)
     assert_close(earth.radius_m, SOLAR_EARTH_RADIUS_M, 1e-6);
     assert_close(earth.position_m.x, 0.0, 1e-12);
     assert_close(earth.position_m.y, 0.0, 1e-12);
-    assert_close(earth.position_m.z, SOLAR_EARTH_PERIHELION_M, 1e-3);
+    assert_close(earth.position_m.z, -SOLAR_EARTH_PERIHELION_M, 1e-3);
     assert_close(earth.velocity_mps.x, -SOLAR_EARTH_PERIHELION_SPEED_MPS, 1e-6);
     assert_close(earth.velocity_mps.y, 0.0, 1e-12);
     assert_close(earth.velocity_mps.z, 0.0, 1e-12);
@@ -426,7 +426,7 @@ static void test_moon_body_starts_at_earth_relative_perigee_with_tangential_velo
     assert_close(earth_to_moon.z, 0.0, 1e-12);
     assert_close(relative_velocity.x, 0.0, 1e-12);
     assert_close(relative_velocity.y, 0.0, 1e-12);
-    assert_close(relative_velocity.z, SOLAR_MOON_PERIGEE_SPEED_MPS, 1e-9);
+    assert_close(relative_velocity.z, -SOLAR_MOON_PERIGEE_SPEED_MPS, 1e-9);
 }
 
 static void test_mars_body_starts_at_perihelion_with_tangential_velocity(void)
@@ -440,7 +440,7 @@ static void test_mars_body_starts_at_perihelion_with_tangential_velocity(void)
     assert_close(mars.radius_m, SOLAR_MARS_RADIUS_M, 1e-6);
     assert_close(mars.position_m.x, 0.0, 1e-12);
     assert_close(mars.position_m.y, 0.0, 1e-12);
-    assert_close(mars.position_m.z, -SOLAR_MARS_PERIHELION_M, 1e-3);
+    assert_close(mars.position_m.z, SOLAR_MARS_PERIHELION_M, 1e-3);
     assert_close(mars.velocity_mps.x, SOLAR_MARS_PERIHELION_SPEED_MPS, 1e-6);
     assert_close(mars.velocity_mps.y, 0.0, 1e-12);
     assert_close(mars.velocity_mps.z, 0.0, 1e-12);
@@ -464,7 +464,7 @@ static void test_phobos_body_starts_at_mars_relative_periareion_with_tangential_
     assert_close(mars_to_phobos.z, 0.0, 1e-12);
     assert_close(relative_velocity.x, 0.0, 1e-12);
     assert_close(relative_velocity.y, 0.0, 1e-12);
-    assert_close(relative_velocity.z, SOLAR_PHOBOS_PERIAREION_SPEED_MPS, 1e-9);
+    assert_close(relative_velocity.z, -SOLAR_PHOBOS_PERIAREION_SPEED_MPS, 1e-9);
 }
 
 static void test_phobos_orbit_starts_in_ecliptic_render_plane(void)
@@ -494,7 +494,7 @@ static void test_deimos_body_starts_at_mars_relative_periareion_with_tangential_
     assert_close(mars_to_deimos.z, 0.0, 1e-12);
     assert_close(relative_velocity.x, 0.0, 1e-12);
     assert_close(relative_velocity.y, 0.0, 1e-12);
-    assert_close(relative_velocity.z, -SOLAR_DEIMOS_PERIAREION_SPEED_MPS, 1e-9);
+    assert_close(relative_velocity.z, SOLAR_DEIMOS_PERIAREION_SPEED_MPS, 1e-9);
 }
 
 static void test_deimos_orbit_starts_in_ecliptic_render_plane(void)
@@ -523,7 +523,7 @@ static void test_vesta_body_starts_at_perihelion_with_tangential_velocity(void)
     assert_close(vesta.position_m.z, 0.0, 1e-12);
     assert_close(vesta.velocity_mps.x, 0.0, 1e-12);
     assert_close(vesta.velocity_mps.y, 0.0, 1e-12);
-    assert_close(vesta.velocity_mps.z, SOLAR_VESTA_PERIHELION_SPEED_MPS, 1e-6);
+    assert_close(vesta.velocity_mps.z, -SOLAR_VESTA_PERIHELION_SPEED_MPS, 1e-6);
 }
 
 static void test_jupiter_body_starts_at_perihelion_with_tangential_velocity(void)
@@ -542,7 +542,7 @@ static void test_jupiter_body_starts_at_perihelion_with_tangential_velocity(void
     assert_close(jupiter.position_m.z, 0.0, 1e-12);
     assert_close(jupiter.velocity_mps.x, 0.0, 1e-12);
     assert_close(jupiter.velocity_mps.y, 0.0, 1e-12);
-    assert_close(jupiter.velocity_mps.z, -SOLAR_JUPITER_PERIHELION_SPEED_MPS, 1e-6);
+    assert_close(jupiter.velocity_mps.z, SOLAR_JUPITER_PERIHELION_SPEED_MPS, 1e-6);
 }
 
 static void test_saturn_body_starts_at_perihelion_with_tangential_velocity(void)
@@ -558,7 +558,7 @@ static void test_saturn_body_starts_at_perihelion_with_tangential_velocity(void)
     assert_close(saturn.radius_m, SOLAR_SATURN_RADIUS_M, 1e-6);
     assert_close(saturn.position_m.x, 0.0, 1e-12);
     assert_close(saturn.position_m.y, 0.0, 1e-12);
-    assert_close(saturn.position_m.z, SOLAR_SATURN_PERIHELION_M, 1e-3);
+    assert_close(saturn.position_m.z, -SOLAR_SATURN_PERIHELION_M, 1e-3);
     assert_close(saturn.velocity_mps.x, -SOLAR_SATURN_PERIHELION_SPEED_MPS, 1e-6);
     assert_close(saturn.velocity_mps.y, 0.0, 1e-12);
     assert_close(saturn.velocity_mps.z, 0.0, 1e-12);
@@ -693,7 +693,7 @@ static void test_mercury_moves_after_one_day_while_sun_stays_fixed(void)
     assert_close(system.bodies[0].position_m.y, 0.0, 1e-12);
     assert_close(system.bodies[0].position_m.z, 0.0, 1e-12);
     assert(system.bodies[1].position_m.x < initial_mercury_position.x);
-    assert(system.bodies[1].position_m.z > initial_mercury_position.z);
+    assert(system.bodies[1].position_m.z < initial_mercury_position.z);
 }
 
 static void test_mercury_roughly_returns_after_one_orbit(void)
@@ -733,7 +733,7 @@ static void test_venus_moves_after_one_day_while_sun_stays_fixed(void)
     assert_close(system.bodies[0].position_m.y, 0.0, 1e-12);
     assert_close(system.bodies[0].position_m.z, 0.0, 1e-12);
     assert(system.bodies[2].position_m.x > initial_venus_position.x);
-    assert(system.bodies[2].position_m.z < initial_venus_position.z);
+    assert(system.bodies[2].position_m.z > initial_venus_position.z);
 }
 
 static void test_venus_roughly_returns_after_one_orbit(void)
@@ -757,7 +757,7 @@ static void test_earth_acceleration_points_toward_sun_at_perihelion(void)
 
     solar_system_step(&system, 0.0);
 
-    assert(system.bodies[3].acceleration_mps2.z < 0.0);
+    assert(system.bodies[3].acceleration_mps2.z > 0.0);
     assert_close(system.bodies[3].acceleration_mps2.y, 0.0, 1e-18);
     assert(fabs(system.bodies[3].acceleration_mps2.z) > fabs(system.bodies[3].acceleration_mps2.x));
 }
@@ -773,7 +773,7 @@ static void test_earth_moves_after_one_day_while_sun_stays_fixed(void)
     assert_close(system.bodies[0].position_m.y, 0.0, 1e-12);
     assert_close(system.bodies[0].position_m.z, 0.0, 1e-12);
     assert(system.bodies[3].position_m.x < initial_earth_position.x);
-    assert(system.bodies[3].position_m.z < initial_earth_position.z);
+    assert(system.bodies[3].position_m.z > initial_earth_position.z);
 }
 
 static void test_earth_roughly_returns_after_one_orbit(void)
@@ -800,7 +800,7 @@ static void test_moon_moves_prograde_relative_to_earth_after_one_day(void)
 
     Vec3d relative = vec3d_sub(system.bodies[4].position_m, system.bodies[3].position_m);
     assert(relative.x < initial_relative.x);
-    assert(relative.z > initial_relative.z);
+    assert(relative.z < initial_relative.z);
     assert_close(system.bodies[0].position_m.x, 0.0, 1e-12);
     assert_close(system.bodies[0].position_m.y, 0.0, 1e-12);
     assert_close(system.bodies[0].position_m.z, 0.0, 1e-12);
@@ -812,7 +812,7 @@ static void test_mars_acceleration_points_toward_sun_at_perihelion(void)
 
     solar_system_step(&system, 0.0);
 
-    assert(system.bodies[5].acceleration_mps2.z > 0.0);
+    assert(system.bodies[5].acceleration_mps2.z < 0.0);
     assert_close(system.bodies[5].acceleration_mps2.y, 0.0, 1e-18);
     assert(fabs(system.bodies[5].acceleration_mps2.z) > fabs(system.bodies[5].acceleration_mps2.x));
 }
@@ -828,7 +828,7 @@ static void test_mars_moves_after_one_day_while_sun_stays_fixed(void)
     assert_close(system.bodies[0].position_m.y, 0.0, 1e-12);
     assert_close(system.bodies[0].position_m.z, 0.0, 1e-12);
     assert(system.bodies[5].position_m.x > initial_mars_position.x);
-    assert(system.bodies[5].position_m.z > initial_mars_position.z);
+    assert(system.bodies[5].position_m.z < initial_mars_position.z);
 }
 
 static void test_mars_roughly_returns_after_one_orbit(void)
@@ -883,7 +883,7 @@ static void test_phobos_moves_prograde_relative_to_mars_after_small_step(void)
 
     Vec3d relative = vec3d_sub(system.bodies[6].position_m, system.bodies[5].position_m);
     assert(relative.x < initial_relative.x);
-    assert(relative.z > initial_relative.z);
+    assert(relative.z < initial_relative.z);
 }
 
 static void test_deimos_moves_prograde_relative_to_mars_after_small_step(void)
@@ -895,7 +895,7 @@ static void test_deimos_moves_prograde_relative_to_mars_after_small_step(void)
 
     Vec3d relative = vec3d_sub(system.bodies[7].position_m, system.bodies[5].position_m);
     assert(relative.x > initial_relative.x);
-    assert(relative.z < initial_relative.z);
+    assert(relative.z > initial_relative.z);
 }
 
 static void test_phobos_remains_near_mars_after_one_orbit(void)
@@ -960,7 +960,7 @@ static void test_vesta_moves_after_one_day_while_sun_stays_fixed(void)
     assert_close(system.bodies[0].position_m.y, 0.0, 1e-12);
     assert_close(system.bodies[0].position_m.z, 0.0, 1e-12);
     assert(system.bodies[1].position_m.x < initial_vesta_position.x);
-    assert(system.bodies[1].position_m.z > initial_vesta_position.z);
+    assert(system.bodies[1].position_m.z < initial_vesta_position.z);
 }
 
 static void test_vesta_roughly_returns_after_one_orbit(void)
@@ -992,7 +992,7 @@ static void test_jupiter_accelerates_toward_sun_and_moves_tangentially(void)
     assert(system.bodies[1].acceleration_mps2.x > 0.0);
     assert_close(system.bodies[1].acceleration_mps2.y, 0.0, 1e-18);
     assert(system.bodies[1].position_m.x > initial.x);
-    assert(system.bodies[1].position_m.z < initial.z);
+    assert(system.bodies[1].position_m.z > initial.z);
 }
 
 static void test_saturn_accelerates_toward_sun_and_moves_tangentially(void)
@@ -1002,10 +1002,10 @@ static void test_saturn_accelerates_toward_sun_and_moves_tangentially(void)
 
     solar_system_step(&system, SOLAR_DAY_SECONDS);
 
-    assert(system.bodies[1].acceleration_mps2.z < 0.0);
+    assert(system.bodies[1].acceleration_mps2.z > 0.0);
     assert_close(system.bodies[1].acceleration_mps2.y, 0.0, 1e-18);
     assert(system.bodies[1].position_m.x < initial.x);
-    assert(system.bodies[1].position_m.z < initial.z);
+    assert(system.bodies[1].position_m.z > initial.z);
 }
 
 int main(void)

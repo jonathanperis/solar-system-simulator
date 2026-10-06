@@ -367,7 +367,8 @@ static void test_parent_relative_history_vectors_and_magnification(void)
         Vec3d current = renderer_body_position(&system, 4, (RenderScaleMode)mode);
         assert(vec3d_length(vec3d_sub(past, current)) < 1e-12);
         Vec3d tip = renderer_vector_tip(&system, 4, (RenderScaleMode)mode, false);
-        assert(tip.z > current.z && fabs(tip.x - current.x) < 1e-12);
+        /* At perigee on +X the Moon moves prograde, toward simulation -Z. */
+        assert(tip.z < current.z && fabs(tip.x - current.x) < 1e-12);
         assert(renderer_radius_magnification(&system.bodies[4], (RenderScaleMode)mode) >= 1);
     }
     assert(renderer_radius_magnification(&system.bodies[4], RENDER_SCALE_REAL) == 1);
