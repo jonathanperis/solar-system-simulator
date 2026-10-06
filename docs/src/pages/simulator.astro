@@ -25,9 +25,16 @@ const base = normalizeBase(import.meta.env.BASE_URL);
     </div>
 
     <div class="canvas-wrap">
-      <canvas id="canvas" tabindex="0" aria-label="Solar System Simulator WebAssembly canvas" aria-describedby="scale-note">
+      {/* role="application": the focused canvas consumes single-key shortcuts
+          (Space, N, R, V, F, B, A, C, [ ]) that C handles, so screen readers
+          should pass keys through instead of using them for browse-mode
+          navigation. Tab still leaves it. The live readouts and the inspector
+          are its text alternative; aria-describedby links them. */}
+      <canvas id="canvas" tabindex="0" role="application" aria-roledescription="3D simulation view"
+        aria-label="Live solar system simulation" aria-describedby="canvas-keys runtime-control-state scale-note">
         Your browser needs canvas and WebGL to display the simulation.
       </canvas>
+      <p id="canvas-keys" class="sr-only">Keyboard shortcuts while this view has focus: Space pauses or resumes, N steps once while paused, R restarts, V switches illustrative and real scale, F frames the selected system, B frames the selected body, A toggles camera rotation, C cycles bodies, and the bracket keys change speed. Tab leaves the view. The selected body and its physical measurements are reported as text below.</p>
     </div>
     <fieldset class="runtime-panel" data-runtime-panel disabled>
       <legend class="sr-only">Simulation controls</legend>
@@ -214,11 +221,11 @@ const base = normalizeBase(import.meta.env.BASE_URL);
   .simulator-intro { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
   .simulator-intro h1 { max-width: none; font-size: clamp(2rem, 4vw, 3rem); margin: .25rem 0; }
   .simulator-intro p { margin: 0; font-size: 1rem; }
-  .simulator-intro .eyebrow { font-size: .67rem; }
+  .simulator-intro .eyebrow { font-size: 0.75rem; }
   .simulator-intro .actions { margin-top: 0; }
   .simulator-readouts { padding: .5rem .75rem; border: 1px solid var(--rule); background: var(--paper-light); display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
   .simulator-readouts p, .simulator-readouts dl { margin: 0; }
-  .simulator-readouts p, dt, dd { font-family: "JetBrains Mono", monospace; font-size: 0.7rem; line-height: 1.7; }
+  .simulator-readouts p, dt, dd { font-family: "JetBrains Mono", monospace; font-size: 0.75rem; line-height: 1.7; }
   .simulator-readouts dl { display: flex; flex-wrap: wrap; gap: 0.75rem 2rem; margin-top: 0.7rem; }
   dt { color: var(--ink-soft); }
   dd { margin: 0; font-weight: 700; }

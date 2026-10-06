@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { cycleIndex, nearestBodyIndex, normalizeDegrees } from '../src/lib/orbitalAtlas.ts';
+import { cycleIndex, nearestBodyIndex, normalizeDegrees, createSettledAnnouncer } from '../src/lib/orbitalAtlas.ts';
 import { implementedBodies, plannedBodies } from '../src/lib/bodies.ts';
 
 test('V21 normalizes any bearing into one chart revolution', () => {
@@ -18,6 +18,28 @@ test('V21 selects the nearest body across the zero-degree seam', () => {
 test('V21 cycles body selection in both directions with wraparound', () => {
   assert.equal(cycleIndex(0, -1, 10), 9);
   assert.equal(cycleIndex(9, 1, 10), 0);
+});
+
+test('V18/V21 atlas announcements are immediate for discrete actions and settle once for continuous input', () => {
+  const spoken = [], scheduled = [];
+  const timers = { set: (callback, delay) => { scheduled.push({ callback, delay, live: true }); return scheduled.length - 1; },
+    clear: handle => { scheduled[handle].live = false; } };
+  const announce = createSettledAnnouncer(text => spoken.push(text), 400, timers);
+  announce.now('Mars selected.');
+  assert.deepEqual(spoken, ['Mars selected.']);
+  for (const body of ['Venus', 'Earth', 'Moon']) announce.hold(`${body} selected.`);
+  assert.deepEqual(spoken, ['Mars selected.'], 'pointer drag stays silent while moving');
+  announce.flush();
+  assert.deepEqual(spoken, ['Mars selected.', 'Moon selected.']);
+  announce.flush();
+  assert.equal(spoken.length, 2, 'nothing pending after a flush');
+  announce.settle('Io selected.'); announce.settle('Europa selected.');
+  assert.equal(scheduled.filter(item => item.live).length, 1);
+  const due = scheduled.find(item => item.live); due.live = false; due.callback();
+  assert.deepEqual(spoken.at(-1), 'Europa selected.');
+  announce.settle('Ganymede selected.'); announce.now('Jupiter system plate selected.');
+  assert.equal(scheduled.filter(item => item.live).length, 0, 'a discrete announcement cancels a pending one');
+  assert.deepEqual(spoken.at(-1), 'Jupiter system plate selected.');
 });
 
 test('A10 publishes Jupiter as the tenth implemented atlas body', () => {

@@ -122,6 +122,8 @@ const plates = [
     ))}
   </div>
 
+  <p class="atlas-scale-note">Chart scale and positions are illustrative, not an ephemeris.</p>
+
   <div class="atlas-bearing-control">
     <label for="atlas-bearing">Observation bearing</label>
     <input id="atlas-bearing" data-atlas-bearing type="range" min="0" max="359" value="0" />
@@ -135,7 +137,7 @@ const plates = [
     </nav>
   </noscript>
 
-  <aside id="atlas-note" class="atlas-note" data-atlas-note hidden aria-live="polite" aria-label="Selected body detail">
+  <aside id="atlas-note" class="atlas-note" data-atlas-note hidden aria-label="Selected body detail">
     <button type="button" class="atlas-note-close" data-atlas-close aria-label="Close body detail">Close</button>
     <p class="eyebrow" data-atlas-kind></p>
     <h2 data-atlas-name></h2>
@@ -158,7 +160,7 @@ const plates = [
 </section>
 
 <script>
-  import { cycleIndex, nearestBodyIndex, normalizeDegrees } from '../lib/orbitalAtlas';
+  import { createSettledAnnouncer, cycleIndex, nearestBodyIndex, normalizeDegrees } from '../lib/orbitalAtlas';
   import { moveSelectByKey } from '../lib/simulator';
    import { implementedBodies, bodyIntroduction, type ImplementedBody } from '../lib/bodies';
 
@@ -174,6 +176,9 @@ const plates = [
     const bearingInput = atlas.querySelector<HTMLInputElement>('[data-atlas-bearing]')!;
     const bearingOutput = atlas.querySelector<HTMLOutputElement>('[data-atlas-bearing-output]')!;
     const status = atlas.querySelector<HTMLElement>('[data-atlas-status]')!;
+    // Single polite announcer; continuous input announces once it settles.
+    const announcer = createSettledAnnouncer(text => { status.textContent = text; });
+    type Announce = 'now' | 'hold' | 'settle';
     const moonTools = atlas.querySelector<HTMLElement>('[data-atlas-moon-tools]')!;
     const moonGroup = atlas.querySelector<HTMLSelectElement>('[data-atlas-moon-group]')!;
     const pageOutput = atlas.querySelector<HTMLOutputElement>('[data-atlas-page]')!;
@@ -240,7 +245,7 @@ const plates = [
       fields.explore.textContent = `Explore ${body.name} in the simulator →`;
     };
 
-    const selectBody = (slug: string, openNote = true, focusBody = false): void => {
+    const selectBody = (slug: string, openNote = true, focusBody = false, announce: Announce = 'now'): void => {
       const body = implementedBodies.find((item) => item.slug === slug);
       if (!body) return;
       if (body.chart.plate !== activePlate) setPlate(body.chart.plate, false);
@@ -250,18 +255,16 @@ const plates = [
       }
       refreshMoonPage();
       selectedSlug = body.slug;
-      bodyControls.forEach((control) => {
-        control.setAttribute('aria-pressed', 'false');
-        control.setAttribute('aria-expanded', 'false');
-      });
+      // aria-pressed is the one selection-state pattern for body buttons;
+      // aria-controls points at the drawer they populate.
+      bodyControls.forEach((control) => control.setAttribute('aria-pressed', 'false'));
       const control = bodyControl(body.slug);
       if (invokingControl?.matches('[data-atlas-body]')) invokingControl = control ?? null;
       control?.setAttribute('aria-pressed', 'true');
-      control?.setAttribute('aria-expanded', String(openNote));
       setBearing(markerAngle(body));
       populateNote(body);
       note.hidden = !openNote;
-      status.textContent = `${body.name} selected. ${bodyIntroduction(body)}`;
+      announcer[announce](`${body.name} selected. ${bodyIntroduction(body)}`);
       if (focusBody) control?.focus();
     };
 
@@ -270,9 +273,9 @@ const plates = [
       plates.forEach((element) => { element.hidden = element.dataset.atlasPlate !== plate; });
       plateTabs.forEach((tab) => { tab.setAttribute('aria-pressed', String(tab.dataset.atlasPlateTab === plate)); });
       const current = selectedBody();
-      if (!retainSelection || current.chart.plate !== plate) selectBody(currentBodies()[0].slug, false);
+      if (!retainSelection || current.chart.plate !== plate) selectBody(currentBodies()[0].slug, false, false, 'hold');
       refreshMoonPage();
-      status.textContent = `${plateTabs.find((tab) => tab.dataset.atlasPlateTab === plate)?.textContent?.trim()} plate selected.`;
+      announcer.now(`${plateTabs.find((tab) => tab.dataset.atlasPlateTab === plate)?.textContent?.trim()} plate selected.`);
     };
 
     const stepBody = (direction: number, focusBody = false): void => {
@@ -281,18 +284,24 @@ const plates = [
       selectBody(bodies[cycleIndex(index, direction, bodies.length)].slug, true, focusBody);
     };
 
+    // While dragging, only the bearing follows every pointermove; the body is
+    // reselected when the nearest marker changes and announced on release.
     const selectNearestAtPointer = (event: PointerEvent): void => {
       const rect = plates.find(plate => plate.dataset.atlasPlate === activePlate)!.getBoundingClientRect();
       const degrees = Math.atan2(event.clientY - rect.top - rect.height / 2, event.clientX - rect.left - rect.width / 2) * 180 / Math.PI + 90;
       const bodies = visibleBodies();
       const index = nearestBodyIndex(bodies.map((body) => ({ chartAngle: markerAngle(body) })), degrees);
-      selectBody(bodies[index].slug, true);
+      if (bodies[index].slug !== selectedSlug || note.hidden) selectBody(bodies[index].slug, true, false, 'hold');
       setBearing(degrees);
+    };
+    const endDrag = (): void => {
+      if (!dragging) return;
+      dragging = false;
+      announcer.flush();
     };
 
     const closeNote = (): void => {
       note.hidden = true;
-      bodyControl(selectedSlug)?.setAttribute('aria-expanded', 'false');
       restoreFocus();
     };
 
@@ -310,8 +319,8 @@ const plates = [
     });
     const turnPage = (direction: number): void => {
       moonPage += direction;
-      selectBody(currentBodies()[moonPage * moonsPerPage].slug, false);
-      status.textContent = `${moonGroup.value}. ${pageOutput.textContent}.`;
+      selectBody(currentBodies()[moonPage * moonsPerPage].slug, false, false, 'hold');
+      announcer.now(`${moonGroup.value}. ${pageOutput.textContent}.`);
     };
     previousPage.addEventListener('click', () => turnPage(-1));
     nextPage.addEventListener('click', () => turnPage(1));
@@ -319,7 +328,8 @@ const plates = [
       invokingControl = bearingInput;
       const bearing = Number(bearingInput.value);
       const bodies = visibleBodies();
-      selectBody(bodies[nearestBodyIndex(bodies.map((body) => ({ chartAngle: markerAngle(body) })), bearing)].slug, true);
+      // A dragged range thumb fires input continuously: announce once it settles.
+      selectBody(bodies[nearestBodyIndex(bodies.map((body) => ({ chartAngle: markerAngle(body) })), bearing)].slug, true, false, 'settle');
       // Keep the control continuous between markers, including one-degree keys.
       setBearing(bearing);
     });
@@ -332,9 +342,9 @@ const plates = [
       selectNearestAtPointer(event);
     });
     stage.addEventListener('pointermove', (event) => { if (dragging) selectNearestAtPointer(event); });
-    stage.addEventListener('pointerup', () => { dragging = false; });
-    stage.addEventListener('pointercancel', () => { dragging = false; });
-    stage.addEventListener('lostpointercapture', () => { dragging = false; });
+    stage.addEventListener('pointerup', endDrag);
+    stage.addEventListener('pointercancel', endDrag);
+    stage.addEventListener('lostpointercapture', endDrag);
     stage.addEventListener('wheel', (event) => {
       if (document.activeElement !== stage) return;
       event.preventDefault();
@@ -360,6 +370,6 @@ const plates = [
     atlas.querySelector<HTMLButtonElement>('[data-atlas-previous]')!.addEventListener('click', () => stepBody(-1));
     atlas.querySelector<HTMLButtonElement>('[data-atlas-next]')!.addEventListener('click', () => stepBody(1));
     compactViewport.addEventListener('change', () => setBearing(markerAngle(selectedBody())));
-    selectBody('sun', false);
+    selectBody('sun', false, false, 'hold');
   }
 </script>
