@@ -27,8 +27,12 @@ EMSCRIPTEN_KEEPALIVE int lab_start(const char *text)
     return lab_configuration_parse(text, &config) && comparison_start(&lab, &config);
 }
 
+/* Returns 2 when complete, 1 while work remains, -1 after non-finite state,
+ * and 0 when no comparison is configured: a caller must stop on 0 rather than
+ * loop forever waiting for progress that cannot happen. */
 EMSCRIPTEN_KEEPALIVE int lab_advance(int budget, int one_checkpoint)
 {
+    if (!lab.configured) return 0;
     size_t remaining = budget < 0 ? 0 : budget > 8192 ? 8192 : (size_t)budget;
     uint64_t before = lab.sample_index;
     while (remaining && !lab.complete && !lab.failed && lab.configured) {

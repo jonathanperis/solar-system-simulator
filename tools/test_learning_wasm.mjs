@@ -7,6 +7,12 @@ import { pathToFileURL } from 'node:url';
 const path = resolve(process.argv[2] ?? 'build/web/learning-lab.mjs');
 const { default: createLab } = await import(pathToFileURL(path));
 const lab = await createLab();
+// Before any configuration nothing can advance: 0 tells a JS loop to stop
+// instead of spinning on "still running".
+assert.equal(lab._lab_advance(8192, 0), 0, 'unconfigured lab_advance must report no work');
+const minimumFactor = name => lab.ccall('lab_minimum_velocity_factor', 'number', ['string'], [name]);
+assert(Number.isFinite(minimumFactor('circular')) && minimumFactor('circular') > 0, 'known lesson has a minimum factor');
+assert(Number.isNaN(minimumFactor('no-such-lesson')), 'unknown lesson has no minimum factor');
 // Replay every shipped example so a new lesson descriptor cannot skip parity.
 const examples = (await readdir(resolve('examples')))
   .filter(name => name.endsWith('.solar'))
