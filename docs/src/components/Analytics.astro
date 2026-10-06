@@ -1,20 +1,14 @@
 ---
+import { normalizeBase } from '../lib/base';
+// Present only for deployed main builds (V17); the page CSP allow-lists the
+// Google hosts under the same condition (src/lib/csp.ts).
 const GA_ID = import.meta.env.PUBLIC_GA_ID;
+const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 
 {GA_ID && (
   <>
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-    <script
-      is:inline
-      async
-      src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
-    ></script>
-    <script is:inline define:vars={{ GA_ID }}>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() { dataLayer.push(arguments); }
-      gtag('js', new Date());
-      gtag('config', GA_ID);
-    </script>
+    <script is:inline defer src={`${base}scripts/analytics.js`} data-ga-id={GA_ID}></script>
   </>
 )}

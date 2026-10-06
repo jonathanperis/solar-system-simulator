@@ -1,0 +1,15 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { normalizeBase } from '../../lib/base';
+// Compatibility page for the historic Emscripten URL. Astro renders it with the
+// shared layout (CSP, generator marker, navigation); the `legacyHtmlRoutes`
+// integration in astro.config.mjs then publishes it at the exact old filename,
+// wasm/solar-system-simulator.html, instead of a directory index.
+const base = normalizeBase(import.meta.env.BASE_URL);
+---
+<BaseLayout title="Live simulator moved" description="The live simulator now lives at /simulator/." redirectTo="simulator/">
+  <section class="panel">
+    <h1>The simulator has moved.</h1>
+    <p>The runtime now shares the Astro site. <a href={`${base}simulator/`}>Continue to the simulator</a>.</p>
+  </section>
+</BaseLayout>

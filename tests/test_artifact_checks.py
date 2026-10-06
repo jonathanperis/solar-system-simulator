@@ -9,11 +9,61 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from check_docs_routes import check_internal_references, check_sitemap
+from check_docs_routes import check_astro_generated, check_internal_references, check_page_security, check_public_sources, check_sitemap
 from check_wasm_artifacts import main as check_wasm
 
 
 class ArtifactChecks(unittest.TestCase):
+    def test_every_generated_html_document_carries_the_astro_marker(self):
+        astro = '<html><head><meta name="generator" content="Astro v7.3.6"></head></html>'
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+            root = Path(directory)
+            (root / "docs").mkdir()
+            (root / "index.html").write_text(astro)
+            (root / "docs/index.html").write_text(astro)
+            (root / "legacy.html").write_text(astro)
+            check_astro_generated(root)
+            for name, html in (("docs/index.html", "<html><head></head></html>"),
+                               ("stray.htm", "<html>hand written</html>"),
+                               ("legacy.html", '<meta name="generator" content="Hugo">'),
+                               ("docs/index.html", "<!-- Astro v7 --><html></html>")):
+                with self.subTest(name=name, html=html), self.assertRaises(SystemExit):
+                    (root / name).write_text(html)
+                    check_astro_generated(root)
+                (root / name).write_text(astro)
+
+    def test_pages_carry_a_leading_strict_csp_without_inline_code(self):
+        csp = ('<meta http-equiv="Content-Security-Policy" content="default-src \'self\'; '
+               'script-src \'self\' \'wasm-unsafe-eval\'; style-src \'self\'; object-src \'none\'">')
+        head = f'<html><head><meta charset="utf-8">{csp}<link rel="stylesheet" href="a.css">'
+        check_page_security("index.html", head + '<script type="module" src="a.js"></script></head><body></body></html>')
+        for html in (
+            '<html><head><meta charset="utf-8"><script src="a.js"></script></head></html>',
+            '<html><head><link rel="stylesheet" href="a.css">' + csp + '</head></html>',
+            head + '<script>alert(1)</script></head></html>',
+            head + '</head><body><style>p{}</style></body></html>',
+            head + '</head><body><p style="color:red">x</p></body></html>',
+            head.replace("style-src 'self'", "style-src 'self' 'unsafe-inline'") + '</head></html>',
+            head.replace("script-src 'self'", "script-src 'self' 'unsafe-eval'") + '</head></html>',
+        ):
+            with self.subTest(html=html), self.assertRaises(SystemExit):
+                check_page_security("index.html", html)
+
+    def test_public_assets_cannot_contain_hand_written_html_or_robots(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+            public = Path(directory)
+            (public / "wasm").mkdir()
+            (public / "wasm/runtime.js").write_text("// generated runtime")
+            (public / "favicon.ico").write_bytes(b"\x00\x00\x01\x00")
+            check_public_sources(public)
+            for name in ("wasm/solar-system-simulator.html", "notes.HTM", "sitemap.xml", "robots.txt"):
+                with self.subTest(name=name), self.assertRaises(SystemExit):
+                    (public / name).write_text("<html></html>")
+                    try:
+                        check_public_sources(public)
+                    finally:
+                        (public / name).unlink()
+
     def test_sitemap_matches_generated_pages(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
             root = Path(directory)

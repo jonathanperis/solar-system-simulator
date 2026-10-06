@@ -66,20 +66,23 @@ const isActive = (href: string) => currentPath === hrefFor(href) || currentPath.
     <slot />
   </article>
 </section>
-<script is:inline>
-  (() => {
-    const input = document.querySelector('[data-doc-filter]');
-    const count = document.querySelector('[data-doc-count]');
-    const menu = document.querySelector('[data-doc-menu]');
-    const routeItems = Array.from(document.querySelectorAll('[data-doc-route]'));
-    const groups = Array.from(document.querySelectorAll('[data-doc-group]'));
+<script>
+  // Bundled as an external module so the page CSP needs no inline-script hash.
+  const setupDocsFilter = (): void => {
+    const input = document.querySelector<HTMLInputElement>('[data-doc-filter]');
+    const count = document.querySelector<HTMLElement>('[data-doc-count]');
+    const menu = document.querySelector<HTMLDetailsElement>('[data-doc-menu]');
+    const routeItems = Array.from(document.querySelectorAll<HTMLElement>('[data-doc-route]'));
+    const groups = Array.from(document.querySelectorAll<HTMLElement>('[data-doc-group]'));
     const compactLayout = window.matchMedia('(max-width: 980px)');
-    const syncMenu = () => { if (menu) menu.open = !compactLayout.matches; };
+    const syncMenu = (): void => { if (menu) menu.open = !compactLayout.matches; };
     syncMenu();
     compactLayout.addEventListener('change', syncMenu);
     if (!input || !count || routeItems.length === 0) return;
+    const empty = document.querySelector<HTMLElement>('[data-doc-empty]')!;
+    const clear = document.querySelector<HTMLButtonElement>('[data-doc-clear]')!;
 
-    const applyFilter = () => {
+    const applyFilter = (): void => {
       const query = input.value.trim().toLowerCase();
       let visible = 0;
       routeItems.forEach((item) => {
@@ -92,17 +95,18 @@ const isActive = (href: string) => currentPath === hrefFor(href) || currentPath.
         visible = routeItems.filter((item) => !item.hidden && item.classList.contains('docs-nav-link')).length;
       }
       groups.forEach((group) => {
-        const children = Array.from(group.querySelectorAll('[data-doc-route]'));
+        const children = Array.from(group.querySelectorAll<HTMLElement>('[data-doc-route]'));
         group.hidden = children.length > 0 && children.every((child) => child.hidden);
       });
       const routeNoun = visible === 1 ? 'page' : 'pages';
       count.textContent = query ? `${visible} matching ${routeNoun}` : `${visible} ${routeNoun} ready`;
-      document.querySelector('[data-doc-empty]').hidden = visible > 0;
-      document.querySelector('[data-doc-clear]').hidden = !query;
+      empty.hidden = visible > 0;
+      clear.hidden = !query;
     };
 
     input.addEventListener('input', applyFilter);
-    document.querySelector('[data-doc-clear]').addEventListener('click', () => { input.value = ''; applyFilter(); input.focus(); });
+    clear.addEventListener('click', () => { input.value = ''; applyFilter(); input.focus(); });
     applyFilter();
-  })();
+  };
+  setupDocsFilter();
 </script>

@@ -1,6 +1,7 @@
 ---
 import { implementedBodies } from '../lib/bodies';
 import { normalizeBase } from '../lib/base';
+import { compactAngle } from '../lib/atlasLayout';
 
 const base = normalizeBase(import.meta.env.BASE_URL);
 const plates = [
@@ -10,21 +11,6 @@ const plates = [
   { id: 'jupiter', label: 'Jupiter system', detail: 'Jupiter-relative moon index' }
 ] as const;
 
-const chartPosition = (angle: number, radius: number) => {
-  const radians = (angle - 90) * Math.PI / 180;
-  const distance = radius * 0.43;
-  return `--chart-left: ${50 + Math.cos(radians) * distance}%; --chart-top: ${50 + Math.sin(radians) * distance}%;`;
-};
-// The compact chart is an index, not a scaled orbit plot. Even angular spacing
-// keeps all nine non-star heliocentric controls distinct at a 320px viewport.
-const compactBodies = implementedBodies.filter(body => body.chart.plate === 'heliocentric' && body.slug !== 'sun');
-const compactAngle = (slug: string, angle: number) => {
-  const index = compactBodies.findIndex(body => body.slug === slug);
-  return index < 0 ? angle : 20 + index * 360 / compactBodies.length;
-};
-const compactPosition = (slug: string, angle: number, radius: number) => chartPosition(
-  compactAngle(slug, angle), compactBodies.some(body => body.slug === slug) ? 85 : radius
-).replace('--chart-left:', '--compact-left:').replace('--chart-top:', '--compact-top:');
 ---
 <section class="orbital-atlas" aria-labelledby="atlas-title" data-orbital-atlas data-base={base}>
   <div class="atlas-copy">
@@ -119,7 +105,6 @@ const compactPosition = (slug: string, angle: number, radius: number) => chartPo
           <button
             type="button"
             class={`atlas-body atlas-body-${body.accent}`}
-            style={`${chartPosition(body.chart.angle, body.chart.radius)} ${compactPosition(body.slug, body.chart.angle, body.chart.radius)}`}
             data-atlas-body
             data-slug={body.slug}
             data-plate={body.chart.plate}
@@ -128,7 +113,6 @@ const compactPosition = (slug: string, angle: number, radius: number) => chartPo
             hidden={body.parent === 'Jupiter' && body.group !== 'Galilean moons'}
             aria-controls="atlas-note"
             aria-pressed={body.slug === 'sun' ? 'true' : 'false'}
-            aria-expanded="false"
           >
             <span class="atlas-body-orb"></span>
             <span class="atlas-body-label">{body.name}</span>
