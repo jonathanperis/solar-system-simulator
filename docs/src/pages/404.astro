@@ -1,0 +1,16 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { normalizeBase } from '../lib/base';
+// GitHub Pages serves dist/404.html for any missing URL under the project, at
+// that missing URL, so every link and asset here must be base-absolute (the
+// shared layout already is). The page is noindex and has no canonical URL.
+const base = normalizeBase(import.meta.env.BASE_URL);
+---
+<BaseLayout title="Page not found" description="This page is not part of the Solar System Simulator site." notFound>
+  <section class="panel not-found" data-not-found>
+    <p class="eyebrow">Off the chart / 404</p>
+    <h1>This page is not on the chart.</h1>
+    <p>The address may be mistyped, or the page may have moved.</p>
+    <p><a href={base}>Return to the solar chart</a> · <a href={`${base}simulator/`}>Open the live simulator</a> · <a href={`${base}docs/`}>Browse the documentation</a></p>
+  </section>
+</BaseLayout>

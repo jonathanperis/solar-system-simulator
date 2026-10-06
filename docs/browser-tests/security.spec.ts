@@ -87,6 +87,18 @@ test('without Web Crypto the catalog explains the HTTPS requirement instead of s
   expect(shards).toEqual([]);
 });
 
+test('the 404 page is an Astro page on the shared layout with working base-absolute links', async ({ page }) => {
+  const violations = await watchPolicy(page);
+  await page.goto(`${base}404.html`);
+  await expect(page.locator('meta[name="generator"]')).toHaveAttribute('content', /^Astro v/);
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+  await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'This page is not on the chart.' })).toBeVisible();
+  await page.getByRole('link', { name: 'Open the live simulator' }).click();
+  await expect(page).toHaveURL(new RegExp(`${base}simulator/$`));
+  expect(violations).toEqual([]);
+});
+
 test('the historic runtime URL is an Astro page that forwards to the simulator', async ({ page }) => {
   const violations = await watchPolicy(page);
   await page.goto(`${base}wasm/solar-system-simulator.html`);
