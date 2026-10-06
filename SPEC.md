@@ -380,7 +380,7 @@ T59|x|restore green CI dependency gate, group CodeQL updates, share/cache the ra
 T60| |correct scene handedness, lesson contact policy, scene capacity, strict experiment parsing, single Kepler solver, render-policy placement, GM-derived masses and barycentric families|A53,A54,A58
 T61| |discard stalled frames, bound camera yaw, harden CSV targets and work limits, share input reading, fix comparison subject measurement and check command alignment|A55,A57
 T62| |make catalog search/lookup proportional to the query, keep non-fatal runtime warnings non-fatal, close accessibility/CSP/font/count/download findings and guarantee Astro ownership of every page|A59,A60
-T63| |prune local packs, move screenshots, harden data tools and document data usage|A61
+T63|x|prune local packs, move screenshots, harden data tools and document data usage|A61
 T64| |integrate all rounds, run complete verification, update docs, commit/push main and observe CI/Pages|A51–A61
 T65| |run the second audit round and resolve or record its findings|A62
 
