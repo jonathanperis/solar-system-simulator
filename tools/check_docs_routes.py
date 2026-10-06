@@ -124,19 +124,50 @@ ASTRO_GENERATOR = re.compile(r'<meta\s+name="generator"\s+content="Astro v[0-9][
 PUBLIC_FORBIDDEN_NAMES = {"sitemap.xml", "robots.txt"}
 
 
-def check_astro_generated(dist: Path) -> None:
+# Document types a browser can render as a page that runs script (SVG can
+# embed <script>; XHTML/SHTML are HTML variants). None are published today;
+# any future one must be named in ALLOWED_ACTIVE_DOCUMENTS after review.
+ACTIVE_DOCUMENT_SUFFIXES = {".svg", ".svgz", ".xhtml", ".xht", ".shtml"}
+ALLOWED_ACTIVE_DOCUMENTS: frozenset[str] = frozenset()
+
+
+def check_astro_generated(dist: Path, allowed: frozenset[str] | set[str] = ALLOWED_ACTIVE_DOCUMENTS) -> None:
     """Every published HTML document must be rendered by an Astro page.
 
     BaseLayout emits `<meta name="generator" content={Astro.generator}>`, so a
     document without that exact head marker was hand-written or copied from
-    docs/public, even if it mentions Astro elsewhere.
+    docs/public, even if it mentions Astro elsewhere. Other scriptable document
+    types are rejected unless explicitly allow-listed by relative path.
     """
     for page in sorted(dist.rglob("*")):
-        if page.is_file() and page.suffix.lower() in {".html", ".htm"}:
+        if not page.is_file():
+            continue
+        route = page.relative_to(dist).as_posix()
+        suffix = page.suffix.lower()
+        if suffix in ACTIVE_DOCUMENT_SUFFIXES and route not in allowed:
+            fail(f"{route} is a scriptable document type outside Astro; allow-list it explicitly after review")
+        if suffix in {".html", ".htm"}:
             html = page.read_text(encoding="utf-8", errors="replace")
-            route = page.relative_to(dist).as_posix()
             if not ASTRO_GENERATOR.search(html):
                 fail(f"{route} lacks the Astro generator marker; every page must come from Astro")
+
+
+def check_not_found_page(dist: Path) -> None:
+    """Astro must emit 404.html: GitHub Pages serves it at any missing URL, so
+    it is noindex, has no canonical URL and links home with base-absolute paths."""
+    page = dist / "404.html"
+    if not page.is_file():
+        fail("missing 404.html; render src/pages/404.astro")
+    html = page.read_text(encoding="utf-8", errors="replace")
+    if not ASTRO_GENERATOR.search(html):
+        fail("404.html lacks the Astro generator marker")
+    if not re.search(r'<meta\s+name="robots"\s+content="noindex"', html):
+        fail("404.html must be noindex")
+    if 'rel="canonical"' in html:
+        fail("404.html must not declare a canonical URL")
+    for target in (BASE_PATH, f"{BASE_PATH}simulator/"):
+        if f'href="{target}"' not in html:
+            fail(f"404.html must link to {target} with a base-absolute URL")
 
 
 class SecurityParser(HTMLParser):
@@ -202,12 +233,14 @@ def check_page_security(route: str, html: str) -> None:
         fail(f"{route} contains {parser.inline[0]}; move it to a file so the CSP stays strict")
 
 
-def check_public_sources(public: Path) -> None:
+def check_public_sources(public: Path, allowed: frozenset[str] | set[str] = ALLOWED_ACTIVE_DOCUMENTS) -> None:
     """docs/public holds static assets only; HTML and the sitemap come from Astro."""
     for asset in sorted(public.rglob("*")):
         if not asset.is_file():
             continue
         name = asset.relative_to(public).as_posix()
+        if asset.suffix.lower() in ACTIVE_DOCUMENT_SUFFIXES and name not in allowed:
+            fail(f"docs/public/{name} is a scriptable document type; allow-list it explicitly after review")
         if asset.suffix.lower() in {".html", ".htm"}:
             fail(f"docs/public/{name} is hand-written HTML; render it from an Astro page instead")
         if name.lower() in PUBLIC_FORBIDDEN_NAMES:
@@ -247,6 +280,7 @@ def main(argv: list[str]) -> int:
         fail("missing sitemap.xml")
     check_sitemap(dist)
     check_astro_generated(dist)
+    check_not_found_page(dist)
     for page in sorted(dist.rglob("*.html")):
         check_page_security(page.relative_to(dist).as_posix(), page.read_text(encoding="utf-8", errors="replace"))
     check_public_sources(Path(__file__).resolve().parents[1] / "docs" / "public")
