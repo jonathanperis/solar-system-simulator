@@ -54,6 +54,8 @@ interface LabState {
   isolated: boolean; momentum: number; angularMomentum: number; magnification: number;
   trailFrame: number; vectors: boolean; position: number[]; velocity: number[];
   contactMode: number;
+  /* C's per-lesson lower speed bound and first contact time (0 = none). */
+  minFactor?: number; contactSeconds?: number;
 }
 
 export const lessonNames = lessonOptions.map(([, label]) => label);
@@ -243,7 +245,9 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
         controls.factor.value = String(state.factor);
         reportedConfig = config;
       }
-      setText(readouts.scene, `${activeBodyCount} active bodies · ${lessonNames[state.lesson] ?? 'Catalog epoch JD 2461200.5 TDB'}`);
+      if (state.minFactor !== undefined && Number(controls.lesson.value) === state.lesson) controls.factor.min = String(state.minFactor);
+      const contact = state.contactSeconds ? ` · Contact at ${state.contactSeconds} s: bodies touched; later point-mass motion is not physical and lesson errors are withheld` : '';
+      setText(readouts.scene, `${activeBodyCount} active bodies · ${lessonNames[state.lesson] ?? 'Catalog epoch JD 2461200.5 TDB'}${contact}`);
       setText(controls.step, `Step +${state.dt} s`);
       setText(controls.trails, `Trails: ${state.trailFrame ? 'Parent-relative' : 'Absolute'}`);
       setText(controls.vectors, `Vector directions: ${state.vectors ? 'On' : 'Off'}`);
@@ -404,6 +408,10 @@ export function mountSimulator(root: HTMLElement): void {
 
   document.addEventListener('visibilitychange', () => send('background', document.hidden ? 1 : 0));
   const setLessonDefaults = () => {
+    // C owns each lesson's lowest starting speed (slower orbits would pass
+    // through the parent body); mirror it as the input's native minimum.
+    const minimum = runtime.ccall?.('solar_web_minimum_factor', 'number', ['number'], [Number(controls.lesson.value)]);
+    if (typeof minimum === 'number' && Number.isFinite(minimum)) controls.factor.min = String(minimum);
     controls.dt.value = Number(controls.lesson.value) === collisionLesson ? '0.1' : '15';
     if (controls.lesson.value === '0') {
       controls.method.value = '0'; controls.dt.value = '15'; controls.factor.value = '1';
@@ -421,6 +429,11 @@ export function mountSimulator(root: HTMLElement): void {
   const loadLesson = () => {
     clearLessonValidity();
     if (!controls.dt.checkValidity() || !controls.factor.checkValidity()) controls.dt.closest('details')!.open = true;
+    if (controls.factor.validity.rangeUnderflow) {
+      const message = `Below ${controls.factor.min}× this starting orbit would pass through the parent body; point-mass gravity has no surface. Use at least ${controls.factor.min}.`;
+      lessonStatus.textContent = message;
+      controls.factor.setCustomValidity(message);
+    }
     if (!controls.dt.reportValidity() || !controls.factor.reportValidity()) return;
     const accepted = runtime.ccall?.('solar_web_lesson', 'number', ['number', 'number', 'number', 'number'],
       [Number(controls.lesson.value), Number(controls.factor.value), Number(controls.method.value), Number(controls.dt.value)]);

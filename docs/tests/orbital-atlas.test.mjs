@@ -50,7 +50,7 @@ test('A10 publishes Jupiter as the tenth implemented atlas body', () => {
     kind: 'Planet',
     parent: 'Sun',
     milestone: 'Outer planet pass',
-    initialization: 'Planar heliocentric perihelion position with vis-viva tangential speed.',
+    initialization: 'Jovian-system barycenter (Jupiter plus known-mass moons) at planar heliocentric perihelion with vis-viva tangential speed.',
     source: 'src/sim/solar_system.c',
     accent: 'jupiter',
     chart: { plate: 'heliocentric', angle: 112, radius: 91 },

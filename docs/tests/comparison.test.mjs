@@ -18,6 +18,10 @@ test('rejected comparison settings identify the responsible field without unrela
   assert.doesNotMatch(issue.message, /collision/i);
   assert.equal(comparisonInputIssue({ ...values, sample: '3600', duration: '7100' }).field, 'duration');
   assert.equal(comparisonInputIssue({ ...values, sample: '3600' }), undefined);
+  // C's lesson minimum explains a too-slow start at the factor field.
+  assert.equal(comparisonInputIssue({ ...values, sample: '3600', scene: 'phobos', factor: '0.5' }, 0.73).field, 'factor');
+  assert.match(comparisonInputIssue({ ...values, sample: '3600', scene: 'phobos', factor: '0.5' }, 0.73).message, /0\.73.*parent body/);
+  assert.equal(comparisonInputIssue({ ...values, sample: '3600', scene: 'phobos', factor: '0.73' }, 0.73), undefined);
   assert.equal(comparisonInputIssue({ ...values, scene: 'collision', dtA: '1' }).field, 'dtA');
   assert.equal(comparisonInputIssue({ ...values, scene: 'core', sample: '3600' }).field, 'dtA');
 });

@@ -13,6 +13,10 @@ bool orbit_state(double q_m, double e, double mu, double seconds_from_perihelion
  * reference pole. The same rotation turns a reference plane given by its pole
  * into its parent frame (satellite.c uses it for Laplace planes). */
 Vec3d orbit_rotate_to_reference(Vec3d v, double inclination, double node, double periapsis);
+/* Smallest future distance from the focus on the two-body conic through the
+ * relative state (r, v) with mu = G*(M + m): the periapsis, unless an open
+ * (parabolic/hyperbolic) orbit is already receding. Meters. */
+double orbit_closest_approach_m(Vec3d relative_position_m, Vec3d relative_velocity_mps, double mu);
 /* J2000 ecliptic (X toward the equinox, Z toward ecliptic north) to simulation
  * axes: (x, y, z)_sim = (X, Z, -Y). Simulation +Y is ecliptic north. */
 Vec3d orbit_ecliptic_to_simulation(Vec3d ecliptic);

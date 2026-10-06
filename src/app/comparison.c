@@ -8,7 +8,7 @@ const char *comparison_field_name(LabField field)
     const char *names[] = {"radius_m", "speed_mps", "energy_change", "total_energy_j", "phase_error_deg",
         "reference_error_m", "specific_energy_jpkg", "linear_momentum_kg_mps", "angular_momentum_kg_m2ps",
         "resonant_angle_deg", "minimum_distance_m", "collision_count", "kinetic_loss_j", "body_count",
-        "x_m", "y_m", "z_m", "subject_present", "ticks"};
+        "x_m", "y_m", "z_m", "subject_present", "ticks", "contact_detected"};
     return field >= 0 && field < LAB_FIELD_COUNT ? names[field] : "";
 }
 
@@ -43,6 +43,7 @@ static void measure(ComparisonRun *run, size_t side)
     values[LAB_BODY_COUNT] = (double)system->body_count;
     values[LAB_TICKS] = (double)session->clock.ticks;
     values[LAB_MIN_DISTANCE_M] = run->minimum_distance[side];
+    values[LAB_CONTACT_DETECTED] = session->clock.contact_tick != 0;
     int index = comparison_subject_index(run, side);
     values[LAB_SUBJECT_PRESENT] = index >= 0;
     if (index < 0) return;
@@ -55,10 +56,12 @@ static void measure(ComparisonRun *run, size_t side)
     values[LAB_SPEED_MPS] = body.has_parent ? body.speed_mps : vec3d_length(system->bodies[index].velocity_mps);
     values[LAB_SPECIFIC_ENERGY_JPKG] = body.has_parent ? body.specific_energy_jpkg : NAN;
     Vec3d expected;
-    /* Evaluate the analytical reference at this side's own clock (ticks * dt),
-     * the instant its state actually describes. It equals the published
+    /* After contact the point-mass trajectory is unphysical; an error against
+     * the analytical orbit would measure nothing meaningful, so withhold it.
+     * Otherwise evaluate the reference at this side's own clock (ticks * dt),
+     * the instant its state actually describes; it equals the published
      * checkpoint time up to the alignment tolerance of lab_ticks_for. */
-    if (lesson_reference_position(&session->initial_system, lesson_subject_index(run->config.lesson), system->elapsed_seconds, &expected)) {
+    if (!session->clock.contact_tick && lesson_reference_position(&session->initial_system, lesson_subject_index(run->config.lesson), system->elapsed_seconds, &expected)) {
         values[LAB_REFERENCE_ERROR_M] = vec3d_length(vec3d_sub(position, expected));
         values[LAB_PHASE_ERROR_DEG] = atan2(vec3d_length(vec3d_cross(position, expected)), vec3d_dot(position, expected)) * 180 / acos(-1.0);
         run->maximum_phase_error[side] = fmax(run->maximum_phase_error[side], values[LAB_PHASE_ERROR_DEG]);

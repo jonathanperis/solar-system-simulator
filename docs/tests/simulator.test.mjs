@@ -136,6 +136,13 @@ test('lesson diagnostics distinguish physical units, normalized energy, and edit
   runtime.reportLabState({ ...state, factor: 1.3, isolated: false });
   assert.equal(controls.factor.value, '1.3');
   assert.match(readouts.momentum.textContent, /fixed-body constraint/);
+  // C reports the loaded lesson's lower speed bound and any contact.
+  controls.lesson.value = '6';
+  runtime.reportLabState({ ...state, lesson: 6, factor: 0.8, minFactor: 0.73, contactSeconds: 0 });
+  assert.equal(controls.factor.min, '0.73');
+  assert.doesNotMatch(readouts.scene.textContent, /Contact/);
+  runtime.reportLabState({ ...state, lesson: 6, factor: 0.8, minFactor: 0.73, contactSeconds: 5400 });
+  assert.match(readouts.scene.textContent, /Contact at 5400 s.*not physical/);
 });
 
 test('recoverable Emscripten stderr is logged without disabling the runtime; fatal paths still fail', () => {

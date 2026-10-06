@@ -38,10 +38,13 @@ const compact = (value: number) => Number.isFinite(value) ? value.toExponential(
 
 // Explain a rejected form at its field. C remains the authority for accepting
 // descriptors (including imported/shared ones); this is not a second validator.
-export function comparisonInputIssue(values: Record<string, string>): { field: string; message: string } | undefined {
+// minimumFactor is C's per-lesson lower speed bound (lab_minimum_velocity_factor).
+export function comparisonInputIssue(values: Record<string, string>, minimumFactor?: number): { field: string; message: string } | undefined {
   const wholeTicks = (seconds: number, step: number) => Number.isFinite(seconds / step) && seconds / step >= 1 && Math.abs(seconds / step - Math.round(seconds / step)) <= 1e-8;
   if (['core', 'barycentric-core'].includes(values.scene) && Number(values.factor) !== 1)
     return { field: 'factor', message: 'This preset keeps its starting speed unchanged. Use a multiplier of 1.' };
+  if (minimumFactor !== undefined && Number.isFinite(minimumFactor) && Number(values.factor) < minimumFactor)
+    return { field: 'factor', message: `Below ${minimumFactor}× this starting orbit would pass through the parent body; point-mass gravity has no surface. Use at least ${minimumFactor}.` };
   for (const side of ['A', 'B']) {
     const dt = Number(values[`dt${side}`]);
     if (values.scene === 'core' && dt !== 15) return { field: `dt${side}`, message: `Core run ${side} uses a fixed 15-second timestep. Try a circular-orbit lesson to vary it.` };
@@ -92,7 +95,9 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
     clearIssue();
     try { return normalize(`SOLAR_LAB_V1 ${names.map(name => input(name).value).join(' ')}`); }
     catch (error) {
-      const issue = comparisonInputIssue(Object.fromEntries(names.map(name => [name, input(name).value])));
+      const values = Object.fromEntries(names.map(name => [name, input(name).value]));
+      const minimum = lab.ccall('lab_minimum_velocity_factor', 'number', ['string'], [values.scene]);
+      const issue = comparisonInputIssue(values, typeof minimum === 'number' ? minimum : undefined);
       if (issue) {
         settings.open = true; errorMessage.hidden = false; errorMessage.textContent = issue.message;
         input(issue.field).setAttribute('aria-invalid', 'true'); input(issue.field).setAttribute('aria-describedby', 'config-error'); input(issue.field).focus();
@@ -197,6 +202,7 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
     }
     const feedback = root.querySelector<HTMLElement>('[data-challenge-feedback]')!;
     const scene = activeDefinition.split(/\s+/)[1];
+    const touched = [0, 1].filter(side => latest.values[side].contact_detected === 1).map(side => side ? 'B' : 'A');
     if (input('challenge').value === 'timestep') {
       feedback.textContent = scene === 'circular' ? `Analytical phase error: A ${compact(latest.values[0].phase_error_deg)}°, B ${compact(latest.values[1].phase_error_deg)}°. Compare both at this same time; small energy change alone does not prove accurate motion.`
         : 'These measurements describe your selected preset. Load the circular-orbit question to compare timestep accuracy.';
@@ -209,6 +215,7 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
     } else if (input('challenge').value === 'momentum') {
       feedback.textContent = `Linear momentum magnitude A: ${compact(latest.values[0].linear_momentum_kg_mps)} kg·m/s. Compare a moving-Sun or Earth–Moon run with the constrained core; interpret roundoff relative to the bodies' individual momenta.`;
     } else feedback.textContent = 'Pause, export CSV, change the trajectory display units, then export again. The physical data should be identical. The 3D simulator also supports this check across illustrative/real scale.';
+    if (touched.length) feedback.textContent += ` Run ${touched.join(' and ')} reached contact: the bodies touched, so later point-mass motion is not physical and its analytical errors are withheld.`;
   };
 
   const schedule = () => { if (!frame) frame = requestAnimationFrame(tick); };

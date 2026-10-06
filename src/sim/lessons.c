@@ -3,6 +3,7 @@
 #include "physics.h"
 #include "diagnostics.h"
 #include "orbit.h"
+#include "collisions.h"
 
 const char *lesson_name(LessonPreset preset)
 {
@@ -19,11 +20,19 @@ size_t lesson_subject_index(LessonPreset preset)
 
 double lesson_default_step(LessonPreset preset) { return preset == LESSON_COLLISION ? .1 : 15; }
 
-bool lesson_create(LessonPreset preset, double velocity_factor, SolarSystem *result)
+#define LESSON_FACTOR_FLOOR 0.1
+#define LESSON_FACTOR_CEILING 2.0
+_Static_assert(SOLAR_SYSTEM_BODY_CAPACITY >= SOLAR_CONTACT_MONITOR_MAX_BODIES, "small lessons must fit the body array");
+
+bool lesson_monitors_contact(LessonPreset preset)
 {
-    if (preset < 0 || preset >= LESSON_COUNT || !isfinite(velocity_factor) || velocity_factor < 0.1 || velocity_factor > 2.0)
-        return false;
-    if ((preset == LESSON_CORE || preset == LESSON_BARYCENTRIC_CORE) && velocity_factor != 1.0) return false;
+    return preset >= 0 && preset < LESSON_COUNT && preset != LESSON_CORE && preset != LESSON_BARYCENTRIC_CORE &&
+        preset != LESSON_COLLISION;
+}
+
+/* Builds a lesson without range checks; lesson_create() validates first. */
+static void build_lesson(LessonPreset preset, double velocity_factor, SolarSystem *result)
+{
     SolarSystem system = {0};
     if (preset == LESSON_CORE || preset == LESSON_BARYCENTRIC_CORE) {
         system = solar_system_create_current();
@@ -113,6 +122,49 @@ bool lesson_create(LessonPreset preset, double velocity_factor, SolarSystem *res
     }
     physics_compute_accelerations(system.bodies, system.body_count);
     *result = system;
+}
+
+/* True if the subject's two-body conic around its parent stays outside contact. */
+static bool lesson_orbit_clears_parent(LessonPreset preset, double velocity_factor)
+{
+    SolarSystem system;
+    build_lesson(preset, velocity_factor, &system);
+    size_t subject = lesson_subject_index(preset);
+    int parent = solar_system_parent_index(&system, subject);
+    if (parent < 0) return true;
+    const Body *body = &system.bodies[subject], *center = &system.bodies[parent];
+    /* A fixed parent never accelerates, so only its own mass pulls; a free
+     * pair orbits with the combined gravitational parameter G (M + m). */
+    double mu = SOLAR_G * (center->mass_kg + (center->fixed ? 0 : body->mass_kg));
+    double closest = orbit_closest_approach_m(vec3d_sub(body->position_m, center->position_m),
+        vec3d_sub(body->velocity_mps, center->velocity_mps), mu);
+    return closest >= center->radius_m + body->radius_m;
+}
+
+double lesson_minimum_velocity_factor(LessonPreset preset)
+{
+    if (preset == LESSON_CORE || preset == LESSON_BARYCENTRIC_CORE || preset < 0 || preset >= LESSON_COUNT) return 1.0;
+    if (!lesson_monitors_contact(preset) || lesson_orbit_clears_parent(preset, LESSON_FACTOR_FLOOR)) return LESSON_FACTOR_FLOOR;
+    /* Slower starts lower the periapsis monotonically, so bisect between a
+     * failing and a clearing factor, then round up to whole hundredths so the
+     * published limit is a readable slider value that still clears. */
+    double low = LESSON_FACTOR_FLOOR, high = LESSON_FACTOR_CEILING;
+    for (int i = 0; i < 60; ++i) {
+        double middle = 0.5 * (low + high);
+        if (lesson_orbit_clears_parent(preset, middle)) high = middle; else low = middle;
+    }
+    double rounded = ceil(high * 100.0 - 1e-9) / 100.0;
+    while (!lesson_orbit_clears_parent(preset, rounded) && rounded < LESSON_FACTOR_CEILING) rounded += 0.01;
+    return rounded;
+}
+
+bool lesson_create(LessonPreset preset, double velocity_factor, SolarSystem *result)
+{
+    if (preset < 0 || preset >= LESSON_COUNT || !isfinite(velocity_factor) ||
+        velocity_factor < lesson_minimum_velocity_factor(preset) || velocity_factor > LESSON_FACTOR_CEILING)
+        return false;
+    if ((preset == LESSON_CORE || preset == LESSON_BARYCENTRIC_CORE) && velocity_factor != 1.0) return false;
+    build_lesson(preset, velocity_factor, result);
     return true;
 }
 

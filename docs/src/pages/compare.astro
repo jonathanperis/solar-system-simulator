@@ -60,7 +60,7 @@ const plots = [
             </div>
           </section>)}
         </div>
-        <p>Sample spacing must be a whole number of each run's ticks; duration must contain whole samples. The core uses 15-second Verlet; core and barycentric-core preserve initial speed factor 1. The head-on sphere lesson requires bounce/merge and 0.01–0.25-second steps. Its masses, radii and speeds are chosen classroom parameters.</p>
+        <p>Sample spacing must be a whole number of each run's ticks; duration must contain whole samples. The core uses 15-second Verlet; core and barycentric-core preserve initial speed factor 1. Each orbital lesson has a C-owned minimum speed factor so its starting orbit cannot pass through the parent; if a coarse step still carries a run into contact, <code>contact_detected</code> becomes 1 and that run's analytical errors are withheld. The head-on sphere lesson requires bounce/merge and 0.01–0.25-second steps. Its masses, radii and speeds are chosen classroom parameters.</p>
         <p id="config-error" data-config-error role="alert" hidden></p>
         </details>
         <details data-save-tools><summary>Save, share, or download</summary>

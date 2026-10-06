@@ -51,10 +51,12 @@ EM_JS(void, solar_web_clear_bodies, (int experiment, int count), {
 EM_JS(void, solar_web_report_lab, (int lesson, int method, double dt, double ticks, double factor,
     double acceleration, double specific_energy, double energy, double energy_change, int isolated,
     double momentum, double angular_momentum, double magnification, int trail_frame, int vectors,
-    double px, double py, double pz, double vx, double vy, double vz, int contact_mode), {
+    double px, double py, double pz, double vx, double vy, double vz, int contact_mode,
+    double min_factor, double contact_seconds), {
     Module.reportLabState({lesson, method, dt, ticks, factor, acceleration, specificEnergy: specific_energy,
         energy, energyChange: energy_change, isolated: !!isolated, momentum, angularMomentum: angular_momentum,
-        magnification, trailFrame: trail_frame, vectors: !!vectors, position: [px, py, pz], velocity: [vx, vy, vz], contactMode: contact_mode});
+        magnification, trailFrame: trail_frame, vectors: !!vectors, position: [px, py, pz], velocity: [vx, vy, vz], contactMode: contact_mode,
+        minFactor: min_factor, contactSeconds: contact_seconds});
 })
 
 EM_JS(void, solar_web_download_csv, (const char *data, int length), {
@@ -307,7 +309,9 @@ static void report_web_state(const SolarApp *state)
         vec3d_length(diagnostics.momentum_kg_mps), vec3d_length(diagnostics.angular_momentum_kg_m2ps),
         renderer_radius_magnification(selected, state->render_mode), state->trail_frame, state->vectors,
         selected->position_m.x, selected->position_m.y, selected->position_m.z,
-        selected->velocity_mps.x, selected->velocity_mps.y, selected->velocity_mps.z, session->clock.collision_mode);
+        selected->velocity_mps.x, selected->velocity_mps.y, selected->velocity_mps.z, session->clock.collision_mode,
+        lesson_minimum_velocity_factor(session->lesson),
+        (double)session->clock.contact_tick * simulation_clock_step_seconds(&session->clock));
     ForceContribution forces[SOLAR_SYSTEM_BODY_CAPACITY];
     size_t count = physics_force_breakdown(&session->system, session->selected_body_index, forces, SOLAR_SYSTEM_BODY_CAPACITY);
     solar_web_begin_forces(session->system.elapsed_seconds);
@@ -325,6 +329,12 @@ EMSCRIPTEN_KEEPALIVE int solar_web_lesson(int lesson, double factor, int method,
     populate_web_bodies();
     report_web_state(&app);
     return 1;
+}
+
+/* Lets the lesson form use C's per-lesson lower speed bound as its minimum. */
+EMSCRIPTEN_KEEPALIVE double solar_web_minimum_factor(int lesson)
+{
+    return lesson_minimum_velocity_factor((LessonPreset)lesson);
 }
 
 EMSCRIPTEN_KEEPALIVE int solar_web_export(void)
@@ -459,7 +469,8 @@ static void solar_app_update_draw(void *user_data)
             if (IsKeyPressed(KEY_D)) start_app_lesson(app, app->session.lesson, app->session.velocity_factor,
                 app->session.clock.integrator, app->session.lesson == LESSON_COLLISION ? (dt == .1 ? .2 : .1) : dt == 15 ? 75 : dt == 75 ? 150 : dt == 150 ? 300 : 15);
             if (IsKeyPressed(KEY_EQUAL) || IsKeyPressed(KEY_MINUS)) start_app_lesson(app, app->session.lesson,
-                fmax(0.1, fmin(2, app->session.velocity_factor + (IsKeyPressed(KEY_EQUAL) ? 0.1 : -0.1))), app->session.clock.integrator, dt);
+                fmax(lesson_minimum_velocity_factor(app->session.lesson),
+                    fmin(2, app->session.velocity_factor + (IsKeyPressed(KEY_EQUAL) ? 0.1 : -0.1))), app->session.clock.integrator, dt);
         }
 #endif
     }
@@ -537,6 +548,10 @@ static void solar_app_update_draw(void *user_data)
         app->trail_frame == RENDER_TRAILS_PARENT ? "parent-relative" : "absolute"), 20, 385, 16, RAYWHITE);
     DrawText("Vectors: green velocity / orange acceleration; lengths are illustrative", 20, 410, 16, RAYWHITE);
     DrawText(app->feedback, 20, 435, 16, RAYWHITE);
+    if (app->session.clock.contact_tick) {
+        DrawText(TextFormat("Contact at %.0f s: bodies touched; point-mass motion after this is not physical and lesson errors are withheld",
+            (double)app->session.clock.contact_tick * simulation_clock_step_seconds(&app->session.clock)), 20, 540, 16, RED);
+    }
     ForceContribution forces[3];
     size_t force_count = physics_force_breakdown(&app->session.system, app->session.selected_body_index, forces, 3);
     for (size_t i = 0; i < force_count; ++i) {
