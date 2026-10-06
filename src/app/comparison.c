@@ -8,7 +8,7 @@ const char *comparison_field_name(LabField field)
     const char *names[] = {"radius_m", "speed_mps", "energy_change", "total_energy_j", "phase_error_deg",
         "reference_error_m", "specific_energy_jpkg", "linear_momentum_kg_mps", "angular_momentum_kg_m2ps",
         "resonant_angle_deg", "minimum_distance_m", "collision_count", "kinetic_loss_j", "body_count",
-        "x_m", "y_m", "z_m", "subject_present", "ticks", "contact_detected"};
+        "x_m", "y_m", "z_m", "subject_present", "ticks", "contact_sphere_crossed"};
     return field >= 0 && field < LAB_FIELD_COUNT ? names[field] : "";
 }
 
@@ -43,7 +43,7 @@ static void measure(ComparisonRun *run, size_t side)
     values[LAB_BODY_COUNT] = (double)system->body_count;
     values[LAB_TICKS] = (double)session->clock.ticks;
     values[LAB_MIN_DISTANCE_M] = run->minimum_distance[side];
-    values[LAB_CONTACT_DETECTED] = session->clock.contact_tick != 0;
+    values[LAB_CONTACT_SPHERE_CROSSED] = session->clock.contact_tick != 0;
     int index = comparison_subject_index(run, side);
     values[LAB_SUBJECT_PRESENT] = index >= 0;
     if (index < 0) return;
@@ -56,8 +56,10 @@ static void measure(ComparisonRun *run, size_t side)
     values[LAB_SPEED_MPS] = body.has_parent ? body.speed_mps : vec3d_length(system->bodies[index].velocity_mps);
     values[LAB_SPECIFIC_ENERGY_JPKG] = body.has_parent ? body.specific_energy_jpkg : NAN;
     Vec3d expected;
-    /* After contact the point-mass trajectory is unphysical; an error against
-     * the analytical orbit would measure nothing meaningful, so withhold it.
+    /* Once a step's straight-line drift has crossed a contact sphere the run
+     * may have passed through the parent (or a coarse step merely cut across
+     * the curved arc). Either way an error against the analytical orbit is no
+     * longer trustworthy, so it is withheld conservatively.
      * Otherwise evaluate the reference at this side's own clock (ticks * dt),
      * the instant its state actually describes; it equals the published
      * checkpoint time up to the alignment tolerance of lab_ticks_for. */
@@ -66,6 +68,8 @@ static void measure(ComparisonRun *run, size_t side)
         values[LAB_PHASE_ERROR_DEG] = atan2(vec3d_length(vec3d_cross(position, expected)), vec3d_dot(position, expected)) * 180 / acos(-1.0);
         run->maximum_phase_error[side] = fmax(run->maximum_phase_error[side], values[LAB_PHASE_ERROR_DEG]);
     }
+    /* A pre-contact maximum must not later read as "budget met". */
+    if (session->clock.contact_tick) run->maximum_phase_error[side] = NAN;
 }
 
 static void record_checkpoint(ComparisonRun *run)

@@ -58,7 +58,7 @@ bool lesson_configuration_valid(LessonPreset lesson, double velocity_factor, Phy
      * minimum of 1 and must keep their sourced speeds unchanged. */
     bool fixed_speed = lesson == LESSON_CORE || lesson == LESSON_BARYCENTRIC_CORE;
     double maximum_factor = fixed_speed ? 1.0 : 2.0;
-    if (!isfinite(velocity_factor) || velocity_factor < lesson_minimum_velocity_factor(lesson) ||
+    if (!isfinite(velocity_factor) || !(velocity_factor >= lesson_minimum_velocity_factor(lesson)) ||
         velocity_factor > maximum_factor) return false;
     if (!isfinite(step_seconds) || step_seconds < .01 || step_seconds > 3600) return false;
     if (integrator != PHYSICS_VERLET && integrator != PHYSICS_EULER) return false;

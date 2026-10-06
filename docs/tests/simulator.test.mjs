@@ -140,9 +140,9 @@ test('lesson diagnostics distinguish physical units, normalized energy, and edit
   controls.lesson.value = '6';
   runtime.reportLabState({ ...state, lesson: 6, factor: 0.8, minFactor: 0.73, contactSeconds: 0 });
   assert.equal(controls.factor.min, '0.73');
-  assert.doesNotMatch(readouts.scene.textContent, /Contact/);
+  assert.doesNotMatch(readouts.scene.textContent, /Contact sphere/);
   runtime.reportLabState({ ...state, lesson: 6, factor: 0.8, minFactor: 0.73, contactSeconds: 5400 });
-  assert.match(readouts.scene.textContent, /Contact at 5400 s.*not physical/);
+  assert.match(readouts.scene.textContent, /Contact sphere crossed at 5400 s.*coarse-step artifact/);
 });
 
 test('recoverable Emscripten stderr is logged without disabling the runtime; fatal paths still fail', () => {

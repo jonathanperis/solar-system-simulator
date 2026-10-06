@@ -245,8 +245,8 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
         controls.factor.value = String(state.factor);
         reportedConfig = config;
       }
-      if (state.minFactor !== undefined && Number(controls.lesson.value) === state.lesson) controls.factor.min = String(state.minFactor);
-      const contact = state.contactSeconds ? ` · Contact at ${state.contactSeconds} s: bodies touched; later point-mass motion is not physical and lesson errors are withheld` : '';
+      if (Number.isFinite(state.minFactor) && Number(controls.lesson.value) === state.lesson) controls.factor.min = String(state.minFactor);
+      const contact = state.contactSeconds ? ` · Contact sphere crossed at ${state.contactSeconds} s: a step's straight-line drift passed within the bodies' radii (may be a coarse-step artifact); lesson errors are withheld` : '';
       setText(readouts.scene, `${activeBodyCount} active bodies · ${lessonNames[state.lesson] ?? 'Catalog epoch JD 2461200.5 TDB'}${contact}`);
       setText(controls.step, `Step +${state.dt} s`);
       setText(controls.trails, `Trails: ${state.trailFrame ? 'Parent-relative' : 'Absolute'}`);

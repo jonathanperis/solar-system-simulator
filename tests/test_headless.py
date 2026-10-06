@@ -37,7 +37,7 @@ class HeadlessLab(unittest.TestCase):
         radius = math.hypot(float(earth["x_m"]), float(earth["z_m"]))
         self.assertLess(abs(radius / 149597870700 - 1), 1e-6)
         self.assertIn("# contact_monitor: on", a.stdout)
-        self.assertEqual(earth["contact_detected"], "0")
+        self.assertEqual(earth["contact_sphere_crossed"], "0")
         euler = self.run_lab(*args, "--integrator", "euler")
         self.assertEqual(euler.returncode, 0, euler.stderr)
         self.assertNotEqual(euler.stdout, a.stdout)

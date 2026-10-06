@@ -549,7 +549,7 @@ static void solar_app_update_draw(void *user_data)
     DrawText("Vectors: green velocity / orange acceleration; lengths are illustrative", 20, 410, 16, RAYWHITE);
     DrawText(state->feedback, 20, 435, 16, RAYWHITE);
     if (state->session.clock.contact_tick) {
-        DrawText(TextFormat("Contact at %.0f s: bodies touched; point-mass motion after this is not physical and lesson errors are withheld",
+        DrawText(TextFormat("Contact sphere crossed at %.0f s (a step's straight-line drift; may be a coarse-step artifact): lesson errors withheld",
             (double)state->session.clock.contact_tick * simulation_clock_step_seconds(&state->session.clock)), 20, 540, 16, RED);
     }
     ForceContribution forces[3];
