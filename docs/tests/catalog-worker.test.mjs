@@ -9,7 +9,7 @@ function startWorker() {
   const messages=[];
   worker.on('message',m=>{messages.push(m);if(m.hits)assert(m.hits.length<=50);});
   const ready=new Promise((resolve,reject)=>{worker.once('error',reject);worker.once('message',resolve);});
-  const search=(request,overrides={})=>({type:'search',base:'https://catalog.test/',manifest,query:'',group:'',qmax:Infinity,size:'',page:0,request,...overrides});
+  const search=(request,overrides={})=>({type:'search',base:'https://catalog.test/solar-system-simulator/catalog/',manifest,query:'',group:'',qmax:Infinity,size:'',page:0,request,...overrides});
   const reply=(predicate)=>new Promise((resolve)=>{
     const listener=m=>{if(predicate(m)){worker.off('message',listener);resolve(m);}};
     worker.on('message',listener);
@@ -76,7 +76,7 @@ test('an explicit cancel stops the full download and record lookups reuse a smal
     assert((await fetched()).length<manifest.shards.length);
 
     const record=(request,id,group)=>{const answer=reply(m=>m.type==='record'&&m.request===request);
-      worker.postMessage({type:'record',base:'https://catalog.test/',manifest,id,group,request});return answer;};
+      worker.postMessage({type:'record',base:'https://catalog.test/solar-system-simulator/catalog/',manifest,id,group,request});return answer;};
     const ceres=await record(2,20000001,'MBA');
     assert.equal(ceres.record[1],'1 Ceres (A801 AA)');
     const first=await fetched();
@@ -89,5 +89,24 @@ test('an explicit cancel stops the full download and record lookups reuse a smal
 
     pending=done(5);worker.postMessage(search(5,{query:'Ceres',allowFullScan:true}));
     assert((await pending).hits.some(hit=>hit.id===20000001),'a later confirmed search restarts the download');
+  } finally {await worker.terminate();}
+});
+
+test('the worker rejects messages that would steer requests off the catalog directory', async()=>{
+  const {worker,ready,search,reply,fetched}=startWorker();
+  try {
+    await ready;
+    const hostileShard={...manifest.shards[0],index:{...manifest.shards[0].index,file:'../../secrets.json'}};
+    for (const [request,overrides] of [
+      [1,{base:'https://evil.test/catalog/'}],
+      [2,{base:'https://catalog.test/solar-system-simulator/'}],
+      [3,{manifest:{...manifest,shards:[hostileShard]}}],
+      [4,{page:-1}]
+    ]) {
+      const answer=reply(m=>m.request===request&&m.done);
+      worker.postMessage(search(request,overrides));
+      assert.match((await answer).error,/Invalid catalog request/);
+    }
+    assert.deepEqual(await fetched(),[]);
   } finally {await worker.terminate();}
 });

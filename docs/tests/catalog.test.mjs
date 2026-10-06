@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
-import { matchesIndex, experimentText, fetchPacked, physicalValues, numericIdentityCandidates, routeShards, ColumnarIndex, columnarRowLimit, integrityUnavailableMessage } from '../src/lib/catalog.ts';
+import { matchesIndex, experimentText, fetchPacked, physicalValues, numericIdentityCandidates, routeShards, ColumnarIndex, columnarRowLimit, integrityUnavailableMessage, catalogAssetUrl, parseWorkerMessage } from '../src/lib/catalog.ts';
 
 test('catalog filters retain provisional designations, missing size, and explicit physical supplements', () => {
   const row = [20134340,'134340 Pluto (1930 BM)','134340',29.6,null,true];
@@ -65,17 +65,47 @@ test('catalog integrity checks fail clearly without Web Crypto instead of skippi
   assert.match(integrityUnavailableMessage, /SHA-256/);
 });
 
+test('catalog requests resolve only pinned shard file names under the catalog directory', () => {
+  const asset = file => ({ file, bytes: 1, sha256: '', contentSha256: '' });
+  const snapshot = 'ab'.repeat(32);
+  assert.equal(catalogAssetUrl('https://site.test/solar-system-simulator/catalog/', asset('MBA-0009-index.json.gz'), snapshot),
+    `https://site.test/solar-system-simulator/catalog/MBA-0009-index.json.gz?snapshot=${snapshot}`);
+  assert.match(catalogAssetUrl('/solar-system-simulator/catalog/', asset('overview.json.gz'), snapshot), /\/solar-system-simulator\/catalog\/overview\.json\.gz\?snapshot=/);
+  for (const file of ['../manifest.json', 'https://evil.test/x.json.gz', '//evil.test/MBA-0001.json.gz', 'MBA-0001.json.gz?x=1', 'mba-0001.json.gz', 'MBA-0001-index.json', '%2e%2e/MBA-0001.json.gz'])
+    assert.throws(() => catalogAssetUrl('https://site.test/catalog/', asset(file), snapshot), /catalog file/i, file);
+  assert.throws(() => catalogAssetUrl('https://site.test/catalog/', asset('MBA-0001.json.gz'), 'x&y'), /snapshot/i);
+  assert.throws(() => catalogAssetUrl('https://evil.test/catalog/', asset('MBA-0001.json.gz'), snapshot, 'https://site.test/'), /origin/i);
+});
+
+test('worker messages are validated strictly before any request is built', () => {
+  const manifest = { schema: 2, sourceSha256: 'ab'.repeat(32), epoch: 2461200.5, count: 1, classNames: {}, classes: {},
+    overview: { file: 'overview.json.gz', bytes: 1, sha256: 'a', contentSha256: 'b' },
+    shards: [{ class: 'MBA', count: 1, minId: 1, maxId: 2, index: { file: 'MBA-0001-index.json.gz', bytes: 1, sha256: 'a', contentSha256: 'b' },
+      data: { file: 'MBA-0001.json.gz', bytes: 1, sha256: 'a', contentSha256: 'b' } }] };
+  const origin = 'https://site.test';
+  const search = { type: 'search', base: `${origin}/catalog/`, manifest, query: 'ceres', group: '', qmax: Infinity, size: '', page: 0, request: 1, allowFullScan: false };
+  assert.equal(parseWorkerMessage(search, origin)?.type, 'search');
+  assert.equal(parseWorkerMessage({ type: 'record', base: `${origin}/catalog/`, manifest, id: 1, group: 'MBA', request: 2 }, origin)?.type, 'record');
+  assert.deepEqual(parseWorkerMessage({ type: 'cancel' }, origin), { type: 'cancel' });
+  for (const bad of [null, 'search', { type: 'other' }, { ...search, base: 'https://evil.test/catalog/' }, { ...search, page: -1 }, { ...search, request: 1.5 },
+    { ...search, query: 7 }, { ...search, size: 'huge' }, { ...search, qmax: 'x' }, { ...search, query: 'x'.repeat(300) },
+    { ...search, manifest: { ...manifest, schema: 1 } }, { ...search, manifest: { ...manifest, sourceSha256: '../x' } },
+    { ...search, manifest: { ...manifest, shards: [{ ...manifest.shards[0], index: { ...manifest.shards[0].index, file: '../secret' } }] } },
+    { type: 'record', base: `${origin}/catalog/`, manifest, id: 'x', group: 'MBA', request: 2 }])
+    assert.equal(parseWorkerMessage(bad, origin), undefined, JSON.stringify(bad)?.slice(0, 120));
+});
+
 test('packed assets verify before decoding with or without transparent HTTP decompression', async t => {
   const raw=Buffer.from(JSON.stringify({bodies:1564244})), compressed=gzipSync(raw,{mtime:0});
-  const asset={file:'fixture.json.gz',bytes:compressed.length,
+  const asset={file:'overview.json.gz',bytes:compressed.length,
     sha256:createHash('sha256').update(compressed).digest('hex'),
     contentSha256:createHash('sha256').update(raw).digest('hex')};
   const original=globalThis.fetch;
   t.after(()=>{globalThis.fetch=original;});
   globalThis.fetch=async()=>new Response(compressed);
-  assert.deepEqual(await fetchPacked('/',asset,'fixture'),{bodies:1564244});
+  assert.deepEqual(await fetchPacked('https://site.test/catalog/',asset,'ab'.repeat(32)),{bodies:1564244});
   globalThis.fetch=async()=>new Response(raw);
-  assert.deepEqual(await fetchPacked('/',asset,'fixture'),{bodies:1564244});
+  assert.deepEqual(await fetchPacked('https://site.test/catalog/',asset,'ab'.repeat(32)),{bodies:1564244});
   globalThis.fetch=async()=>new Response(Buffer.from('{"bodies":0}'));
-  await assert.rejects(fetchPacked('/',asset,'fixture'),/snapshot mismatch/);
+  await assert.rejects(fetchPacked('https://site.test/catalog/',asset,'ab'.repeat(32)),/snapshot mismatch/);
 });
