@@ -2,6 +2,8 @@
 #define SOLAR_EXPERIMENT_H
 #include "solar_system.h"
 #define SOLAR_CATALOG_EPOCH_JD 2461200.5
+/* The header spells the epoch exactly as the catalog manifest does. */
+#define SOLAR_CATALOG_EPOCH_TEXT "2461200.5"
 #define SOLAR_EXPERIMENT_CAPACITY 16
 #define SOLAR_EXPERIMENT_NAME_BYTES 96
 #define SOLAR_EXPERIMENT_TEXT_BYTES 16384

@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "app/simulation_session.h"
 #include "sim/constants.h"
@@ -39,11 +40,15 @@ static void test_rows_are_strict_tab_separated_values(void)
         " 20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n",
         "+20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n",
         "20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n\n",
+        "20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2.0\t2\n",
+        "20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t5\t0\t2\t2\n",
     };
     for (size_t i = 0; i < sizeof(rejected) / sizeof(rejected[0]); ++i) {
         snprintf(text, sizeof(text), "%s%s", header, rejected[i]);
         assert(!experiment_parse(text, &system, names));
     }
+    /* The exact header text and the numeric epoch name the same instant. */
+    assert(strtod(SOLAR_CATALOG_EPOCH_TEXT, NULL) == SOLAR_CATALOG_EPOCH_JD);
     const char *headers[] = {"SOLAR_EXPERIMENT_V1  2461200.5\n", "SOLAR_EXPERIMENT_V1\t2461200.5\n",
         "SOLAR_EXPERIMENT_V1 2461200.5 \n", "SOLAR_EXPERIMENT_V1 0x1.2c70840000000p+21\n"};
     for (size_t i = 0; i < sizeof(headers) / sizeof(headers[0]); ++i) {

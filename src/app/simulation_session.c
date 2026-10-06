@@ -52,18 +52,22 @@ bool simulation_session_start_lesson(SimulationSession *session, LessonPreset le
 bool lesson_configuration_valid(LessonPreset lesson, double velocity_factor, PhysicsIntegrator integrator,
     double step_seconds, CollisionMode collision_mode)
 {
+    if (lesson < 0 || lesson >= LESSON_COUNT) return false;
     /* The lower factor bound is lesson-specific: slower starts would carry the
-     * subject's orbit through its parent (lesson_minimum_velocity_factor). */
-    if (lesson < 0 || lesson >= LESSON_COUNT || !isfinite(velocity_factor) ||
-        velocity_factor < lesson_minimum_velocity_factor(lesson) || velocity_factor > 2 ||
-        !isfinite(step_seconds) || step_seconds < .01 || step_seconds > 3600 ||
-        (integrator != PHYSICS_VERLET && integrator != PHYSICS_EULER) ||
-        (lesson == LESSON_CORE && (integrator != PHYSICS_VERLET || step_seconds != SOLAR_APP_MAX_PHYSICS_STEP_SECONDS)) ||
-        ((lesson == LESSON_CORE || lesson == LESSON_BARYCENTRIC_CORE) && velocity_factor != 1)) return false;
+     * subject's orbit through its parent. Core and barycentric-core report a
+     * minimum of 1 and must keep their sourced speeds unchanged. */
+    bool fixed_speed = lesson == LESSON_CORE || lesson == LESSON_BARYCENTRIC_CORE;
+    double maximum_factor = fixed_speed ? 1.0 : 2.0;
+    if (!isfinite(velocity_factor) || velocity_factor < lesson_minimum_velocity_factor(lesson) ||
+        velocity_factor > maximum_factor) return false;
+    if (!isfinite(step_seconds) || step_seconds < .01 || step_seconds > 3600) return false;
+    if (integrator != PHYSICS_VERLET && integrator != PHYSICS_EULER) return false;
+    bool core_policy = integrator == PHYSICS_VERLET && step_seconds == SOLAR_APP_MAX_PHYSICS_STEP_SECONDS;
+    if (lesson == LESSON_CORE && !core_policy) return false;
+    if (lesson != LESSON_COLLISION) return collision_mode == COLLISION_NONE;
     /* At the largest allowed speed, a .25 s drift is only 10 m: smaller than
      * the 20 m contact separation. These head-on spheres cannot tunnel. */
-    return lesson == LESSON_COLLISION ? step_seconds <= .25 &&
-        (collision_mode == COLLISION_BOUNCE || collision_mode == COLLISION_MERGE) : collision_mode == COLLISION_NONE;
+    return step_seconds <= .25 && (collision_mode == COLLISION_BOUNCE || collision_mode == COLLISION_MERGE);
 }
 
 bool simulation_session_start_configured_lesson(SimulationSession *session, LessonPreset lesson, double velocity_factor,
