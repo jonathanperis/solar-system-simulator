@@ -32,7 +32,7 @@ C11: regenerated small-body shards ⊥ committed to `main` history; next refresh
 
 I.cli: `make` → native app
 
-I.lab: `make headless` → `build/solar-lab`; scene/duration/dt/sample/integrator/initial-speed options stream reproducible SI CSV; `--catalog` exposes the C body manifest.
+I.lab: `make headless` → `build/solar-lab`; scene/duration/dt/sample/integrator/initial-speed options stream reproducible SI CSV; `--catalog` exposes the C body manifest; session CSV carries `contact_detected`, and comparison CSV carries `contact_detected_a/b`.
 
 I.export: native E and web Advanced → Download measurements (CSV) use the same C `solar-lab-v1` CSV writer as headless series, including revision, configuration, physical-data quality, ticks and SI measurements.
 
@@ -90,9 +90,9 @@ V4: core/catalog stepping = velocity-Verlet kick-drift-kick; isolated learning p
 
 V5: core scene starts Sun through Jupiter, followed by the 115 Jovian moons, Saturn, Uranus and Neptune (128 bodies). Existing IDs/indices remain stable; outer planets use NAIF center IDs 699/799/899. The complete small-body catalog is separate from the active scene; selected experiments use Sun/eight planets plus at most 16 selected records at one source epoch.
 
-V6: planets + Vesta start heliocentric perihelion; Moon starts Earth-relative perigee; Phobos/Deimos start Mars-relative periareion; speeds use vis-viva.
+V6: planets, Vesta and Saturn–Neptune start at heliocentric perihelion; for Earth, Mars and Jupiter the family barycenter (parent plus known-mass direct moons; massless test particles weigh nothing) takes that state while each moon keeps its sourced parent-relative state (Moon at perigee, Phobos/Deimos at periareion, Jovian mean elements). Speeds use vis-viva. Masses of the Sun through Mars are DE440 GM / CODATA 2018 G.
 
-V7: legacy no-inclination initial states remain in X/Z. Jovian moon initial states preserve sourced inclination, orbital direction, eccentricity and phase; source frames convert into the common simulation frame before adding Jupiter's absolute position and velocity.
+V7: simulation axes are the proper rotation (x, y, z) = ecliptic (X, Z, −Y); +Y is ecliptic north and prograde angular momentum points to +Y, so prograde orbits draw counterclockwise from above. Legacy no-inclination states stay in the X/Z plane. Jovian moons keep sourced inclination, orbital direction, eccentricity and phase; source frames convert through `orbit.c`, the only conic solver, before Jupiter's absolute state is added.
 
 V8: app accumulates frame-scaled time and advances only in fixed physics steps (15 seconds for core/catalog; explicitly configured for lessons); unconsumed time remains in the app clock. Per-frame work is bounded to keep controls responsive. Once pending work is drained, equal accumulated time produces the same state regardless of frame partitioning; requested and achieved speeds are distinguished. Hidden/minimized wall time is excluded, and so is any single frame delta above `SOLAR_APP_STALL_FRAME_SECONDS` (1 s) or a negative/non-finite one: sleep and debugger stalls are discarded like a background resume. Frames at or below 1 s are never dropped.
 
@@ -135,6 +135,8 @@ V26: a comparison side or headless run contains at most `SOLAR_LAB_MAX_TICKS` = 
 V27: catalog search cost is proportional to the query: digits-only queries route by manifest ID range; the full-index download is stated and needs user confirmation; one confirmed scan builds a bounded in-memory columnar index (≤2.5 M rows, about 60 MB) reused for the session; record lookup runs in the worker with an LRU of ≤3 data shards; SHA-256 verification is mandatory. Fetch URLs come only from manifest file names matching the pinned shard pattern, resolved inside the site's own `catalog/` directory; the worker accepts only dedicated-worker or same-origin messages that pass strict structural validation.
 
 V28: browser session data is untrusted: a prepared experiment is validated and its UTF-8 text kept below `SOLAR_EXPERIMENT_TEXT_BYTES` before `ccall`.
+
+V29: lesson speed factors are at least `lesson_minimum_velocity_factor` (two-body closest approach ≥ sum of radii, rounded up to 0.01) and at most 2; native, web and headless inputs respect the C limit. Lesson runs flag swept sphere contact; after contact, analytical lesson errors are withheld and CSV/inspector show `contact_detected`. Scene capacity is compile-time checked and appends are bounded. Render-scale policy lives in `src/render/`.
 
 ## §A — Runtime accuracy repair, 2026-09-09
 
@@ -383,7 +385,7 @@ T57|x|lead comparisons with questions, explain invalid fields, and publish begin
 T58|x|verify all eleven UX findings, route/bridge contracts, desktop/mobile journeys and regression scan|A45,A46,A47,A48,A49
 
 T59|x|restore green CI dependency gate, group CodeQL updates, share/cache the raylib pin, bound/cancel CI runs, harden Make flags and replay every example natively and in WASM|A51,A52,A56,B18,B19
-T60| |correct scene handedness, lesson contact policy, scene capacity, strict experiment parsing, single Kepler solver, render-policy placement, GM-derived masses and barycentric families|A53,A54,A58
+T60|x|correct scene handedness, lesson contact policy, scene capacity, strict experiment parsing, single Kepler solver, render-policy placement, GM-derived masses and barycentric families|A53,A54,A58
 T61|x|discard stalled frames, bound camera yaw, harden CSV targets and work limits, share input reading, fix comparison subject measurement and check command alignment|A55,A57
 T62|x|make catalog search/lookup proportional to the query, keep non-fatal runtime warnings non-fatal, close accessibility/CSP/font/count/download findings and guarantee Astro ownership of every page|A59,A60
 T63|x|prune local packs, move screenshots, harden data tools and document data usage|A61
@@ -430,3 +432,7 @@ B26|2026-10-06|every catalog search re-fetched, re-hashed and re-parsed all 203 
 B27|2026-10-06|the legacy redirect and sitemap were hand-built strings/files outside Astro and nothing enforced Astro ownership of pages|Astro page plus filename integration, Astro sitemap endpoint, generator-marker and public-HTML checks (A60, V19)
 B28|2026-10-06|the basket download revoked its object URL right after `click()`, which can cancel the download|shared helper with deferred revocation (A59)
 B29|2026-10-06|catalog fetch URLs were built from manifest/message data and the worker accepted unvalidated messages (CodeQL js/client-side-request-forgery, js/missing-origin-check)|pinned-filename URL builder under `catalog/` and strict worker message validation (A59, V27)
+B30|2026-10-06|ecliptic→simulation mapped (X,Z,Y), a reflection: prograde orbits had −Y angular momentum and drew clockwise from north|proper rotation (X,Z,−Y); per-body direction test over core, lessons and experiments (A53, V7)
+B31|2026-10-06|one 0.1–2 factor range for every lesson let point-mass trajectories pass through the parent while still publishing reference errors|per-lesson analytic minimum plus swept contact flag that withholds errors (A54, V29)
+B32|2026-10-06|moons were added around a parent that kept its own heliocentric velocity, so family barycenters drifted (~12 m/s Earth–Moon)|place the family barycenter on the intended state (A58, V6)
+B33|2026-10-06|sscanf `\t` matched any whitespace and `%[^\t]` accepted newlines in experiment names; a second fixed-iteration Kepler solver lived in satellite.c|strict tab split with strtod end-pointer and control-byte rejection; satellites propagate through `orbit.c` (A58)
