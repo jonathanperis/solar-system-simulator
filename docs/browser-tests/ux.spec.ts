@@ -39,6 +39,49 @@ test('scene-first mobile exploration preserves object handoffs, filtering, and d
   await expect(page.getByRole('button', { name: 'Learn', exact: true })).toBeFocused();
 });
 
+test('atlas announces through one status region, settles drags, and keeps readable text', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(base);
+  const atlas = page.locator('[data-orbital-atlas]');
+  await expect(atlas.locator('[aria-live], [role="status"]')).toHaveCount(1);
+  await expect(atlas.locator('[data-atlas-body][aria-expanded]')).toHaveCount(0);
+  await expect(atlas.locator('[data-atlas-body]').first()).toHaveAttribute('aria-pressed', /true|false/);
+  expect(await atlas.locator('.atlas-body').first().evaluate(element => getComputedStyle(element).transitionDuration)).toBe('0s');
+  // Record every status change during a pointer sweep across the chart.
+  await page.evaluate(() => {
+    const status = document.querySelector('[data-atlas-status]')!;
+    (window as unknown as { announcements: string[] }).announcements = [];
+    new MutationObserver(() => (window as unknown as { announcements: string[] }).announcements.push(status.textContent ?? ''))
+      .observe(status, { childList: true, characterData: true, subtree: true });
+  });
+  const box = (await page.locator('[data-atlas-plate="heliocentric"]').boundingBox())!;
+  const cx = box.x + box.width / 2, cy = box.y + box.height / 2, r = box.width * 0.42;
+  await page.mouse.move(cx + r, cy);
+  await page.mouse.down();
+  for (let step = 1; step <= 24; ++step) await page.mouse.move(cx + r * Math.cos(step * Math.PI / 12), cy + r * Math.sin(step * Math.PI / 12));
+  expect(await page.evaluate(() => (window as unknown as { announcements: string[] }).announcements.length)).toBe(0);
+  await page.mouse.up();
+  const announcements = await page.evaluate(() => (window as unknown as { announcements: string[] }).announcements);
+  expect(announcements).toHaveLength(1);
+  expect(announcements[0]).toMatch(/selected\./);
+  for (const width of [320, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    const smallest = await page.evaluate(() => Math.min(...[...document.querySelectorAll('body *')]
+      .filter(element => element.checkVisibility() && [...element.childNodes].some(node => node.nodeType === 3 && node.textContent!.trim()))
+      .map(element => parseFloat(getComputedStyle(element).fontSize))));
+    expect(smallest, `smallest visible text at ${width}px`).toBeGreaterThanOrEqual(12);
+  }
+});
+
+test('the simulator canvas exposes an application role with keyboard help and text readouts', async ({ page }) => {
+  await page.goto(`${base}simulator/`);
+  const canvas = page.getByRole('application', { name: 'Live solar system simulation' });
+  await expect(canvas).toHaveAttribute('aria-describedby', /canvas-keys/);
+  await expect(page.locator('#canvas-keys')).toContainText('Tab leaves the view');
+  await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body:');
+});
+
 test('core catalog discovery, object handoff, and task-word help stay connected', async ({ page }) => {
   await page.goto(`${base}body-catalog/`);
   await page.getByRole('searchbox', { name: 'Search bodies' }).fill('earth');
