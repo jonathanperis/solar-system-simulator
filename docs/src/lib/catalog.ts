@@ -224,7 +224,7 @@ export function experimentText(records: CatalogRecord[], epoch: number): string 
     if (!r.slice(4,11).every(v => typeof v === 'number' && Number.isFinite(v)) || r[5]! <= 0 || r[6]! < 0)
       throw new Error(`Orbit unavailable for ${r[1]}.`);
     const p = physicalValues(r);
-    return [r[0],r[1].replace(/[\t\r\n]/g,' '),...r.slice(5,11),p.massKg,p.radiusM,p.massQuality,p.radiusQuality].join('\t');
+    return [r[0],r[1].replace(/[\u0000-\u001f\u007f]/g,' '),...r.slice(5,11),p.massKg,p.radiusM,p.massQuality,p.radiusQuality].join('\t');
   });
   return `SOLAR_EXPERIMENT_V1 ${epoch}\n${lines.join('\n')}\n`;
 }

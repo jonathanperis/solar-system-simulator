@@ -5,8 +5,56 @@
 #include <string.h>
 #include "app/simulation_session.h"
 #include "sim/constants.h"
+static void test_rows_are_strict_tab_separated_values(void)
+{
+    SolarSystem system;
+    char names[SOLAR_EXPERIMENT_CAPACITY][SOLAR_EXPERIMENT_NAME_BYTES];
+    const char *header = "SOLAR_EXPERIMENT_V1 2461200.5\n";
+    const char *valid = "20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n";
+    char text[512];
+    snprintf(text, sizeof(text), "%s%s", header, valid);
+    assert(experiment_parse(text, &system, names));
+    assert(system.body_count == 10 && strcmp(names[0], "Vesta") == 0);
+    /* The final row may omit its newline; exponent notation stays accepted. */
+    assert(experiment_parse("SOLAR_EXPERIMENT_V1 2461200.5\n"
+        "20000004\tVesta\t2e0\t1E-1\t0\t0\t0\t2461200.5\t0\t0\t2\t2", &system, names));
+
+    /* Each rejected row differs from the valid row in one way. Spaces are not
+     * separators, names cannot carry line breaks or control bytes, and numbers
+     * are plain finite decimals without whitespace, hex or trailing junk. */
+    const char *rejected[] = {
+        "20000004\tVesta\t2 .1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\t0\n",
+        "20000004 Vesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n",
+        "20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0 \t2\t2\n",
+        "20000004\tVes\nta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n",
+        "20000004\tVes\x01ta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n",
+        "20000004\t\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n",
+        "20000004\tVesta\t 2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n",
+        "20000004\tVesta\t2x\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n",
+        "20000004\tVesta\t0x1p1\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n",
+        "20000004\tVesta\tinf\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n",
+        "20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\t\n",
+        "20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\n",
+        "20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\r\n",
+        " 20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n",
+        "+20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n",
+        "20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n\n",
+    };
+    for (size_t i = 0; i < sizeof(rejected) / sizeof(rejected[0]); ++i) {
+        snprintf(text, sizeof(text), "%s%s", header, rejected[i]);
+        assert(!experiment_parse(text, &system, names));
+    }
+    const char *headers[] = {"SOLAR_EXPERIMENT_V1  2461200.5\n", "SOLAR_EXPERIMENT_V1\t2461200.5\n",
+        "SOLAR_EXPERIMENT_V1 2461200.5 \n", "SOLAR_EXPERIMENT_V1 0x1.2c70840000000p+21\n"};
+    for (size_t i = 0; i < sizeof(headers) / sizeof(headers[0]); ++i) {
+        snprintf(text, sizeof(text), "%s%s", headers[i], valid);
+        assert(!experiment_parse(text, &system, names));
+    }
+}
+
 int main(void)
 {
+    test_rows_are_strict_tab_separated_values();
     SimulationSession session = simulation_session_create();
     const char *input = "SOLAR_EXPERIMENT_V1 2461200.5\n"
         "20000004\tVesta\t2.148\t0.09\t7.14\t103.7\t151.4\t2461000.5\t0\t0\t2\t2\n"
