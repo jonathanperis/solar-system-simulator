@@ -68,7 +68,7 @@ The core demonstration contains 128 bodies through Neptune. The separate [small-
 
 - The 2026-09-14 bulk snapshot accounts for 1,568,320 source rows: 1,564,244 qualifying bodies and 4,076 other comet records outside the selected scope. All qualifying entries have usable source orbits.
 - Orbital subsets overlap with the overall total: 1,466,940 belt asteroids, 7,287 trans-Neptunian objects and 1,047 Centaurs. The catalog includes named, provisional and hyperbolic objects, including Oumuamua.
-- 203 shard pairs (one compressed index and one compressed data file per shard) plus a source-accounted density overview total approximately 141 MB. Search scans bounded shards in a worker; each result page contains at most 50 rows. Catalog, density-cell, result and active-physics counts stay distinct.
+- 203 shard pairs (one compressed index and one compressed data file per shard) plus a source-accounted density overview total approximately 141 MB. Search runs in a worker; each result page contains at most 50 rows. Digits-only queries look up an asteroid number or SPK-ID in the shards whose ID range contains it, and unfiltered browsing loads only the shard holding the page. Name and filter searches state the full index download (about 33 MB compressed) and run only after the visitor confirms; that one scan builds a compact in-memory columnar index (about 60 MB) that serves later searches without downloading again. Object details load in the worker from a small cache of data shards. Downloads are SHA-256 verified, so the atlas needs HTTPS or localhost. Catalog, density-cell, result and active-physics counts stay distinct.
 - `src/sim/orbit.c` provides the shared universal-variable conic solver for native/WASM physics and orbital previews. Catalog previews two-body propagate source elements to JD 2461200.5 TDB; their original epochs and quality remain visible.
 - Experiments initialize all eight planets from `data/planet_epoch.json`, a Sun-centered Horizons vector snapshot at the same epoch. They start explicitly and reset to the same session-owned initial state. The 128-body perihelion demonstration remains independently available.
 - Missing mass uses a test particle; missing radius stays Unknown. Bulk SBDB physical values are labeled published with unclassified measurement/estimate quality. `data/small_body_physical.json` adds explicitly sourced dwarf-planet measurements/estimates where the bulk catalog lacks them.
@@ -313,7 +313,7 @@ The live physics inspector displays parent-relative distance (km), parent-relati
 
 Use raylib **6.0** for the visual app (including `rlSetClipPlanes`). The headless runner and `make test-core` do not need raylib or a window. Python **3.10+** runs the offline catalog/build checks. Web builds use Emscripten **6.0.9** and a raylib archive compiled with the same SDK. Docs require Node **24+** (CI uses 26), npm and the committed lockfile.
 
-The docs use Astro **7.3.3**, `@astrojs/check` **0.9.10**, and TypeScript **6.0.3**. TypeScript 7 is outside the checker's supported peer range; upgrade it when that tooling supports it. Emscripten 6 targets Chrome 85+, Firefox 79+, and Safari 14.1+; the app also requires WebGL and the catalog uses modern browser APIs, so use a current browser rather than treating those compiler minimums as a tested support matrix.
+The docs use Astro **7.3.6**, `@astrojs/check` **0.9.10**, and TypeScript **6.0.3**. TypeScript 7 is outside the checker's supported peer range; upgrade it when that tooling supports it. Emscripten 6 targets Chrome 85+, Firefox 79+, and Safari 14.1+; the app also requires WebGL and the catalog uses modern browser APIs, so use a current browser rather than treating those compiler minimums as a tested support matrix.
 
 For the web library, use a raylib 6.0 source checkout and the same Emscripten SDK as the app. Run `make PLATFORM=PLATFORM_WEB -C /absolute/path/to/raylib/src`; force a platform rebuild when reusing native object files. Follow the complete [browser runtime recipe](#browser-runtime) below to stage every required artifact.
 
@@ -345,6 +345,8 @@ Local tests use installed Chrome in isolated contexts; CI installs pinned Chromi
 
 The [live simulator](https://jonathanperis.github.io/solar-system-simulator/simulator/) is an Astro page using the shared site layout. Emscripten compiles the same C source into a JavaScript loader and `.wasm` binary; Astro owns the canvas, accessible readouts, loading errors, and explanatory content. The previous `/wasm/solar-system-simulator.html` address redirects to `/simulator/`.
 
+Every published page is an Astro page, including that compatibility redirect (rendered from `docs/src/pages/wasm/solar-system-simulator.html.astro` and published at its historic filename) and the generated `sitemap.xml`. `make docs-check` fails if a generated HTML file lacks the layout's Astro generator marker or if `docs/public/` contains HTML, a sitemap, or a robots file. Each page also carries a strict Content-Security-Policy (same-origin scripts, styles, fonts and connections plus `'wasm-unsafe-eval'`; Google Analytics hosts only on deployed `main`), and fonts are self-hosted under the SIL Open Font License.
+
 ```sh
 make docs-assets RAYLIB_WEB_SRC=/absolute/path/to/raylib/src
 npm ci --prefix docs
@@ -357,7 +359,7 @@ npm run preview --prefix docs
 
 Open the printed loopback URL under `/solar-system-simulator/`. Run commands from the repository root. `make docs-assets` validates and stages all five runtime files — `solar-system-simulator.js`, `solar-system-simulator.wasm`, `catalog-orbits.wasm`, `learning-lab.mjs`, and `learning-lab.wasm` — plus `build-info.json`. The manifest records source revision and checksums. `make dist-wasm RAYLIB_WEB_SRC=/absolute/path/to/raylib/src` optionally packages the same six files into a ZIP; Astro supplies the HTML pages.
 
-Upgrading an older checkout? Move any legacy generated `docs/public/wasm/solar-system-simulator.html` outside `docs/public/` before building. A public HTML file at that path shadows Astro's redirect; `make docs-check` rejects the stale standalone page.
+Upgrading an older checkout? Move any legacy generated `docs/public/wasm/solar-system-simulator.html` outside `docs/public/` before building. `make docs-check` rejects any HTML file under `docs/public/`.
 
 For content-only edits, reuse a validated runtime bundle, then rerun the docs tests, check, build, and `make docs-check`. Rebuild runtime assets after C changes. For live content editing, use `npm run dev:background --prefix docs`; inspect or stop that server with `dev:status`, `dev:logs`, and `dev:stop`. The static site and documentation live together in `docs/`.
 
@@ -387,7 +389,7 @@ SPEC.md                # current contracts, roadmap, acceptance and audit histor
 PRODUCT.md / DESIGN.md # learning goals and archival solar-chart visual direction
 ```
 
-When updating documentation, check shared claims in the README, `docs/src/lib/site.ts`, `docs/src/lib/sourceMap.ts`, and the relevant field-guide page. Keep new page links and `docs/public/sitemap.xml` aligned; `make docs-check` verifies the published routes, assets, and sitemap. Catalog counts describe pinned snapshots, not automatically refreshed live inventories.
+When updating documentation, check shared claims in the README, `docs/src/lib/site.ts`, `docs/src/lib/sourceMap.ts`, and the relevant field-guide page. The sitemap is generated from the Astro page modules; `make docs-check` verifies the published routes, assets, sitemap, Astro ownership, and CSP. Catalog counts describe pinned snapshots, not automatically refreshed live inventories.
 
 ## Next planned iterations
 
