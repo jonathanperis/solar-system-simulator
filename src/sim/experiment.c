@@ -104,7 +104,7 @@ bool experiment_parse(const char *text, SolarSystem *out,
         const double *s = planet_states[i];
         b.position_m = (Vec3d){s[0], s[1], s[2]};
         b.velocity_mps = (Vec3d){s[3], s[4], s[5]};
-        if (!solar_system_append(&system, b)) return false;
+        if (!solar_system_append(&system, &b)) return false;
     }
     size_t count = 0;
     while (*text) {
@@ -135,7 +135,7 @@ bool experiment_parse(const char *text, SolarSystem *out,
         b.mass_quality = (PhysicalQuality)mq;
         b.radius_quality = (PhysicalQuality)rq;
         b.group = "Catalog experiment";
-        if (!solar_system_append(&system, b)) return false;
+        if (!solar_system_append(&system, &b)) return false;
         ++count;
     }
     if (!count) return false;

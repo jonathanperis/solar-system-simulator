@@ -7,10 +7,12 @@
 _Static_assert(SOLAR_CORE_SCENE_BODY_COUNT == 128, "V5: the core scene has 128 bodies");
 _Static_assert(SOLAR_CORE_SCENE_BODY_COUNT <= SOLAR_SYSTEM_BODY_CAPACITY, "core scene must fit the body array");
 
-bool solar_system_append(SolarSystem *system, Body body)
+/* Body is ~136 bytes, so it is passed by const pointer and copied once into
+ * the array instead of being copied again into the parameter. */
+bool solar_system_append(SolarSystem *system, const Body *body)
 {
     if (system->body_count >= SOLAR_SYSTEM_BODY_CAPACITY) return false;
-    system->bodies[system->body_count++] = body;
+    system->bodies[system->body_count++] = *body;
     return true;
 }
 
@@ -409,7 +411,8 @@ SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_
 {
     SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
     /* Nine of 128 slots are used here, so the bounded append cannot fail. */
-    (void)solar_system_append(&system, solar_system_create_vesta_at_perihelion());
+    Body vesta = solar_system_create_vesta_at_perihelion();
+    (void)solar_system_append(&system, &vesta);
     return system;
 }
 
@@ -418,15 +421,18 @@ SolarSystem solar_system_create_current(void)
     SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter();
     /* The static assertions above prove the inventory fits; tests also check
      * that body_count reaches SOLAR_CORE_SCENE_BODY_COUNT. */
-    bool fits = true;
     for (size_t i = 0; i < SOLAR_JOVIAN_MOON_COUNT; ++i) {
-        fits = fits && solar_system_append(&system, satellite_create(&solar_jovian_moons[i], &system.bodies[9]));
+        Body moon = satellite_create(&solar_jovian_moons[i], &system.bodies[9]);
+        (void)solar_system_append(&system, &moon);
     }
     place_family_barycenter(&system, 9);
-    fits = fits && solar_system_append(&system, solar_system_create_saturn_at_perihelion());
-    fits = fits && solar_system_append(&system, solar_system_create_uranus_at_perihelion());
-    fits = fits && solar_system_append(&system, solar_system_create_neptune_at_perihelion());
-    (void)fits;
+    Body outer_planets[] = {
+        solar_system_create_saturn_at_perihelion(),
+        solar_system_create_uranus_at_perihelion(),
+        solar_system_create_neptune_at_perihelion(),
+    };
+    for (size_t i = 0; i < sizeof(outer_planets) / sizeof(outer_planets[0]); ++i)
+        (void)solar_system_append(&system, &outer_planets[i]);
     return system;
 }
 
@@ -449,7 +455,8 @@ Body solar_system_create_neptune_at_perihelion(void)
 SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter(void)
 {
     SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();
-    (void)solar_system_append(&system, solar_system_create_jupiter_at_perihelion());
+    Body jupiter = solar_system_create_jupiter_at_perihelion();
+    (void)solar_system_append(&system, &jupiter);
     return system;
 }
 

@@ -348,13 +348,14 @@ static void test_scene_capacity_is_named_and_appends_are_bounded(void)
     assert(SOLAR_SYSTEM_BODY_CAPACITY >= SOLAR_CORE_SCENE_BODY_COUNT);
 
     /* A full scene refuses another body and leaves every byte untouched. */
+    Body mercury = solar_system_create_mercury_at_perihelion();
     if (system.body_count == SOLAR_SYSTEM_BODY_CAPACITY) {
         SolarSystem before = system;
-        assert(!solar_system_append(&system, solar_system_create_mercury_at_perihelion()));
+        assert(!solar_system_append(&system, &mercury));
         assert(memcmp(&before, &system, sizeof(system)) == 0);
     }
     SolarSystem small = solar_system_create_sun_only();
-    assert(solar_system_append(&small, solar_system_create_mercury_at_perihelion()));
+    assert(solar_system_append(&small, &mercury));
     assert(small.body_count == 2 && small.bodies[1].id == BODY_ID_MERCURY);
 }
 
