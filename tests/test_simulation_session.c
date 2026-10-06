@@ -205,8 +205,21 @@ static void test_lessons_reset_configuration_and_exclude_background_time(void)
     simulation_session_destroy(&session);
 }
 
+static void test_non_finite_state_is_detected(void)
+{
+    SimulationSession session = simulation_session_create();
+    assert(simulation_session_state_is_finite(&session));
+    session.system.bodies[3].velocity_mps.y = NAN;
+    assert(!simulation_session_state_is_finite(&session));
+    simulation_session_reset(&session);
+    session.system.bodies[5].position_m.x = INFINITY;
+    assert(!simulation_session_state_is_finite(&session));
+    simulation_session_destroy(&session);
+}
+
 int main(void)
 {
+    test_non_finite_state_is_detected();
     test_stalled_frame_is_discarded_but_slow_frames_keep_pending_time();
     test_lessons_reset_configuration_and_exclude_background_time();
     test_overloaded_playback_retains_time_and_freezes_while_paused();

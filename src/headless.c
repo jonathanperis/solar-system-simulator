@@ -1,11 +1,62 @@
+#ifndef _WIN32
+#define _POSIX_C_SOURCE 200809L /* sigaction, unlink */
+#endif
+
 #include <errno.h>
 #include <math.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 #include "app/csv_export.h"
 #include "app/comparison.h"
 #include "app/input_file.h"
+
+#ifndef _WIN32
+/* While a --output run is in progress its rows go to a private temporary
+ * beside the destination. Ctrl-C or `kill` would otherwise leave that file
+ * behind. A signal can interrupt any instruction, so the handler may only use
+ * async-signal-safe calls (unlink, signal, raise) and state that is complete
+ * before it is published: a fixed buffer, then a sig_atomic_t flag. */
+static char cleanup_temp_path[4096];
+static volatile sig_atomic_t cleanup_temp_active;
+
+static void remove_temp_and_reraise(int signum)
+{
+    if (cleanup_temp_active) unlink(cleanup_temp_path);
+    /* Restore the default action and deliver the signal again, so the shell
+     * sees a death by SIGINT/SIGTERM rather than an ordinary exit code. */
+    signal(signum, SIG_DFL);
+    raise(signum);
+}
+
+static void protect_temporary(const char *temp_path)
+{
+    size_t length = strlen(temp_path);
+    if (length >= sizeof(cleanup_temp_path)) return; /* Too long to protect; the run still works. */
+    memcpy(cleanup_temp_path, temp_path, length + 1);
+    cleanup_temp_active = 1;
+    const int signals[] = {SIGINT, SIGTERM, SIGHUP};
+    for (size_t i = 0; i < sizeof(signals) / sizeof(signals[0]); ++i) {
+        struct sigaction previous, action = {.sa_handler = remove_temp_and_reraise};
+        sigemptyset(&action.sa_mask);
+        /* A shell starts background jobs with SIGINT ignored; keep that choice. */
+        if (sigaction(signals[i], NULL, &previous) == 0 && previous.sa_handler == SIG_IGN) continue;
+        sigaction(signals[i], &action, NULL);
+    }
+}
+
+static void release_temporary(void)
+{
+    cleanup_temp_active = 0;
+}
+#else
+static void protect_temporary(const char *temp_path) { (void)temp_path; }
+static void release_temporary(void) {}
+#endif
 
 static int usage(FILE *stream)
 {
@@ -15,8 +66,10 @@ static int usage(FILE *stream)
         "  [--experiment FILE] | --compare FILE | --catalog | --lessons | --version | --help\n"
         "Defaults: circular, 86400 s duration, 15 s step, 3600 s samples, Verlet.\n"
         "Duration and sample spacing must be whole multiples of dt. Core/catalog use 15 s Verlet.\n"
-        "At most 1e9 ticks (duration/dt) per run. --output must be a new path or a regular file;\n"
-        "it is replaced only after a complete run.\n", stream);
+        "At most 1e9 ticks (duration/dt) per run.\n"
+        "--output must name a new file or an existing regular file you can write, in a directory\n"
+        "you can write: the series goes to a temporary beside it and replaces it only after a\n"
+        "complete run (symlinks, FIFOs and devices are refused).\n", stream);
     return stream == stdout ? 0 : 2;
 }
 
@@ -34,7 +87,11 @@ static int compare_file(const char *path)
     if (!solar_read_text_file(path, text, sizeof(text)) || !lab_configuration_parse(text, &config)) {
         fputs("Invalid comparison descriptor. Check version, lesson, contact policy and aligned sampling.\n", stderr); return 2;
     }
-    ComparisonRun run = {0};
+    /* A ComparisonRun holds two whole sessions plus 1025 retained points,
+     * roughly half a megabyte: too much for a default thread stack on some
+     * systems, so it gets static storage (as in lab_web.c). This function
+     * runs once per process, so the single instance is never shared. */
+    static ComparisonRun run;
     if (!comparison_start(&run, &config)) {
         comparison_destroy(&run);
         fputs("Comparison could not start: a lesson rejected this configuration.\n", stderr); return 2;
@@ -94,7 +151,14 @@ int main(int argc, char **argv)
             for (int mode = COLLISION_NONE; mode <= COLLISION_MERGE; ++mode)
                 if (!strcmp(value, collision_mode_name((CollisionMode)mode))) collision = (CollisionMode)mode;
             if ((int)collision < 0) return usage(stderr);
-        } else if (!strcmp(key, "--output")) output = value;
+        } else if (!strcmp(key, "--output")) {
+            /* Refuse an empty name or a directory spelling before any work. */
+            if (!*value || value[strlen(value) - 1] == '/') {
+                fputs("--output needs a file name, not an empty value or a directory.\n", stderr);
+                return usage(stderr);
+            }
+            output = value;
+        }
         else if (!strcmp(key, "--experiment")) experiment = value;
         else {
             double parsed;
@@ -128,14 +192,22 @@ int main(int argc, char **argv)
         simulation_session_destroy(&session);
         return 1;
     }
+    if (output) protect_temporary(file.temp_path);
     FILE *stream = output ? file.stream : stdout;
     bool ok = simulation_csv_begin(stream, &session) && simulation_csv_sample(stream, &session);
+    bool finite = true;
     /* Stream samples instead of retaining a series. No graphics or wall clock
      * enters this run: ticks are the sole source of simulation time. */
     physics_compute_accelerations(session.system.bodies, session.system.body_count);
     for (uint64_t tick = 1; ok && tick <= total_ticks; ++tick) {
         simulation_session_advance_tick(&session, false);
-        if (tick % sample_ticks == 0 || tick == total_ticks) ok = simulation_csv_sample(stream, &session);
+        if (tick % sample_ticks == 0 || tick == total_ticks) {
+            /* Once a position or velocity overflows, every later row is
+             * meaningless (NaN spreads through the force sum). Stop and fail,
+             * as the comparison runner does, instead of exiting with success. */
+            finite = simulation_session_state_is_finite(&session);
+            ok = finite && simulation_csv_sample(stream, &session);
+        }
     }
     /* A file destination is replaced only after every sample is written; on
      * failure its temporary is deleted and any previous file stays intact. */
@@ -143,7 +215,9 @@ int main(int argc, char **argv)
         if (ok) ok = simulation_csv_output_commit(&file);
         else simulation_csv_output_abort(&file);
     } else if (fflush(stream) != 0) ok = false;
+    release_temporary();
     simulation_session_destroy(&session);
+    if (!finite) fputs("Numerical state became non-finite; reduce the timestep or check the input.\n", stderr);
     if (!ok) fputs(output ? "Could not finish writing CSV output; no partial file was kept.\n"
         : "Could not finish writing CSV output.\n", stderr);
     return ok ? 0 : 1;
