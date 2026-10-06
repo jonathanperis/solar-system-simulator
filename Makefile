@@ -49,7 +49,7 @@ SIM_SRCS := \
     src/sim/solar_system.c
 
 SESSION_SRCS := src/app/body_trails.c src/app/simulation_step.c src/app/simulation_session.c
-LAB_SRCS := src/app/csv_export.c src/app/lab_config.c src/app/comparison.c $(SESSION_SRCS) $(SIM_SRCS)
+LAB_SRCS := src/app/csv_export.c src/app/input_file.c src/app/lab_config.c src/app/comparison.c $(SESSION_SRCS) $(SIM_SRCS)
 APP_SRCS := src/main.c src/app/orbit_camera.c src/render/renderer.c $(LAB_SRCS)
 APP_OBJS := $(APP_SRCS:%.c=build/%.o)
 
@@ -71,6 +71,7 @@ TEST_BINS += $(TEST_DIR)/test_experiment
 TEST_BINS += $(TEST_DIR)/test_learning_lab
 TEST_BINS += $(TEST_DIR)/test_advanced_lessons
 TEST_BINS += $(TEST_DIR)/test_comparison
+TEST_BINS += $(TEST_DIR)/test_input_file
 HEADLESS_TEST_BINS = $(filter-out $(TEST_RENDERER),$(TEST_BINS))
 SOURCE_HEADERS := $(wildcard src/app/*.h src/sim/*.h src/render/*.h src/sim/*.inc)
 
@@ -237,6 +238,10 @@ $(TEST_DIR)/test_advanced_lessons: tests/test_advanced_lessons.c $(SESSION_SRCS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(TEST_DIR)/test_comparison: tests/test_comparison.c $(LAB_SRCS) build/revision.h
+	@mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+
+$(TEST_DIR)/test_input_file: tests/test_input_file.c src/app/input_file.c
 	@mkdir -p $(@D)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 

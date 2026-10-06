@@ -83,6 +83,7 @@ EM_JS(int, solar_web_canvas_has_focus, (void), {
 #include "app/simulation_step.h"
 #include "app/simulation_session.h"
 #include "app/csv_export.h"
+#include "app/input_file.h"
 #include "sim/constants.h"
 #include "sim/solar_system.h"
 #include "sim/units.h"
@@ -265,9 +266,10 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
         case SOLAR_COMMAND_CONTACT:
             if (session->lesson == LESSON_COLLISION) {
                 CollisionMode mode = session->clock.collision_mode == COLLISION_BOUNCE ? COLLISION_MERGE : COLLISION_BOUNCE;
-                simulation_session_start_configured_lesson(session, session->lesson, session->velocity_factor,
-                    session->clock.integrator, simulation_clock_step_seconds(&session->clock), mode);
-                frame_selected_system(state);
+                /* On rejection the session is unchanged, so keep the current framing. */
+                if (simulation_session_start_configured_lesson(session, session->lesson, session->velocity_factor,
+                    session->clock.integrator, simulation_clock_step_seconds(&session->clock), mode))
+                    frame_selected_system(state);
             }
             break;
     }
@@ -591,13 +593,10 @@ int main(int argc, char **argv)
         }
     }
     if (argc == 3 && strcmp(argv[1], "--experiment") == 0) {
-        FILE *file = fopen(argv[2], "rb");
+        /* Same bounded reader as solar-lab: rejects oversized input and
+         * embedded NUL bytes that would silently cut the experiment short. */
         char input[SOLAR_EXPERIMENT_TEXT_BYTES];
-        size_t bytes = file ? fread(input,1,sizeof(input)-1,file) : 0;
-        bool complete = file && !ferror(file) && fgetc(file) == EOF;
-        if (file) fclose(file);
-        input[bytes] = '\0';
-        if (!complete || !simulation_session_start_experiment(&app.session,input)) {
+        if (!solar_read_text_file(argv[2], input, sizeof(input)) || !simulation_session_start_experiment(&app.session, input)) {
             fprintf(stderr,"Invalid or unreadable catalog experiment: %s\n",argv[2]);
             simulation_session_destroy(&app.session); CloseWindow(); return 1;
         }
