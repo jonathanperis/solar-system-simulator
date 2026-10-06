@@ -26,7 +26,7 @@ C9: current renderer baseline stays simple after beauty-pass rollback; no resurr
 
 C10: ⊥ ECS, scene format, asset manager, shader stack, ephemeris loader before concrete need.
 
-C11: regenerated small-body shards ⊥ committed to `main` history; next refresh moves shard delivery to hash-pinned release assets first.
+C-catalog: regenerated small-body shards ⊥ committed to `main` history; next refresh moves shard delivery to hash-pinned release assets first. `small_body_catalog.py --generate` refuses to replace the tracked catalog without `--replace-tracked-catalog`.
 
 ## §I
 
@@ -129,14 +129,6 @@ V23: pause freezes simulation time and trails without accumulating paused wall t
 V24: inspector distance and speed are relative to the identified parent in SI state, independent of render mode; parentless bodies show unavailable relative measurements. Framing is renderer-only: planet plus direct moons, a moon's parent plus siblings, or all bodies for the Sun; fit respects aspect ratio, physical/illustrative radii, and Saturn's visible ring extent.
 
 V25: mass and radius have explicit measured/estimated/unknown provenance. Unknown mass uses a zero-gravitational-mass test particle that feels known-source gravity without backreaction. Unknown physical values display as Unknown, never as measured zero; an unknown-radius marker is explicitly render-only in either view.
-
-V26: a comparison side or headless run contains at most `SOLAR_LAB_MAX_TICKS` = 10⁹ fixed ticks. Experiment and descriptor files are read by one bounded reader that rejects oversized or NUL-containing input. Headless `--output` accepts only a missing path or an existing regular file and replaces it atomically after a complete run (new files 0600, existing mode kept); a failed run leaves the previous file or none. Native snapshot export creates the next free `solar-snapshot-NNN.csv` exclusively and never replaces an existing file.
-
-V27: catalog search cost is proportional to the query: digits-only queries route by manifest ID range; the full-index download is stated and needs user confirmation; one confirmed scan builds a bounded in-memory columnar index (≤2.5 M rows, about 60 MB) reused for the session; record lookup runs in the worker with an LRU of ≤3 data shards; SHA-256 verification is mandatory. Fetch URLs come only from manifest file names matching the pinned shard pattern, resolved inside the site's own `catalog/` directory; the worker accepts only dedicated-worker or same-origin messages that pass strict structural validation.
-
-V28: browser session data is untrusted: a prepared experiment is validated and its UTF-8 text kept below `SOLAR_EXPERIMENT_TEXT_BYTES` before `ccall`.
-
-V29: lesson speed factors are at least `lesson_minimum_velocity_factor` (two-body closest approach ≥ sum of radii, rounded up to 0.01) and at most 2; native, web and headless inputs respect the C limit. Lesson runs flag swept sphere contact; after contact, analytical lesson errors are withheld and CSV/inspector show `contact_detected`. Scene capacity is compile-time checked and appends are bounded. Render-scale policy lives in `src/render/`.
 
 ## §A — Runtime accuracy repair, 2026-09-09
 
@@ -248,6 +240,14 @@ V34: browser JavaScript formats/plots C measurements and descriptors; integratio
 
 V35: moving stars record synchronized history like other moving bodies; only fixed stars omit history. Barycentric parent-relative trails subtract historical Sun positions rather than an assumed fixed origin.
 
+V36: a comparison side or headless run contains at most `SOLAR_LAB_MAX_TICKS` = 10⁹ fixed ticks. Experiment and descriptor files are read by one bounded reader that rejects oversized or NUL-containing input. Headless `--output` accepts only a missing path or an existing regular file and replaces it atomically after a complete run (new files 0600, existing mode kept); a failed run leaves the previous file or none. Native snapshot export creates the next free `solar-snapshot-NNN.csv` exclusively and never replaces an existing file.
+
+V37: catalog search cost is proportional to the query: digits-only queries route by manifest ID range; the full-index download is stated and needs user confirmation; one confirmed scan builds a bounded in-memory columnar index (≤2.5 M rows, about 60 MB) reused for the session; record lookup runs in the worker with an LRU of ≤3 data shards; SHA-256 verification is mandatory. Fetch URLs come only from manifest file names matching the pinned shard pattern, resolved inside the site's own `catalog/` directory; the worker accepts only dedicated-worker or same-origin messages that pass strict structural validation.
+
+V38: browser session data is untrusted: a prepared experiment is validated and its UTF-8 text kept below `SOLAR_EXPERIMENT_TEXT_BYTES` before `ccall`.
+
+V39: lesson speed factors are at least `lesson_minimum_velocity_factor` (two-body closest approach ≥ sum of radii, rounded up to 0.01) and at most 2; native, web and headless inputs respect the C limit. Lesson runs flag swept sphere contact; after contact, analytical lesson errors are withheld and CSV/inspector show `contact_detected`. Scene capacity is compile-time checked and appends are bounded. Render-scale policy lives in `src/render/`.
+
 ## §A — Security PR integration, 2026-09-17
 
 A39|PR #8 preserves the checked Pages artifact, source/checksum and stale-run guards, sandboxed browser lane and current SDK while adding trusted-origin/event restrictions, job-scoped deployment permissions, immutable raylib revisions, nonpersistent checkout credentials, dependency auditing and CodeQL security/quality coverage|trusted/untrusted event matrix, workflow structure checks, Build and CodeQL CI
@@ -318,9 +318,9 @@ A60|Every generated HTML document and the sitemap come from Astro sources; `docs
 A61|Repository hygiene: interrupted-fetch packs are pruned, ad-hoc screenshots live in ignored evidence folders, generated-data validation never depends on `assert`, failed catalog generation leaves no publishable directories, and redistributed NASA/JPL data carries a usage note|`git count-objects`, tool tests, data docs
 A62|A second full audit round finds no unresolved Medium-or-higher issue; any remaining Low/Info items are recorded with rationale|second-round audit report
 
-Decision: Jonathan requested “work on everything you mentioned until we have it all done, then a second audit round”, adding that this is a C study project and that every page must be Astro. AGENTS.md authorizes commit and push to `main` after each verified iteration. Google Analytics remains governed by V17 (deployed main only, disclosed); the CSP allow-lists it rather than changing analytics policy.
+Decision: Jonathan requested “work on everything you mentioned until we have it all done, then a second audit round”, adding that this is a C study project and that every page must be Astro. AGENTS.md authorizes delivering each verified iteration to `main`; the repository ruleset requires that delivery to be a PR with green required checks, resolved threads and a rebase merge. Google Analytics remains governed by V17 (deployed main only, disclosed); the CSP allow-lists it rather than changing analytics policy.
 
-Catalog storage decision (C11): the pinned 135 MB shard set stays in history at its current revision. A future `--refresh` must not commit regenerated gzip shards to `main`; it must first move shard delivery to hash-pinned release assets fetched by CI, because compressed shards do not delta-compress and each refresh would add the full set to every clone.
+Catalog storage decision (C-catalog): the pinned 135 MB shard set stays in history at its current revision. A future `--refresh` must not commit regenerated gzip shards to `main`; it must first move shard delivery to hash-pinned release assets fetched by CI, because compressed shards do not delta-compress and each refresh would add the full set to every clone.
 
 ## §T
 
@@ -424,16 +424,16 @@ B18|2026-10-03|new advisories in build-time docs dependencies failed the strict 
 B19|2026-10-06|extending native/WASM replay to every example exposed last-digit drift in the phobos lesson: clang on arm64 fused multiply-adds while WebAssembly does not|compile all C with `-ffp-contract=off` and replay every shipped example (A52, A56)
 B20|2026-10-06|a visible-window stall (sleep, debugger) arrived as one huge frame delta, queuing ~3.7e10 s of capped catch-up at 15 days/s|discard frames above 1 s or non-finite like a background resume (A55, V8)
 B21|2026-10-06|unbounded float camera yaw lost its per-frame increment after days of auto-rotation and froze|wrap yaw into [0, 2π) (A57)
-B22|2026-10-06|CSV export reopened existing paths with O_TRUNC, truncating symlink targets, blocking on FIFOs and leaving partial files on failure|lstat-checked regular targets, sibling mkstemp + fsync + rename, exclusive numbered snapshots (A57, V26)
+B22|2026-10-06|CSV export reopened existing paths with O_TRUNC, truncating symlink targets, blocking on FIFOs and leaving partial files on failure|lstat-checked regular targets, sibling mkstemp + fsync + rename, exclusive numbered snapshots (A57, V36)
 B23|2026-10-06|comparison speed/specific energy came from the inspector selection rather than the subject index, and unchecked returns could print an uninitialized descriptor|measure by subject index, fail closed on start/format failures (A57)
-B24|2026-10-06|tick counts up to 2^53 let descriptors and --dt/--duration pairs run essentially forever|cap ticks per side at 10⁹ in `lab_ticks_for` (A57, V26)
+B24|2026-10-06|tick counts up to 2^53 let descriptors and --dt/--duration pairs run essentially forever|cap ticks per side at 10⁹ in `lab_ticks_for` (A57, V36)
 B25|2026-10-06|Emscripten `printErr` called `fail()`, so recoverable stderr permanently disabled a working runtime|log stderr; fail only on abort, non-zero exit, load error, missing WebGL or context loss (A59, V16)
-B26|2026-10-06|every catalog search re-fetched, re-hashed and re-parsed all 203 index shards (~33 MB) and object dialogs parsed a whole data shard on the main thread|identity routing, a confirmed one-time scan into a columnar cache, worker record lookup with LRU (A59, V27)
+B26|2026-10-06|every catalog search re-fetched, re-hashed and re-parsed all 203 index shards (~33 MB) and object dialogs parsed a whole data shard on the main thread|identity routing, a confirmed one-time scan into a columnar cache, worker record lookup with LRU (A59, V37)
 B27|2026-10-06|the legacy redirect and sitemap were hand-built strings/files outside Astro and nothing enforced Astro ownership of pages|Astro page plus filename integration, Astro sitemap endpoint, generator-marker and public-HTML checks (A60, V19)
 B28|2026-10-06|the basket download revoked its object URL right after `click()`, which can cancel the download|shared helper with deferred revocation (A59)
-B29|2026-10-06|catalog fetch URLs were built from manifest/message data and the worker accepted unvalidated messages (CodeQL js/client-side-request-forgery, js/missing-origin-check)|pinned-filename URL builder under `catalog/` and strict worker message validation (A59, V27)
+B29|2026-10-06|catalog fetch URLs were built from manifest/message data and the worker accepted unvalidated messages (CodeQL js/client-side-request-forgery, js/missing-origin-check)|pinned-filename URL builder under `catalog/` and strict worker message validation (A59, V37)
 B30|2026-10-06|ecliptic→simulation mapped (X,Z,Y), a reflection: prograde orbits had −Y angular momentum and drew clockwise from north|proper rotation (X,Z,−Y); per-body direction test over core, lessons and experiments (A53, V7)
-B31|2026-10-06|one 0.1–2 factor range for every lesson let point-mass trajectories pass through the parent while still publishing reference errors|per-lesson analytic minimum plus swept contact flag that withholds errors (A54, V29)
+B31|2026-10-06|one 0.1–2 factor range for every lesson let point-mass trajectories pass through the parent while still publishing reference errors|per-lesson analytic minimum plus swept contact flag that withholds errors (A54, V39)
 B32|2026-10-06|moons were added around a parent that kept its own heliocentric velocity, so family barycenters drifted (~12 m/s Earth–Moon)|place the family barycenter on the intended state (A58, V6)
 B33|2026-10-06|sscanf `\t` matched any whitespace and `%[^\t]` accepted newlines in experiment names; a second fixed-iteration Kepler solver lived in satellite.c|strict tab split with strtod end-pointer and control-byte rejection; satellites propagate through `orbit.c` (A58)
 B34|2026-10-06|the new no-third-party browser test ran only against analytics-free PR builds, so it failed on every main push (main embeds PUBLIC_GA_ID) and blocked Pages deploys; CI browser runs also sent real page views|a shared Playwright fixture stubs analytics hosts for every test, the security test admits exactly the CSP-listed loader only in analytics builds, and PRs rerun it against a dummy-ID build (A51, V17)
