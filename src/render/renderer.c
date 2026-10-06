@@ -3,7 +3,7 @@
 #include <math.h>
 
 #include "../sim/constants.h"
-#include "../sim/units.h"
+#include "render_scale.h"
 
 #define SOLAR_MIN_GRID_SLICES 20
 #define SOLAR_GRID_PADDING_UNITS 2.0
