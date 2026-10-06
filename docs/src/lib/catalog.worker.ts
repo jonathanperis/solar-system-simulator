@@ -16,6 +16,9 @@ import { ColumnarIndex, columnarRowLimit, fetchPacked, hitFromRow, indexFilter, 
  * A newer search supersedes older ones (their results are never published),
  * but it does not cancel an accepted full-index download: only an explicit
  * `cancel` message does, so changing a filter mid-download wastes nothing.
+ * The download therefore reports its own `type: 'build'` status (progress,
+ * done, cancelled, error) independently of whichever search is current, so the
+ * page can keep progress and Stop visible for as long as it runs.
  */
 const pageSize = 50;
 const prefetch = 4;        // ordered parallel downloads during the full scan
@@ -48,7 +51,6 @@ const dataShards = new ShardCache<CatalogRecord[]>(shardCacheSize);
 let columnar: { snapshot: string; index: ColumnarIndex } | undefined;
 let build: { snapshot: string; controller: AbortController; done: Promise<ColumnarIndex> } | undefined;
 let searchGeneration = 0, recordGeneration = 0;
-let waiting: { token: number; request: number } | undefined;  // search that receives scan progress
 
 const post = (message: unknown): void => { self.postMessage(message); };
 const failure = (error: unknown): string => error instanceof Error ? error.message : String(error);
@@ -61,33 +63,46 @@ function startBuild(base: string, manifest: Manifest): Promise<ColumnarIndex> {
   if (build?.snapshot === manifest.sourceSha256) return build.done;
   build?.controller.abort();
   const controller = new AbortController();
-  const totalBytes = manifest.shards.reduce((n, s) => n + s.index.bytes, 0);
-  const megabytes = (bytes: number) => (bytes / 1e6).toFixed(1);
+  const totalBytes = manifest.shards.reduce((n, s) => n + s.index.bytes, 0), totalFiles = manifest.shards.length;
+  const status = (state: 'progress' | 'done' | 'cancelled' | 'error', files: number, bytes: number, error?: string) =>
+    post({ type: 'build', state, files, totalFiles, bytes, totalBytes, ...(error ? { error } : {}) });
   const request = (i: number): Promise<IndexRow[]> => {
     const loading = fetchPacked<IndexRow[]>(base, manifest.shards[i].index, manifest.sourceSha256, controller.signal);
     loading.catch(() => undefined);  // awaited in order below; avoid unhandled rejections after a cancel
     return loading;
   };
+  let files = 0, received = 0;
   const done = (async () => {
-    const declared = manifest.shards.reduce((n, s) => n + s.count, 0);
-    if (declared > columnarRowLimit) throw new RangeError('Catalog index exceeds the in-memory cache bound.');
-    const index = new ColumnarIndex(declared);
-    const pending = manifest.shards.slice(0, prefetch).map((_, i) => request(i));
-    let received = 0;
-    for (let i = 0; i < manifest.shards.length; ++i) {
-      controller.signal.throwIfAborted();
-      const rows = await pending[i];
-      if (i + prefetch < manifest.shards.length) pending.push(request(i + prefetch));
-      pending[i] = Promise.resolve([]);  // release parsed rows promptly
-      if (rows.length !== manifest.shards[i].count) throw new Error('Catalog shard does not match its manifest. Reload before continuing.');
-      index.append(rows, manifest.shards[i].class);
-      received += manifest.shards[i].index.bytes;
-      if (waiting?.token === searchGeneration) post({ type: 'search', request: waiting.request, done: false,
-        progress: `Downloading the catalog index: ${i + 1} of ${manifest.shards.length} files (${megabytes(received)} of ${megabytes(totalBytes)} MB)` });
+    try {
+      const declared = manifest.shards.reduce((n, s) => n + s.count, 0);
+      if (declared > columnarRowLimit) throw new RangeError('Catalog index exceeds the in-memory cache bound.');
+      const index = new ColumnarIndex(declared);
+      const pending = manifest.shards.slice(0, prefetch).map((_, i) => request(i));
+      status('progress', 0, 0);
+      for (let i = 0; i < totalFiles; ++i) {
+        controller.signal.throwIfAborted();
+        const rows = await pending[i];
+        // A response can finish decoding after Stop; check again after every await.
+        controller.signal.throwIfAborted();
+        if (i + prefetch < totalFiles) pending.push(request(i + prefetch));
+        pending[i] = Promise.resolve([]);  // release parsed rows promptly
+        if (rows.length !== manifest.shards[i].count) throw new Error('Catalog shard does not match its manifest. Reload before continuing.');
+        index.append(rows, manifest.shards[i].class);
+        files = i + 1;
+        received += manifest.shards[i].index.bytes;
+        status('progress', files, received);
+      }
+      controller.signal.throwIfAborted();  // a cancelled build never publishes
+      index.finish();
+      columnar = { snapshot: manifest.sourceSha256, index };
+      status('done', files, received);
+      return index;
+    } catch (error) {
+      // Report before the rejection reaches any waiting search.
+      if (aborted(error)) status('cancelled', files, received);
+      else status('error', files, received, failure(error));
+      throw error;
     }
-    index.finish();
-    columnar = { snapshot: manifest.sourceSha256, index };
-    return index;
   })();
   done.catch(() => undefined);
   void done.finally(() => { if (build?.done === done) build = undefined; }).catch(() => undefined);
@@ -141,7 +156,7 @@ async function search(message: SearchMessage): Promise<void> {
       if (current()) post({ type: 'search', request, needsFullScan: { bytes, files: manifest.shards.length }, done: true });
       return;
     }
-    waiting = { token, request };
+    if (current()) post({ type: 'search', request, waiting: true, done: false });
     const index = await startBuild(base, manifest);
     if (!current()) return;
     const result = index.search(filter, page, pageSize);
@@ -175,8 +190,10 @@ self.onmessage = (event: MessageEvent<unknown>) => {
   if (event.origin !== '' && event.origin !== origin) return;
   const message = parseWorkerMessage(event.data, origin);
   if (!message) {
-    const request = (event.data as { request?: unknown } | null)?.request;
-    if (Number.isInteger(request)) post({ type: 'search', request, done: true, error: 'Invalid catalog request. Reload the page.' });
+    // Echo the request kind so a record lookup is not left waiting forever.
+    const data = event.data as { request?: unknown; type?: unknown } | null;
+    if (Number.isInteger(data?.request)) post({ type: data?.type === 'record' ? 'record' : 'search', request: data?.request, done: true,
+      error: 'Invalid catalog request. Reload the page.' });
     return;
   }
   if (message.type === 'cancel') {

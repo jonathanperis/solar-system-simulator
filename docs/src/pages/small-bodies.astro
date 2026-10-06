@@ -60,7 +60,13 @@ const indexMegabytes = Math.round(manifest.shards.reduce((bytes, shard) => bytes
         <button type="button" data-scan-confirm aria-describedby="scan-consent-text">Download index and search</button>
         <button type="button" data-scan-dismiss>Not now</button>
       </div>
-      <button type="button" data-scan-stop hidden>Stop index download</button>
+      <div class="scan-progress" data-scan-progress hidden>
+        <label for="scan-progress-bar">Catalog index download</label>
+        <progress id="scan-progress-bar" data-scan-progress-bar max="1" value="0"></progress>
+        <span data-scan-progress-text></span>
+        <button type="button" data-scan-stop>Stop index download</button>
+      </div>
+      <p class="sr-only" data-scan-announce role="status" aria-live="polite"></p>
       <div class="result-wrap"><table>
         <thead><tr><th scope="col">Name / designation</th><th scope="col">Class</th><th scope="col">Perihelion</th><th scope="col">Orbit</th></tr></thead>
         <tbody data-results></tbody>
@@ -108,6 +114,9 @@ const indexMegabytes = Math.round(manifest.shards.reduce((bytes, shard) => bytes
   .scan-consent { margin: .75rem 0; padding: .75rem; border: 1px solid var(--brass); background: var(--paper); }
   .scan-consent p { margin-top: 0; }
   .scan-consent button + button { margin-left: .5rem; }
+  .scan-progress { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; margin: .75rem 0; }
+  .scan-progress[hidden] { display: none; }
+  .scan-progress progress { flex: 1 1 10rem; height: .75rem; accent-color: var(--brass); }
   .result-pages { display: flex; justify-content: space-between; align-items: center; margin: 1rem 0; }
    @media (max-width: 760px) {
      form label { width: 100%; }

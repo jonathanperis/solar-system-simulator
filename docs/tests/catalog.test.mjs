@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
-import { matchesIndex, experimentText, fetchPacked, physicalValues, numericIdentityCandidates, routeShards, ColumnarIndex, columnarRowLimit, integrityUnavailableMessage, catalogAssetUrl, parseWorkerMessage } from '../src/lib/catalog.ts';
+import { matchesIndex, experimentText, fetchPacked, physicalValues, numericIdentityCandidates, routeShards, ColumnarIndex, columnarRowLimit, integrityUnavailableMessage, catalogAssetUrl, parseWorkerMessage, createProgressAnnouncer } from '../src/lib/catalog.ts';
 
 test('catalog filters retain provisional designations, missing size, and explicit physical supplements', () => {
   const row = [20134340,'134340 Pluto (1930 BM)','134340',29.6,null,true];
@@ -55,6 +55,16 @@ test('the columnar index searches case-insensitively, filters, paginates and res
   assert.deepEqual(index.search(all, 0, 50).hits.find(h => h.id === 54000001), { id: 54000001, name: '(2020 AB)', perihelion: null, orbit: false, group: 'AMO' });
   assert.throws(() => new ColumnarIndex(columnarRowLimit + 1), /bound/);
   assert.throws(() => index.append([[1,'x','x',1,null,true]], 'MBA'), /more rows/);
+});
+
+test('download progress reaches the live region at most every 10% or 5 s', () => {
+  let clock = 0;
+  const announce = createProgressAnnouncer(() => clock, 5000);
+  const spoken = [];
+  for (let files = 0; files <= 203; ++files) { clock += 10; if (announce(files, 203)) spoken.push(files); }
+  assert.deepEqual(spoken, [0, 21, 41, 61, 82, 102, 122, 143, 163, 183, 203]);
+  const slow = createProgressAnnouncer(() => clock, 5000);
+  assert.equal(slow(0, 203), true); clock += 4999; assert.equal(slow(1, 203), false); clock += 1; assert.equal(slow(2, 203), true);
 });
 
 test('catalog integrity checks fail clearly without Web Crypto instead of skipping verification', async t => {

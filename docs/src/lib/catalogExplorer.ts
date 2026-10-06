@@ -1,9 +1,10 @@
-import { experimentText, fetchPacked, integrityUnavailableMessage, physicalValues, type CatalogHit, type CatalogRecord, type Manifest } from './catalog';
+import { createProgressAnnouncer, experimentText, fetchPacked, integrityUnavailableMessage, physicalValues, type CatalogHit, type CatalogRecord, type Manifest } from './catalog';
 import { downloadText, errorMessage } from './browser';
 type Density = Record<string,number[][]>;
 type Kernel = {catalog_coordinate:(...v:number[])=>number; catalog_period_days:(q:number,e:number)=>number; _initialize?:()=>void};
-type SearchReply = {type:'search'; request:number; done:boolean; hits?:CatalogHit[]; total?:number; progress?:string; error?:string;
+type SearchReply = {type:'search'; request:number; done:boolean; hits?:CatalogHit[]; total?:number; waiting?:boolean; error?:string;
   cancelled?:boolean; needsFullScan?:{bytes:number; files:number}; source?:string};
+type BuildReply = {type:'build'; state:'progress'|'done'|'cancelled'|'error'; files:number; totalFiles:number; bytes:number; totalBytes:number; error?:string};
 type RecordReply = {type:'record'; request:number; record?:CatalogRecord; error?:string};
 
 export async function mountCatalog(root: HTMLElement): Promise<void> {
@@ -12,6 +13,12 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
   const dialog = get<HTMLDialogElement>('[data-object-dialog]'), basketStatus = get('[data-basket-status]');
   const consent = get('[data-scan-consent]'), confirmScan = get<HTMLButtonElement>('[data-scan-confirm]');
   const dismissScan = get<HTMLButtonElement>('[data-scan-dismiss]'), stopScan = get<HTMLButtonElement>('[data-scan-stop]');
+  // Full-index download status lives in its own block: a <progress> bar and
+  // precise text that are not live, plus a polite region that hears only
+  // throttled milestones (createProgressAnnouncer).
+  const scanProgress = get('[data-scan-progress]'), scanBar = get<HTMLProgressElement>('[data-scan-progress-bar]');
+  const scanText = get('[data-scan-progress-text]'), scanAnnounce = get('[data-scan-announce]');
+  let announceProgress = createProgressAnnouncer();
   let inspectedId: number | undefined, shownResults = '';
   const form = get<HTMLFormElement>('[data-catalog-search]');
   const group = form.elements.namedItem('group') as HTMLSelectElement;
@@ -172,16 +179,30 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
       status.textContent=`${number(total)} ${total===1?'match':'matches'}; ${hits.length} ${hits.length===1?'row':'rows'} displayed. No catalog objects are simulated by this map.`;
       previous.disabled=page===0;next.disabled=(page+1)*50>=total;
     };
+    const megabytes=(bytes:number)=>(bytes/1e6).toFixed(1);
+    const showBuild=(message:BuildReply)=>{
+      if(message.state==='progress'){
+        if(scanProgress.hidden){scanProgress.hidden=false;announceProgress=createProgressAnnouncer();}
+        scanBar.max=message.totalFiles;scanBar.value=message.files;
+        scanText.textContent=`${message.files} of ${message.totalFiles} files (${megabytes(message.bytes)} of ${megabytes(message.totalBytes)} MB)`;
+        if(announceProgress(message.files,message.totalFiles)) scanAnnounce.textContent=`Catalog index download ${Math.floor(message.files*100/message.totalFiles)}% complete.`;
+        return;
+      }
+      scanProgress.hidden=true;
+      scanAnnounce.textContent=message.state==='done'?'Catalog index ready; searches now run from memory.'
+        :message.state==='cancelled'?'Catalog index download stopped.':`Catalog index download failed: ${message.error}`;
+      if(message.state!=='done') fullScanAccepted=false;
+    };
     worker.onmessage=event=>{
-      const message=event.data as SearchReply|RecordReply;
+      const message=event.data as SearchReply|RecordReply|BuildReply;
+      if(message.type==='build'){showBuild(message);return;}
       if(message.type==='record'){
         const pending=pendingRecords.get(message.request);pendingRecords.delete(message.request);
         if(message.record) pending?.resolve(message.record); else pending?.reject(new Error(message.error));
         return;
       }
       if(message.request!==request)return;
-      if(!message.done){status.textContent=`${message.progress}.`;stopScan.hidden=false;return;}
-      stopScan.hidden=true;
+      if(!message.done){status.textContent='Waiting for the catalog index download to finish this search…';return;}
       if(message.error){status.textContent=message.error;return;}
       if(message.cancelled){status.textContent='Index download stopped. Catalog numbers, SPK IDs and unfiltered browsing still work; search again to restart the download.';return;}
       if(message.needsFullScan){
@@ -192,11 +213,15 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
       }
       showResults(message);
     };
-    worker.onerror=()=>{status.textContent='Catalog search worker failed. Reload to retry.';};
+    worker.onerror=()=>{
+      status.textContent='Catalog search worker failed. Reload to retry.';scanProgress.hidden=true;
+      // No reply will arrive for outstanding lookups; settle them so the dialog shows the failure.
+      pendingRecords.forEach(pending=>pending.reject(new Error('Catalog worker failed. Reload to retry.')));pendingRecords.clear();
+    };
     confirmScan.onclick=()=>{fullScanAccepted=true;search();queryInput.focus();};
     dismissScan.onclick=()=>{consent.hidden=true;status.textContent='Search not run. Look up a catalog number or SPK ID, or browse an orbital class without other filters.';queryInput.focus();};
-    // Hide immediately: if the waiting search was superseded, no reply will.
-    stopScan.onclick=()=>{fullScanAccepted=false;stopScan.hidden=true;worker.postMessage({type:'cancel'});queryInput.focus();};
+    // The worker confirms with a build 'cancelled' status, which hides the block.
+    stopScan.onclick=()=>{fullScanAccepted=false;worker.postMessage({type:'cancel'});queryInput.focus();};
     form.onsubmit=event=>{event.preventDefault();page=0;search();};
     group.onchange=()=>{page=0;search();};
     previous.onclick=()=>{if(page){--page;search();}};next.onclick=()=>{++page;search();};
