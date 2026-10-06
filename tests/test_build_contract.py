@@ -1,4 +1,5 @@
 """Exercise Make's exit-status and transitive-header contracts without editing sources."""
+import os
 import subprocess
 import unittest
 from pathlib import Path
@@ -7,9 +8,30 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class BuildContract(unittest.TestCase):
-    def make(self, *args):
+    def make(self, *args, env=None):
         return subprocess.run(["make", "--no-print-directory", *args], cwd=ROOT,
-                              capture_output=True, text=True)
+                              capture_output=True, text=True, env=env)
+
+    def test_environment_flags_extend_but_never_replace_required_flags(self):
+        # Packagers commonly export CFLAGS/CPPFLAGS. They may tune optimization
+        # but must not drop the project include path, C11 mode, warnings or the
+        # no-FMA-contraction rule that keeps native and WASM results identical.
+        env = {**os.environ, "CFLAGS": "-O3", "CPPFLAGS": "-I/opt/example/include"}
+        dry_run = self.make("-n", "-B", "build/tests/test_vec3d", env=env)
+        self.assertEqual(dry_run.returncode, 0, dry_run.stderr)
+        for flag in ("-Isrc", "-std=c11", "-Wall", "-ffp-contract=off", "-O3", "-I/opt/example/include"):
+            self.assertIn(flag, dry_run.stdout)
+
+    def test_tests_refuse_to_compile_without_assert(self):
+        # The C tests use assert() for every check; -DNDEBUG would silently turn
+        # them into passing no-ops, so each test must fail to compile instead.
+        for source in sorted((ROOT / "tests").glob("test_*.c")):
+            with self.subTest(source=source.name):
+                result = subprocess.run(
+                    ["cc", "-std=c11", "-Isrc", "-Ibuild", "-DNDEBUG", "-fsyntax-only", str(source)],
+                    cwd=ROOT, capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("NDEBUG", result.stderr)
 
     def test_first_failure_reaches_make(self):
         result = self.make("test-binaries", "TEST_BINS=/usr/bin/false /usr/bin/true")
