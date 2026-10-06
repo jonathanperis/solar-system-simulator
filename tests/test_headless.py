@@ -3,6 +3,8 @@ import csv
 import io
 import math
 import os
+import resource
+import signal
 import stat
 import subprocess
 import tempfile
@@ -83,6 +85,69 @@ class HeadlessLab(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual(stat.S_IMODE(output.stat().st_mode), expected)
                     self.assertTrue(output.read_text().startswith("# solar-lab-v1"))
+
+    @unittest.skipUnless(os.name == "posix", "POSIX symlink semantics")
+    def test_csv_output_refuses_symlinks_without_touching_the_target(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+            target = Path(directory) / "precious.txt"
+            target.write_text("keep me")
+            for name, link_to in (("link.csv", target), ("dangling.csv", Path(directory) / "missing.txt")):
+                with self.subTest(link=name):
+                    link = Path(directory) / name
+                    link.symlink_to(link_to)
+                    result = self.run_lab("--duration", "15", "--sample", "15", "--output", str(link))
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertTrue(link.is_symlink())
+                    self.assertEqual(target.read_text(), "keep me")
+                    self.assertFalse((Path(directory) / "missing.txt").exists())
+            self.assertEqual(sorted(p.name for p in Path(directory).iterdir()), ["dangling.csv", "link.csv", "precious.txt"])
+
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "POSIX FIFO semantics")
+    def test_csv_output_refuses_fifos_without_blocking(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+            fifo = Path(directory) / "pipe.csv"
+            os.mkfifo(fifo)
+            result = subprocess.run([str(RUNNER), "--duration", "15", "--sample", "15", "--output", str(fifo)],
+                                    capture_output=True, text=True, timeout=10)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertTrue(stat.S_ISFIFO(fifo.stat().st_mode))
+            self.assertEqual([p.name for p in Path(directory).iterdir()], ["pipe.csv"])
+
+    @unittest.skipUnless(os.name == "posix", "POSIX file-size limit")
+    def test_failed_run_leaves_no_partial_csv(self):
+        def limit_file_size():
+            # Writes past 4 KiB fail with EFBIG instead of killing the process,
+            # simulating a full disk midway through a long series.
+            signal.signal(signal.SIGXFSZ, signal.SIG_IGN)
+            resource.setrlimit(resource.RLIMIT_FSIZE, (4096, 4096))
+
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+            existing = Path(directory) / "existing.csv"
+            existing.write_text("previous complete output")
+            existing.chmod(0o640)
+            fresh = Path(directory) / "fresh.csv"
+            for output in (existing, fresh):
+                with self.subTest(output=output.name):
+                    result = subprocess.run([str(RUNNER), "--duration", "864000", "--sample", "15", "--output", str(output)],
+                                            capture_output=True, text=True, preexec_fn=limit_file_size, timeout=60)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("CSV", result.stderr)
+            self.assertEqual(existing.read_text(), "previous complete output")
+            self.assertEqual(stat.S_IMODE(existing.stat().st_mode), 0o640)
+            self.assertFalse(fresh.exists())
+            self.assertEqual([p.name for p in Path(directory).iterdir()], ["existing.csv"])
+
+    @unittest.skipUnless(os.name == "posix", "POSIX file permission contract")
+    def test_successful_run_replaces_existing_output_completely(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+            output = Path(directory) / "series.csv"
+            output.write_text("x" * 100000)
+            result = self.run_lab("--duration", "15", "--sample", "15", "--output", str(output))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            text = output.read_text()
+            self.assertTrue(text.startswith("# solar-lab-v1"))
+            self.assertNotIn("x" * 10, text)
+            self.assertEqual([p.name for p in Path(directory).iterdir()], ["series.csv"])
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 #include <raylib.h>
 #include <rlgl.h>
+#include <errno.h>
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
@@ -185,12 +186,28 @@ static bool start_app_lesson(SolarApp *state, LessonPreset lesson, double factor
     return true;
 }
 
-static bool export_snapshot(const SolarApp *state)
+#if !defined(PLATFORM_WEB)
+/* Snapshots never overwrite earlier ones: claim the first free numbered name
+ * with exclusive creation, so pressing E again keeps every previous export. */
+static FILE *create_snapshot_file(char *name, size_t size)
+{
+    for (int number = 1; number <= 999; ++number) {
+        snprintf(name, size, "solar-snapshot-%03d.csv", number);
+        FILE *stream = simulation_csv_create_new(name);
+        if (stream || errno != EEXIST) return stream;
+    }
+    return NULL;
+}
+#endif
+
+static bool export_snapshot(const SolarApp *state, char *name, size_t size)
 {
 #if defined(PLATFORM_WEB)
+    /* The browser names the download; MEMFS only stages the bytes. */
+    snprintf(name, size, "solar-snapshot.csv");
     FILE *stream = tmpfile();
 #else
-    FILE *stream = simulation_csv_open_output("solar-snapshot.csv");
+    FILE *stream = create_snapshot_file(name, size);
 #endif
     if (!stream) return false;
     bool ok = simulation_csv_begin(stream, &state->session) && simulation_csv_sample(stream, &state->session);
@@ -207,6 +224,11 @@ static bool export_snapshot(const SolarApp *state)
     } else ok = false;
 #endif
     if (fclose(stream) != 0) ok = false;
+#if !defined(PLATFORM_WEB)
+    /* This call created the file exclusively, so removing a failed export
+     * cannot delete anything the user already had. */
+    if (!ok) remove(name);
+#endif
     return ok;
 }
 
@@ -306,7 +328,8 @@ EMSCRIPTEN_KEEPALIVE int solar_web_lesson(int lesson, double factor, int method,
 
 EMSCRIPTEN_KEEPALIVE int solar_web_export(void)
 {
-    return export_snapshot(&app);
+    char name[32];
+    return export_snapshot(&app, name, sizeof(name));
 }
 
 EMSCRIPTEN_KEEPALIVE void solar_web_command(int command, int value)
@@ -417,8 +440,12 @@ static void solar_app_update_draw(void *user_data)
         if (IsKeyPressed(KEY_T)) solar_app_command(app, SOLAR_COMMAND_TRAILS, 0);
         if (IsKeyPressed(KEY_X)) solar_app_command(app, SOLAR_COMMAND_VECTORS, 0);
         if (IsKeyPressed(KEY_M)) solar_app_command(app, SOLAR_COMMAND_CONTACT, 0);
-        if (IsKeyPressed(KEY_E)) snprintf(app->feedback, sizeof(app->feedback), "%s",
-            export_snapshot(app) ? "Snapshot saved: solar-snapshot.csv (SI units)" : "Could not write snapshot CSV.");
+        if (IsKeyPressed(KEY_E)) {
+            char name[32];
+            if (export_snapshot(app, name, sizeof(name)))
+                snprintf(app->feedback, sizeof(app->feedback), "Snapshot saved: %s (SI units)", name);
+            else snprintf(app->feedback, sizeof(app->feedback), "Could not write snapshot CSV.");
+        }
 #if !defined(PLATFORM_WEB)
         if (IsKeyPressed(KEY_L)) {
             LessonPreset next = (LessonPreset)((app->session.lesson + 1) % LESSON_COUNT);
