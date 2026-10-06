@@ -10,6 +10,8 @@ interface Props {
   description?: string;
   /** Base-relative target for compatibility pages that forward to a canonical route. */
   redirectTo?: string;
+  /** The 404 page: served for any missing URL, so it is noindex and declares no canonical. */
+  notFound?: boolean;
 }
 
 const rawBase = import.meta.env.BASE_URL;
@@ -19,7 +21,8 @@ const title = pageTitle ? `${pageTitle} · ${siteName}` : siteName;
 const defaultDescription = 'A C11 orbital mechanics lab with a raylib/WebAssembly simulator, matched A/B experiments, a pinned small-body atlas, and source-backed learning guides.';
 const description = Astro.props.description || (pageTitle ? `${pageTitle}. ${defaultDescription}` : defaultDescription);
 const redirectTarget = Astro.props.redirectTo ? withBase(base, Astro.props.redirectTo) : undefined;
-const canonicalUrl = new URL(redirectTarget ?? Astro.url.pathname, 'https://jonathanperis.github.io').href;
+const notFound = Astro.props.notFound === true;
+const canonicalUrl = new URL(redirectTarget ?? (notFound ? base : Astro.url.pathname), 'https://jonathanperis.github.io').href;
 const csp = contentSecurityPolicy(Boolean(import.meta.env.PUBLIC_GA_ID));
 const currentPath = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
 const activeRoute = primaryRoutes.find(route => route.paths.some(path => currentPath === withBase(base, path)))
@@ -35,10 +38,10 @@ const activeRoute = primaryRoutes.find(route => route.paths.some(path => current
     {/* Route validation requires this marker on every published HTML document (A60). */}
     <meta name="generator" content={Astro.generator} />
     {redirectTarget && <meta http-equiv="refresh" content={`0;url=${redirectTarget}`} />}
-    {redirectTarget && <meta name="robots" content="noindex" />}
+    {(redirectTarget || notFound) && <meta name="robots" content="noindex" />}
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonicalUrl} />
+    {!notFound && <link rel="canonical" href={canonicalUrl} />}
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={siteName} />
     <meta property="og:title" content={title} />

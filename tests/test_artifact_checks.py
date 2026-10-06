@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from check_docs_routes import check_astro_generated, check_internal_references, check_page_security, check_public_sources, check_sitemap
+from check_docs_routes import check_astro_generated, check_internal_references, check_not_found_page, check_page_security, check_public_sources, check_sitemap
 from check_wasm_artifacts import main as check_wasm
 
 
@@ -57,6 +57,46 @@ class ArtifactChecks(unittest.TestCase):
         ):
             with self.subTest(html=html), self.assertRaises(SystemExit):
                 check_page_security("index.html", html)
+
+    def test_scriptable_document_types_need_an_explicit_allow_list(self):
+        astro = '<html><head><meta name="generator" content="Astro v7.3.6"></head></html>'
+        for name in ("icon.svg", "logo.SVGZ", "page.xhtml", "page.xht", "include.shtml"):
+            with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+                dist = Path(directory) / "dist"
+                public = Path(directory) / "public"
+                dist.mkdir()
+                public.mkdir()
+                (dist / "index.html").write_text(astro)
+                check_astro_generated(dist)
+                check_public_sources(public)
+                with self.subTest(where="dist", name=name), self.assertRaises(SystemExit):
+                    (dist / name).write_text('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')
+                    check_astro_generated(dist)
+                with self.subTest(where="public", name=name), self.assertRaises(SystemExit):
+                    (public / name).write_text("<svg/>")
+                    check_public_sources(public)
+                with self.subTest(where="allow-list", name=name):
+                    check_astro_generated(dist, allowed={name})
+                    check_public_sources(public, allowed={name})
+
+    def test_not_found_page_is_an_astro_noindex_page_linking_home(self):
+        good = ('<html><head><meta name="generator" content="Astro v7.3.6"><meta name="robots" content="noindex">'
+                '</head><body><a href="/solar-system-simulator/">Home</a>'
+                '<a href="/solar-system-simulator/simulator/">Simulator</a></body></html>')
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+            dist = Path(directory)
+            with self.assertRaises(SystemExit):
+                check_not_found_page(dist)
+            (dist / "404.html").write_text(good)
+            check_not_found_page(dist)
+            for html in (good.replace('<meta name="generator" content="Astro v7.3.6">', ""),
+                         good.replace('<meta name="robots" content="noindex">', ""),
+                         good.replace('href="/solar-system-simulator/simulator/"', 'href="simulator/"'),
+                         good.replace('href="/solar-system-simulator/"', 'href="../"'),
+                         good.replace("</head>", '<link rel="canonical" href="https://example.test/"></head>')):
+                with self.subTest(html=html), self.assertRaises(SystemExit):
+                    (dist / "404.html").write_text(html)
+                    check_not_found_page(dist)
 
     def test_public_assets_cannot_contain_hand_written_html_or_robots(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:

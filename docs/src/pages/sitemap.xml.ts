@@ -2,9 +2,9 @@ import { liveUrl } from '../lib/site';
 
 // Every canonical page is an Astro page in this directory. Deriving the list
 // from the page modules keeps the sitemap complete when routes are added; the
-// legacy compatibility redirect is deliberately excluded (it is noindex).
+// legacy compatibility redirect and the 404 page are excluded (both noindex).
 const sitemapRoutes = Object.keys(import.meta.glob('./**/*.astro'))
-  .filter(file => !file.startsWith('./wasm/'))
+  .filter(file => !file.startsWith('./wasm/') && file !== './404.astro')
   .map(file => file.slice(2, -'.astro'.length).replace(/(^|\/)index$/, ''))
   .map(route => (route ? `${route}/` : ''))
   .sort();
