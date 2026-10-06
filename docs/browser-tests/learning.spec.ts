@@ -1,4 +1,5 @@
-import { test, expect, type Download } from '@playwright/test';
+import type { Download } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { resolve } from 'node:path';
 
 const base = '/solar-system-simulator/';
