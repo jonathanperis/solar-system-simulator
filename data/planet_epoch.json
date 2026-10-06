@@ -2,11 +2,13 @@
   "epoch": 2461200.5,
   "frame": "J2000 ecliptic",
   "center": "Sun",
-  "checked": "2026-09-14T19:46:49.489527+00:00",
+  "targets": "planetary-system barycenters (Mercury/Venus centres have no moons)",
+  "checked": "2026-10-06T23:21:46.095512+00:00",
   "planets": [
     {
       "name": "Mercury",
       "horizons_id": 199,
+      "target": "Mercury (199)",
       "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=199&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
       "position_km": [
         -59026548.53916454,
@@ -22,6 +24,7 @@
     {
       "name": "Venus",
       "horizons_id": 299,
+      "target": "Venus (299)",
       "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=299&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
       "position_km": [
         -106377424.6986375,
@@ -36,92 +39,98 @@
     },
     {
       "name": "Earth",
-      "horizons_id": 399,
-      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=399&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
+      "horizons_id": 3,
+      "target": "Earth-Moon Barycenter (3)",
+      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=3&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
       "position_km": [
-        -32008618.57770638,
-        -148434291.1413878,
-        8931.701517559588
+        -32003994.64151644,
+        -148434705.1252208,
+        9087.672430373728
       ],
       "velocity_km_s": [
-        28.63605783940367,
-        -6.402317143354088,
-        -0.0007636327401647769
+        28.63630376184791,
+        -6.389908688472404,
+        0.0002193630332358865
       ]
     },
     {
       "name": "Mars",
-      "horizons_id": 499,
-      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=499&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
+      "horizons_id": 4,
+      "target": "Mars Barycenter (4)",
+      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=4&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
       "position_km": [
-        195875234.0447874,
-        81824782.9809442,
-        -3088231.912150782
+        195875234.0448039,
+        81824782.98113352,
+        -3088231.912142564
       ],
       "velocity_km_s": [
-        -8.410782839437735,
-        24.42768605121451,
-        0.7181605942489533
+        -8.410782872371838,
+        24.42768604753746,
+        0.7181606098454871
       ]
     },
     {
       "name": "Jupiter",
-      "horizons_id": 599,
-      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=599&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
+      "horizons_id": 5,
+      "target": "Jupiter Barycenter (5)",
+      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=5&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
       "position_km": [
-        -417320435.4558823,
-        668590441.9914147,
-        6559635.945548117
+        -417320392.4559218,
+        668590386.265933,
+        6559635.131118596
       ],
       "velocity_km_s": [
-        -11.24599020928166,
-        -6.314231278426358,
-        0.2778064885753464
+        -11.24540318039514,
+        -6.313875867972496,
+        0.2778300547622532
       ]
     },
     {
       "name": "Saturn",
-      "horizons_id": 699,
-      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=699&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
+      "horizons_id": 6,
+      "target": "Saturn Barycenter (6)",
+      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=6&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
       "position_km": [
-        1405085172.100683,
-        170541008.3339945,
-        -58900850.61729871
+        1405085408.740222,
+        170540878.5663955,
+        -58900803.7721086
       ],
       "velocity_km_s": [
-        -1.70224259890323,
-        9.564788576110002,
-        -0.0982933171306355
+        -1.701521043378305,
+        9.565801894956634,
+        -0.09888770729991236
       ]
     },
     {
       "name": "Uranus",
-      "horizons_id": 799,
-      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=799&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
+      "horizons_id": 7,
+      "target": "Uranus Barycenter (7)",
+      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=7&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
       "position_km": [
-        1395843104.322566,
-        2555008584.470428,
-        -8609907.20707643
+        1395844151.295489,
+        2555009105.196607,
+        -8609947.155370355
       ],
       "velocity_km_s": [
-        -6.037700002048093,
-        2.944792201521333,
-        0.08922924234043017
+        -6.037766048894722,
+        2.944812323523533,
+        0.08924927751356737
       ]
     },
     {
       "name": "Neptune",
-      "horizons_id": 899,
-      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=899&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
+      "horizons_id": 8,
+      "target": "Neptune Barycenter (8)",
+      "source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=json&COMMAND=8&CENTER=500%4010&EPHEM_TYPE=VECTORS&TLIST=2461200.5&OUT_UNITS=KM-S&REF_PLANE=ECLIPTIC&VEC_TABLE=2&VEC_CORR=NONE&CSV_FORMAT=YES&OBJ_DATA=NO",
       "position_km": [
-        4466238590.749162,
-        152694437.1977816,
-        -106066602.3740655
+        4466238247.467303,
+        152694628.264995,
+        -106066545.5093152
       ],
       "velocity_km_s": [
-        -0.232414812890385,
-        5.460646099676543,
-        -0.1074622000300767
+        -0.2319214205825022,
+        5.461380633827719,
+        -0.1072135112705499
       ]
     }
   ]

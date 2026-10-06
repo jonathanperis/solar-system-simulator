@@ -21,12 +21,21 @@ Absent mass/radius fields stay unknown. The small, separately sourced
 planets; it does not infer masses from arbitrary density or albedo assumptions.
 
 `planet_epoch.json` contains Sun-centered J2000 ecliptic geometric vectors from
-Horizons for the eight planet centers at the same epoch. `planet_epoch.inc`
-converts km to m and maps source ecliptic `(X,Y,Z)` to simulation `(X,Z,−Y)`, the
-proper rotation that keeps prograde orbits counterclockwise from ecliptic north. Experiments
-use those initial vectors followed by the existing fixed-Sun Newtonian model.
-Planetary moons are represented only through the existing planetary mass
-baseline in this separate experiment, not as additional active satellite bodies.
+Horizons at the same epoch for the eight planetary systems: Mercury (199) and
+Venus (299), which have no moons, and the Earth–Moon, Mars, Jupiter, Saturn,
+Uranus and Neptune system barycenters (3–8). Experiments contain no moons, so a
+planet centre (399, 499, …) would carry an unbalanced moon wobble — about
+12.4 m/s for Earth, drifting roughly 10⁸–10⁹ m per year. Each planet body
+therefore stands for its whole system: it starts at the barycenter and uses the
+DE440 system GM from <https://ssd.jpl.nasa.gov/astro_par.html> (Earth–Moon is
+Earth plus Moon). The core scene, which models the moons, keeps planet-only
+masses. `python3 tools/planet_epoch.py --check` refuses a snapshot whose IDs or
+recorded Horizons targets are not these barycenters; the vectors were refreshed
+on 2026-10-06 with each request URL recorded. `planet_epoch.inc` converts km to
+m and maps source ecliptic `(X,Y,Z)` to simulation `(X,Z,−Y)`, the proper
+rotation that keeps prograde orbits counterclockwise from ecliptic north.
+Experiments use those initial vectors followed by the existing fixed-Sun
+Newtonian model; moons are not additional active bodies there.
 
 Native and web selected input uses `SOLAR_EXPERIMENT_V1 2461200.5`, then up to 16
 tab-separated rows: SPK ID, name, q (AU), e, inclination, ascending node, argument
