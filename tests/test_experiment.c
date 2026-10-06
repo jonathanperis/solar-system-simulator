@@ -1,6 +1,7 @@
 #include "require_assert.h"
 
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -57,9 +58,28 @@ static void test_rows_are_strict_tab_separated_values(void)
     }
 }
 
+/* Experiments have no moons, so each planet stands for its whole system: the
+ * Horizons snapshot gives system barycenters and the masses are DE440 system
+ * GMs (https://ssd.jpl.nasa.gov/astro_par.html). The core scene, which does
+ * contain moons, keeps planet-only masses. */
+static void test_experiment_planets_are_whole_systems(void)
+{
+    SolarSystem system;
+    char names[SOLAR_EXPERIMENT_CAPACITY][SOLAR_EXPERIMENT_NAME_BYTES];
+    assert(experiment_parse("SOLAR_EXPERIMENT_V1 2461200.5\n"
+        "20000004\tVesta\t2.148\t0.09\t7.14\t103.7\t151.4\t2461000.5\t0\t0\t2\t2\n", &system, names));
+    const double system_gm_km3_s2[] = {22031.868551, 324858.592, 398600.435507 + 4902.800118, 42828.375816,
+        126712764.1, 37940584.8418, 5794556.4, 6836527.10058};
+    for (size_t i = 0; i < 8; ++i)
+        assert(fabs(system.bodies[1 + i].mass_kg * SOLAR_G / (system_gm_km3_s2[i] * 1e9) - 1) < 1e-9);
+    SolarSystem core = solar_system_create_current();
+    assert(core.bodies[3].mass_kg == SOLAR_EARTH_MASS_KG && core.bodies[9].mass_kg == SOLAR_JUPITER_MASS_KG);
+}
+
 int main(void)
 {
     test_rows_are_strict_tab_separated_values();
+    test_experiment_planets_are_whole_systems();
     SimulationSession session = simulation_session_create();
     const char *input = "SOLAR_EXPERIMENT_V1 2461200.5\n"
         "20000004\tVesta\t2.148\t0.09\t7.14\t103.7\t151.4\t2461000.5\t0\t0\t2\t2\n"
