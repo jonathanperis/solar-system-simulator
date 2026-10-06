@@ -232,6 +232,8 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
     const state = lab._lab_advance(8192, stepping ? 1 : 0);
     if (state < 0) { running = stepping = false; setStatus('Numerical state became non-finite. Reduce the timestep; the last valid checkpoints are retained.'); }
     else if (state === 2) { running = stepping = false; setStatus('Comparison complete.'); }
+    // 0 means C holds no configured run (lab_advance contract), so never spin.
+    else if (state === 0) { running = stepping = false; setStatus('No comparison is configured. Start a comparison first.'); }
     else if (stepping && lab._lab_status(3) > stepStart) { stepping = false; setStatus('Paused at the next matched checkpoint.'); }
     if (now-lastDraw >= 150 || (!running && !stepping)) { render(); lastDraw = now; }
     if (running || stepping) schedule();
