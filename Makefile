@@ -40,7 +40,13 @@ RAYLIB_LIBS ?= $(shell pkg-config --libs raylib 2>/dev/null || if [ -f "$(RAYLIB
 RAYLIB_WEB_SRC ?= $(RAYLIB_LOCAL_PREFIX)/src/raylib/src
 RAYLIB_WEB_LIB ?= $(RAYLIB_WEB_SRC)/libraylib.web.a
 RAYLIB_WEB_CFLAGS ?= -I$(RAYLIB_WEB_SRC) -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2
-RAYLIB_WEB_LDFLAGS ?= -s USE_GLFW=3 -s ALLOW_MEMORY_GROWTH=1 -s ASYNCIFY -s STACK_SIZE=262144 -s EXPORTED_RUNTIME_METHODS=ccall
+# No -s ASYNCIFY: the browser drives one frame per callback through
+# emscripten_set_main_loop_arg, so C never blocks. raylib only needs Asyncify
+# for emscripten_sleep inside WindowShouldClose(), which the web build never
+# calls (src/main.c uses that loop natively only). Dropping it removes the
+# stack-unwinding instrumentation (~30 KB of WASM). Calling a blocking raylib
+# API on the web would abort at runtime; restore the flag if one is needed.
+RAYLIB_WEB_LDFLAGS ?= -s USE_GLFW=3 -s ALLOW_MEMORY_GROWTH=1 -s STACK_SIZE=262144 -s EXPORTED_RUNTIME_METHODS=ccall
 
 SIM_SRCS := \
     src/sim/vec3d.c \
