@@ -4,6 +4,8 @@ import { normalizeBase } from '../lib/base';
 import { buildRevision } from '../lib/site';
 import manifest from '../../public/catalog/manifest.json';
 const base = normalizeBase(import.meta.env.BASE_URL);
+// Stated before the first full scan so a mobile visitor is never surprised by it.
+const indexMegabytes = Math.round(manifest.shards.reduce((bytes, shard) => bytes + shard.index.bytes, 0) / 1e6);
 ---
 <BaseLayout title="Small-body atlas" description="Explore the complete pinned JPL asteroid and trans-Neptunian catalog, then build a selected-body C physics experiment.">
   <section class="small-atlas" data-small-atlas data-base={base} data-revision={buildRevision}>
@@ -44,7 +46,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
     <section class="search-panel" aria-labelledby="search-heading">
       <h2 id="search-heading">Find any cataloged body</h2>
       <form data-catalog-search>
-        <label>Name, designation, or SPK ID<input name="query" type="search" placeholder="Vesta, 1930 BM, 20134340…" /></label>
+        <label>Name, designation, or SPK ID<input name="query" type="search" placeholder="Vesta, 1930 BM, 20134340…" aria-describedby="query-hint" /><small id="query-hint">Digits alone look up an asteroid number or SPK ID directly.</small></label>
         <label>Orbital class<select name="group"><option value="">All classes</option>
           {Object.entries(manifest.classes).map(([key,count]) => <option value={key}>{manifest.classNames[key as keyof typeof manifest.classNames] ?? key} · {count.toLocaleString('en-US')}</option>)}
         </select></label>
@@ -53,6 +55,12 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         <button type="submit">Search catalog</button>
       </form>
       <p data-search-status role="status" aria-live="polite">Catalog index loads in bounded chunks. Full-catalog searches report progress.</p>
+      <div class="scan-consent" data-scan-consent hidden>
+        <p id="scan-consent-text">Name and filter searches read the whole catalog index: about {indexMegabytes} MB compressed, in {manifest.shards.length} files. After one download, every search and filter change runs from memory (about 60 MB) until you leave this page. Number and SPK ID look-ups, and browsing an orbital class, never need it.</p>
+        <button type="button" data-scan-confirm aria-describedby="scan-consent-text">Download index and search</button>
+        <button type="button" data-scan-dismiss>Not now</button>
+      </div>
+      <button type="button" data-scan-stop hidden>Stop index download</button>
       <div class="result-wrap"><table>
         <thead><tr><th scope="col">Name / designation</th><th scope="col">Class</th><th scope="col">Perihelion</th><th scope="col">Orbit</th></tr></thead>
         <tbody data-results></tbody>
@@ -97,6 +105,9 @@ const base = normalizeBase(import.meta.env.BASE_URL);
   button:disabled { opacity: .5; cursor: default; }
   :is(input,select,button):focus-visible { outline: 3px solid var(--brass); outline-offset: 3px; }
   .result-wrap { overflow-x: auto; } table { width: 100%; } th, .result-wrap :global(td) { text-align: left; padding: .55rem; }
+  .scan-consent { margin: .75rem 0; padding: .75rem; border: 1px solid var(--brass); background: var(--paper); }
+  .scan-consent p { margin-top: 0; }
+  .scan-consent button + button { margin-left: .5rem; }
   .result-pages { display: flex; justify-content: space-between; align-items: center; margin: 1rem 0; }
    @media (max-width: 760px) {
      form label { width: 100%; }

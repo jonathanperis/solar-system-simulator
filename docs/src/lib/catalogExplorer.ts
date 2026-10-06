@@ -1,19 +1,28 @@
-import { experimentText, fetchPacked, loadRecord, physicalValues, type CatalogRecord, type Manifest, type IndexRow } from './catalog';
+import { experimentText, fetchPacked, integrityUnavailableMessage, physicalValues, type CatalogHit, type CatalogRecord, type Manifest } from './catalog';
+import { downloadText, errorMessage } from './browser';
 type Density = Record<string,number[][]>;
 type Kernel = {catalog_coordinate:(...v:number[])=>number; catalog_period_days:(q:number,e:number)=>number; _initialize?:()=>void};
+type SearchReply = {type:'search'; request:number; done:boolean; hits?:CatalogHit[]; total?:number; progress?:string; error?:string;
+  cancelled?:boolean; needsFullScan?:{bytes:number; files:number}; source?:string};
+type RecordReply = {type:'record'; request:number; record?:CatalogRecord; error?:string};
 
 export async function mountCatalog(root: HTMLElement): Promise<void> {
   const get = <T extends HTMLElement>(selector:string) => root.querySelector<T>(selector)!;
   const status = get('[data-search-status]'), selectionStatus = get('[data-selection-status]');
   const dialog = get<HTMLDialogElement>('[data-object-dialog]'), basketStatus = get('[data-basket-status]');
+  const consent = get('[data-scan-consent]'), confirmScan = get<HTMLButtonElement>('[data-scan-confirm]');
+  const dismissScan = get<HTMLButtonElement>('[data-scan-dismiss]'), stopScan = get<HTMLButtonElement>('[data-scan-stop]');
   let inspectedId: number | undefined, shownResults = '';
   const form = get<HTMLFormElement>('[data-catalog-search]');
   const group = form.elements.namedItem('group') as HTMLSelectElement;
+  const queryInput = form.querySelector<HTMLInputElement>('input[type="search"]')!;
   const canvas = get<HTMLCanvasElement>('[data-density]'), context = canvas.getContext('2d')!;
   const base = root.dataset.base!, catalogBase = `${base}catalog/`;
   const basket = new Map<number,CatalogRecord>();
-  let selected: CatalogRecord | undefined, manifest: Manifest, density: Density, kernel: Kernel;
-  let page = 0, request = 0, selectionRequest = 0, selectedController: AbortController | undefined;
+  let selected: CatalogRecord | undefined, manifest: Manifest, density: Density, kernel: Kernel, worker: Worker;
+  let page = 0, request = 0, selectionRequest = 0;
+  // Set once the user accepts the full-index download; it is never implied.
+  let fullScanAccepted = false;
   let path: number[][] = [], point: number[] | undefined;
   const previous = get<HTMLButtonElement>('[data-previous]'), next = get<HTMLButtonElement>('[data-next]');
   const add = get<HTMLButtonElement>('[data-add]'), prepare = get<HTMLButtonElement>('[data-prepare]'), download = get<HTMLButtonElement>('[data-export]');
@@ -57,15 +66,24 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
     prepare.disabled=download.disabled=basket.size===0;
     add.disabled=!selected || basket.has(selected[0]) || basket.size>=16;
   };
+  // Record lookups run in the worker (with its small data-shard cache); only
+  // the newest request for the open dialog is honored.
+  const pendingRecords = new Map<number,{resolve:(r:CatalogRecord)=>void; reject:(e:Error)=>void}>();
+  const requestRecord = (id:number, orbitClass:string, token:number) => new Promise<CatalogRecord>((resolve,reject) => {
+    // The worker answers only the newest lookup; settle superseded ones now.
+    pendingRecords.forEach(pending=>pending.reject(new Error('Superseded lookup.')));pendingRecords.clear();
+    pendingRecords.set(token,{resolve,reject});
+    worker.postMessage({type:'record',base:catalogBase,manifest,id,group:orbitClass,request:token});
+  });
   const inspect = async (id:number, orbitClass:string) => {
     inspectedId = id;
     get('[data-object-title]').textContent = 'Loading object…';
     get('[data-object-details]').replaceChildren(); get('[data-object-source]').replaceChildren();
     if (!dialog.open) dialog.showModal();
-    const token=++selectionRequest; selectedController?.abort(); selectedController=new AbortController();
+    const token=++selectionRequest;
     selected=undefined; add.disabled=true; selectionStatus.textContent='Loading source record…';
     try {
-      const r=await loadRecord(catalogBase,manifest,id,selectedController.signal,orbitClass);
+      const r=await requestRecord(id,orbitClass,token);
       if (token!==selectionRequest) return;
       selected=r; const p=physicalValues(r);
       get('[data-object-title]').textContent=r[1];
@@ -92,7 +110,7 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
       selectionStatus.textContent='Source orbit ready. Add this body to your experiment basket.';
       updateBasket();draw();
     } catch(error) {
-      if(token===selectionRequest) {selectionStatus.textContent=String(error);add.disabled=true;path=[];point=undefined;draw();}
+      if(token===selectionRequest) {selectionStatus.textContent=errorMessage(error);add.disabled=true;path=[];point=undefined;draw();}
     }
   };
   get('[data-close-object]').onclick = () => dialog.close();
@@ -100,7 +118,7 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
     // Search streams can replace a result while its source record is loading.
     // Resolve the current control instead of restoring a detached old node.
     const result = root.querySelector<HTMLButtonElement>(`[data-catalog-id="${inspectedId}"]`);
-    (result ?? form.querySelector<HTMLInputElement>('input[type="search"]'))?.focus();
+    (result ?? queryInput)?.focus();
   });
   add.onclick=()=>{if(selected&&basket.size<16){basket.set(selected[0],selected);updateBasket();selectionStatus.textContent=`${selected[1]} added. ${basket.size} / 16 bodies selected. Return to results to choose another world, or open the experiment basket.`;}};
   prepare.onclick=()=>{
@@ -108,12 +126,19 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
       const text=experimentText([...basket.values()],manifest.epoch);
       sessionStorage.setItem('solar-catalog-experiment',JSON.stringify({text,snapshot:manifest.sourceSha256,count:basket.size}));
       location.href=`${base}simulator/?experiment=1`;
-    } catch(error) {basketStatus.textContent=String(error);}
+    } catch(error) {basketStatus.textContent=errorMessage(error);}
   };
   download.onclick=()=>{
-    const blob=new Blob([experimentText([...basket.values()],manifest.epoch)],{type:'text/tab-separated-values'});
-    const url=URL.createObjectURL(blob), a=document.createElement('a');a.href=url;a.download='solar-experiment.tsv';a.click();URL.revokeObjectURL(url);
+    try { downloadText(experimentText([...basket.values()],manifest.epoch),'solar-experiment.tsv','text/tab-separated-values'); }
+    catch(error) {basketStatus.textContent=errorMessage(error);}
   };
+  if (!globalThis.isSecureContext || !globalThis.crypto?.subtle) {
+    // Plain-HTTP LAN previews lack Web Crypto; integrity checks stay mandatory.
+    status.textContent=integrityUnavailableMessage;
+    get('[data-map-status]').textContent='Map unavailable without verified downloads; source documentation remains available.';
+    form.querySelectorAll<HTMLButtonElement|HTMLInputElement|HTMLSelectElement>('button,input,select').forEach(control=>{control.disabled=true;});
+    return;
+  }
   try {
     const response=await fetch(`${catalogBase}manifest.json`,{cache:'no-cache'});
     if(!response.ok) throw new Error('Catalog manifest unavailable.');
@@ -123,34 +148,56 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
     const compiled=await WebAssembly.instantiate(await wasm.arrayBuffer(),{});
     kernel=compiled.instance.exports as unknown as Kernel;kernel._initialize?.();
     density=await fetchPacked<Density>(catalogBase,manifest.overview,manifest.sourceSha256); draw();
-    const worker=new Worker(new URL('./catalog.worker.ts',import.meta.url),{type:'module'});
+    worker=new Worker(new URL('./catalog.worker.ts',import.meta.url),{type:'module'});
     const search=()=>{
       const data=new FormData(form);++request;
-      previous.disabled=next.disabled=true;status.textContent='Searching catalog…';
+      previous.disabled=next.disabled=true;status.textContent='Searching catalog…';consent.hidden=true;
       get('[data-page]').textContent=`Page ${page+1}`;
-      worker.postMessage({base:catalogBase,manifest,query:String(data.get('query')??''),group:group.value,
-        qmax:data.get('qmax')?Number(data.get('qmax')):Infinity,size:String(data.get('size')??''),page,request});
+      worker.postMessage({type:'search',base:catalogBase,manifest,query:String(data.get('query')??''),group:group.value,
+        qmax:data.get('qmax')?Number(data.get('qmax')):Infinity,size:String(data.get('size')??''),page,request,allowFullScan:fullScanAccepted});
       draw();
     };
-    worker.onmessage=event=>{
-      const message=event.data;if(message.request!==request)return;
-      if(message.error){status.textContent=message.error;return;}
-      const hits=message.hits as {row:IndexRow;group:string}[];
-      const resultKey = hits.map(({row}) => row[0]).join(',');
-      if (resultKey !== shownResults) get('[data-results]').replaceChildren(...hits.map(({row,group})=>{
+    const showResults=(message:SearchReply)=>{
+      const hits=message.hits!;
+      const resultKey = hits.map(hit => hit.id).join(',');
+      if (resultKey !== shownResults) get('[data-results]').replaceChildren(...hits.map(hit=>{
         const tr=document.createElement('tr'),td=document.createElement('td'),button=document.createElement('button');
-        button.textContent=row[1];button.dataset.catalogId=String(row[0]);button.setAttribute('aria-haspopup','dialog');button.onclick=()=>void inspect(row[0],group);td.append(button);tr.append(td);
-        for(const [label,text] of [['Class',manifest.classNames[group]??group],['Perihelion',row[3]==null?'Unknown':`${row[3].toFixed(3)} AU`],['Orbit',row[5]?'Available':'Unavailable']]){const cell=document.createElement('td');cell.dataset.label=label;cell.textContent=text;tr.append(cell);}
+        button.textContent=hit.name;button.dataset.catalogId=String(hit.id);button.setAttribute('aria-haspopup','dialog');button.onclick=()=>void inspect(hit.id,hit.group);td.append(button);tr.append(td);
+        for(const [label,text] of [['Class',manifest.classNames[hit.group]??hit.group],['Perihelion',hit.perihelion==null?'Unknown':`${hit.perihelion.toFixed(3)} AU`],['Orbit',hit.orbit?'Available':'Unavailable']]){const cell=document.createElement('td');cell.dataset.label=label;cell.textContent=text;tr.append(cell);}
         return tr;
       }));
       shownResults = resultKey;
-      status.textContent=message.done?`${number(message.total)} ${message.total===1?'match':'matches'}; ${hits.length} ${hits.length===1?'row':'rows'} displayed. No catalog objects are simulated by this map.`:`${message.progress}; ${number(message.total)} matches so far.`;
-      if(message.done){previous.disabled=page===0;next.disabled=(page+1)*50>=message.total;}
+      const total=message.total!;
+      status.textContent=`${number(total)} ${total===1?'match':'matches'}; ${hits.length} ${hits.length===1?'row':'rows'} displayed. No catalog objects are simulated by this map.`;
+      previous.disabled=page===0;next.disabled=(page+1)*50>=total;
+    };
+    worker.onmessage=event=>{
+      const message=event.data as SearchReply|RecordReply;
+      if(message.type==='record'){
+        const pending=pendingRecords.get(message.request);pendingRecords.delete(message.request);
+        if(message.record) pending?.resolve(message.record); else pending?.reject(new Error(message.error));
+        return;
+      }
+      if(message.request!==request)return;
+      if(!message.done){status.textContent=`${message.progress}.`;stopScan.hidden=false;return;}
+      stopScan.hidden=true;
+      if(message.error){status.textContent=message.error;return;}
+      if(message.cancelled){status.textContent='Index download stopped. Catalog numbers, SPK IDs and unfiltered browsing still work; search again to restart the download.';return;}
+      if(message.needsFullScan){
+        consent.hidden=false;
+        status.textContent=`This search needs the full catalog index (about ${(message.needsFullScan.bytes/1e6).toFixed(0)} MB). Choose Download index and search to continue.`;
+        confirmScan.focus();
+        return;
+      }
+      showResults(message);
     };
     worker.onerror=()=>{status.textContent='Catalog search worker failed. Reload to retry.';};
+    confirmScan.onclick=()=>{fullScanAccepted=true;search();queryInput.focus();};
+    dismissScan.onclick=()=>{consent.hidden=true;status.textContent='Search not run. Look up a catalog number or SPK ID, or browse an orbital class without other filters.';queryInput.focus();};
+    stopScan.onclick=()=>{fullScanAccepted=false;worker.postMessage({type:'cancel'});queryInput.focus();};
     form.onsubmit=event=>{event.preventDefault();page=0;search();};
     group.onchange=()=>{page=0;search();};
     previous.onclick=()=>{if(page){--page;search();}};next.onclick=()=>{++page;search();};
     search();
-  } catch(error) {status.textContent=String(error);get('[data-map-status]').textContent='Map initialization failed; source documentation remains available.';}
+  } catch(error) {status.textContent=errorMessage(error);get('[data-map-status]').textContent='Map initialization failed; source documentation remains available.';}
 }
