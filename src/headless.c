@@ -11,7 +11,7 @@ static int usage(FILE *stream)
 {
     fputs("solar-lab [--scene NAME] (use --lessons for available presets)\n"
         "  [--duration SECONDS | --days DAYS] [--dt SECONDS] [--sample SECONDS]\n"
-        "  [--integrator verlet|euler] [--velocity-factor 0.1..2] [--collision none|bounce|merge] [--output FILE]\n"
+        "  [--integrator verlet|euler] [--velocity-factor F (lesson minimum..2)] [--collision none|bounce|merge] [--output FILE]\n"
         "  [--experiment FILE] | --compare FILE | --catalog | --lessons | --version | --help\n"
         "Defaults: circular, 86400 s duration, 15 s step, 3600 s samples, Verlet.\n"
         "Duration and sample spacing must be whole multiples of dt. Core/catalog use 15 s Verlet.\n"
