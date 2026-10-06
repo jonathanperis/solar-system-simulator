@@ -53,6 +53,7 @@ class CatalogTest(unittest.TestCase):
                     manifest_path.write_text(json.dumps(manifest))
                     catalog.generate()
                     self.assertFalse(output.with_name('catalog-previous').exists())
+                    self.assertFalse((root/'catalog-previous').exists())
                     manifest=json.loads(manifest_path.read_text())
                     manifest['shards'][0]['minId']=1
                     (output/'manifest.json').write_text(json.dumps(manifest))
@@ -61,6 +62,22 @@ class CatalogTest(unittest.TestCase):
         payload['signature']['version'] = 'unexpected'
         with self.assertRaises(ValueError):
             catalog.normalize(payload)
+
+    def test_failed_generation_leaves_nothing_publishable(self):
+        # Astro copies everything under docs/public into the site, so a failed
+        # run must not leave staging or backup directories beside the catalog.
+        record=[20000004,'4','Vesta','an','MBA',2461200.5,'J2000',2.148,.09,7,103,151,2461000.5,None,None,'0']
+        payload={'signature':{'version':'1.0'},'fields':catalog.FIELDS,'count':1,'data':[record]}
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory); public=root/'public'; public.mkdir(); output=public/'catalog'
+            build=root/'build'; build.mkdir(); cache=build/'source.json.gz'
+            cache.write_bytes(gzip.compress(json.dumps(payload).encode()))
+            with patch.object(catalog,'OUT',output), patch.object(catalog,'CACHE',cache), \
+                 patch.object(catalog,'check',side_effect=ValueError('simulated audit failure')):
+                with self.assertRaisesRegex(ValueError,'simulated audit failure'):
+                    catalog.generate()
+            self.assertEqual(sorted(p.name for p in public.iterdir()), [])
+            self.assertEqual(sorted(p.name for p in build.iterdir()), ['source.json.gz'])
 
 
 if __name__ == '__main__':

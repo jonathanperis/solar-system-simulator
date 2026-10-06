@@ -40,3 +40,5 @@ Sources:
 - https://ssd.jpl.nasa.gov/planets/phys_par.html
 - https://ssd.jpl.nasa.gov/planets/approx_pos.html
 - Exact Horizons requests in `planet_epoch.json`.
+
+Data usage and attribution follow [README.md](README.md#data-usage-and-attribution): credit NASA/JPL-Caltech Solar System Dynamics and keep the recorded source URL, retrieval date and hashes with any reuse.

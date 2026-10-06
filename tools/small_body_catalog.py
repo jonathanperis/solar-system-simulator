@@ -108,62 +108,70 @@ def generate():
     coordinate = lib.catalog_coordinate
     coordinate.argtypes = [ctypes.c_double]*7 + [ctypes.c_int]
     coordinate.restype = ctypes.c_double
-    staging = Path(tempfile.mkdtemp(prefix='.catalog-build-', dir=OUT.parent))
-    counts = Counter(r[3] for r in records)
-    shards, density = [], defaultdict(Counter)
-    missing = mapped = 0
-    # Logarithmic AU cells retain the distant tail instead of hiding outliers.
-    # Coordinates are a density overview at a common epoch, not N-body motion.
-    for start in range(0, len(records), SHARD_ROWS):
-        batch = records[start:start+SHARD_ROWS]
-        # Split at class boundaries to allow cheap outer-body-only searches.
-        classes = sorted(set(r[3] for r in batch))
-        for cls in classes:
-            group = [r for r in batch if r[3] == cls]
-            stem = f'{cls}-{start//SHARD_ROWS:04d}'
-            detail = packed(staging / f'{stem}.json.gz', group)
-            index = packed(staging / f'{stem}-index.json.gz',
-                           [[r[0], r[1], r[2], r[5], r[12], usable(r)] for r in group])
-            shards.append({'class': cls, 'count': len(group), 'minId': group[0][0], 'maxId': group[-1][0],
-                           'index': index, 'data': detail})
-            for r in group:
-                if not usable(r):
-                    missing += 1
-                    continue
-                x = coordinate(r[5], r[6], r[7], r[8], r[9], r[10], EPOCH, 0)/149597870700
-                z = coordinate(r[5], r[6], r[7], r[8], r[9], r[10], EPOCH, 2)/149597870700
-                if not math.isfinite(x) or not math.isfinite(z):
-                    raise ValueError(f'C orbit conversion failed for {r[0]}')
-                radius = math.hypot(x, z)
-                log_radius = math.log10(1+radius)
-                angle = math.atan2(z, x)
-                cell = (round(log_radius*math.cos(angle)*60), round(log_radius*math.sin(angle)*60))
-                density[cls][cell] += 1
-                mapped += 1
-        if start % (SHARD_ROWS*16) == 0:
-            print(f'Packed/mapped {min(start+SHARD_ROWS,len(records)):,}/{len(records):,}', flush=True)
-    overview = packed(staging / 'overview.json.gz',
-                      {cls: [[x, y, n] for (x, y), n in sorted(cells.items())] for cls, cells in density.items()})
-    manifest = {'schema': 2, 'checked': datetime.now(timezone.utc).isoformat(), 'source': URL,
-                'sourceSignature': 'NASA/JPL SBDB Query API 1.0', 'sourceCount': source_count,
-                'excludedOtherComets': excluded, 'count': len(records), 'mappable': mapped,
-                'unavailableOrbits': missing, 'epoch': EPOCH, 'fields': RECORD_FIELDS,
-                'classes': dict(counts), 'classNames': CLASS_NAMES, 'shards': shards, 'overview': overview,
-                'sourceSha256': hashlib.sha256(CACHE.read_bytes()).hexdigest(),
-                'model': 'Heliocentric two-body propagation to the reference epoch; J2000 ecliptic axes. Not ephemerides.',
-                'physicalQuality': 'Published SBDB values; measurement/estimate classification not supplied by bulk API.'}
-    (staging / 'manifest.json').write_text(json.dumps(manifest, indent=2)+'\n')
-    check(staging)
-    previous = OUT.with_name('catalog-previous')
-    if previous.exists():
-        raise ValueError('previous snapshot backup exists; inspect it before another refresh')
-    if OUT.exists():
-        check(allow_previous_schema=True) # Verify the shipped schema before replacing it.
-        OUT.rename(previous)
-    staging.rename(OUT)
-    if previous.exists():
-        shutil.rmtree(previous)
-    check()
+    # Stage beside the source cache in build/, never under docs/public: Astro
+    # publishes everything in public/, so a failed run must not leave a
+    # half-written catalog or backup where the site build would copy it.
+    work_root = CACHE.parent
+    staging = Path(tempfile.mkdtemp(prefix='.catalog-build-', dir=work_root))
+    try:
+        counts = Counter(r[3] for r in records)
+        shards, density = [], defaultdict(Counter)
+        missing = mapped = 0
+        # Logarithmic AU cells retain the distant tail instead of hiding outliers.
+        # Coordinates are a density overview at a common epoch, not N-body motion.
+        for start in range(0, len(records), SHARD_ROWS):
+            batch = records[start:start+SHARD_ROWS]
+            # Split at class boundaries to allow cheap outer-body-only searches.
+            classes = sorted(set(r[3] for r in batch))
+            for cls in classes:
+                group = [r for r in batch if r[3] == cls]
+                stem = f'{cls}-{start//SHARD_ROWS:04d}'
+                detail = packed(staging / f'{stem}.json.gz', group)
+                index = packed(staging / f'{stem}-index.json.gz',
+                               [[r[0], r[1], r[2], r[5], r[12], usable(r)] for r in group])
+                shards.append({'class': cls, 'count': len(group), 'minId': group[0][0], 'maxId': group[-1][0],
+                               'index': index, 'data': detail})
+                for r in group:
+                    if not usable(r):
+                        missing += 1
+                        continue
+                    x = coordinate(r[5], r[6], r[7], r[8], r[9], r[10], EPOCH, 0)/149597870700
+                    z = coordinate(r[5], r[6], r[7], r[8], r[9], r[10], EPOCH, 2)/149597870700
+                    if not math.isfinite(x) or not math.isfinite(z):
+                        raise ValueError(f'C orbit conversion failed for {r[0]}')
+                    radius = math.hypot(x, z)
+                    log_radius = math.log10(1+radius)
+                    angle = math.atan2(z, x)
+                    cell = (round(log_radius*math.cos(angle)*60), round(log_radius*math.sin(angle)*60))
+                    density[cls][cell] += 1
+                    mapped += 1
+            if start % (SHARD_ROWS*16) == 0:
+                print(f'Packed/mapped {min(start+SHARD_ROWS,len(records)):,}/{len(records):,}', flush=True)
+        overview = packed(staging / 'overview.json.gz',
+                          {cls: [[x, y, n] for (x, y), n in sorted(cells.items())] for cls, cells in density.items()})
+        manifest = {'schema': 2, 'checked': datetime.now(timezone.utc).isoformat(), 'source': URL,
+                    'sourceSignature': 'NASA/JPL SBDB Query API 1.0', 'sourceCount': source_count,
+                    'excludedOtherComets': excluded, 'count': len(records), 'mappable': mapped,
+                    'unavailableOrbits': missing, 'epoch': EPOCH, 'fields': RECORD_FIELDS,
+                    'classes': dict(counts), 'classNames': CLASS_NAMES, 'shards': shards, 'overview': overview,
+                    'sourceSha256': hashlib.sha256(CACHE.read_bytes()).hexdigest(),
+                    'model': 'Heliocentric two-body propagation to the reference epoch; J2000 ecliptic axes. Not ephemerides.',
+                    'physicalQuality': 'Published SBDB values; measurement/estimate classification not supplied by bulk API.'}
+        (staging / 'manifest.json').write_text(json.dumps(manifest, indent=2)+'\n')
+        check(staging)
+        previous = work_root / 'catalog-previous'
+        if previous.exists():
+            raise ValueError('previous snapshot backup exists; inspect it before another refresh')
+        if OUT.exists():
+            check(allow_previous_schema=True) # Verify the shipped schema before replacing it.
+            OUT.rename(previous)
+        staging.rename(OUT)
+        if previous.exists():
+            shutil.rmtree(previous)
+        check()
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging)
 
 
 def check(directory=OUT, allow_previous_schema=False):
