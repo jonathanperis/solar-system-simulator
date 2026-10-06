@@ -5,6 +5,9 @@ import { coreBodyCount, jovianMoonCount, smallBodyCatalogCount, formatCount } fr
 import { implementedBodies } from '../src/lib/bodies.ts';
 import manifest from '../public/catalog/manifest.json' with { type: 'json' };
 
+// Literals such as "1,564,244" are matched verbatim, not as patterns.
+const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 test('page copy derives scene and catalog counts from data instead of literals', async () => {
   assert.equal(coreBodyCount, implementedBodies.length);
   assert.equal(jovianMoonCount, implementedBodies.filter(body => body.parent === 'Jupiter').length);
@@ -14,6 +17,6 @@ test('page copy derives scene and catalog counts from data instead of literals',
   assert.ok(pages.length > 10);
   for (const file of pages) {
     const source = await readFile(new URL(`../src/${file}`, import.meta.url), 'utf8');
-    for (const literal of literals) assert.ok(!new RegExp(`(^|[^0-9.,])${literal.replace(/[,]/g, ',')}([^0-9,]|$)`).test(source), `${file} hard-codes ${literal}`);
+    for (const literal of literals) assert.ok(!new RegExp(`(^|[^0-9.,])${escapeRegExp(literal)}([^0-9,]|$)`).test(source), `${file} hard-codes ${literal}`);
   }
 });
