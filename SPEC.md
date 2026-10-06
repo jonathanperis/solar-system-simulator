@@ -26,6 +26,8 @@ C9: current renderer baseline stays simple after beauty-pass rollback; no resurr
 
 C10: ⊥ ECS, scene format, asset manager, shader stack, ephemeris loader before concrete need.
 
+C11: regenerated small-body shards ⊥ committed to `main` history; next refresh moves shard delivery to hash-pinned release assets first.
+
 ## §I
 
 I.cli: `make` → native app
@@ -292,6 +294,26 @@ Delivery amendment: Jonathan subsequently requested “open pr, evaluate, merge,
 
 A50|The UX PR is reviewed against its complete diff, required checks pass before merge, and the existing Pages pipeline publishes the merged revision with public provenance verified|PR/check readback, Build and Deploy Pages results, public build-info and site verification
 
+## §A — Codebase audit remediation, 2026-10-06
+
+id|criterion|verify
+A51|CI dependency gate is green: the docs lockfile has no moderate-or-worse advisories, build-only packages are devDependencies, Astro is current, TypeScript stays on the newest major supported by `@astrojs/check`, and Dependabot groups CodeQL action updates and skips unsupported TypeScript majors|clean `npm ci`/`npm audit --audit-level=moderate`, docs tests/check/build, Build CI
+A52|Workflows cancel superseded runs, bound job time, share one raylib pin through a cached composite action, cache emsdk, and replay every `examples/*.solar` through native and WASM comparison|workflow review, Build/CodeQL CI, `tools/test_learning_wasm.mjs`
+A53|The ecliptic→simulation mapping is a proper rotation `(x, y, z) = (X, Z, −Y)`; prograde orbits have +Y angular momentum and appear counterclockwise from ecliptic north (+Y); sourced retrograde moons keep −Y|RED handedness tests over core and experiment scenes, docs copy
+A54|Lesson initial-speed choices never silently pass through the parent: trajectories whose periapsis is inside the parent radius are rejected or flagged, and published lesson errors are marked invalid after contact|lesson/session tests at former failing factors
+A55|A single frame delta beyond the stall threshold (sleep, debugger) is discarded like a background resume; ordinary slow frames still keep pending time and the per-update step cap|`test_simulation_step`, `test_simulation_session`
+A56|Environment `CFLAGS`/`CPPFLAGS` extend but never replace required C11, warning, include and `-ffp-contract=off` flags; C tests refuse to compile with `NDEBUG`|`tests/test_build_contract.py`
+A57|Runtime hardening: camera yaw stays bounded; CSV export refuses symlinked or non-regular targets; total comparison/headless ticks are capped; native/headless share one input reader; comparisons measure the subject index; ignored return values are checked; C and TypeScript command IDs are cross-checked; oversized browser experiment text is rejected before C|focused C/Python/Node tests
+A58|Simulation structure: scene capacity is compile-time checked with bounded appends; experiment rows are strict TSV; `orbit.c` is the only Kepler solver; render-scale policy lives outside `src/sim`; planetary masses derive from cited GM values with source-checking tests; parent–moon families start with the parent at the family barycenter offset so the family barycenter follows the intended heliocentric state|C tests, V1 scan, docs copy
+A59|Web runtime: numeric catalog searches load only the owning shard; repeated searches reuse a compact worker cache; a full scan states its download cost first; record lookup runs in the worker; non-fatal Emscripten stderr never disables the runtime; atlas announcements are single and throttled; text and canvas semantics meet accessibility basics; CSP and self-hosted fonts remove avoidable third-party loads; counts derive from data; downloads are not revoked early|Node and browser tests, Astro check/build
+A60|Every generated HTML document and the sitemap come from Astro sources; `docs/public` contains no HTML; route validation fails if a generated page lacks the Astro generator marker or a public HTML file appears|`tools/check_docs_routes.py` regression tests, built-site check
+A61|Repository hygiene: interrupted-fetch packs are pruned, ad-hoc screenshots live in ignored evidence folders, generated-data validation never depends on `assert`, failed catalog generation leaves no publishable directories, and redistributed NASA/JPL data carries a usage note|`git count-objects`, tool tests, data docs
+A62|A second full audit round finds no unresolved Medium-or-higher issue; any remaining Low/Info items are recorded with rationale|second-round audit report
+
+Decision: Jonathan requested “work on everything you mentioned until we have it all done, then a second audit round”, adding that this is a C study project and that every page must be Astro. AGENTS.md authorizes commit and push to `main` after each verified iteration. Google Analytics remains governed by V17 (deployed main only, disclosed); the CSP allow-lists it rather than changing analytics policy.
+
+Catalog storage decision (C11): the pinned 135 MB shard set stays in history at its current revision. A future `--refresh` must not commit regenerated gzip shards to `main`; it must first move shard delivery to hash-pinned release assets fetched by CI, because compressed shards do not delta-compress and each refresh would add the full set to every clone.
+
 ## §T
 
 id|status|task|cites
@@ -354,6 +376,14 @@ T56|x|make small-body details, selection recovery and basket feedback visible|A4
 T57|x|lead comparisons with questions, explain invalid fields, and publish beginner-first help|A48,A49,V31,V34
 T58|x|verify all eleven UX findings, route/bridge contracts, desktop/mobile journeys and regression scan|A45,A46,A47,A48,A49
 
+T59|x|restore green CI dependency gate, group CodeQL updates, share/cache the raylib pin, bound/cancel CI runs, harden Make flags and replay every example natively and in WASM|A51,A52,A56,B18,B19
+T60| |correct scene handedness, lesson contact policy, scene capacity, strict experiment parsing, single Kepler solver, render-policy placement, GM-derived masses and barycentric families|A53,A54,A58
+T61| |discard stalled frames, bound camera yaw, harden CSV targets and work limits, share input reading, fix comparison subject measurement and check command alignment|A55,A57
+T62| |make catalog search/lookup proportional to the query, keep non-fatal runtime warnings non-fatal, close accessibility/CSP/font/count/download findings and guarantee Astro ownership of every page|A59,A60
+T63| |prune local packs, move screenshots, harden data tools and document data usage|A61
+T64| |integrate all rounds, run complete verification, update docs, commit/push main and observe CI/Pages|A51–A61
+T65| |run the second audit round and resolve or record its findings|A62
+
 Verification: Build run https://github.com/jonathanperis/solar-system-simulator/actions/runs/35175509807 passed native tests/sanitizers, WASM packaging, complete catalog checks, docs validation and sandboxed browser tests for implementation commit 016f187. PR creation was denied by the credential; branch-plus-CI delivery follows Jonathan's explicit amendment above.
 
 Security integration verification: Build https://github.com/jonathanperis/solar-system-simulator/actions/runs/35243274760 and CodeQL https://github.com/jonathanperis/solar-system-simulator/actions/runs/35243274774 passed for ee35fba. The local policy matrix passed eight trusted/untrusted event cases; runtime/docs sources match the verified learning-lab main.
@@ -382,3 +412,5 @@ B14|2026-09-16|configurable lesson steps did not always divide the 300-second tr
 B15|2026-09-16|the old all-stars trail exclusion became invalid when the barycentric lesson released the Sun, corrupting parent-relative history|record and draw moving stars, omit only fixed stars, and verify the moving-parent transform
 B16|2026-09-16|managed Chromium could not initialize its sandbox under the ubuntu-latest AppArmor user-namespace policy|pin the docs/browser lane to supported Ubuntu 22.04 and retain chromiumSandbox=true
 B17|2026-09-17|a privileged workflow_run deployment checked success and branch name but not source ownership/event, allowing fork PR code to cross the deployment boundary|verify same repository, main branch, allowed event, successful build, and exact triggering commit/artifact under V14
+B18|2026-10-03|new advisories in build-time docs dependencies failed the strict `npm audit` gate on every PR, and a Dependabot TypeScript 7 bump violated the `@astrojs/check` peer range|refresh the lockfile, keep TypeScript 6, ignore unsupported majors and gate at moderate severity (A51)
+B19|2026-10-06|extending native/WASM replay to every example exposed last-digit drift in the phobos lesson: clang on arm64 fused multiply-adds while WebAssembly does not|compile all C with `-ffp-contract=off` and replay every shipped example (A52, A56)

@@ -1,3 +1,5 @@
+#include "require_assert.h"
+
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>

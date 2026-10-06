@@ -1,7 +1,17 @@
 CC ?= cc
-CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -O2 -g
-CPPFLAGS ?= -Isrc
-CPPFLAGS += -Ibuild
+# CFLAGS/CPPFLAGS from the environment or command line tune the build
+# (optimization, debug info, extra include paths) but cannot replace the
+# project contract below. `override` lets this Makefile prepend required flags
+# even to a command-line value.
+#
+# -ffp-contract=off forbids fusing a*b+c into one FMA instruction. Clang on
+# arm64 fuses by default while WebAssembly never does; fused and unfused
+# arithmetic round differently, so native and browser runs of the same lesson
+# would drift apart in their last digits.
+CFLAGS ?= -O2 -g
+REQUIRED_CFLAGS := -std=c11 -Wall -Wextra -Wpedantic -ffp-contract=off
+override CFLAGS := $(REQUIRED_CFLAGS) $(CFLAGS)
+override CPPFLAGS := -Isrc -Ibuild $(CPPFLAGS)
 LDFLAGS ?=
 LDLIBS ?= -lm
 
@@ -107,7 +117,7 @@ test-build:
 	python3 tests/test_build_contract.py
 
 test-sanitize:
-	$(MAKE) test-binaries headless TEST_DIR=build/sanitized-tests LAB=build/solar-lab-sanitized CFLAGS='-std=c11 -Wall -Wextra -Wpedantic -Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
+	$(MAKE) test-binaries headless TEST_DIR=build/sanitized-tests LAB=build/solar-lab-sanitized CFLAGS='-Werror -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer'
 	SOLAR_LAB_BINARY=build/solar-lab-sanitized python3 tests/test_headless.py
 
 web: $(WEB_MANIFEST)
@@ -144,7 +154,7 @@ $(RAYLIB_WEB_LIB):
 
 $(APP): $(APP_OBJS)
 	@mkdir -p $(@D)
-	$(CC) $(LDFLAGS) $^ $(RAYLIB_LIBS) -o $@
+	$(CC) $(LDFLAGS) $^ $(RAYLIB_LIBS) $(LDLIBS) -o $@
 
 build/%.o: %.c
 	@mkdir -p $(@D)
@@ -184,7 +194,7 @@ $(TEST_SIMULATION_STEP): tests/test_simulation_step.c src/app/simulation_step.c 
 
 $(TEST_RENDERER): tests/test_renderer.c src/render/renderer.c src/render/renderer.h src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(RAYLIB_CFLAGS) tests/test_renderer.c src/render/renderer.c src/app/body_trails.c $(SIM_SRCS) $(RAYLIB_LIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(RAYLIB_CFLAGS) tests/test_renderer.c src/render/renderer.c src/app/body_trails.c $(SIM_SRCS) $(RAYLIB_LIBS) $(LDLIBS) -o $@
 
 $(TEST_SIMULATION_SESSION): tests/test_simulation_session.c src/app/simulation_session.c src/app/simulation_session.h src/app/simulation_step.c src/app/simulation_step.h src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
 	@mkdir -p $(@D)
@@ -215,7 +225,7 @@ build/catalog-orbits.dylib: src/sim/orbit.c src/sim/vec3d.c $(wildcard src/sim/*
 
 $(WEB_DIR)/catalog-orbits.wasm: src/sim/orbit.c src/sim/vec3d.c $(wildcard src/sim/*.h)
 	@mkdir -p $(@D)
-	emcc $(CPPFLAGS) -O2 $(filter %.c,$^) -s STANDALONE_WASM --no-entry -Wl,--export=catalog_coordinate -Wl,--export=catalog_period_days -o $@
+	emcc $(CPPFLAGS) -O2 -ffp-contract=off $(filter %.c,$^) -s STANDALONE_WASM --no-entry -Wl,--export=catalog_coordinate -Wl,--export=catalog_period_days -o $@
 
 $(TEST_DIR)/test_learning_lab: tests/test_learning_lab.c $(SIM_SRCS)
 	@mkdir -p $(@D)
@@ -231,7 +241,7 @@ $(TEST_DIR)/test_comparison: tests/test_comparison.c $(LAB_SRCS) build/revision.
 
 $(LAB_WEB_JS): src/lab_web.c $(LAB_SRCS) $(SOURCE_HEADERS) build/revision.h
 	@mkdir -p $(@D)
-	emcc $(CPPFLAGS) -O2 -DPLATFORM_WEB $(filter %.c,$^) --no-entry -s MODULARIZE=1 -s EXPORT_ES6=1 -s EXPORT_NAME=createLearningLab -s ALLOW_MEMORY_GROWTH=1 -s STACK_SIZE=1048576 -s EXPORTED_RUNTIME_METHODS=ccall,UTF8ToString -o $@
+	emcc $(CPPFLAGS) -O2 -ffp-contract=off -DPLATFORM_WEB $(filter %.c,$^) --no-entry -s MODULARIZE=1 -s EXPORT_ES6=1 -s EXPORT_NAME=createLearningLab -s ALLOW_MEMORY_GROWTH=1 -s STACK_SIZE=1048576 -s EXPORTED_RUNTIME_METHODS=ccall,UTF8ToString -o $@
 
 $(LAB_WEB_WASM): $(LAB_WEB_JS)
 	@test -f $@ || { rm -f $(LAB_WEB_JS); $(MAKE) $(LAB_WEB_JS); }
