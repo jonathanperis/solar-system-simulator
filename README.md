@@ -28,7 +28,7 @@ make test-core test-build test-cli test-validators
 
 Lessons include circular, eccentric (`a=1 AU`, `e=0.5`), escape threshold, isolated barycentric Earth–Moon, 30° inclined orbit, and Phobos resolution. Their intentionally artificial initial conditions are separate from the 128-body core and source-epoch catalog experiments. Lessons allow an initial-speed factor from 0.1 to 2 and a fixed timestep from 0.01 to 3600 seconds, with the tighter contact bound described below. Euler is a labeled teaching comparison; core/catalog runs retain 15-second Verlet.
 
-The CLI streams CSV with configuration/revision, SI state, ticks, data quality, energy, momentum and center of mass. Duration and sample spacing must align to whole ticks; the final sample is always emitted. `--experiment build/selected.tsv` runs a prepared catalog input; `--catalog` exposes the C core manifest for cross-language checks. See `build/solar-lab --help`.
+The CLI streams CSV with configuration/revision, SI state, ticks, data quality, energy, momentum and center of mass. Duration and sample spacing must align to whole ticks; the final sample is always emitted. A run may contain at most 10⁹ ticks (`duration / dt`), which bounds work to minutes for lesson scenes and under two hours for the full core scene. `--output` must name a new path or an existing regular file: symlinks, FIFOs and devices are refused, and the file is replaced atomically only after a complete run, so a failed run leaves the previous file (or nothing) instead of partial CSV. `--experiment build/selected.tsv` runs a prepared catalog input; `--catalog` exposes the C core manifest for cross-language checks. See `build/solar-lab --help`.
 
 Both visual runtimes offer SI snapshot export, parent-relative history, optional velocity/acceleration directions and scientific diagnostics. Energy change uses `ΔE / (K₀ + |U₀|)` so near-zero escape energy is well-conditioned. Massless tracers contribute no totals; linear momentum is conserved only in unconstrained systems. Physical vectors keep SI values; drawn arrow lengths and illustrative radius magnification are explicitly presentation-only.
 
@@ -49,7 +49,7 @@ Use **Save configuration**, **Import configuration**, or **Create share link** t
 SOLAR_LAB_V1 preset factor methodA dtA contactA methodB dtB contactB sample_seconds duration_seconds
 ```
 
-Methods are `verlet`/`euler`; contact policies are `none`/`bounce`/`merge`. Sample spacing must contain whole ticks for both runs, and duration must contain whole samples. The browser retains at most 1,025 uniformly coarsened points plus its endpoint within that budget; CLI output streams every checkpoint. A disappeared merged subject is unavailable, never substituted by the surviving body. Force inspectors show source vectors and percentages of summed magnitudes, not percentages of the net vector.
+Methods are `verlet`/`euler`; contact policies are `none`/`bounce`/`merge`. Sample spacing must contain whole ticks for both runs, duration must contain whole samples, and each run is limited to 10⁹ ticks. The browser retains at most 1,025 uniformly coarsened points plus its endpoint within that budget; CLI output streams every checkpoint. A disappeared merged subject is unavailable, never substituted by the surviving body. Force inspectors show source vectors and percentages of summed magnitudes, not percentages of the net vector.
 
 Four additional presets explore specific model choices:
 

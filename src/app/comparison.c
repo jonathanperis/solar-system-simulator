@@ -47,13 +47,18 @@ static void measure(ComparisonRun *run, size_t side)
     values[LAB_SUBJECT_PRESENT] = index >= 0;
     if (index < 0) return;
     Vec3d position = relative_position(system, (size_t)index);
-    BodyInspection body = simulation_session_inspect(session);
+    /* Measure the subject found by ID, never the inspector selection: a merge
+     * renumbers bodies, and a viewer may select another body at any time. */
+    BodyInspection body = simulation_session_inspect_body(session, (size_t)index);
     values[LAB_X_M] = position.x; values[LAB_Y_M] = position.y; values[LAB_Z_M] = position.z;
     values[LAB_RADIUS_M] = vec3d_length(position);
     values[LAB_SPEED_MPS] = body.has_parent ? body.speed_mps : vec3d_length(system->bodies[index].velocity_mps);
     values[LAB_SPECIFIC_ENERGY_JPKG] = body.has_parent ? body.specific_energy_jpkg : NAN;
     Vec3d expected;
-    if (lesson_reference_position(&session->initial_system, lesson_subject_index(run->config.lesson), run->latest.time_seconds, &expected)) {
+    /* Evaluate the analytical reference at this side's own clock (ticks * dt),
+     * the instant its state actually describes. It equals the published
+     * checkpoint time up to the alignment tolerance of lab_ticks_for. */
+    if (lesson_reference_position(&session->initial_system, lesson_subject_index(run->config.lesson), system->elapsed_seconds, &expected)) {
         values[LAB_REFERENCE_ERROR_M] = vec3d_length(vec3d_sub(position, expected));
         values[LAB_PHASE_ERROR_DEG] = atan2(vec3d_length(vec3d_cross(position, expected)), vec3d_dot(position, expected)) * 180 / acos(-1.0);
         run->maximum_phase_error[side] = fmax(run->maximum_phase_error[side], values[LAB_PHASE_ERROR_DEG]);
@@ -100,8 +105,15 @@ bool comparison_start(ComparisonRun *run, const LabConfiguration *config)
     lab_ticks_for(next.duration_seconds, next.sample_seconds, &run->total_samples);
     for (size_t side = 0; side < 2; ++side) {
         run->runs[side] = simulation_session_create();
-        simulation_session_start_configured_lesson(&run->runs[side], next.lesson, next.velocity_factor,
-            next.integrator[side], next.step_seconds[side], next.collision[side]);
+        /* Lessons may reject configurations that pass descriptor validation
+         * (for example a trajectory through the parent). Fail closed and leave
+         * the run unconfigured rather than comparing the default scene. */
+        if (!simulation_session_start_configured_lesson(&run->runs[side], next.lesson, next.velocity_factor,
+            next.integrator[side], next.step_seconds[side], next.collision[side])) {
+            /* A not-yet-created side is still zeroed, which destroy accepts. */
+            comparison_destroy(run);
+            return false;
+        }
         lab_ticks_for(next.sample_seconds, next.step_seconds[side], &run->ticks_per_sample[side]);
         size_t index = lesson_subject_index(next.lesson);
         run->subject_id = run->runs[side].system.bodies[index].id;
@@ -160,7 +172,8 @@ const ComparisonPoint *comparison_point_at(const ComparisonRun *run, size_t inde
 bool comparison_csv_begin(FILE *stream, const ComparisonRun *run, bool retained_history)
 {
     char definition[SOLAR_LAB_CONFIG_BYTES];
-    lab_configuration_format(&run->config, definition, sizeof(definition));
+    /* Never print an unformatted (uninitialized) buffer as provenance. */
+    if (!lab_configuration_format(&run->config, definition, sizeof(definition))) return false;
     fprintf(stream, "# solar-comparison-v1\n# revision: %s\n# configuration: %s# samples: %s\n",
         solar_build_revision(), definition, retained_history ? "bounded uniformly coarsened history plus live endpoint" : "every configured checkpoint");
     fputs("time_s,position_difference_m", stream);

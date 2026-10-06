@@ -199,8 +199,13 @@ int simulation_session_find_body(const SimulationSession *session, const char *q
 
 BodyInspection simulation_session_inspect(const SimulationSession *session)
 {
-    const Body *body = &session->system.bodies[session->selected_body_index];
-    int parent_index = solar_system_parent_index(&session->system, session->selected_body_index);
+    return simulation_session_inspect_body(session, session->selected_body_index);
+}
+
+BodyInspection simulation_session_inspect_body(const SimulationSession *session, size_t index)
+{
+    const Body *body = &session->system.bodies[index];
+    int parent_index = solar_system_parent_index(&session->system, index);
     BodyInspection result = {.name = body->name, .parent_name = "None", .has_parent = parent_index >= 0,
         .mass_kg = body->mass_kg, .radius_m = body->radius_m,
         .mass_quality = body->mass_quality, .radius_quality = body->radius_quality};

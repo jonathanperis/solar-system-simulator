@@ -67,6 +67,10 @@ void simulation_session_set_speed(SimulationSession *session, int preset);
 void simulation_session_select_body(SimulationSession *session, int index);
 int simulation_session_find_body(const SimulationSession *session, const char *query, size_t start);
 double simulation_session_time_scale(const SimulationSession *session);
+/* Physical inspection of the selected body. */
 BodyInspection simulation_session_inspect(const SimulationSession *session);
+/* The same parent-relative SI measurements for any body index, independent of
+ * the inspector selection (comparisons measure their lesson subject). */
+BodyInspection simulation_session_inspect_body(const SimulationSession *session, size_t index);
 
 #endif

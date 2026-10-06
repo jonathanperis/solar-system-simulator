@@ -5,6 +5,7 @@
 
 #include "app/csv_export.h"
 #include "app/comparison.h"
+#include "app/input_file.h"
 
 static int usage(FILE *stream)
 {
@@ -27,24 +28,17 @@ static bool number(const char *text, double *value)
     return !errno && end != text && !*end && isfinite(*value) && *value > 0;
 }
 
-static bool read_input(const char *path, char *text, size_t size)
-{
-    FILE *file = fopen(path, "rb");
-    if (!file) return false;
-    size_t bytes = fread(text, 1, size - 1, file);
-    bool ok = !ferror(file) && fgetc(file) == EOF && !memchr(text, 0, bytes);
-    fclose(file); text[bytes] = 0;
-    return ok;
-}
-
 static int compare_file(const char *path)
 {
     char text[SOLAR_LAB_CONFIG_BYTES]; LabConfiguration config;
-    if (!read_input(path, text, sizeof(text)) || !lab_configuration_parse(text, &config)) {
+    if (!solar_read_text_file(path, text, sizeof(text)) || !lab_configuration_parse(text, &config)) {
         fputs("Invalid comparison descriptor. Check version, lesson, contact policy and aligned sampling.\n", stderr); return 2;
     }
     ComparisonRun run = {0};
-    comparison_start(&run, &config);
+    if (!comparison_start(&run, &config)) {
+        comparison_destroy(&run);
+        fputs("Comparison could not start: a lesson rejected this configuration.\n", stderr); return 2;
+    }
     bool ok = comparison_csv_begin(stdout, &run, false) && comparison_csv_sample(stdout, &run.latest);
     while (ok && !run.complete && !run.failed) {
         uint64_t previous = run.sample_index;
@@ -121,7 +115,7 @@ int main(int argc, char **argv)
     bool valid;
     if (experiment) {
         char text[SOLAR_EXPERIMENT_TEXT_BYTES];
-        valid = read_input(experiment, text, sizeof(text)) && simulation_session_start_experiment(&session, text);
+        valid = solar_read_text_file(experiment, text, sizeof(text)) && simulation_session_start_experiment(&session, text);
     } else valid = simulation_session_start_configured_lesson(&session, lesson, factor, method, dt, collision);
     if (!valid) {
         simulation_session_destroy(&session);
