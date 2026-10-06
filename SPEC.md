@@ -104,19 +104,19 @@ V11: camera focus covers ∀ bodies; wheel changes clamped distance only; pitch 
 
 V12: web `InitWindow()` dimensions derive from served `.canvas-wrap` before WebGL creation; canvas fills frame.
 
-V13: ∀ Pages links/assets base-path-safe under `/solar-system-simulator/`.
+V13: ∀ Pages links/assets base-path-safe under `/solar-system-simulator/`. Self-hosted fonts and the page CSP use base-path-safe URLs; pages make no third-party requests except analytics under V17.
 
 V14: Pages deploy only after successful native tests and WASM validation from this repository's `main` branch, triggered by a push or explicit manual run. Fork/PR-origin code must never execute with deployment write permissions; a matching branch name alone is not trusted origin.
 
 V15: each new-body milestone updates constants, initialization, tests, renderer visibility, app/catalog/docs, route checks, verification.
 
-V16: public claims trace to source/tests; checked claims match implementation; loading/runtime failure always visible, never blank unexplained canvas.
+V16: public claims trace to source/tests; checked claims match implementation; loading/runtime failure always visible, never blank unexplained canvas. Recoverable runtime stderr is logged, never fatal; only abort, non-zero exit, script load failure, missing WebGL or context loss disable the runtime.
 
-V17: local/fork docs builds emit no analytics; deployed Pages build emits configured analytics only; public analytics disclosure exists.
+V17: local/fork docs builds emit no analytics; deployed Pages build emits configured analytics only; public analytics disclosure exists. The page CSP allows Google Analytics hosts only in builds with `PUBLIC_GA_ID`.
 
-V18: keyboard focus always visible; runtime status announces changes; interactive content uses valid semantic HTML. Web form controls retain Tab, arrow, Home/End, type-ahead, and native button activation despite Emscripten/GLFW window-level keyboard listeners; simulator shortcuts act only with canvas focus.
+V18: keyboard focus always visible; runtime status announces changes; interactive content uses valid semantic HTML. Web form controls retain Tab, arrow, Home/End, type-ahead, and native button activation despite Emscripten/GLFW window-level keyboard listeners; simulator shortcuts act only with canvas focus. The atlas has a single polite status region; continuous pointer/range input announces once it settles; visible text is at least 12 px; the simulator canvas is `role=application` with a described keyboard model.
 
-V19: checked WASM begins `\0asm\1\0\0\0`; docs checker resolves all internal routes/assets under configured base path.
+V19: checked WASM begins `\0asm\1\0\0\0`; docs checker resolves all internal routes/assets under configured base path. Every generated HTML document is rendered by an Astro page: the route checker requires the Astro generator marker on each, a leading CSP meta without unsafe-inline/unsafe-eval/wildcard sources, no inline script/style/handlers, and no HTML, sitemap or robots file in `docs/public`; the sitemap is an Astro endpoint.
 
 V20: atlas visual scale/positions are explicitly illustrative; body names, parents, initialization, sources derive from `implementedBodies`; live motion claims link only to WASM runtime.
 
@@ -131,6 +131,10 @@ V24: inspector distance and speed are relative to the identified parent in SI st
 V25: mass and radius have explicit measured/estimated/unknown provenance. Unknown mass uses a zero-gravitational-mass test particle that feels known-source gravity without backreaction. Unknown physical values display as Unknown, never as measured zero; an unknown-radius marker is explicitly render-only in either view.
 
 V26: a comparison side or headless run contains at most `SOLAR_LAB_MAX_TICKS` = 10⁹ fixed ticks. Experiment and descriptor files are read by one bounded reader that rejects oversized or NUL-containing input. Headless `--output` accepts only a missing path or an existing regular file and replaces it atomically after a complete run (new files 0600, existing mode kept); a failed run leaves the previous file or none. Native snapshot export creates the next free `solar-snapshot-NNN.csv` exclusively and never replaces an existing file.
+
+V27: catalog search cost is proportional to the query: digits-only queries route by manifest ID range; the full-index download is stated and needs user confirmation; one confirmed scan builds a bounded in-memory columnar index (≤2.5 M rows, about 60 MB) reused for the session; record lookup runs in the worker with an LRU of ≤3 data shards; SHA-256 verification is mandatory. Fetch URLs come only from manifest file names matching the pinned shard pattern, resolved inside the site's own `catalog/` directory; the worker accepts only dedicated-worker or same-origin messages that pass strict structural validation.
+
+V28: browser session data is untrusted: a prepared experiment is validated and its UTF-8 text kept below `SOLAR_EXPERIMENT_TEXT_BYTES` before `ccall`.
 
 ## §A — Runtime accuracy repair, 2026-09-09
 
@@ -381,7 +385,7 @@ T58|x|verify all eleven UX findings, route/bridge contracts, desktop/mobile jour
 T59|x|restore green CI dependency gate, group CodeQL updates, share/cache the raylib pin, bound/cancel CI runs, harden Make flags and replay every example natively and in WASM|A51,A52,A56,B18,B19
 T60| |correct scene handedness, lesson contact policy, scene capacity, strict experiment parsing, single Kepler solver, render-policy placement, GM-derived masses and barycentric families|A53,A54,A58
 T61|x|discard stalled frames, bound camera yaw, harden CSV targets and work limits, share input reading, fix comparison subject measurement and check command alignment|A55,A57
-T62| |make catalog search/lookup proportional to the query, keep non-fatal runtime warnings non-fatal, close accessibility/CSP/font/count/download findings and guarantee Astro ownership of every page|A59,A60
+T62|x|make catalog search/lookup proportional to the query, keep non-fatal runtime warnings non-fatal, close accessibility/CSP/font/count/download findings and guarantee Astro ownership of every page|A59,A60
 T63|x|prune local packs, move screenshots, harden data tools and document data usage|A61
 T64| |integrate all rounds, run complete verification, update docs, commit/push main and observe CI/Pages|A51–A61
 T65| |run the second audit round and resolve or record its findings|A62
@@ -421,3 +425,8 @@ B21|2026-10-06|unbounded float camera yaw lost its per-frame increment after day
 B22|2026-10-06|CSV export reopened existing paths with O_TRUNC, truncating symlink targets, blocking on FIFOs and leaving partial files on failure|lstat-checked regular targets, sibling mkstemp + fsync + rename, exclusive numbered snapshots (A57, V26)
 B23|2026-10-06|comparison speed/specific energy came from the inspector selection rather than the subject index, and unchecked returns could print an uninitialized descriptor|measure by subject index, fail closed on start/format failures (A57)
 B24|2026-10-06|tick counts up to 2^53 let descriptors and --dt/--duration pairs run essentially forever|cap ticks per side at 10⁹ in `lab_ticks_for` (A57, V26)
+B25|2026-10-06|Emscripten `printErr` called `fail()`, so recoverable stderr permanently disabled a working runtime|log stderr; fail only on abort, non-zero exit, load error, missing WebGL or context loss (A59, V16)
+B26|2026-10-06|every catalog search re-fetched, re-hashed and re-parsed all 203 index shards (~33 MB) and object dialogs parsed a whole data shard on the main thread|identity routing, a confirmed one-time scan into a columnar cache, worker record lookup with LRU (A59, V27)
+B27|2026-10-06|the legacy redirect and sitemap were hand-built strings/files outside Astro and nothing enforced Astro ownership of pages|Astro page plus filename integration, Astro sitemap endpoint, generator-marker and public-HTML checks (A60, V19)
+B28|2026-10-06|the basket download revoked its object URL right after `click()`, which can cancel the download|shared helper with deferred revocation (A59)
+B29|2026-10-06|catalog fetch URLs were built from manifest/message data and the worker accepted unvalidated messages (CodeQL js/client-side-request-forgery, js/missing-origin-check)|pinned-filename URL builder under `catalog/` and strict worker message validation (A59, V27)
