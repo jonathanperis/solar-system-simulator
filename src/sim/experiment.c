@@ -16,7 +16,7 @@ static const double planet_states[SOLAR_EXPERIMENT_PLANET_COUNT][6] = {
 #include "planet_epoch.inc"
 };
 
-#define EXPERIMENT_HEADER "SOLAR_EXPERIMENT_V1 "
+#define EXPERIMENT_HEADER "SOLAR_EXPERIMENT_V1 " SOLAR_CATALOG_EPOCH_TEXT "\n"
 #define EXPERIMENT_FIELD_COUNT 12
 #define EXPERIMENT_NUMBER_BYTES 64
 
@@ -40,8 +40,9 @@ static bool parse_decimal(Field field, double *value)
     return errno == 0 && end == buffer + field.length && isfinite(*value);
 }
 
-/* Identities are unsigned decimal integers; strtol's whitespace/sign skipping is refused. */
-static bool parse_identity(Field field, long long *value)
+/* Identities and quality codes are unsigned decimal integers; strtoll's
+ * whitespace/sign skipping is refused by checking the alphabet first. */
+static bool parse_unsigned(Field field, long long *value)
 {
     char buffer[16];
     if (field.length == 0 || field.length > 10 || strspn(field.text, "0123456789") < field.length) return false;
@@ -85,14 +86,10 @@ static const char *split_row(const char *text, Field fields[EXPERIMENT_FIELD_COU
 bool experiment_parse(const char *text, SolarSystem *out,
     char names[SOLAR_EXPERIMENT_CAPACITY][SOLAR_EXPERIMENT_NAME_BYTES])
 {
+    /* The version line names the one supported source epoch byte for byte. */
     const size_t prefix = strlen(EXPERIMENT_HEADER);
     if (strlen(text) >= SOLAR_EXPERIMENT_TEXT_BYTES || strncmp(text, EXPERIMENT_HEADER, prefix) != 0) return false;
     text += prefix;
-    double epoch;
-    size_t header_length = strcspn(text, "\n");
-    if (text[header_length] != '\n' || !parse_decimal((Field){text, header_length}, &epoch) ||
-        epoch != SOLAR_CATALOG_EPOCH_JD) return false;
-    text += header_length + 1;
 
     SolarSystem system = solar_system_create_sun_only();
     Body (*factories[SOLAR_EXPERIMENT_PLANET_COUNT])(void) = {solar_system_create_mercury_at_perihelion,
@@ -115,16 +112,18 @@ bool experiment_parse(const char *text, SolarSystem *out,
          * mass (kg), radius (m), mass quality, radius quality. */
         Field f[EXPERIMENT_FIELD_COUNT];
         if (count == SOLAR_EXPERIMENT_CAPACITY || !(text = split_row(text, f))) return false;
-        long long identity;
-        double v[EXPERIMENT_FIELD_COUNT - 2];
-        if (!parse_identity(f[0], &identity) || identity < 1000000 || identity > INT32_MAX ||
+        long long identity, mq, rq;
+        double v[8];
+        if (!parse_unsigned(f[0], &identity) || identity < 1000000 || identity > INT32_MAX ||
             !copy_name(f[1], names[count])) return false;
-        for (size_t k = 0; k < EXPERIMENT_FIELD_COUNT - 2; ++k) if (!parse_decimal(f[k + 2], &v[k])) return false;
-        double q = v[0], e = v[1], i = v[2], n = v[3], w = v[4], tp = v[5];
-        double mass = v[6], radius = v[7], mq = v[8], rq = v[9];
-        if (mass < 0 || radius < 0 || mq < 0 || mq > PHYSICAL_PUBLISHED || rq < 0 || rq > PHYSICAL_PUBLISHED ||
-            mq != floor(mq) || rq != floor(rq) ||
-            ((mass == 0) != (mq == PHYSICAL_UNKNOWN)) || ((radius == 0) != (rq == PHYSICAL_UNKNOWN)) ||
+        for (size_t k = 0; k < 8; ++k) if (!parse_decimal(f[k + 2], &v[k])) return false;
+        if (!parse_unsigned(f[10], &mq) || !parse_unsigned(f[11], &rq) ||
+            mq > PHYSICAL_PUBLISHED || rq > PHYSICAL_PUBLISHED) return false;
+        double q = v[0], e = v[1], i = v[2], n = v[3], w = v[4], tp = v[5], mass = v[6], radius = v[7];
+        /* Unknown physical values are carried as zero (test particle, marker
+         * only) and only then: a positive value must have a known quality. */
+        bool mass_known = mq != PHYSICAL_UNKNOWN, radius_known = rq != PHYSICAL_UNKNOWN;
+        if (mass < 0 || radius < 0 || (mass > 0) != mass_known || (radius > 0) != radius_known ||
             i < 0 || i > 180) return false;
         BodyId body_id = identity == 20000004 ? BODY_ID_VESTA : (BodyId)identity;
         for (size_t k = 0; k < system.body_count; ++k) if (system.bodies[k].id == body_id) return false;
