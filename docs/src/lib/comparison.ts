@@ -18,6 +18,13 @@ interface LabModule {
 }
 type PlotPoint = { x: number; y: number };
 
+/** A shared link's `revision` parameter is untrusted text from the URL. Show
+ * it only when it looks like a commit hash (optionally marked dirty). */
+export function sharedRevisionLabel(value: string | null): string {
+  if (value === null) return 'not recorded';
+  return /^[0-9a-f]{7,40}(-dirty)?$/.test(value) ? value : 'unrecognized revision';
+}
+
 export function plotSegments(points: PlotPoint[], bounds: [number, number, number, number], wrap = false): string[] {
   const [xmin, xmax, ymin, ymax] = bounds;
   const segments: string[] = []; let current: string[] = []; let previous: number | undefined;
@@ -294,6 +301,6 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
   try {
     fill(params.get('lab') ?? comparisonPresets.circular);
     if (params.has('lab')) describeCustomExperiment('Explore a shared experiment');
-    setStatus(params.has('lab') ? `Shared configuration loaded; press Start comparison. Created revision: ${params.get('revision') ?? 'not recorded'}; running revision: ${revision}.` : 'Comparison lab ready. Your first experiment is configured; press Start comparison.');
+    setStatus(params.has('lab') ? `Shared configuration loaded; press Start comparison. Created revision: ${sharedRevisionLabel(params.get('revision'))}; running revision: ${revision}.` : 'Comparison lab ready. Your first experiment is configured; press Start comparison.');
   } catch (error) { fill(comparisonPresets.circular); setStatus(`Shared configuration rejected: ${messageOf(error)}`); }
 }
