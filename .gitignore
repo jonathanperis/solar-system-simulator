@@ -12,6 +12,10 @@ playwright-evidence/
 .specs/
 __pycache__/
 solar-snapshot.csv
+# Ad-hoc screenshots belong in playwright-evidence/, never the repo root.
+/*.png
+# Local agent worktrees and session state.
+.claude/
 .DS_Store
 
 # Prerequisites

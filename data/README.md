@@ -43,3 +43,25 @@ reviewed. Generated `src/sim/jovian_moons.inc` is committed and checked in CI.
 | Selected small-body experiments | `planet_epoch.json`, `small_body_physical.json`, compressed catalog manifest/shards | See [SMALL_BODIES.md](SMALL_BODIES.md); source records retain epochs, and experiments align to JD 2461200.5 TDB | Quality and snapshot hashes remain explicit; no invented density/albedo estimates |
 
 The versioned constants make legacy runs reproducible, but do not reconstruct an original source response whose epoch or retrieval date was never saved. Refresh such data only with a reviewed source snapshot and uncertainty record. Guided lessons reuse physical masses/radii while explicitly changing orbital initial conditions; they are not additional astronomical measurements.
+
+## Data usage and attribution
+
+The MIT [`LICENSE`](../LICENSE) covers this repository's code and original
+writing. It does not relicense third-party data. The files in `data/`,
+`src/sim/jovian_moons.inc`, `src/sim/planet_epoch.inc` and the small-body
+shards in `docs/public/catalog/` are transformed extracts of NASA and
+JPL/Caltech Solar System Dynamics products (SBDB, satellite mean elements and
+physical parameters, planetary constants) and NASA Science pages.
+
+These sources publish their data for public use and ask that NASA/JPL be
+credited. Their own pages, not this repository, set the terms. When reusing
+these extracts:
+
+- credit "NASA/JPL-Caltech Solar System Dynamics" and link the source URL
+  recorded in each snapshot or manifest;
+- keep the retrieval date, epoch and transformation notes above, so derived
+  values are not presented as fresh source data;
+- do not imply NASA or JPL endorsement of this project.
+
+The repository records each source URL, retrieval date and content hash, so
+every redistributed value can be traced to the response it came from.

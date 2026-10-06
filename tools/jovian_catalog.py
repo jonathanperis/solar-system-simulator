@@ -100,23 +100,36 @@ def refresh():
     DATA.write_text(json.dumps(snapshot, indent=2) + "\n")
 
 
+def require(condition, message):
+    """Fail validation explicitly; `assert` disappears under `python3 -O`."""
+    if not condition:
+        raise ValueError(message)
+
+
 def validate(snapshot):
     moons = snapshot["moons"]
-    assert snapshot["schema"] == 1 and len(moons) == 115, "review inventory changes explicitly"
-    assert len({m["code"] for m in moons}) == len({m["slug"] for m in moons}) == 115
-    assert [m["code"] for m in moons[:4]] == [501, 502, 503, 504]
+    require(snapshot["schema"] == 1 and len(moons) == 115, "review inventory changes explicitly")
+    require(len({m["code"] for m in moons}) == len({m["slug"] for m in moons}) == 115,
+            "moon codes and slugs must be unique")
+    require([m["code"] for m in moons[:4]] == [501, 502, 503, 504], "Galilean moons must lead the catalog")
     for m in moons:
-        assert m["frame"] in ("Laplace", "ecliptic") and m["epoch_tdb"] == "2000-01-01.5"
-        assert m["a_km"] > 0 and 0 <= m["eccentricity"] < 0.5 and 0 <= m["inclination_deg"] <= 180
+        name = m.get("name", m.get("code"))
+        require(m["frame"] in ("Laplace", "ecliptic") and m["epoch_tdb"] == "2000-01-01.5",
+                f"{name}: unexpected frame or epoch")
+        require(m["a_km"] > 0 and 0 <= m["eccentricity"] < 0.5 and 0 <= m["inclination_deg"] <= 180,
+                f"{name}: orbital elements out of range")
         if m["frame"] == "Laplace":
-            assert 0 <= m["pole_ra_deg"] < 360 and -90 <= m["pole_dec_deg"] <= 90
+            require(0 <= m["pole_ra_deg"] < 360 and -90 <= m["pole_dec_deg"] <= 90,
+                    f"{name}: Laplace pole out of range")
         else:
-            assert m["pole_ra_deg"] is None and m["pole_dec_deg"] is None
+            require(m["pole_ra_deg"] is None and m["pole_dec_deg"] is None,
+                    f"{name}: ecliptic elements must not carry a Laplace pole")
         for value, quality in (("gm_km3_s2", "mass_quality"), ("radius_km", "radius_quality")):
-            assert m[quality] in ("measured", "estimated", "unknown")
-            assert (m[value] is None) == (m[quality] == "unknown")
+            require(m[quality] in ("measured", "estimated", "unknown"), f"{name}: unknown {quality}")
+            require((m[value] is None) == (m[quality] == "unknown"),
+                    f"{name}: {value} presence must match {quality}")
             if m[value] is not None:
-                assert m[value] > 0
+                require(m[value] > 0, f"{name}: {value} must be positive")
 
 
 def generate(snapshot):
