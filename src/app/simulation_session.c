@@ -25,7 +25,8 @@ void simulation_session_reset(SimulationSession *session)
     body_trails_destroy(&session->trails);
     session->system = session->initial_system;
     session->clock = (SimulationClock){.step_seconds = simulation_clock_step_seconds(&session->clock),
-        .integrator = session->clock.integrator, .collision_mode = session->clock.collision_mode};
+        .integrator = session->clock.integrator, .collision_mode = session->clock.collision_mode,
+        .monitor_contact = lesson_monitors_contact(session->lesson)};
     /* Lesson steps need not divide 300 seconds. Align the initial cadence to
      * whole ticks, so later compaction doubles both actual and reported spacing. */
     session->trails.sample_interval_seconds = ceil(SOLAR_TRAIL_INITIAL_INTERVAL_SECONDS / session->clock.step_seconds)
@@ -51,7 +52,10 @@ bool simulation_session_start_lesson(SimulationSession *session, LessonPreset le
 bool lesson_configuration_valid(LessonPreset lesson, double velocity_factor, PhysicsIntegrator integrator,
     double step_seconds, CollisionMode collision_mode)
 {
-    if (lesson < 0 || lesson >= LESSON_COUNT || !isfinite(velocity_factor) || velocity_factor < .1 || velocity_factor > 2 ||
+    /* The lower factor bound is lesson-specific: slower starts would carry the
+     * subject's orbit through its parent (lesson_minimum_velocity_factor). */
+    if (lesson < 0 || lesson >= LESSON_COUNT || !isfinite(velocity_factor) ||
+        velocity_factor < lesson_minimum_velocity_factor(lesson) || velocity_factor > 2 ||
         !isfinite(step_seconds) || step_seconds < .01 || step_seconds > 3600 ||
         (integrator != PHYSICS_VERLET && integrator != PHYSICS_EULER) ||
         (lesson == LESSON_CORE && (integrator != PHYSICS_VERLET || step_seconds != SOLAR_APP_MAX_PHYSICS_STEP_SECONDS)) ||

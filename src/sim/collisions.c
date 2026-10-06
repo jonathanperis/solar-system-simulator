@@ -6,6 +6,27 @@ const char *collision_mode_name(CollisionMode mode)
     return mode == COLLISION_BOUNCE ? "bounce" : mode == COLLISION_MERGE ? "merge" : "none";
 }
 
+bool collision_contact_during_step(const Vec3d *before, const SolarSystem *system)
+{
+    for (size_t i = 0; i < system->body_count; ++i) {
+        for (size_t j = i + 1; j < system->body_count; ++j) {
+            const Body *a = &system->bodies[i], *b = &system->bodies[j];
+            double contact = a->radius_m + b->radius_m;
+            if (contact <= 0) continue;
+            /* Relative separation moves linearly from d0 to d1 over the step;
+             * its closest point is at s = -d0.(d1-d0)/|d1-d0|^2, clamped to [0, 1]. */
+            Vec3d d0 = vec3d_sub(before[j], before[i]);
+            Vec3d d1 = vec3d_sub(b->position_m, a->position_m);
+            Vec3d sweep = vec3d_sub(d1, d0);
+            double length_squared = vec3d_length_squared(sweep);
+            double s = length_squared > 0 ? -vec3d_dot(d0, sweep) / length_squared : 0;
+            s = fmin(1.0, fmax(0.0, s));
+            if (vec3d_length(vec3d_add(d0, vec3d_scale(sweep, s))) < contact) return true;
+        }
+    }
+    return false;
+}
+
 bool collision_resolve_pair(SolarSystem *system, CollisionMode mode, double *kinetic_loss_j)
 {
     *kinetic_loss_j = 0;

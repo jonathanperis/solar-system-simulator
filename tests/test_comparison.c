@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "app/comparison.h"
+#include "sim/constants.h"
 
 static void test_configuration_round_trip_and_matched_bounded_runs(void)
 {
@@ -101,11 +102,37 @@ static void test_unformattable_configuration_writes_no_header(void)
     fclose(stream);
 }
 
+/* A coarse step can carry a valid starting orbit through the parent. The run
+ * keeps going (it is still a numerical experiment) but withholds its
+ * analytical reference errors from the first contact onward (A54). */
+static void test_contact_withholds_reference_errors(void)
+{
+    LabConfiguration config;
+    assert(!lab_configuration_parse("SOLAR_LAB_V1 phobos 0.5 verlet 300 none verlet 15 none 21600 8640000", &config));
+    assert(lab_configuration_parse("SOLAR_LAB_V1 phobos 0.73 verlet 1800 none verlet 15 none 21600 8640000", &config));
+    ComparisonRun run = {0};
+    assert(comparison_start(&run, &config));
+    assert(run.latest.run[0][LAB_CONTACT_DETECTED] == 0 && run.latest.run[1][LAB_CONTACT_DETECTED] == 0);
+    while (!run.complete && !run.failed) comparison_advance(&run, 2048);
+    assert(!run.failed);
+    assert(strcmp(comparison_field_name(LAB_CONTACT_DETECTED), "contact_detected") == 0);
+    /* Within 100 days run A (1800 s steps, about 1/8 of this low orbit) is
+     * carried through Mars; run B (15 s) stays outside. Deterministic: all C
+     * is compiled with -ffp-contract=off. */
+    assert(run.latest.run[0][LAB_CONTACT_DETECTED] == 1);
+    assert(isnan(run.latest.run[0][LAB_REFERENCE_ERROR_M]) && isnan(run.latest.run[0][LAB_PHASE_ERROR_DEG]));
+    assert(run.latest.run[1][LAB_CONTACT_DETECTED] == 0);
+    assert(isfinite(run.latest.run[1][LAB_REFERENCE_ERROR_M]) && isfinite(run.latest.run[1][LAB_PHASE_ERROR_DEG]));
+    assert(run.minimum_distance[1] >= SOLAR_MARS_RADIUS_M + SOLAR_PHOBOS_RADIUS_M);
+    comparison_destroy(&run);
+}
+
 int main(void)
 {
     test_total_ticks_per_side_are_capped();
     test_measurements_follow_the_subject_not_the_selection();
     test_unformattable_configuration_writes_no_header();
+    test_contact_withholds_reference_errors();
     test_configuration_round_trip_and_matched_bounded_runs();
     test_trace_is_bounded_and_missing_merged_subject_is_explicit();
     puts("test_comparison passed");
