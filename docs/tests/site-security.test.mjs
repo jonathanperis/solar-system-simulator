@@ -35,5 +35,5 @@ test('atlas positions are a generated stylesheet covering every implemented body
 test('analytics bootstrap is a static file that validates the measurement ID', async () => {
   const source = await readFile(new URL('../public/scripts/analytics.js', import.meta.url), 'utf8');
   assert.match(source, /\^G-\[A-Z0-9\]\+\$/);
-  assert.match(source, /googletagmanager\.com\/gtag\/js/);
+  assert.ok(source.includes('https://www.googletagmanager.com/gtag/js?id='));
 });
