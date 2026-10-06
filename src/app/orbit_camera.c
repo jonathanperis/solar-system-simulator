@@ -51,7 +51,15 @@ void orbit_camera_apply_zoom(OrbitCameraState *state, float wheel_move)
 
 void orbit_camera_advance(OrbitCameraState *state, float dt_seconds)
 {
-    state->yaw_radians += state->auto_orbit_speed_radians_per_second * dt_seconds;
+    /* Keep yaw in [0, 2*pi). A float has 24 significant bits, so an ever-growing
+     * angle loses the small per-frame increment: after a few days at 60 fps the
+     * rotation stutters and then stops. Only the angle modulo a full turn
+     * matters to sinf/cosf, so wrapping changes nothing visible. */
+    const float full_turn = 2.0f * acosf(-1.0f);
+    float yaw = fmodf(state->yaw_radians + state->auto_orbit_speed_radians_per_second * dt_seconds, full_turn);
+    if (yaw < 0.0f) yaw += full_turn; /* fmodf keeps the dividend's sign. */
+    /* A tiny negative remainder plus 2*pi can round up to exactly 2*pi. */
+    state->yaw_radians = yaw < full_turn ? yaw : 0.0f;
 }
 
 void orbit_camera_frame_sphere(OrbitCameraState *state, float radius, float vertical_fov_degrees, float aspect)

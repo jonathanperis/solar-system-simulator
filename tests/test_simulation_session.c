@@ -138,6 +138,28 @@ static void test_overloaded_playback_retains_time_and_freezes_while_paused(void)
     simulation_session_destroy(&session);
 }
 
+static void test_stalled_frame_is_discarded_but_slow_frames_keep_pending_time(void)
+{
+    SimulationSession session = simulation_session_create();
+    simulation_session_set_speed(&session, 4);
+    /* A laptop that slept for eight hours with the window visible delivers one
+     * huge frame. Integrating it would queue ~3.7e10 s of catch-up work. */
+    simulation_session_update(&session, 8.0 * 3600.0);
+    assert(session.clock.ticks == 0 && session.clock.pending_seconds == 0);
+    assert(session.rate_real_seconds == 0 && session.rate_sim_seconds == 0);
+    simulation_session_update(&session, NAN);
+    assert(session.clock.ticks == 0 && session.clock.pending_seconds == 0);
+    /* Playback resumes normally on the next frame. */
+    simulation_session_update(&session, 1.0 / 60.0);
+    assert(session.clock.ticks == 1440);
+    /* A slow frame at the threshold is still honoured: work is capped and the
+     * remainder stays pending rather than being hidden. */
+    simulation_session_update(&session, SOLAR_APP_STALL_FRAME_SECONDS);
+    assert(session.clock.ticks == 1440 + SOLAR_APP_MAX_STEPS_PER_UPDATE);
+    assert(session.clock.pending_seconds > 0);
+    simulation_session_destroy(&session);
+}
+
 static void test_lessons_reset_configuration_and_exclude_background_time(void)
 {
     SimulationSession session = simulation_session_create();
@@ -183,6 +205,7 @@ static void test_lessons_reset_configuration_and_exclude_background_time(void)
 
 int main(void)
 {
+    test_stalled_frame_is_discarded_but_slow_frames_keep_pending_time();
     test_lessons_reset_configuration_and_exclude_background_time();
     test_overloaded_playback_retains_time_and_freezes_while_paused();
     test_playback_pause_step_speed_and_reset();

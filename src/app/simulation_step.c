@@ -6,6 +6,13 @@ double simulation_clock_step_seconds(const SimulationClock *clock)
     return clock->step_seconds > 0 ? clock->step_seconds : SOLAR_APP_MAX_PHYSICS_STEP_SECONDS;
 }
 
+bool simulation_frame_is_stall(double real_seconds)
+{
+    /* Written as a negated range test so NaN, which fails every comparison,
+     * is classified as a stall too. */
+    return !(real_seconds >= 0.0 && real_seconds <= SOLAR_APP_STALL_FRAME_SECONDS);
+}
+
 void simulation_clock_tick(SolarSystem *system, BodyTrails *trails, SimulationClock *clock)
 {
     double step = simulation_clock_step_seconds(clock);

@@ -130,7 +130,10 @@ double simulation_session_time_scale(const SimulationSession *session)
 void simulation_session_update(SimulationSession *session, double real_seconds)
 {
     if (session->background) return;
-    if (session->discard_resumed_frame) {
+    /* A stalled frame is treated like the first frame after a hidden tab: it
+     * contains wall time nobody watched, so it neither advances physics nor
+     * counts toward the achieved-speed measurement. */
+    if (session->discard_resumed_frame || simulation_frame_is_stall(real_seconds)) {
         session->discard_resumed_frame = false;
         return;
     }

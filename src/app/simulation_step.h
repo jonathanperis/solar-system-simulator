@@ -5,10 +5,21 @@
 #include "../sim/solar_system.h"
 #include "../sim/physics.h"
 #include "../sim/collisions.h"
+#include <stdbool.h>
 #include <stdint.h>
 
 /* Verified against 100-day orbital phase and half-step convergence tests. */
 #define SOLAR_APP_MAX_PHYSICS_STEP_SECONDS 15.0
+
+/* The interactive loop targets 60 fps, so ordinary frames last ~0.017 s and
+ * even badly overloaded ones stay well under a second. A longer single frame
+ * means the loop was not running at all: laptop sleep with the window visible,
+ * a debugger breakpoint, a blocked window drag. That wall time is discarded like
+ * a hidden-tab resume. At 15 days/s, integrating an 8-hour sleep would queue
+ * ~3.7e10 s (hours of full-CPU catch-up at the per-update step cap). Frames at
+ * or below this threshold are never dropped, so slow hardware still shows up as
+ * pending time and a lower achieved speed instead of being hidden. */
+#define SOLAR_APP_STALL_FRAME_SECONDS 1.0
 
 typedef struct SimulationClock {
     double pending_seconds;
@@ -21,6 +32,9 @@ typedef struct SimulationClock {
 } SimulationClock;
 
 double simulation_clock_step_seconds(const SimulationClock *clock);
+/* True for a frame delta that is not playback time: longer than the stall
+ * threshold, negative, or not finite (a NaN would poison the accumulator). */
+bool simulation_frame_is_stall(double real_seconds);
 /* Accelerations must be current; every integrator/contact step leaves them so. */
 void simulation_clock_tick(SolarSystem *system, BodyTrails *trails, SimulationClock *clock);
 

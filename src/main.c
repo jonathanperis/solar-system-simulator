@@ -441,7 +441,9 @@ static void solar_app_update_draw(void *user_data)
     simulation_session_set_background(&app->session, IsWindowMinimized());
 #endif
     orbit_camera_apply_zoom(&app->orbit_camera, GetMouseWheelMove());
-    if (app->auto_rotate) orbit_camera_advance(&app->orbit_camera, frame_time);
+    /* A stalled frame (sleep, debugger) is discarded by the simulation clock;
+     * the camera skips it too instead of jumping to an arbitrary angle. */
+    if (app->auto_rotate && !simulation_frame_is_stall(frame_time)) orbit_camera_advance(&app->orbit_camera, frame_time);
     simulation_session_update(&app->session, frame_time);
 #if defined(PLATFORM_WEB)
     if (app->web_body_count != app->session.system.body_count) populate_web_bodies();
