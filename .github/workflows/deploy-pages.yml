@@ -23,6 +23,7 @@ jobs:
       github.event.workflow_run.head_branch == 'main' &&
       (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       pages: write

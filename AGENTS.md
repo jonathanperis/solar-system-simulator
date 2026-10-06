@@ -147,5 +147,5 @@ The Pages site is live and should preserve archival solar-chart direction unless
 
 - `SPEC.md` owns current goals, constraints, interfaces, invariants, tasks, and bug history. Update it through spec-driven workflow; do not create replacement plan files.
 - Before edits, verify path, remote, branch, and status.
-- After completing an iteration, run focused verification, commit, and push `main` unless Jonathan requests a PR workflow.
+- After completing an iteration, run focused verification, commit on a branch, push it and open a PR. `main` is protected by a ruleset: changes land only through a PR with the required Build/CodeQL checks green, resolved review threads and a rebase merge (linear history, no direct pushes).
 - Never preserve secrets; replace any encountered secret value with `[REDACTED]`.

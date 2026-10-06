@@ -34,6 +34,9 @@ runs:
         echo "revision=dbc56a87da87d973a9c5baa4e7438a9d20121d28" >> "$GITHUB_OUTPUT"
         echo "prefix=$RUNNER_TEMP/raylib-$PLATFORM" >> "$GITHUB_OUTPUT"
         echo "web-src=$RUNNER_TEMP/raylib-$PLATFORM/src" >> "$GITHUB_OUTPUT"
+        # The runner image fixes the compiler and system headers the static
+        # library was built against; a new image must not reuse an old build.
+        echo "image=${ImageOS:-unknown}-${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
         case "$PLATFORM" in native|web) ;; *) echo "unknown platform: $PLATFORM" >&2; exit 1 ;; esac
 
     # Caches are scoped by branch: pull requests may read main's cache but
@@ -43,7 +46,9 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.pin.outputs.prefix }}
-        key: raylib-${{ inputs.platform }}-${{ runner.os }}-${{ runner.arch }}-${{ steps.pin.outputs.revision }}-${{ inputs.toolchain-key }}
+        # Build commands live in this file, so its hash is part of the key:
+        # changing cmake/make flags rebuilds even at the same revision.
+        key: raylib-${{ inputs.platform }}-${{ runner.os }}-${{ runner.arch }}-${{ steps.pin.outputs.image }}-${{ steps.pin.outputs.revision }}-${{ inputs.toolchain-key }}-${{ hashFiles('.github/actions/raylib/action.yml') }}
 
     - name: Build raylib from the pinned commit
       if: steps.cache.outputs.cache-hit != 'true'

@@ -63,6 +63,12 @@ class CatalogTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             catalog.normalize(payload)
 
+    def test_generation_refuses_to_replace_the_tracked_catalog_by_default(self):
+        # SPEC C-catalog: regenerated gzip shards never delta-compress, so a
+        # refresh must not silently add another full set to main's history.
+        with self.assertRaisesRegex(ValueError, 'release assets'):
+            catalog.generate()
+
     def test_failed_generation_leaves_nothing_publishable(self):
         # Astro copies everything under docs/public into the site, so a failed
         # run must not leave staging or backup directories beside the catalog.

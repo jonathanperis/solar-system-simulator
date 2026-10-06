@@ -71,6 +71,9 @@ jobs:
     name: WebAssembly artifact
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # One Emscripten version for both the SDK and the cached raylib build.
+      EMSDK_VERSION: 6.0.9
 
     steps:
       - name: Check out repository
@@ -81,7 +84,7 @@ jobs:
       - name: Install Emscripten
         uses: mymindstorm/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
         with:
-          version: 6.0.9
+          version: ${{ env.EMSDK_VERSION }}
           actions-cache-folder: emsdk-cache
 
       - name: Build or restore pinned raylib for WebAssembly
@@ -89,7 +92,7 @@ jobs:
         uses: ./.github/actions/raylib
         with:
           platform: web
-          toolchain-key: emsdk-6.0.9
+          toolchain-key: emsdk-${{ env.EMSDK_VERSION }}
 
       - name: Build and smoke-check WebAssembly bundle
         run: make web RAYLIB_WEB_SRC=${{ steps.raylib.outputs.web-src }}
@@ -163,6 +166,7 @@ jobs:
         run: |
           make headless
           node tools/check_catalog.mjs
+          node tools/test_command_ids.mjs
 
       - name: Audit complete offline small-body inventory and orbit module
         run: |

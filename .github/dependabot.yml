@@ -16,7 +16,11 @@ updates:
       - dependency-name: typescript
         update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
-    directory: /
+    # "/" covers .github/workflows; local composite actions must be listed so
+    # their own pins (actions/cache in .github/actions/raylib) stay current.
+    directories:
+      - /
+      - /.github/actions/*
     schedule:
       interval: weekly
     cooldown:
