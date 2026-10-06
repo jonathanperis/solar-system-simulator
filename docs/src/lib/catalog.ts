@@ -229,10 +229,74 @@ export function experimentText(records: CatalogRecord[], epoch: number): string 
   return `SOLAR_EXPERIMENT_V1 ${epoch}\n${lines.join('\n')}\n`;
 }
 
+// Pinned shard names (for example MBA-0009-index.json.gz) and the overview.
+const catalogFilePattern = /^(?:[A-Z]{3}-\d{4}(?:-index)?|overview)\.json\.gz$/;
+const snapshotPattern = /^[0-9a-f]{64}$/;
+const classPattern = /^[A-Z]{3}$/;
+
+/** Resolve a manifest asset to its request URL. Requests are built only from
+ * pinned file names that match the shard naming scheme, resolved inside the
+ * site's own catalog/ directory, so manifest or message content can never
+ * redirect a fetch to another path or host. */
+export function catalogAssetUrl(base: string, asset: Asset, snapshot: string, origin: string | undefined = globalThis.location?.origin): string {
+  if (typeof asset?.file !== 'string' || !catalogFilePattern.test(asset.file)) throw new Error('Unexpected catalog file name in the manifest. Reload before continuing.');
+  if (typeof snapshot !== 'string' || !snapshotPattern.test(snapshot)) throw new Error('Unexpected catalog snapshot identifier. Reload before continuing.');
+  const root = catalogRoot(base, origin);
+  if (!root) throw new Error('Catalog requests must stay within this site origin and its catalog directory.');
+  const url = new URL(asset.file, root);
+  url.search = new URLSearchParams({ snapshot }).toString();
+  return url.href;
+}
+
+function catalogRoot(base: unknown, origin: string | undefined): URL | undefined {
+  if (typeof base !== 'string') return undefined;
+  let root: URL;
+  try { root = new URL(base, globalThis.location?.href ?? origin ?? 'http://localhost/'); } catch { return undefined; }
+  if (origin && root.origin !== new URL(origin).origin) return undefined;
+  return root.pathname.endsWith('/catalog/') && !root.search && !root.hash ? root : undefined;
+}
+
+type SearchRequest = SearchFilter & { type: 'search'; base: string; manifest: Manifest; page: number; request: number; allowFullScan: boolean };
+type RecordRequest = { type: 'record'; base: string; manifest: Manifest; id: number; group: string; request: number };
+export type WorkerRequest = SearchRequest | RecordRequest | { type: 'cancel' };
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
+const isCount = (value: unknown, max = Number.MAX_SAFE_INTEGER): value is number => Number.isInteger(value) && (value as number) >= 0 && (value as number) <= max;
+const isAsset = (value: unknown): value is Asset => isRecord(value) && typeof value.file === 'string' && catalogFilePattern.test(value.file)
+  && isCount(value.bytes) && typeof value.sha256 === 'string' && typeof value.contentSha256 === 'string';
+const isShard = (value: unknown): value is Shard => isRecord(value) && typeof value.class === 'string' && classPattern.test(value.class)
+  && isCount(value.count) && isCount(value.minId) && isCount(value.maxId) && isAsset(value.index) && isAsset(value.data);
+
+function isManifest(value: unknown): value is Manifest {
+  return isRecord(value) && value.schema === 2 && typeof value.sourceSha256 === 'string' && snapshotPattern.test(value.sourceSha256)
+    && typeof value.epoch === 'number' && Number.isFinite(value.epoch) && isCount(value.count) && isRecord(value.classNames)
+    && isAsset(value.overview) && Array.isArray(value.shards) && value.shards.length > 0 && value.shards.length <= 10_000 && value.shards.every(isShard);
+}
+
+/** Strict structural validation of a message posted to the catalog worker.
+ * Every field that later shapes a request or a loop bound is type- and
+ * range-checked; anything else is rejected (returns undefined). */
+export function parseWorkerMessage(data: unknown, origin: string | undefined): WorkerRequest | undefined {
+  if (!isRecord(data)) return undefined;
+  if (data.type === 'cancel') return { type: 'cancel' };
+  if (!isCount(data.request) || !catalogRoot(data.base, origin) || !isManifest(data.manifest)) return undefined;
+  const group = data.group;
+  if (typeof group !== 'string' || (group !== '' && !classPattern.test(group))) return undefined;
+  const common = { base: data.base as string, manifest: data.manifest, group, request: data.request };
+  if (data.type === 'record') return isCount(data.id, 0xffffffff) ? { type: 'record', ...common, id: data.id } : undefined;
+  if (data.type !== 'search') return undefined;
+  const { query, qmax, size, page, allowFullScan } = data;
+  if (typeof query !== 'string' || query.length > 200 || !isCount(page, 1_000_000)) return undefined;
+  if (typeof qmax !== 'number' || !(qmax === Infinity || (Number.isFinite(qmax) && qmax > 0))) return undefined;
+  if (size !== '' && size !== 'known' && size !== 'unknown') return undefined;
+  if (allowFullScan !== undefined && typeof allowFullScan !== 'boolean') return undefined;
+  return { type: 'search', ...common, query, qmax, size, page, allowFullScan: allowFullScan === true };
+}
+
 export async function fetchPacked<T>(base: string, asset: Asset, snapshot: string, signal?: AbortSignal): Promise<T> {
   // Integrity checks are mandatory; never fall back to unverified data.
   if (!globalThis.crypto?.subtle) throw new Error(integrityUnavailableMessage);
-  const response = await fetch(`${base}${asset.file}?snapshot=${snapshot}`, {signal});
+  const response = await fetch(catalogAssetUrl(base, asset, snapshot), {signal});
   if (!response.ok) throw new Error(`Catalog download failed (${response.status}). Retry the search.`);
   const received = await response.arrayBuffer(), bytes = new Uint8Array(received);
   const packed = bytes[0] === 0x1f && bytes[1] === 0x8b;

@@ -1,4 +1,4 @@
-import { ColumnarIndex, columnarRowLimit, fetchPacked, hitFromRow, indexFilter, loadRecord, numericIdentityCandidates, routeShards,
+import { ColumnarIndex, columnarRowLimit, fetchPacked, hitFromRow, indexFilter, loadRecord, numericIdentityCandidates, parseWorkerMessage, routeShards,
   type CatalogHit, type CatalogRecord, type IndexRow, type Manifest, type SearchFilter, type Shard } from './catalog.ts';
 
 /*
@@ -21,9 +21,8 @@ const pageSize = 50;
 const prefetch = 4;        // ordered parallel downloads during the full scan
 const shardCacheSize = 3;  // small LRU for routed index shards and record data shards
 
-type SearchMessage = SearchFilter & { type?: 'search'; base: string; manifest: Manifest; page: number; request: number; allowFullScan?: boolean };
+type SearchMessage = SearchFilter & { type: 'search'; base: string; manifest: Manifest; page: number; request: number; allowFullScan: boolean };
 type RecordMessage = { type: 'record'; base: string; manifest: Manifest; id: number; group: string; request: number };
-type CancelMessage = { type: 'cancel' };
 
 /** Least-recently-used promise cache keyed by snapshot and file name. */
 class ShardCache<T> {
@@ -165,8 +164,21 @@ async function lookup(message: RecordMessage): Promise<void> {
   }
 }
 
-self.onmessage = event => {
-  const message = event.data as SearchMessage | RecordMessage | CancelMessage;
+self.onmessage = (event: MessageEvent<unknown>) => {
+  // This is a dedicated module worker: only the page script that constructed
+  // it holds a reference and can post here, and browsers deliver those
+  // messages with an empty origin (cross-origin pages cannot reach a
+  // dedicated worker at all). Accept only that empty or our own origin, then
+  // validate the payload strictly, because its base URL and manifest shape
+  // every request the worker makes.
+  const origin = self.location.origin;
+  if (event.origin !== '' && event.origin !== origin) return;
+  const message = parseWorkerMessage(event.data, origin);
+  if (!message) {
+    const request = (event.data as { request?: unknown } | null)?.request;
+    if (Number.isInteger(request)) post({ type: 'search', request, done: true, error: 'Invalid catalog request. Reload the page.' });
+    return;
+  }
   if (message.type === 'cancel') {
     // Explicit user cancel of the full-index download; a search waiting on it
     // reports `cancelled`. A later confirmed search can start it again.
