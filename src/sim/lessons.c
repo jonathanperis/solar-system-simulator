@@ -148,6 +148,6 @@ bool lesson_reference_position(const SolarSystem *initial, size_t subject, doubl
     Vec3d tangent = vec3d_cross(vec3d_scale(h, 1 / vec3d_length(h)), p);
     OrbitState state;
     if (!orbit_state(q, e, mu, seconds + offset, &state)) return false;
-    *relative = vec3d_add(vec3d_scale(p, state.position_m.x), vec3d_scale(tangent, state.position_m.z));
+    *relative = vec3d_add(vec3d_scale(p, state.position_m.x), vec3d_scale(tangent, state.position_m.y));
     return true;
 }

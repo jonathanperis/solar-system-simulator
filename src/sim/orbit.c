@@ -48,20 +48,34 @@ bool orbit_state(double q, double e, double mu, double dt, OrbitState *out)
     }
     chi *= sign;
     stumpff(alpha*chi*chi, &c, &s);
+    /* Lagrange f/g form at periapsis, written in the perifocal frame: x along
+     * the periapsis direction, y along the periapsis velocity (prograde). */
     double speed = sqrt(mu*(1+e)/q);
-    Vec3d r = {q-chi*chi*c, 0, (dt-chi*chi*chi*s/root_mu)*speed};
+    Vec3d r = {q-chi*chi*c, (dt-chi*chi*chi*s/root_mu)*speed, 0};
     double distance = vec3d_length(r);
-    Vec3d v = {root_mu/distance*(alpha*chi*chi*chi*s-chi), 0, (1-chi*chi*c/distance)*speed};
-    if (!isfinite(distance) || distance <= 0 || !isfinite(v.x) || !isfinite(v.z)) return false;
+    Vec3d v = {root_mu/distance*(alpha*chi*chi*chi*s-chi), (1-chi*chi*c/distance)*speed, 0};
+    if (!isfinite(distance) || distance <= 0 || !isfinite(v.x) || !isfinite(v.y)) return false;
     *out = (OrbitState){r, v};
     return true;
 }
 
+Vec3d orbit_rotate_to_reference(Vec3d v, double inclination, double node, double periapsis)
+{
+    /* R = Rz(node) * Rx(inclination) * Rz(periapsis), angles in degrees. */
+    double k = acos(-1.0)/180, w = periapsis*k, i = inclination*k, n = node*k;
+    double x = cos(w)*v.x - sin(w)*v.y, y = sin(w)*v.x + cos(w)*v.y;
+    double y_tilted = cos(i)*y - sin(i)*v.z, z = sin(i)*y + cos(i)*v.z;
+    return (Vec3d){cos(n)*x - sin(n)*y_tilted, sin(n)*x + cos(n)*y_tilted, z};
+}
+
+Vec3d orbit_ecliptic_to_simulation(Vec3d ecliptic)
+{
+    return (Vec3d){ecliptic.x, ecliptic.z, ecliptic.y};
+}
+
 Vec3d orbit_orient(Vec3d v, double inclination, double node, double periapsis)
 {
-    double k = acos(-1.0)/180, w = periapsis*k, i = inclination*k, n = node*k;
-    double x = cos(w)*v.x-sin(w)*v.z, y = sin(w)*v.x+cos(w)*v.z;
-    return (Vec3d){cos(n)*x-sin(n)*cos(i)*y, sin(i)*y, sin(n)*x+cos(n)*cos(i)*y};
+    return orbit_ecliptic_to_simulation(orbit_rotate_to_reference(v, inclination, node, periapsis));
 }
 
 double catalog_coordinate(double q, double e, double i, double n, double w, double tp, double epoch, int component)
