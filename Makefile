@@ -158,7 +158,7 @@ dist-wasm: web
 # CodeQL analyzes it too; emcc-only code is otherwise never traced.
 analysis-web-boundary: build/revision.h
 	@mkdir -p build/analysis
-	$(CC) $(CPPFLAGS) -Itools/analysis-stubs $(CFLAGS) -DPLATFORM_WEB -c src/lab_web.c -o build/analysis/lab_web.o
+	$(CC) $(ALL_CPPFLAGS) -Itools/analysis-stubs $(ALL_CFLAGS) -DPLATFORM_WEB -c src/lab_web.c -o build/analysis/lab_web.o
 
 docs-check:
 	python3 tools/check_docs_routes.py docs/dist
