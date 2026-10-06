@@ -100,12 +100,12 @@ Current milestone behavior:
 - Uses right-handed simulation axes: `(x, y, z) = (X, Z, -Y)` of the J2000 ecliptic, so `+y` is ecliptic north and the ecliptic plane is the x/z plane. Prograde orbits have angular momentum along `+y` and appear counterclockwise when viewed from above (north).
 - Initializes Mercury at perihelion on the +X axis with prograde tangential velocity (toward -Z, ecliptic +Y) from the vis-viva equation.
 - Initializes Venus at perihelion on the -X axis with prograde tangential velocity (toward +Z) from the vis-viva equation.
-- Initializes Earth at perihelion on the -Z axis (ecliptic +Y) with prograde tangential velocity (toward -X) from the vis-viva equation.
+- Initializes the Earth–Moon barycenter at perihelion on the -Z axis (ecliptic +Y) with prograde tangential velocity (toward -X) from the vis-viva equation.
 - Initializes the Moon at Earth-relative perigee with tangential relative velocity from the Earth-Moon vis-viva equation.
-- Initializes Mars at heliocentric perihelion on the +Z axis (ecliptic -Y) with prograde tangential velocity (toward +X) from the vis-viva equation.
+- Initializes the Mars–Phobos–Deimos barycenter at heliocentric perihelion on the +Z axis (ecliptic -Y) with prograde tangential velocity (toward +X) from the vis-viva equation.
 - Initializes Phobos and Deimos at Mars-relative periareion with tangential relative velocities from the Mars-moon vis-viva equations.
 - Initializes Vesta at heliocentric perihelion on the +X axis with prograde tangential velocity (toward -Z) from the vis-viva equation.
-- Initializes Jupiter at heliocentric perihelion on the -X axis with prograde tangential velocity (toward +Z) from the vis-viva equation.
+- Initializes the Jovian-system barycenter (Jupiter plus its known-mass moons) at heliocentric perihelion on the -X axis with prograde tangential velocity (toward +Z) from the vis-viva equation.
 - Initializes Jovian moons from sourced mean orbital elements, preserving inclination and retrograde/prograde direction through a common-frame conversion, then adds Jupiter's absolute position and velocity.
 - Initializes Saturn at heliocentric perihelion on the -Z axis with prograde tangential velocity (toward -X) from the vis-viva equation.
 - Advances moving bodies with Newtonian gravity from all nonzero-mass sources using the shared simulation integrator. Unknown-mass moons are test particles, not invented physical masses.
@@ -200,7 +200,7 @@ Moon orbital values used for initialization around Earth:
 - perigee distance: `semi-major axis * (1 - eccentricity)` = `363296440 m`
 - perigee relative speed: `1082.426923000336 m/s`, computed from `sqrt(G * (EarthMass + MoonMass) * (2 / perigee - 1 / semiMajorAxis))`
 - absolute Moon state: Earth heliocentric state plus the Earth-relative perigee offset and relative tangential velocity
-- The core keeps Earth's existing heliocentric perihelion state. The separate Earth–Moon lesson initializes an isolated barycentric pair.
+- The Earth–Moon barycenter, not Earth itself, takes the heliocentric perihelion state: Earth and the Moon are shifted together by minus their mass-weighted offset (Earth sits about 4,670 km from the barycenter), so the pair does not drift off its intended orbit. The separate Earth–Moon lesson initializes an isolated barycentric pair.
 
 Mars orbital values used for initialization:
 
@@ -222,7 +222,7 @@ Martian moon orbital values used for initialization around Mars:
 - Deimos periareion distance: `semi-major axis * (1 - eccentricity)` = `23452258.2 m`
 - Deimos apoareion distance: `semi-major axis * (1 + eccentricity)` = `23467741.8 m`
 - Deimos periareion relative speed: `1351.5904459364303 m/s`, computed from `sqrt(G * (MarsMass + DeimosMass) * (2 / periareion - 1 / semiMajorAxis))`
-- absolute Phobos/Deimos state: Mars heliocentric state plus each moon's Mars-relative periareion offset and relative tangential velocity
+- absolute Phobos/Deimos state: Mars heliocentric state plus each moon's Mars-relative periareion offset and relative tangential velocity; the Mars family is then shifted so its barycenter takes the perihelion state. Jupiter and its known-mass moons follow the same rule; massless test particles carry no weight.
 
 Vesta orbital values used for initialization:
 

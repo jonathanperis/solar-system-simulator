@@ -98,7 +98,9 @@ static void test_session_exposes_jupiter_and_appended_saturn(void)
     BodyInspection inspection = simulation_session_inspect(&session);
     assert(strcmp(inspection.name, "Jupiter") == 0);
     assert(strcmp(inspection.parent_name, "Sun") == 0);
-    assert(fabs(inspection.distance_m - SOLAR_JUPITER_PERIHELION_M) < 0.001);
+    /* The Jovian family barycenter sits at perihelion; Jupiter is displaced
+     * opposite its known-mass moons by well under 300 km (A58). */
+    assert(fabs(inspection.distance_m - SOLAR_JUPITER_PERIHELION_M) < 3.0e5);
     assert(inspection.mass_kg == SOLAR_JUPITER_MASS_KG);
     assert(inspection.radius_m == SOLAR_JUPITER_RADIUS_M);
     assert(simulation_session_find_body(&session, "saturn", 0) == 125);
