@@ -71,8 +71,18 @@ test('mobile small-body details are visible and return to the refreshed result',
   test.setTimeout(120000);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${base}small-bodies/`);
+  const indexRequests: string[] = [];
+  page.on('request', request => { if (/-index\.json\.gz/.test(request.url())) indexRequests.push(request.url()); });
+  await expect(page.locator('[data-search-status]')).toContainText('matches');
+  indexRequests.length = 0;
   await page.getByRole('searchbox', { name: 'Name, designation, or SPK ID' }).fill('Ceres');
   await page.getByRole('button', { name: 'Search catalog', exact: true }).click();
+  // The full-index download is stated and confirmed before any byte is fetched.
+  const confirm = page.getByRole('button', { name: 'Download index and search', exact: true });
+  await expect(confirm).toBeFocused();
+  await expect(page.locator('[data-scan-consent]')).toContainText(/about \d+ MB compressed/);
+  expect(indexRequests).toEqual([]);
+  await confirm.click();
   const result = page.getByRole('button', { name: '1 Ceres (A801 AA)', exact: true });
   await result.click({ timeout: 60000 });
   await expect(result).toHaveAttribute('aria-haspopup', 'dialog');
@@ -84,4 +94,13 @@ test('mobile small-body details are visible and return to the refreshed result',
   await page.keyboard.press('Escape');
   await expect(result).toBeFocused();
   await expect(page.locator('[data-basket-summary]')).toContainText('1 / 16');
+  // Later searches and filters reuse the in-memory index: no further index downloads.
+  const downloaded = indexRequests.length;
+  await page.getByRole('searchbox', { name: 'Name, designation, or SPK ID' }).fill('Pluto');
+  await page.getByRole('button', { name: 'Search catalog', exact: true }).click();
+  await expect(page.getByRole('button', { name: '134340 Pluto (1930 BM)', exact: true })).toBeVisible();
+  await page.getByLabel('Physical size').selectOption('known');
+  await page.getByRole('button', { name: 'Search catalog', exact: true }).click();
+  await expect(page.locator('[data-search-status]')).toContainText('1 match;');
+  expect(indexRequests.length).toBe(downloaded);
 });

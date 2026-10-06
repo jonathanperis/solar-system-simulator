@@ -68,6 +68,17 @@ test('oversized or malformed session experiments are rejected visibly before rea
   }
 });
 
+test('without Web Crypto the catalog explains the HTTPS requirement instead of skipping integrity checks', async ({ page }) => {
+  // Plain-HTTP LAN previews expose no crypto.subtle; emulate that here.
+  await page.addInitScript(() => Object.defineProperty(Crypto.prototype, 'subtle', { get: () => undefined }));
+  const shards: string[] = [];
+  page.on('request', request => { if (request.url().includes('.json.gz')) shards.push(request.url()); });
+  await page.goto(`${base}small-bodies/`);
+  await expect(page.locator('[data-search-status]')).toContainText('HTTPS or http://localhost');
+  await expect(page.getByRole('button', { name: 'Search catalog', exact: true })).toBeDisabled();
+  expect(shards).toEqual([]);
+});
+
 test('the historic runtime URL is an Astro page that forwards to the simulator', async ({ page }) => {
   const violations = await watchPolicy(page);
   await page.goto(`${base}wasm/solar-system-simulator.html`);
