@@ -59,8 +59,53 @@ static void test_trace_is_bounded_and_missing_merged_subject_is_explicit(void)
     comparison_destroy(&run);
 }
 
+static void test_total_ticks_per_side_are_capped(void)
+{
+    uint64_t ticks;
+    assert(lab_ticks_for(SOLAR_LAB_MAX_TICKS, 1, &ticks) && ticks == SOLAR_LAB_MAX_TICKS);
+    assert(!lab_ticks_for(SOLAR_LAB_MAX_TICKS + 1.0, 1, &ticks));
+    assert(!lab_ticks_for(9e13, 0.01, &ticks));
+    LabConfiguration config;
+    /* Exactly at the cap is accepted (validation only; nothing runs here). */
+    assert(lab_configuration_parse("SOLAR_LAB_V1 circular 1 verlet 15 none verlet 15 none 15000000000 15000000000", &config));
+    assert(!lab_configuration_parse("SOLAR_LAB_V1 circular 1 verlet 15 none verlet 15 none 15000000015 15000000015", &config));
+    /* One coarse side cannot hide an unbounded fine side. */
+    assert(!lab_configuration_parse("SOLAR_LAB_V1 circular 1 verlet 3600 none verlet 3600 none 3600 3.6e18", &config));
+    assert(!lab_configuration_parse("SOLAR_LAB_V1 circular 1 verlet 3600 none verlet 1 none 3600 1.8e9", &config));
+}
+
+static void test_measurements_follow_the_subject_not_the_selection(void)
+{
+    LabConfiguration config;
+    assert(lab_configuration_parse("SOLAR_LAB_V1 earth-moon 1 verlet 300 none verlet 300 none 3600 7200", &config));
+    ComparisonRun run = {0};
+    assert(comparison_start(&run, &config));
+    /* Both sides integrate identically; only side A's inspector selection moves. */
+    size_t subject = (size_t)comparison_subject_index(&run, 0);
+    run.runs[0].selected_body_index = subject == 0 ? 1 : 0;
+    while (!run.complete) comparison_advance(&run, 2048);
+    const double *a = run.latest.run[0], *b = run.latest.run[1];
+    assert(isfinite(b[LAB_SPEED_MPS]) && isfinite(b[LAB_SPECIFIC_ENERGY_JPKG]));
+    assert(a[LAB_SPEED_MPS] == b[LAB_SPEED_MPS]);
+    assert(a[LAB_SPECIFIC_ENERGY_JPKG] == b[LAB_SPECIFIC_ENERGY_JPKG]);
+    comparison_destroy(&run);
+}
+
+static void test_unformattable_configuration_writes_no_header(void)
+{
+    ComparisonRun run = {0}; /* Never configured: its descriptor cannot be formatted. */
+    FILE *stream = tmpfile();
+    assert(stream);
+    assert(!comparison_csv_begin(stream, &run, false));
+    assert(ftell(stream) == 0);
+    fclose(stream);
+}
+
 int main(void)
 {
+    test_total_ticks_per_side_are_capped();
+    test_measurements_follow_the_subject_not_the_selection();
+    test_unformattable_configuration_writes_no_header();
     test_configuration_round_trip_and_matched_bounded_runs();
     test_trace_is_bounded_and_missing_merged_subject_is_explicit();
     puts("test_comparison passed");

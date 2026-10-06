@@ -86,6 +86,27 @@ class HeadlessLab(unittest.TestCase):
                     self.assertEqual(stat.S_IMODE(output.stat().st_mode), expected)
                     self.assertTrue(output.read_text().startswith("# solar-lab-v1"))
 
+    def test_work_beyond_the_tick_cap_is_refused_before_running(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+            descriptor = Path(directory) / "huge.solar"
+            descriptor.write_text("SOLAR_LAB_V1 circular 1 verlet 3600 none verlet 3600 none 3600 3.6e18\n")
+            for args in [("--dt", "0.01", "--duration", "9e13", "--sample", "100"),
+                         ("--dt", "1", "--duration", "1000000001", "--sample", "1000000001"),
+                         ("--compare", str(descriptor))]:
+                with self.subTest(args=args):
+                    result = subprocess.run([str(RUNNER), *args], capture_output=True, text=True, timeout=30)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, "")
+                    self.assertTrue(result.stderr)
+
+    def test_inputs_with_embedded_nul_are_rejected(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+            descriptor = Path(directory) / "nul.solar"
+            descriptor.write_bytes((ROOT / "examples/collision.solar").read_bytes() + b"\0junk")
+            result = self.run_lab("--compare", str(descriptor))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, "")
+
     @unittest.skipUnless(os.name == "posix", "POSIX symlink semantics")
     def test_csv_output_refuses_symlinks_without_touching_the_target(self):
         with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:

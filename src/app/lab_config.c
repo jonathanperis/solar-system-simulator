@@ -8,8 +8,12 @@ bool lab_ticks_for(double seconds, double step, uint64_t *ticks)
 {
     if (!isfinite(seconds) || !isfinite(step) || seconds <= 0 || step <= 0) return false;
     double value = seconds / step;
-    if (!isfinite(value) || value < 1 || value > 9007199254740991.0 || fabs(value - round(value)) > 1e-8) return false;
-    *ticks = (uint64_t)round(value);
+    if (!isfinite(value) || value < 1 || fabs(value - round(value)) > 1e-8) return false;
+    /* Compare the rounded count, so a ratio a few ULPs above the cap that
+     * still means exactly SOLAR_LAB_MAX_TICKS steps is accepted. */
+    double whole = round(value);
+    if (whole > (double)SOLAR_LAB_MAX_TICKS) return false;
+    *ticks = (uint64_t)whole;
     return true;
 }
 
