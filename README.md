@@ -34,7 +34,7 @@ Both visual runtimes offer SI snapshot export, parent-relative history, optional
 
 ### Comparison school
 
-The [A/B comparison lab](https://jonathanperis.github.io/solar-system-simulator/compare/) runs identical initial conditions through two C integrators at matched checkpoints. Live charts show overlaid X/Z trajectories, energy change, distance, speed, analytical phase error where applicable, A/B position discrepancy and the resonant angle. Both the browser and CLI use `src/app/comparison.c`; JavaScript only presents C measurements.
+The [A/B comparison lab](https://jonathanperis.github.io/solar-system-simulator/compare/) runs identical initial conditions through two C integrators at matched checkpoints. Live charts show overlaid ecliptic-plane trajectories seen from north, energy change, distance, speed, analytical phase error where applicable, A/B position discrepancy and the resonant angle. Both the browser and CLI use `src/app/comparison.c`; JavaScript only presents C measurements.
 
 ```sh
 make headless
@@ -97,16 +97,17 @@ Current milestone behavior:
 - Opens a raylib 3D scene titled `Solar System Simulator`.
 - Models 128 core bodies: the original ten bodies, 115 Jovian moons, Saturn, Uranus and Neptune. Known radii render as spheres; unknown radii use explicitly nonphysical wire markers.
 - Keeps the Sun fixed at the origin for a stable heliocentric baseline.
-- Initializes Mercury at perihelion on the +X axis with tangential +Z velocity from the vis-viva equation.
-- Initializes Venus at perihelion on the -X axis with tangential -Z velocity from the vis-viva equation.
-- Initializes Earth at perihelion on the +Z axis with tangential -X velocity from the vis-viva equation.
+- Uses right-handed simulation axes: `(x, y, z) = (X, Z, -Y)` of the J2000 ecliptic, so `+y` is ecliptic north and the ecliptic plane is the x/z plane. Prograde orbits have angular momentum along `+y` and appear counterclockwise when viewed from above (north).
+- Initializes Mercury at perihelion on the +X axis with prograde tangential velocity (toward -Z, ecliptic +Y) from the vis-viva equation.
+- Initializes Venus at perihelion on the -X axis with prograde tangential velocity (toward +Z) from the vis-viva equation.
+- Initializes Earth at perihelion on the -Z axis (ecliptic +Y) with prograde tangential velocity (toward -X) from the vis-viva equation.
 - Initializes the Moon at Earth-relative perigee with tangential relative velocity from the Earth-Moon vis-viva equation.
-- Initializes Mars at heliocentric perihelion on the -Z axis with tangential +X velocity from the vis-viva equation.
+- Initializes Mars at heliocentric perihelion on the +Z axis (ecliptic -Y) with prograde tangential velocity (toward +X) from the vis-viva equation.
 - Initializes Phobos and Deimos at Mars-relative periareion with tangential relative velocities from the Mars-moon vis-viva equations.
-- Initializes Vesta at heliocentric perihelion on the +X axis with tangential +Z velocity from the vis-viva equation.
-- Initializes Jupiter at heliocentric perihelion on the -X axis with tangential -Z velocity from the vis-viva equation.
+- Initializes Vesta at heliocentric perihelion on the +X axis with prograde tangential velocity (toward -Z) from the vis-viva equation.
+- Initializes Jupiter at heliocentric perihelion on the -X axis with prograde tangential velocity (toward +Z) from the vis-viva equation.
 - Initializes Jovian moons from sourced mean orbital elements, preserving inclination and retrograde/prograde direction through a common-frame conversion, then adds Jupiter's absolute position and velocity.
-- Initializes Saturn at heliocentric perihelion on the +Z axis with tangential -X velocity from the vis-viva equation.
+- Initializes Saturn at heliocentric perihelion on the -Z axis with prograde tangential velocity (toward -X) from the vis-viva equation.
 - Advances moving bodies with Newtonian gravity from all nonzero-mass sources using the shared simulation integrator. Unknown-mass moons are test particles, not invented physical masses.
 - Supports illustrative/default and real-scale visualization modes.
 - Draws bounded motion traces for non-star bodies and moving stars, with uniform full-run sampling that coarsens as the run grows and an always-current endpoint. Only fixed stars omit history.
@@ -231,7 +232,7 @@ Vesta orbital values used for initialization:
 - eccentricity: `0.09020374382834395`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `321390367905.8045 m`
 - perihelion speed: `21217.451749827014 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
-- Vesta remains in the default X/Z plane. Its measured inclination is deliberately deferred until a dedicated orbital-geometry milestone.
+- Vesta remains in the default ecliptic (simulation x/z) plane. Its measured inclination is deliberately deferred until a dedicated orbital-geometry milestone.
 
 Jupiter orbital values used for initialization:
 
@@ -240,7 +241,7 @@ Jupiter orbital values used for initialization:
 - eccentricity: `0.04838624`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `740679831134.4213 m`
 - perihelion speed: `13705.69975716819 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
-- Jupiter remains in the default X/Z plane. JPL's listed inclination is deliberately deferred until a dedicated orbital-geometry milestone.
+- Jupiter remains in the default ecliptic (simulation x/z) plane. JPL's listed inclination is deliberately deferred until a dedicated orbital-geometry milestone.
 
 Saturn orbital values used for initialization:
 
@@ -249,7 +250,7 @@ Saturn orbital values used for initialization:
 - eccentricity: `0.05386179`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `1349823607379.3088 m`
 - perihelion speed: `10179.094275183943 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
-- Saturn remains in the default X/Z plane. Its visible ring system uses [NASA's roughly `282000 km` overall extent and `26.73` degree tilt](https://science.nasa.gov/saturn/facts/) only at the rendering boundary.
+- Saturn remains in the default ecliptic (simulation x/z) plane. Its visible ring system uses [NASA's roughly `282000 km` overall extent and `26.73` degree tilt](https://science.nasa.gov/saturn/facts/) only at the rendering boundary.
 
 ## Rendering model
 

@@ -1,6 +1,7 @@
 #include "solar_system.h"
 
 #include "constants.h"
+#include "orbit.h"
 #include "physics.h"
 
 _Static_assert(SOLAR_CORE_SCENE_BODY_COUNT == 128, "V5: the core scene has 128 bodies");
@@ -11,6 +12,15 @@ bool solar_system_append(SolarSystem *system, Body body)
     if (system->body_count >= SOLAR_SYSTEM_BODY_CAPACITY) return false;
     system->bodies[system->body_count++] = body;
     return true;
+}
+
+/* Legacy demonstration states are written as in-plane J2000 ecliptic
+ * coordinates (X, Y; Z = north is zero) and mapped once into simulation axes.
+ * Every legacy velocity is counterclockwise seen from ecliptic north, i.e.
+ * prograde: r x v points to +Z ecliptic, which is simulation +Y. */
+static Vec3d ecliptic_plane(double x_m, double y_m)
+{
+    return orbit_ecliptic_to_simulation((Vec3d){x_m, y_m, 0.0});
 }
 
 static Body create_sun(void)
@@ -37,8 +47,8 @@ Body solar_system_create_mercury_at_perihelion(void)
         BODY_ID_SUN,
         SOLAR_MERCURY_MASS_KG,
         SOLAR_MERCURY_RADIUS_M,
-        (Vec3d){SOLAR_MERCURY_PERIHELION_M, 0.0, 0.0},
-        (Vec3d){0.0, 0.0, SOLAR_MERCURY_PERIHELION_SPEED_MPS},
+        ecliptic_plane(SOLAR_MERCURY_PERIHELION_M, 0.0),
+        ecliptic_plane(0.0, SOLAR_MERCURY_PERIHELION_SPEED_MPS),
         false
     );
 }
@@ -52,8 +62,8 @@ Body solar_system_create_venus_at_perihelion(void)
         BODY_ID_SUN,
         SOLAR_VENUS_MASS_KG,
         SOLAR_VENUS_RADIUS_M,
-        (Vec3d){-SOLAR_VENUS_PERIHELION_M, 0.0, 0.0},
-        (Vec3d){0.0, 0.0, -SOLAR_VENUS_PERIHELION_SPEED_MPS},
+        ecliptic_plane(-SOLAR_VENUS_PERIHELION_M, 0.0),
+        ecliptic_plane(0.0, -SOLAR_VENUS_PERIHELION_SPEED_MPS),
         false
     );
 }
@@ -67,8 +77,8 @@ Body solar_system_create_earth_at_perihelion(void)
         BODY_ID_SUN,
         SOLAR_EARTH_MASS_KG,
         SOLAR_EARTH_RADIUS_M,
-        (Vec3d){0.0, 0.0, SOLAR_EARTH_PERIHELION_M},
-        (Vec3d){-SOLAR_EARTH_PERIHELION_SPEED_MPS, 0.0, 0.0},
+        ecliptic_plane(0.0, SOLAR_EARTH_PERIHELION_M),
+        ecliptic_plane(-SOLAR_EARTH_PERIHELION_SPEED_MPS, 0.0),
         false
     );
 }
@@ -78,8 +88,8 @@ Body solar_system_create_moon_at_perigee_near_earth(const Body *earth)
     /* Satellites are initialized in the same absolute frame as the rest of the
      * N-body system, but their offset and velocity come from parent-relative
      * orbital elements so tests can verify the intended moon/planet relation. */
-    Vec3d moon_offset_m = {SOLAR_MOON_PERIGEE_M, 0.0, 0.0};
-    Vec3d moon_relative_velocity_mps = {0.0, 0.0, SOLAR_MOON_PERIGEE_SPEED_MPS};
+    Vec3d moon_offset_m = ecliptic_plane(SOLAR_MOON_PERIGEE_M, 0.0);
+    Vec3d moon_relative_velocity_mps = ecliptic_plane(0.0, SOLAR_MOON_PERIGEE_SPEED_MPS);
 
     return body_create_identified(
         "Moon",
@@ -103,19 +113,19 @@ Body solar_system_create_mars_at_perihelion(void)
         BODY_ID_SUN,
         SOLAR_MARS_MASS_KG,
         SOLAR_MARS_RADIUS_M,
-        (Vec3d){0.0, 0.0, -SOLAR_MARS_PERIHELION_M},
-        (Vec3d){SOLAR_MARS_PERIHELION_SPEED_MPS, 0.0, 0.0},
+        ecliptic_plane(0.0, -SOLAR_MARS_PERIHELION_M),
+        ecliptic_plane(SOLAR_MARS_PERIHELION_SPEED_MPS, 0.0),
         false
     );
 }
 
 Body solar_system_create_phobos_at_periareion_near_mars(const Body *mars)
 {
-    /* Keep Mars-relative satellite motion in the same X/Z ecliptic plane as
-     * the planet orbits. Visual inclinations can be modeled later, but the
-     * default no-inclination scene should not draw vertical moon trails. */
-    Vec3d offset_m = {SOLAR_PHOBOS_PERIAREION_M, 0.0, 0.0};
-    Vec3d relative_velocity_mps = {0.0, 0.0, SOLAR_PHOBOS_PERIAREION_SPEED_MPS};
+    /* Keep Mars-relative satellite motion in the same ecliptic plane (the
+     * simulation X/Z plane) as the planet orbits. Visual inclinations can be
+     * modeled later, but the no-inclination scene draws no vertical trails. */
+    Vec3d offset_m = ecliptic_plane(SOLAR_PHOBOS_PERIAREION_M, 0.0);
+    Vec3d relative_velocity_mps = ecliptic_plane(0.0, SOLAR_PHOBOS_PERIAREION_SPEED_MPS);
 
     return body_create_identified(
         "Phobos",
@@ -132,8 +142,8 @@ Body solar_system_create_phobos_at_periareion_near_mars(const Body *mars)
 
 Body solar_system_create_deimos_at_periareion_near_mars(const Body *mars)
 {
-    Vec3d offset_m = {-SOLAR_DEIMOS_PERIAREION_M, 0.0, 0.0};
-    Vec3d relative_velocity_mps = {0.0, 0.0, -SOLAR_DEIMOS_PERIAREION_SPEED_MPS};
+    Vec3d offset_m = ecliptic_plane(-SOLAR_DEIMOS_PERIAREION_M, 0.0);
+    Vec3d relative_velocity_mps = ecliptic_plane(0.0, -SOLAR_DEIMOS_PERIAREION_SPEED_MPS);
 
     return body_create_identified(
         "Deimos",
@@ -151,7 +161,7 @@ Body solar_system_create_deimos_at_periareion_near_mars(const Body *mars)
 Body solar_system_create_vesta_at_perihelion(void)
 {
     /* Vesta's measured inclination is intentionally omitted until a dedicated
-     * orbital-geometry milestone. This preserves the default X/Z scene plane. */
+     * orbital-geometry milestone. It stays in the ecliptic (simulation X/Z) plane. */
     return body_create_identified(
         "Vesta",
         BODY_KIND_ASTEROID,
@@ -159,8 +169,8 @@ Body solar_system_create_vesta_at_perihelion(void)
         BODY_ID_SUN,
         SOLAR_VESTA_MASS_KG,
         SOLAR_VESTA_RADIUS_M,
-        (Vec3d){SOLAR_VESTA_PERIHELION_M, 0.0, 0.0},
-        (Vec3d){0.0, 0.0, SOLAR_VESTA_PERIHELION_SPEED_MPS},
+        ecliptic_plane(SOLAR_VESTA_PERIHELION_M, 0.0),
+        ecliptic_plane(0.0, SOLAR_VESTA_PERIHELION_SPEED_MPS),
         false
     );
 }
@@ -174,8 +184,8 @@ Body solar_system_create_jupiter_at_perihelion(void)
         BODY_ID_SUN,
         SOLAR_JUPITER_MASS_KG,
         SOLAR_JUPITER_RADIUS_M,
-        (Vec3d){-SOLAR_JUPITER_PERIHELION_M, 0.0, 0.0},
-        (Vec3d){0.0, 0.0, -SOLAR_JUPITER_PERIHELION_SPEED_MPS},
+        ecliptic_plane(-SOLAR_JUPITER_PERIHELION_M, 0.0),
+        ecliptic_plane(0.0, -SOLAR_JUPITER_PERIHELION_SPEED_MPS),
         false
     );
 }
@@ -189,8 +199,8 @@ Body solar_system_create_saturn_at_perihelion(void)
         BODY_ID_SUN,
         SOLAR_SATURN_MASS_KG,
         SOLAR_SATURN_RADIUS_M,
-        (Vec3d){0.0, 0.0, SOLAR_SATURN_PERIHELION_M},
-        (Vec3d){-SOLAR_SATURN_PERIHELION_SPEED_MPS, 0.0, 0.0},
+        ecliptic_plane(0.0, SOLAR_SATURN_PERIHELION_M),
+        ecliptic_plane(-SOLAR_SATURN_PERIHELION_SPEED_MPS, 0.0),
         false
     );
 }
@@ -386,7 +396,7 @@ Body solar_system_create_uranus_at_perihelion(void)
     double q = SOLAR_URANUS_SEMI_MAJOR_AXIS_M * (1-SOLAR_URANUS_ECCENTRICITY);
     double v = sqrt(SOLAR_G*SOLAR_SUN_MASS_KG*(2/q-1/SOLAR_URANUS_SEMI_MAJOR_AXIS_M));
     return body_create_identified("Uranus", BODY_KIND_PLANET, BODY_ID_URANUS, BODY_ID_SUN,
-        SOLAR_URANUS_MASS_KG, SOLAR_URANUS_RADIUS_M, (Vec3d){q,0,0}, (Vec3d){0,0,v}, false);
+        SOLAR_URANUS_MASS_KG, SOLAR_URANUS_RADIUS_M, ecliptic_plane(q, 0), ecliptic_plane(0, v), false);
 }
 
 Body solar_system_create_neptune_at_perihelion(void)
@@ -394,7 +404,7 @@ Body solar_system_create_neptune_at_perihelion(void)
     double q = SOLAR_NEPTUNE_SEMI_MAJOR_AXIS_M * (1-SOLAR_NEPTUNE_ECCENTRICITY);
     double v = sqrt(SOLAR_G*SOLAR_SUN_MASS_KG*(2/q-1/SOLAR_NEPTUNE_SEMI_MAJOR_AXIS_M));
     return body_create_identified("Neptune", BODY_KIND_PLANET, BODY_ID_NEPTUNE, BODY_ID_SUN,
-        SOLAR_NEPTUNE_MASS_KG, SOLAR_NEPTUNE_RADIUS_M, (Vec3d){0,0,-q}, (Vec3d){v,0,0}, false);
+        SOLAR_NEPTUNE_MASS_KG, SOLAR_NEPTUNE_RADIUS_M, ecliptic_plane(0, -q), ecliptic_plane(v, 0), false);
 }
 
 SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter(void)

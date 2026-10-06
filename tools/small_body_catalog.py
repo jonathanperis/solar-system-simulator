@@ -136,7 +136,7 @@ def generate():
                         missing += 1
                         continue
                     x = coordinate(r[5], r[6], r[7], r[8], r[9], r[10], EPOCH, 0)/149597870700
-                    z = coordinate(r[5], r[6], r[7], r[8], r[9], r[10], EPOCH, 2)/149597870700
+                    z = -coordinate(r[5], r[6], r[7], r[8], r[9], r[10], EPOCH, 2)/149597870700  # ecliptic Y = -simulation z
                     if not math.isfinite(x) or not math.isfinite(z):
                         raise ValueError(f'C orbit conversion failed for {r[0]}')
                     radius = math.hypot(x, z)

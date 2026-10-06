@@ -128,7 +128,7 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
     if (!xs.length || !ys.length) { range.textContent = 'Unavailable for the current preset or subject.'; return; }
     let xmin = Math.min(...xs), xmax = Math.max(...xs), ymin = Math.min(...ys), ymax = Math.max(...ys);
     if (trajectory) {
-      // Equal physical scale on X/Z: the plotting box is 435 by 150 CSS units.
+      // Equal physical scale on ecliptic X/Y: the plotting box is 435 by 150 CSS units.
       const xmid = (xmin+xmax)/2, ymid = (ymin+ymax)/2;
       const span = Math.max(xmax-xmin, (ymax-ymin)*435/150, 1e-12);
       xmin = xmid-span/2; xmax = xmid+span/2; ymin = ymid-span*150/435/2; ymax = ymid+span*150/435/2;
@@ -164,11 +164,12 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
       const field = svg.dataset.plot!, trajectory = field === 'trajectory';
       const series = [0, 1].map(side => points.map(point => ({
         x: trajectory ? point.values[side].x_m / divisor : point.time,
-        y: trajectory ? point.values[side].z_m / divisor : field === 'difference' ? point.difference : point.values[side][field]
+        // Ecliptic Y is simulation -Z, so prograde orbits plot counterclockwise.
+        y: trajectory ? -point.values[side].z_m / divisor : field === 'difference' ? point.difference : point.values[side][field]
       })));
       drawPlot(svg, field === 'difference' ? [series[0]] : series, trajectory, field === 'resonant_angle_deg');
     });
-    root.querySelector('[data-trajectory-units]')!.textContent = `X/Z projection in ${divisor === 1 ? 'meters' : 'AU'}; equal axis scale. Parent-relative when a parent exists, otherwise inertial. Lines join recorded checkpoints; coarse sampling can obscure orbital loops.`;
+    root.querySelector('[data-trajectory-units]')!.textContent = `Ecliptic-plane projection seen from north (X right, Y = −z up) in ${divisor === 1 ? 'meters' : 'AU'}; equal axis scale; prograde motion is counterclockwise. Parent-relative when a parent exists, otherwise inertial. Lines join recorded checkpoints; coarse sampling can obscure orbital loops.`;
     const table = root.querySelector<HTMLTableSectionElement>('[data-measurements]')!;
     table.replaceChildren(...fieldNames.map(name => {
       const row = document.createElement('tr');

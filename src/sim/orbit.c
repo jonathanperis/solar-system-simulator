@@ -70,7 +70,12 @@ Vec3d orbit_rotate_to_reference(Vec3d v, double inclination, double node, double
 
 Vec3d orbit_ecliptic_to_simulation(Vec3d ecliptic)
 {
-    return (Vec3d){ecliptic.x, ecliptic.z, ecliptic.y};
+    /* A -90 degree rotation about X: ecliptic north (+Z) becomes simulation
+     * +Y, the "up" axis of the camera, and ecliptic +Y becomes simulation -Z.
+     * It is a proper rotation (determinant +1), so prograde motion keeps
+     * angular momentum toward north (+Y) and is drawn counterclockwise when
+     * viewed from above. Swapping Y and Z instead would mirror the scene. */
+    return (Vec3d){ecliptic.x, ecliptic.z, -ecliptic.y};
 }
 
 Vec3d orbit_orient(Vec3d v, double inclination, double node, double periapsis)

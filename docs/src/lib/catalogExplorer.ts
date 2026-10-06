@@ -100,7 +100,8 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
       path=[]; point=undefined;
       experimentText([r],manifest.epoch); // Same availability boundary as the experiment controls.
       const period=kernel.catalog_period_days(r[5]!,r[6]!);
-      const position=(date:number)=>[0,2].map(component=>kernel.catalog_coordinate(r[5]!,r[6]!,r[7]!,r[8]!,r[9]!,r[10]!,date,component)/149597870700);
+      // Ecliptic X/Y in AU: simulation x is ecliptic X and simulation z is ecliptic -Y.
+      const position=(date:number)=>[0,2].map(component=>(component===2?-1:1)*kernel.catalog_coordinate(r[5]!,r[6]!,r[7]!,r[8]!,r[9]!,r[10]!,date,component)/149597870700);
       for (let i=0;i<=256;++i) {
         const date=r[10]!+(period ? period*i/256 : (i/256-.5)*73050);
         const [x,z]=position(date); if (!Number.isFinite(x+z)) throw new Error('Orbit preview unavailable.');
