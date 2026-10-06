@@ -2,7 +2,7 @@
 
 The simulator and headless runner are local applications using the invoking user's filesystem permissions. `--experiment FILE`, `--compare FILE`, and `--output FILE` intentionally select local files. These paths are not accepted by a network service and the executables do not establish an elevated-privilege file-access boundary.
 
-CodeQL path-injection findings #12–15 follow these explicit CLI selections into their file operations. They are false positives for privilege escalation under this contract. Preserve user-selected file access; reassess the findings if these operations become a privileged service or consume paths automatically from remote inputs. No query-wide suppression is used.
+CodeQL `cpp/path-injection` findings follow these explicit CLI selections into their file operations (`--experiment`, `--compare` and `--output` through the shared reader and CSV writer). Alert numbers change whenever the code moves, so triage by rule and contract, not by number. They are false positives for privilege escalation under this contract. Preserve user-selected file access; reassess the findings if these operations become a privileged service or consume paths automatically from remote inputs. No query-wide suppression is used.
 
 Native CSV creation uses an explicit owner-read/write mode on POSIX instead of inheriting permissive creation permissions from `fopen`. The browser export continues using its temporary virtual-filesystem stream. CLI tests verify creation under umask zero and preservation of an existing file's mode.
 

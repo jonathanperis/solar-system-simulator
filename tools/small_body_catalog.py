@@ -98,7 +98,17 @@ def harvest():
     print(f'Cached {payload["count"]} source rows in {CACHE.stat().st_size:,} bytes', flush=True)
 
 
-def generate():
+TRACKED_CATALOG = ROOT / 'docs/public/catalog'
+
+
+def generate(replace_tracked_catalog=False):
+    # SPEC C-catalog: the committed shard set stays at its pinned revision.
+    # Compressed shards never delta-compress, so replacing them in Git would
+    # add another ~135 MB to every clone; move delivery to hash-pinned release
+    # assets first, or opt in explicitly after that decision is recorded.
+    if OUT.resolve() == TRACKED_CATALOG.resolve() and not replace_tracked_catalog:
+        raise ValueError('refusing to replace the tracked catalog; publish regenerated shards as release assets '
+                         '(SPEC C-catalog) or pass --replace-tracked-catalog deliberately')
     with gzip.open(CACHE, 'rt') as handle:
         payload = json.load(handle)
     records, excluded = normalize(payload)
@@ -227,11 +237,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--refresh', action='store_true')
     parser.add_argument('--generate', action='store_true')
+    parser.add_argument('--replace-tracked-catalog', action='store_true',
+                        help='allow --generate to overwrite docs/public/catalog (see SPEC C-catalog)')
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args()
     if args.refresh:
         harvest()
     if args.generate:
-        generate()
+        generate(args.replace_tracked_catalog)
     if args.check:
         check()
