@@ -18,8 +18,9 @@ bool lesson_create(LessonPreset preset, double velocity_factor, SolarSystem *res
  * hundredths and never below 0.1. Fixed presets (core, barycentric-core)
  * return 1; the collision lesson models contact itself and returns 0.1. */
 double lesson_minimum_velocity_factor(LessonPreset preset);
-/* Lessons whose runs flag sphere contact (all but core, barycentric-core,
- * collision and catalog scenes). Contact invalidates published lesson errors. */
+/* Runs that record swept contact-sphere crossings: every orbital lesson and
+ * catalog experiments (not core, barycentric-core or the collision lesson,
+ * which models contact itself). A crossing withholds published lesson errors. */
 bool lesson_monitors_contact(LessonPreset preset);
 size_t lesson_subject_index(LessonPreset preset);
 double lesson_default_step(LessonPreset preset);

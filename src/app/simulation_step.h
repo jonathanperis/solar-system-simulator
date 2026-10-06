@@ -29,9 +29,11 @@ typedef struct SimulationClock {
     CollisionMode collision_mode;
     uint64_t collision_count;
     double dissipated_energy_j;
-    /* Lessons only (A54): point-mass gravity has no surface, so a run that
-     * brings two spheres into contact is flagged at its first contact tick
-     * (0 = none) and its analytical lesson errors stop being published. */
+    /* Lessons and catalog experiments (A54): point-mass gravity has no
+     * surface, so the first tick whose straight-line drift crossed two
+     * bodies' contact sphere (sum of radii) is recorded (0 = none). It is a
+     * conservative swept test: a coarse step can cut across the curved arc
+     * even when no sampled position is inside. Lesson errors are withheld. */
     bool monitor_contact;
     uint64_t contact_tick;
 } SimulationClock;

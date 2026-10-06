@@ -16,8 +16,8 @@ bool simulation_frame_is_stall(double real_seconds)
 void simulation_clock_tick(SolarSystem *system, BodyTrails *trails, SimulationClock *clock)
 {
     double step = simulation_clock_step_seconds(clock);
-    Vec3d before[SOLAR_CONTACT_MONITOR_MAX_BODIES];
-    bool watch = clock->monitor_contact && clock->contact_tick == 0 && system->body_count <= SOLAR_CONTACT_MONITOR_MAX_BODIES;
+    Vec3d before[SOLAR_SYSTEM_BODY_CAPACITY];
+    bool watch = clock->monitor_contact && clock->contact_tick == 0;
     for (size_t i = 0; watch && i < system->body_count; ++i) before[i] = system->bodies[i].position_m;
     if (clock->integrator == PHYSICS_EULER) physics_step_euler_from_accelerations(system->bodies, system->body_count, step);
     else physics_step_from_accelerations(system->bodies, system->body_count, step);

@@ -50,6 +50,15 @@ static void test_resonance_and_encounter_states_are_explicit_experiments(void)
     double axis = 1 / (2 / q - vec3d_length_squared(resonance.bodies[2].velocity_mps) / mu);
     assert(fabs(pow(axis / vec3d_length(resonance.bodies[1].position_m), 1.5) - 2.0 / 3.0) < 1e-12);
     assert(fabs(fabs(lesson_resonant_angle_degrees(&resonance)) - 180) < 1e-9);
+    /* 180 degrees reads the same in a mirrored frame, so also check a signed
+     * case: Jupiter 30 degrees counterclockwise from the particle's periapsis
+     * (seen from ecliptic north) gives 3*30 - 2*0 - 0 = +90 degrees. */
+    SolarSystem signed_case = resonance;
+    double radius_j = vec3d_length(resonance.bodies[1].position_m), speed_j = vec3d_length(resonance.bodies[1].velocity_mps);
+    double lambda = acos(-1.0) / 6;
+    signed_case.bodies[1].position_m = orbit_ecliptic_to_simulation((Vec3d){radius_j * cos(lambda), radius_j * sin(lambda), 0});
+    signed_case.bodies[1].velocity_mps = orbit_ecliptic_to_simulation((Vec3d){-speed_j * sin(lambda), speed_j * cos(lambda), 0});
+    assert(fabs(lesson_resonant_angle_degrees(&signed_case) - 90) < 1e-9);
     assert(encounter.bodies[2].parent_id == BODY_ID_EARTH);
     double radius = vec3d_length(vec3d_sub(encounter.bodies[2].position_m, encounter.bodies[1].position_m));
     assert(radius > 40 * SOLAR_EARTH_RADIUS_M && radius < 41 * SOLAR_EARTH_RADIUS_M);
@@ -131,8 +140,22 @@ static void test_lessons_refuse_speeds_whose_orbit_enters_the_parent(void)
     double expected = r0 * kk / (2 - kk);
     assert(fabs(orbit_closest_approach_m((Vec3d){r0, 0, 0}, (Vec3d){0, 0, -v}, mu) / expected - 1) < 1e-12);
     assert(expected < 1.4e6 && expected > 1.3e6); /* the audit's 1,343 km */
-    /* An open orbit already moving away has no future periapsis. */
-    assert(orbit_closest_approach_m((Vec3d){1e7, 0, 0}, (Vec3d){1e5, 0, 0}, mu) == 1e7);
+    /* Pinned conic cases (r = 1e7 m; escape speed there is sqrt(2 mu / r)). */
+    double r = 1e7, escape = sqrt(2 * mu / r), circular = sqrt(mu / r);
+    assert(orbit_closest_approach_m((Vec3d){r, 0, 0}, (Vec3d){-1e3, 0, 0}, mu) == 0);           /* radial, falling in */
+    assert(orbit_closest_approach_m((Vec3d){r, 0, 0}, (Vec3d){0.5 * escape, 0, 0}, mu) == 0);   /* radial, bound: falls back */
+    assert(orbit_closest_approach_m((Vec3d){r, 0, 0}, (Vec3d){1e5, 0, 0}, mu) == r);            /* open, receding */
+    assert(fabs(orbit_closest_approach_m((Vec3d){r, 0, 0}, (Vec3d){0, 0, -circular}, mu) / r - 1) < 1e-12); /* circular */
+    assert(orbit_closest_approach_m(vec3d_zero(), (Vec3d){1, 0, 0}, mu) == 0);                 /* at the focus */
+    /* Approaching hyperbola with impact parameter b: q = p/(1+e) from h = b v. */
+    double v_in = 3 * escape, b = 2 * r, h = b * v_in;
+    Vec3d start = {-10 * r, 0, b}, toward = {v_in, 0, 0};
+    double energy = 0.5 * v_in * v_in - mu / vec3d_length(start);
+    double e_hyp = sqrt(1 + 2 * energy * h * h / (mu * mu));
+    assert(fabs(orbit_closest_approach_m(start, toward, mu) / (h * h / (mu * (1 + e_hyp))) - 1) < 1e-12);
+    /* Near-parabolic, tangential at periapsis: the start itself is closest. */
+    assert(fabs(orbit_closest_approach_m((Vec3d){r, 0, 0}, (Vec3d){0, 0, -escape * (1 - 1e-12)}, mu) / r - 1) < 1e-9);
+    assert(fabs(orbit_closest_approach_m((Vec3d){r, 0, 0}, (Vec3d){0, 0, -escape * (1 + 1e-12)}, mu) / r - 1) < 1e-9);
 }
 
 static void test_contact_is_detected_along_each_step(void)
@@ -155,10 +178,16 @@ static void test_contact_is_detected_along_each_step(void)
     assert(simulation_session_start_lesson(&session, LESSON_PHOBOS, minimum, PHYSICS_VERLET, 15));
     assert(session.clock.monitor_contact && session.clock.contact_tick == 0);
     session.paused = true;
+    /* Aim Phobos so one 15 s step carries it from one side of Mars to the
+     * other: it crosses the centre mid-step, yet both sampled endpoints lie
+     * outside the contact sphere, so only the swept test can notice. */
     Body *moon = &session.system.bodies[1];
-    Vec3d inward = vec3d_scale(vec3d_sub(session.system.bodies[0].position_m, moon->position_m), 1.0 / 15.0);
-    moon->velocity_mps = vec3d_add(session.system.bodies[0].velocity_mps, inward);
+    const Body *mars = &session.system.bodies[0];
+    Vec3d across = vec3d_scale(vec3d_sub(mars->position_m, moon->position_m), 2.0 / 15.0);
+    moon->velocity_mps = vec3d_add(mars->velocity_mps, across);
     simulation_session_single_step(&session);
+    double contact = SOLAR_MARS_RADIUS_M + SOLAR_PHOBOS_RADIUS_M;
+    assert(vec3d_length(vec3d_sub(session.system.bodies[1].position_m, session.system.bodies[0].position_m)) > contact);
     assert(session.clock.contact_tick == 1);
     simulation_session_single_step(&session);
     assert(session.clock.contact_tick == 1);
@@ -166,6 +195,15 @@ static void test_contact_is_detected_along_each_step(void)
     assert(session.clock.contact_tick == 0 && session.clock.monitor_contact);
     assert(simulation_session_start_lesson(&session, LESSON_CORE, 1, PHYSICS_VERLET, 15));
     assert(!session.clock.monitor_contact);
+    /* Catalog experiments (up to 25 bodies) are monitored too; the swept
+     * check sizes its buffer to the full scene capacity. */
+    assert(simulation_session_start_experiment(&session, "SOLAR_EXPERIMENT_V1 2461200.5\n"
+        "20000004\tVesta\t2.148\t0.09\t7.14\t103.7\t151.4\t2461000.5\t0\t0\t2\t2\n"));
+    assert(session.clock.monitor_contact && session.clock.contact_tick == 0);
+    Body *vesta = &session.system.bodies[9];
+    vesta->velocity_mps = vec3d_scale(vec3d_sub(session.system.bodies[0].position_m, vesta->position_m), 2.0 / 15.0);
+    simulation_session_single_step(&session);
+    assert(session.clock.contact_tick == 1);
     simulation_session_destroy(&session);
 }
 
