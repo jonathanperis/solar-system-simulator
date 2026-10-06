@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #include "sim/constants.h"
+#include "render/render_scale.h"
 #include "sim/units.h"
 #include "sim/vec3d.h"
 

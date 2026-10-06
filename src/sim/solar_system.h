@@ -6,7 +6,13 @@
 #include "body.h"
 #include "jovian_catalog.h"
 
-#define SOLAR_SYSTEM_BODY_CAPACITY (13 + SOLAR_JOVIAN_MOON_COUNT)
+/* Core scene inventory (V5): Sun; Mercury, Venus, Earth, Moon, Mars, Phobos,
+ * Deimos, Vesta, Jupiter; Jupiter's catalogued moons; Saturn, Uranus, Neptune. */
+#define SOLAR_CORE_NAMED_BODY_COUNT 13
+#define SOLAR_CORE_SCENE_BODY_COUNT (SOLAR_CORE_NAMED_BODY_COUNT + SOLAR_JOVIAN_MOON_COUNT)
+/* Every scene shares one fixed array; the core scene is the largest. Other
+ * scenes (lessons, catalog experiments) assert that they fit at compile time. */
+#define SOLAR_SYSTEM_BODY_CAPACITY SOLAR_CORE_SCENE_BODY_COUNT
 
 typedef struct SolarSystem {
     Body bodies[SOLAR_SYSTEM_BODY_CAPACITY];
@@ -38,6 +44,8 @@ SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars(void);
 SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos(void);
 SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta(void);
 SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter(void);
+/* Adds one body if capacity remains. A full scene returns false unchanged. */
+bool solar_system_append(SolarSystem *system, Body body);
 void solar_system_step(SolarSystem *system, double dt_seconds);
 SolarSystem solar_system_create_current(void);
 int solar_system_parent_index(const SolarSystem *system, size_t body_index);

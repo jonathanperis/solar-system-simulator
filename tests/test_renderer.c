@@ -9,7 +9,7 @@
 #include "sim/constants.h"
 #include "sim/lessons.h"
 #include "sim/solar_system.h"
-#include "sim/units.h"
+#include "render/render_scale.h"
 
 static void assert_close(double actual, double expected, double epsilon)
 {
