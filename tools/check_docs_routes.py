@@ -168,6 +168,12 @@ class SecurityParser(HTMLParser):
             self.in_head = False
 
 
+ANALYTICS_WILDCARDS = {
+    "connect-src": {"https://*.google-analytics.com", "https://*.analytics.google.com", "https://*.googletagmanager.com"},
+    "img-src": {"https://*.google-analytics.com", "https://*.googletagmanager.com"},
+}
+
+
 def check_page_security(route: str, html: str) -> None:
     """Pages deliver a strict meta CSP before any subresource and contain no
     inline code that would require 'unsafe-inline' or hashes (A59)."""
@@ -182,8 +188,16 @@ def check_page_security(route: str, html: str) -> None:
     for name in ("default-src", "script-src", "style-src", "object-src"):
         if name not in directives:
             fail(f"{route} CSP lacks {name}")
-    if any(token in {"'unsafe-inline'", "'unsafe-eval'", "*"} for sources in directives.values() for token in sources):
-        fail(f"{route} CSP must not allow unsafe-inline, unsafe-eval or wildcard sources")
+    if any(token in {"'unsafe-inline'", "'unsafe-eval'"} for sources in directives.values() for token in sources):
+        fail(f"{route} CSP must not allow unsafe-inline or unsafe-eval")
+    # Wildcards are rejected everywhere except Google's documented GA4
+    # collection subdomains, which rotate by region and so cannot be listed
+    # exactly. They are allowed only in the two fetch directives analytics uses
+    # and only appear in builds that carry PUBLIC_GA_ID (V17).
+    for name, sources in directives.items():
+        for token in sources:
+            if "*" in token and token not in ANALYTICS_WILDCARDS.get(name, ()):
+                fail(f"{route} CSP {name} must not allow wildcard source {token}")
     if parser.inline:
         fail(f"{route} contains {parser.inline[0]}; move it to a file so the CSP stays strict")
 

@@ -194,7 +194,8 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
     worker.onerror=()=>{status.textContent='Catalog search worker failed. Reload to retry.';};
     confirmScan.onclick=()=>{fullScanAccepted=true;search();queryInput.focus();};
     dismissScan.onclick=()=>{consent.hidden=true;status.textContent='Search not run. Look up a catalog number or SPK ID, or browse an orbital class without other filters.';queryInput.focus();};
-    stopScan.onclick=()=>{fullScanAccepted=false;worker.postMessage({type:'cancel'});queryInput.focus();};
+    // Hide immediately: if the waiting search was superseded, no reply will.
+    stopScan.onclick=()=>{fullScanAccepted=false;stopScan.hidden=true;worker.postMessage({type:'cancel'});queryInput.focus();};
     form.onsubmit=event=>{event.preventDefault();page=0;search();};
     group.onchange=()=>{page=0;search();};
     previous.onclick=()=>{if(page){--page;search();}};next.onclick=()=>{++page;search();};

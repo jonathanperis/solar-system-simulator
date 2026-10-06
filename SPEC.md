@@ -116,7 +116,7 @@ V17: local/fork docs builds emit no analytics; deployed Pages build emits config
 
 V18: keyboard focus always visible; runtime status announces changes; interactive content uses valid semantic HTML. Web form controls retain Tab, arrow, Home/End, type-ahead, and native button activation despite Emscripten/GLFW window-level keyboard listeners; simulator shortcuts act only with canvas focus. The atlas has a single polite status region; continuous pointer/range input announces once it settles; visible text is at least 12 px; the simulator canvas is `role=application` with a described keyboard model.
 
-V19: checked WASM begins `\0asm\1\0\0\0`; docs checker resolves all internal routes/assets under configured base path. Every generated HTML document is rendered by an Astro page: the route checker requires the Astro generator marker on each, a leading CSP meta without unsafe-inline/unsafe-eval/wildcard sources, no inline script/style/handlers, and no HTML, sitemap or robots file in `docs/public`; the sitemap is an Astro endpoint.
+V19: checked WASM begins `\0asm\1\0\0\0`; docs checker resolves all internal routes/assets under configured base path. Every generated HTML document is rendered by an Astro page: the route checker requires the Astro generator marker on each, a leading CSP meta without unsafe-inline/unsafe-eval and without wildcard sources other than Google's documented GA4 subdomains in `connect-src`/`img-src` (analytics builds only), no inline script/style/handlers, and no HTML, sitemap or robots file in `docs/public`; the sitemap is an Astro endpoint.
 
 V20: atlas visual scale/positions are explicitly illustrative; body names, parents, initialization, sources derive from `implementedBodies`; live motion claims link only to WASM runtime.
 

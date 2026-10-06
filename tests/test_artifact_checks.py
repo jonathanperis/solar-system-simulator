@@ -37,6 +37,12 @@ class ArtifactChecks(unittest.TestCase):
                'script-src \'self\' \'wasm-unsafe-eval\'; style-src \'self\'; object-src \'none\'">')
         head = f'<html><head><meta charset="utf-8">{csp}<link rel="stylesheet" href="a.css">'
         check_page_security("index.html", head + '<script type="module" src="a.js"></script></head><body></body></html>')
+        # Google's documented GA4 subdomain wildcards are the only permitted
+        # wildcards, and only in the fetch directives analytics needs (V17).
+        analytics = head.replace("object-src 'none'", "object-src 'none'; connect-src 'self' https://*.google-analytics.com "
+                                 "https://*.analytics.google.com https://*.googletagmanager.com; "
+                                 "img-src 'self' https://*.google-analytics.com https://*.googletagmanager.com")
+        check_page_security("index.html", analytics + '</head></html>')
         for html in (
             '<html><head><meta charset="utf-8"><script src="a.js"></script></head></html>',
             '<html><head><link rel="stylesheet" href="a.css">' + csp + '</head></html>',
@@ -45,6 +51,9 @@ class ArtifactChecks(unittest.TestCase):
             head + '</head><body><p style="color:red">x</p></body></html>',
             head.replace("style-src 'self'", "style-src 'self' 'unsafe-inline'") + '</head></html>',
             head.replace("script-src 'self'", "script-src 'self' 'unsafe-eval'") + '</head></html>',
+            head.replace("object-src 'none'", "object-src 'none'; img-src https://*.example.com") + '</head></html>',
+            head.replace("script-src 'self'", "script-src 'self' https://*.google-analytics.com") + '</head></html>',
+            head.replace("object-src 'none'", "object-src 'none'; connect-src *") + '</head></html>',
         ):
             with self.subTest(html=html), self.assertRaises(SystemExit):
                 check_page_security("index.html", html)
