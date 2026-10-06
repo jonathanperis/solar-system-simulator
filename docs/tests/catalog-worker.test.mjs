@@ -45,7 +45,10 @@ test('identity queries route to owning shards; text needs consent; the full scan
     result=await pending;
     assert(result.hits.some(hit=>hit.id===20000002&&hit.name==='2 Pallas (A802 FA)'));
     assert(!messages.some(m=>m.request===4&&m.done),'superseded request published final results');
-    assert(messages.some(m=>m.request===5&&/Downloading the catalog index: \d+ of 203 files/.test(m.progress??'')));
+    // Build progress is reported independently of whichever search is current.
+    const builds=messages.filter(m=>m.type==='build');
+    assert(builds.some(m=>m.state==='progress'&&m.totalFiles===203&&m.files>0&&m.totalBytes>m.bytes));
+    assert.equal(builds.at(-1).state,'done');assert.equal(builds.at(-1).files,203);
     assert.equal((await fetched()).length,manifest.shards.length);
 
     for (const [request,overrides,expect] of [
@@ -64,15 +67,16 @@ test('identity queries route to owning shards; text needs consent; the full scan
 });
 
 test('an explicit cancel stops the full download and record lookups reuse a small data-shard cache', async()=>{
-  const {worker,ready,search,reply,done,fetched}=startWorker();
+  const {worker,messages,ready,search,reply,done,fetched}=startWorker();
   try {
     await ready;
     let pending=done(1);
     worker.postMessage(search(1,{query:'Ceres',allowFullScan:true}));
-    await reply(m=>m.request===1&&m.progress);
+    await reply(m=>m.type==='build'&&m.state==='progress');
     worker.postMessage({type:'cancel'});
     const result=await pending;
     assert.equal(result.cancelled,true);assert.equal(result.hits,undefined);
+    assert.equal(messages.filter(m=>m.type==='build').at(-1).state,'cancelled');
     assert((await fetched()).length<manifest.shards.length);
 
     const record=(request,id,group)=>{const answer=reply(m=>m.type==='record'&&m.request===request);
@@ -108,5 +112,54 @@ test('the worker rejects messages that would steer requests off the catalog dire
       assert.match((await answer).error,/Invalid catalog request/);
     }
     assert.deepEqual(await fetched(),[]);
+  } finally {await worker.terminate();}
+});
+
+test('an identity search during an accepted download leaves the build running and reported', async()=>{
+  const {worker,messages,ready,search,reply,done}=startWorker();
+  try {
+    await ready;
+    const finished=reply(m=>m.type==='build'&&m.state==='done');
+    worker.postMessage(search(1,{query:'Vesta',allowFullScan:true}));
+    await reply(m=>m.type==='build'&&m.state==='progress'&&m.files>=2);
+    const identity=done(2);worker.postMessage(search(2,{query:'433'}));
+    assert.deepEqual((await identity).hits.map(hit=>hit.id),[20000433]);
+    const after=messages.length;
+    const build=await finished;
+    assert.equal(build.files,manifest.shards.length);
+    assert(messages.slice(after).some(m=>m.type==='build'&&m.state==='progress'),'progress continues after the superseding search');
+    assert(!messages.some(m=>m.request===1&&m.done),'the superseded text search never publishes');
+    const memory=done(3);worker.postMessage(search(3,{query:'Vesta'}));
+    assert.equal((await memory).source,'memory');
+  } finally {await worker.terminate();}
+});
+
+test('a Stop that lands while the last file is being decoded never publishes the index', async()=>{
+  const {worker,messages,ready,search,reply,done}=startWorker();
+  try {
+    await ready;
+    const last=manifest.shards.at(-1).index.file;
+    worker.postMessage({harness:'hold',file:last});
+    const waiting=done(1);
+    worker.postMessage(search(1,{query:'Vesta',allowFullScan:true}));
+    await reply(m=>m.harness==='holding'&&m.file===last);
+    worker.postMessage({type:'cancel'});
+    worker.postMessage({harness:'release'});
+    assert.equal((await waiting).cancelled,true);
+    assert.equal(messages.filter(m=>m.type==='build').at(-1).state,'cancelled');
+    assert(!messages.some(m=>m.type==='build'&&m.state==='done'));
+    const after=done(2);worker.postMessage(search(2,{query:'Vesta'}));
+    assert.ok((await after).needsFullScan,'a cancelled build must not serve searches from memory');
+  } finally {await worker.terminate();}
+});
+
+test('invalid record requests and lookups answer with their own message type', async()=>{
+  const {worker,ready,reply}=startWorker();
+  try {
+    await ready;
+    const answer=reply(m=>m.request===7);
+    worker.postMessage({type:'record',base:'https://catalog.test/solar-system-simulator/catalog/',manifest,id:'x',group:'MBA',request:7});
+    const message=await answer;
+    assert.equal(message.type,'record');assert.match(message.error,/Invalid catalog request/);
   } finally {await worker.terminate();}
 });

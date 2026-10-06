@@ -62,6 +62,23 @@ export function routeShards(manifest: Manifest, ids: number[], group: string): S
   return manifest.shards.filter(s => (!group || s.class === group) && ids.some(id => id >= s.minId && id <= s.maxId));
 }
 
+/** Decide which download-progress updates reach a live region. The visible
+ * <progress> element updates for every file; screen readers hear the start,
+ * each further 10% of files, at most one update per `intervalMs` otherwise,
+ * and completion, instead of ~200 consecutive announcements. */
+export function createProgressAnnouncer(now: () => number = () => Date.now(), intervalMs = 5000) {
+  let lastDecile = -1, lastTime = -Infinity;
+  return (files: number, totalFiles: number): boolean => {
+    const decile = totalFiles > 0 ? Math.floor(files * 10 / totalFiles) : 10;
+    const time = now();
+    if (files === 0 || files === totalFiles || decile > lastDecile || time - lastTime >= intervalMs) {
+      lastDecile = Math.max(lastDecile, decile); lastTime = time;
+      return true;
+    }
+    return false;
+  };
+}
+
 export function hitFromRow(r: IndexRow, group: string): CatalogHit {
   return { id: r[0], name: r[1], perihelion: r[3], orbit: r[5], group };
 }
@@ -82,7 +99,8 @@ const upperA = 65, upperZ = 90;
  * - ids Uint32Array (6 MB), perihelion Float64Array with NaN for unknown
  *   (12.5 MB, exact comparisons), flags and class indexes Uint8Array (3 MB).
  * Per-row JS arrays for the same data would need several hundred MB. Builds
- * above columnarRowLimit are refused and the worker falls back to streaming.
+ * above columnarRowLimit are refused: name and filter searches then report an
+ * error, while identity look-ups and unfiltered browsing keep working.
  */
 export const columnarRowLimit = 2_500_000;
 
