@@ -19,7 +19,7 @@ export function compactAngle(slug: string, angle: number): number {
 }
 
 /** Per-body custom properties as a static stylesheet. Emitting them as a CSS
- * file instead of 128 `style` attributes lets the page CSP forbid inline styles
+ * file instead of one `style` attribute per body lets the page CSP forbid inline styles
  * (`style-src 'self'`) without hashes. */
 export function atlasPositionCss(): string {
   return implementedBodies.map(body => {
