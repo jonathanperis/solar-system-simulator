@@ -8,6 +8,7 @@ import signal
 import stat
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -172,6 +173,55 @@ class HeadlessLab(unittest.TestCase):
             self.assertTrue(text.startswith("# solar-lab-v1"))
             self.assertNotIn("x" * 10, text)
             self.assertEqual([p.name for p in Path(directory).iterdir()], ["series.csv"])
+
+    @unittest.skipUnless(os.name == "posix" and os.geteuid() != 0, "POSIX permissions for a non-root user")
+    def test_read_only_destination_is_refused_before_running(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+            output = Path(directory) / "locked.csv"
+            output.write_text("keep me")
+            output.chmod(0o444)
+            result = self.run_lab("--duration", "15", "--sample", "15", "--output", str(output))
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("ermission", result.stderr)
+            self.assertEqual(output.read_text(), "keep me")
+            self.assertEqual(stat.S_IMODE(output.stat().st_mode), 0o444)
+            self.assertEqual([p.name for p in Path(directory).iterdir()], ["locked.csv"])
+
+    def test_empty_or_directory_output_paths_are_usage_errors(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+            for value in ("", directory + "/", directory + "/missing/"):
+                with self.subTest(output=value):
+                    result = self.run_lab("--duration", "15", "--sample", "15", "--output", value)
+                    self.assertEqual(result.returncode, 2)
+                    self.assertEqual(result.stdout, "")
+                    self.assertIn("--output", result.stderr)
+            self.assertEqual(list(Path(directory).iterdir()), [])
+
+    @unittest.skipUnless(os.name == "posix", "POSIX signals")
+    def test_interrupt_removes_the_temporary_output(self):
+        for signum in (signal.SIGINT, signal.SIGTERM):
+            with self.subTest(signal=signum), tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+                output = Path(directory) / "long.csv"
+                output.write_text("previous complete output")
+                # A ten-year core run takes minutes, leaving time to interrupt it.
+                process = subprocess.Popen([str(RUNNER), "--scene", "core", "--days", "3650", "--sample", "86400",
+                                            "--output", str(output)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                try:
+                    deadline = time.monotonic() + 30
+                    while len(list(Path(directory).iterdir())) < 2 and time.monotonic() < deadline:
+                        time.sleep(0.05)
+                    self.assertEqual(len(list(Path(directory).iterdir())), 2, "temporary output never appeared")
+                    process.send_signal(signum)
+                    process.wait(timeout=30)
+                finally:
+                    if process.poll() is None:
+                        process.kill()
+                        process.wait()
+                    process.stdout.close()
+                    process.stderr.close()
+                self.assertEqual(process.returncode, -signum)
+                self.assertEqual([p.name for p in Path(directory).iterdir()], ["long.csv"])
+                self.assertEqual(output.read_text(), "previous complete output")
 
 
 if __name__ == "__main__":

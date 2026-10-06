@@ -14,8 +14,10 @@ const char *solar_build_revision(void);
  * umask 0; replacing an existing regular file keeps its permission bits (the
  * result is a new file, so ownership and hard links are not carried over).
  * Symlinks, FIFOs, devices and directories are refused at open, so a link
- * target is never truncated and a FIFO never blocks the run. Windows builds
- * write the destination in place. */
+ * target is never truncated and a FIFO never blocks the run. A read-only
+ * destination is refused (EACCES). Because the replacement is a rename, the
+ * directory must be writable too: a writable file inside a read-only directory
+ * cannot be replaced. Windows builds write the destination in place. */
 typedef struct CsvOutputFile {
     FILE *stream;
     char *path;
@@ -30,6 +32,11 @@ void simulation_csv_output_abort(CsvOutputFile *output);
 /* Exclusive creation for snapshots: fails with EEXIST rather than replacing
  * anything already at `path`. New files are 0600 on POSIX, even with umask 0. */
 FILE *simulation_csv_create_new(const char *path);
+/* Create the first free "<stem>-001.csv" ... "<stem>-NNN.csv" (up to
+ * max_count) exclusively and store its name in path. Returns NULL with errno
+ * EEXIST when every allowed name is taken, ENAMETOOLONG when path is too
+ * small, or the creation error otherwise. Earlier files are never replaced. */
+FILE *simulation_csv_create_numbered(const char *stem, int max_count, char *path, size_t size);
 bool simulation_csv_begin(FILE *stream, const SimulationSession *session);
 bool simulation_csv_sample(FILE *stream, const SimulationSession *session);
 

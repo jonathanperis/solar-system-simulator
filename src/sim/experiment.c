@@ -28,6 +28,15 @@ static const double planet_system_gm_m3ps2[SOLAR_EXPERIMENT_PLANET_COUNT] = {
 };
 
 #define EXPERIMENT_HEADER "SOLAR_EXPERIMENT_V1 " SOLAR_CATALOG_EPOCH_TEXT "\n"
+/* Physical plausibility bounds for selected small bodies. The heaviest and
+ * largest catalog record is Eris (1.66e22 kg, 1200 km radius) and the farthest
+ * perihelion is 2012 VP113 (80.6 AU). Every small body is lighter and smaller
+ * than Mercury (3.3e23 kg, 2440 km), so these limits only reject typos and
+ * values that would overflow: 1e300 kg makes every force on it infinite, and
+ * 1e300 AU overflows to an infinite position in meters. */
+#define EXPERIMENT_MAX_MASS_KG 1e23
+#define EXPERIMENT_MAX_RADIUS_M 2.4e6
+#define EXPERIMENT_MAX_PERIHELION_AU 1000.0
 #define EXPERIMENT_FIELD_COUNT 12
 #define EXPERIMENT_NUMBER_BYTES 64
 
@@ -136,7 +145,8 @@ bool experiment_parse(const char *text, SolarSystem *out,
          * only) and only then: a positive value must have a known quality. */
         bool mass_known = mq != PHYSICAL_UNKNOWN, radius_known = rq != PHYSICAL_UNKNOWN;
         if (mass < 0 || radius < 0 || (mass > 0) != mass_known || (radius > 0) != radius_known ||
-            i < 0 || i > 180) return false;
+            mass > EXPERIMENT_MAX_MASS_KG || radius > EXPERIMENT_MAX_RADIUS_M ||
+            q > EXPERIMENT_MAX_PERIHELION_AU || i < 0 || i > 180) return false;
         BodyId body_id = identity == 20000004 ? BODY_ID_VESTA : (BodyId)identity;
         for (size_t k = 0; k < system.body_count; ++k) if (system.bodies[k].id == body_id) return false;
         OrbitState state;

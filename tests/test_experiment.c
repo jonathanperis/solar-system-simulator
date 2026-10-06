@@ -17,6 +17,10 @@ static void test_rows_are_strict_tab_separated_values(void)
     snprintf(text, sizeof(text), "%s%s", header, valid);
     assert(experiment_parse(text, &system, names));
     assert(system.body_count == 10 && strcmp(names[0], "Vesta") == 0);
+    /* Eris, the heaviest catalog record (1.66e22 kg, 1200 km), and the
+     * farthest catalog perihelion (2012 VP113, 80.6 AU) remain accepted. */
+    assert(experiment_parse("SOLAR_EXPERIMENT_V1 2461200.5\n"
+        "20136199\tEris\t80.6\t.1\t0\t0\t0\t2461200.5\t1.66e22\t1200000\t0\t0\n", &system, names));
     /* The final row may omit its newline; exponent notation stays accepted. */
     assert(experiment_parse("SOLAR_EXPERIMENT_V1 2461200.5\n"
         "20000004\tVesta\t2e0\t1E-1\t0\t0\t0\t2461200.5\t0\t0\t2\t2", &system, names));
@@ -43,6 +47,14 @@ static void test_rows_are_strict_tab_separated_values(void)
         "20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n\n",
         "20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t0\t2.0\t2\n",
         "20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t5\t0\t2\t2\n",
+        /* Physical upper bounds: selected small bodies are lighter and smaller
+         * than Mercury, and their perihelia lie within 1000 AU. Values beyond
+         * these are typos or overflow traps (1e300 kg makes forces infinite). */
+        "20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t1.1e23\t0\t0\t2\n",
+        "20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t1e300\t0\t0\t2\n",
+        "20000004\tVesta\t2\t.1\t0\t0\t0\t2461200.5\t0\t2.5e6\t2\t0\n",
+        "20000004\tVesta\t1000.1\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n",
+        "20000004\tVesta\t1e300\t.1\t0\t0\t0\t2461200.5\t0\t0\t2\t2\n",
     };
     for (size_t i = 0; i < sizeof(rejected) / sizeof(rejected[0]); ++i) {
         snprintf(text, sizeof(text), "%s%s", header, rejected[i]);
