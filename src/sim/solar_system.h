@@ -45,7 +45,7 @@ SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos(
 SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta(void);
 SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter(void);
 /* Adds one body if capacity remains. A full scene returns false unchanged. */
-bool solar_system_append(SolarSystem *system, Body body);
+bool solar_system_append(SolarSystem *system, const Body *body);
 void solar_system_step(SolarSystem *system, double dt_seconds);
 SolarSystem solar_system_create_current(void);
 int solar_system_parent_index(const SolarSystem *system, size_t body_index);
