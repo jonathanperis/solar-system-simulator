@@ -13,6 +13,22 @@ static void assert_close(double actual, double expected, double epsilon)
     assert(fabs(actual - expected) <= epsilon);
 }
 
+/* Masses are derived from JPL GM values (km^3/s^2) because GM, not mass, is
+ * what orbit fits measure. Literal GMs here are copied from the cited JPL
+ * pages, so a mass typed independently of its GM fails at 1e-9 relative. */
+static void assert_gm(double mass_kg, double gm_km3_s2)
+{
+    assert(fabs(mass_kg * SOLAR_G / (gm_km3_s2 * 1e9) - 1.0) < 1e-9);
+}
+
+static void test_masses_derive_from_cited_gm_values(void)
+{
+    /* CODATA 2018 G; DE440 GM values from https://ssd.jpl.nasa.gov/astro_par.html
+     * and https://ssd.jpl.nasa.gov/planets/phys_par.html (checked 2026-10-06). */
+    assert(SOLAR_G == 6.67430e-11);
+    assert_gm(SOLAR_SUN_MASS_KG, 132712440041.279419);
+}
+
 static void test_sun_body_creation_preserves_fields(void)
 {
     Body sun = body_create("Sun", BODY_KIND_STAR, SOLAR_SUN_MASS_KG, SOLAR_SUN_RADIUS_M, vec3d_zero(), vec3d_zero(), true);
@@ -82,7 +98,7 @@ static void test_sun_only_step_advances_time_and_keeps_sun_fixed(void)
 
 static void test_mercury_constants_are_real_si_values(void)
 {
-    assert_close(SOLAR_MERCURY_MASS_KG, 3.3011e23, 3.3011e23 * 1e-12);
+    assert_gm(SOLAR_MERCURY_MASS_KG, 22031.868551);
     assert_close(SOLAR_MERCURY_RADIUS_M, 2439700.0, 1e-6);
     assert_close(SOLAR_MERCURY_SEMI_MAJOR_AXIS_M, 57909050000.0, 1e-3);
     assert_close(SOLAR_MERCURY_ECCENTRICITY, 0.205630, 1e-12);
@@ -104,7 +120,7 @@ static void test_mercury_perihelion_speed_matches_vis_viva(void)
 
 static void test_venus_constants_are_real_si_values(void)
 {
-    assert_close(SOLAR_VENUS_MASS_KG, 4.8675e24, 4.8675e24 * 1e-12);
+    assert_gm(SOLAR_VENUS_MASS_KG, 324858.592);
     assert_close(SOLAR_VENUS_RADIUS_M, 6051800.0, 1e-6);
     assert_close(SOLAR_VENUS_SEMI_MAJOR_AXIS_M, 108208000000.0, 1e-3);
     assert_close(SOLAR_VENUS_ECCENTRICITY, 0.006772, 1e-12);
@@ -126,7 +142,7 @@ static void test_venus_perihelion_speed_matches_vis_viva(void)
 
 static void test_earth_constants_are_real_si_values(void)
 {
-    assert_close(SOLAR_EARTH_MASS_KG, 5.9736e24, 5.9736e24 * 1e-12);
+    assert_gm(SOLAR_EARTH_MASS_KG, 398600.435436);
     assert_close(SOLAR_EARTH_RADIUS_M, 6371000.0, 1e-6);
     assert_close(SOLAR_EARTH_SEMI_MAJOR_AXIS_M, 149597887155.76578, 1e-3);
     assert_close(SOLAR_EARTH_ECCENTRICITY, 0.01671022, 1e-12);
@@ -148,7 +164,7 @@ static void test_earth_perihelion_speed_matches_vis_viva(void)
 
 static void test_moon_constants_are_real_si_values(void)
 {
-    assert_close(SOLAR_MOON_MASS_KG, 7.346e22, 7.346e22 * 1e-12);
+    assert_gm(SOLAR_MOON_MASS_KG, 4902.800118);
     assert_close(SOLAR_MOON_RADIUS_M, 1737400.0, 1e-6);
     assert_close(SOLAR_MOON_SEMI_MAJOR_AXIS_M, 384400000.0, 1e-6);
     assert_close(SOLAR_MOON_ECCENTRICITY, 0.0549, 1e-12);
@@ -171,8 +187,9 @@ static void test_moon_perigee_speed_matches_earth_moon_vis_viva(void)
 
 static void test_mars_constants_are_real_si_values(void)
 {
-    assert_close(SOLAR_MARS_MASS_KG, 6.419e23, 6.419e23 * 1e-12);
-    assert_close(SOLAR_MARS_RADIUS_M, 3390000.0, 1e-6);
+    assert_gm(SOLAR_MARS_MASS_KG, 42828.375214);
+    /* JPL mean radius 3389.5 km. */
+    assert_close(SOLAR_MARS_RADIUS_M, 3389500.0, 1e-6);
     assert_close(SOLAR_MARS_SEMI_MAJOR_AXIS_M, 227900000000.0, 1e-3);
     assert_close(SOLAR_MARS_ECCENTRICITY, 0.0934, 1e-12);
 }
@@ -993,6 +1010,7 @@ static void test_saturn_accelerates_toward_sun_and_moves_tangentially(void)
 
 int main(void)
 {
+    test_masses_derive_from_cited_gm_values();
     test_sun_body_creation_preserves_fields();
     test_scene_capacity_is_named_and_appends_are_bounded();
     test_current_scene_bodies_have_stable_catalog_ids_and_parents();
