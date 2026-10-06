@@ -122,8 +122,29 @@ static void test_frame_fits_bounding_sphere_at_solar_and_moon_scales(void)
     }
 }
 
+static void test_auto_rotation_yaw_stays_bounded_and_keeps_moving(void)
+{
+    /* Eight days of 60 fps auto-rotation. An unbounded float yaw reaches
+     * ~1.7e5 radians, where one frame's 0.004-radian step is below half a
+     * float ULP: rotation first stutters, then freezes. */
+    OrbitCameraState state = orbit_camera_default_state();
+    const float dt = 1.0f / 60.0f;
+    const float two_pi = 2.0f * acosf(-1.0f);
+    for (long frame = 0; frame < 8L * 86400L * 60L; ++frame) orbit_camera_advance(&state, dt);
+    assert(state.yaw_radians >= 0.0f && state.yaw_radians < two_pi);
+    float before = state.yaw_radians;
+    orbit_camera_advance(&state, dt);
+    float step = state.yaw_radians - before;
+    if (step < 0.0f) step += two_pi; /* The step may cross the wrap point. */
+    assert_close_float(step, state.auto_orbit_speed_radians_per_second * dt, 1e-5f);
+    /* Reverse motion wraps into the same interval. */
+    orbit_camera_advance(&state, -100.0f);
+    assert(state.yaw_radians >= 0.0f && state.yaw_radians < two_pi);
+}
+
 int main(void)
 {
+    test_auto_rotation_yaw_stays_bounded_and_keeps_moving();
     test_frame_fits_bounding_sphere_at_solar_and_moon_scales();
     test_default_orbit_camera_matches_initial_view_angle();
     test_orbit_camera_position_offsets_from_focused_target();
