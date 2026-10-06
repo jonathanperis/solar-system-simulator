@@ -189,29 +189,24 @@ static bool start_app_lesson(SolarApp *state, LessonPreset lesson, double factor
 }
 
 #if !defined(PLATFORM_WEB)
-/* Snapshots never overwrite earlier ones: claim the first free numbered name
- * with exclusive creation, so pressing E again keeps every previous export. */
-static FILE *create_snapshot_file(char *name, size_t size)
-{
-    for (int number = 1; number <= 999; ++number) {
-        snprintf(name, size, "solar-snapshot-%03d.csv", number);
-        FILE *stream = simulation_csv_create_new(name);
-        if (stream || errno != EEXIST) return stream;
-    }
-    return NULL;
-}
+/* Snapshots never overwrite earlier ones: E claims the next free
+ * solar-snapshot-001.csv ... -999.csv in the working directory. */
+#define SOLAR_SNAPSHOT_MAX_FILES 999
 #endif
 
-static bool export_snapshot(const SolarApp *state, char *name, size_t size)
+/* Returns 0 on success, otherwise an errno value explaining the failure, so
+ * the HUD can say why (permissions, full disk, every numbered name taken). */
+static int export_snapshot(const SolarApp *state, char *name, size_t size)
 {
 #if defined(PLATFORM_WEB)
     /* The browser names the download; MEMFS only stages the bytes. */
     snprintf(name, size, "solar-snapshot.csv");
     FILE *stream = tmpfile();
 #else
-    FILE *stream = create_snapshot_file(name, size);
+    FILE *stream = simulation_csv_create_numbered("solar-snapshot", SOLAR_SNAPSHOT_MAX_FILES, name, size);
 #endif
-    if (!stream) return false;
+    if (!stream) return errno ? errno : EIO;
+    errno = 0;
     bool ok = simulation_csv_begin(stream, &state->session) && simulation_csv_sample(stream, &state->session);
 #if defined(PLATFORM_WEB)
     if (ok && fflush(stream) == 0 && fseek(stream, 0, SEEK_END) == 0) {
@@ -226,12 +221,13 @@ static bool export_snapshot(const SolarApp *state, char *name, size_t size)
     } else ok = false;
 #endif
     if (fclose(stream) != 0) ok = false;
+    int error = ok ? 0 : errno ? errno : EIO;
 #if !defined(PLATFORM_WEB)
     /* This call created the file exclusively, so removing a failed export
      * cannot delete anything the user already had. */
     if (!ok) remove(name);
 #endif
-    return ok;
+    return error;
 }
 
 static void solar_app_command(SolarApp *state, SolarCommand command, int value)
@@ -339,8 +335,8 @@ EMSCRIPTEN_KEEPALIVE double solar_web_minimum_factor(int lesson)
 
 EMSCRIPTEN_KEEPALIVE int solar_web_export(void)
 {
-    char name[32];
-    return export_snapshot(&app, name, sizeof(name));
+    char name[64];
+    return export_snapshot(&app, name, sizeof(name)) == 0;
 }
 
 EMSCRIPTEN_KEEPALIVE void solar_web_command(int command, int value)
@@ -372,6 +368,19 @@ EMSCRIPTEN_KEEPALIVE void solar_web_demo(void)
 #endif
 
 #if !defined(PLATFORM_WEB)
+/* D walks a short ladder of lesson steps and wraps around. Contact lessons
+ * stay within their 0.25 s limit; any other current step restarts the ladder. */
+static double next_lesson_step(LessonPreset lesson, double dt)
+{
+    static const double orbit_steps[] = {15, 75, 150, 300};
+    static const double contact_steps[] = {0.1, 0.2};
+    bool contact = lesson == LESSON_COLLISION;
+    const double *steps = contact ? contact_steps : orbit_steps;
+    size_t count = contact ? sizeof(contact_steps) / sizeof(contact_steps[0]) : sizeof(orbit_steps) / sizeof(orbit_steps[0]);
+    for (size_t i = 0; i < count; ++i) if (dt == steps[i]) return steps[(i + 1) % count];
+    return steps[0];
+}
+
 static bool update_body_search(SolarApp *state)
 {
     bool opened = !state->searching && IsKeyPressed(KEY_SLASH);
@@ -452,10 +461,14 @@ static void solar_app_update_draw(void *user_data)
         if (IsKeyPressed(KEY_X)) solar_app_command(state, SOLAR_COMMAND_VECTORS, 0);
         if (IsKeyPressed(KEY_M)) solar_app_command(state, SOLAR_COMMAND_CONTACT, 0);
         if (IsKeyPressed(KEY_E)) {
-            char name[32];
-            if (export_snapshot(state, name, sizeof(name)))
-                snprintf(state->feedback, sizeof(state->feedback), "Snapshot saved: %s (SI units)", name);
-            else snprintf(state->feedback, sizeof(state->feedback), "Could not write snapshot CSV.");
+            char name[64];
+            int error = export_snapshot(state, name, sizeof(name));
+            if (!error) snprintf(state->feedback, sizeof(state->feedback), "Snapshot saved: %s (SI units)", name);
+#if !defined(PLATFORM_WEB)
+            else if (error == EEXIST) snprintf(state->feedback, sizeof(state->feedback),
+                "Snapshot not saved: solar-snapshot-001..%03d.csv all exist here; move some away.", SOLAR_SNAPSHOT_MAX_FILES);
+#endif
+            else snprintf(state->feedback, sizeof(state->feedback), "Snapshot not saved: %s", strerror(error));
         }
 #if !defined(PLATFORM_WEB)
         if (IsKeyPressed(KEY_L)) {
@@ -467,7 +480,7 @@ static void solar_app_update_draw(void *user_data)
             if (IsKeyPressed(KEY_I)) start_app_lesson(state, state->session.lesson, state->session.velocity_factor,
                 state->session.clock.integrator == PHYSICS_VERLET ? PHYSICS_EULER : PHYSICS_VERLET, dt);
             if (IsKeyPressed(KEY_D)) start_app_lesson(state, state->session.lesson, state->session.velocity_factor,
-                state->session.clock.integrator, state->session.lesson == LESSON_COLLISION ? (dt == .1 ? .2 : .1) : dt == 15 ? 75 : dt == 75 ? 150 : dt == 150 ? 300 : 15);
+                state->session.clock.integrator, next_lesson_step(state->session.lesson, dt));
             if (IsKeyPressed(KEY_EQUAL) || IsKeyPressed(KEY_MINUS)) start_app_lesson(state, state->session.lesson,
                 fmax(lesson_minimum_velocity_factor(state->session.lesson),
                     fmin(2, state->session.velocity_factor + (IsKeyPressed(KEY_EQUAL) ? 0.1 : -0.1))), state->session.clock.integrator, dt);

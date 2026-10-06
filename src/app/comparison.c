@@ -150,10 +150,8 @@ size_t comparison_advance(ComparisonRun *run, size_t max_steps)
             if (session->clock.ticks != target) reached = false;
         }
         if (!reached) break;
-        for (size_t side = 0; side < 2; ++side) for (size_t i = 0; i < run->runs[side].system.body_count; ++i) {
-            const Body *body = &run->runs[side].system.bodies[i];
-            if (!isfinite(vec3d_length(body->position_m)) || !isfinite(vec3d_length(body->velocity_mps))) run->failed = true;
-        }
+        for (size_t side = 0; side < 2; ++side)
+            if (!simulation_session_state_is_finite(&run->runs[side])) run->failed = true;
         if (run->failed) break;
         ++run->sample_index;
         record_checkpoint(run);

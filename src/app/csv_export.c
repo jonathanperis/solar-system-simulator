@@ -53,6 +53,23 @@ FILE *simulation_csv_create_new(const char *path)
     return stream;
 }
 
+FILE *simulation_csv_create_numbered(const char *stem, int max_count, char *path, size_t size)
+{
+    for (int number = 1; number <= max_count; ++number) {
+        int length = snprintf(path, size, "%s-%03d.csv", stem, number);
+        if (length < 0 || (size_t)length >= size) {
+            errno = ENAMETOOLONG;
+            return NULL;
+        }
+        FILE *stream = simulation_csv_create_new(path);
+        /* Only "name taken" moves on to the next number; any other failure
+         * (permissions, a missing directory) would repeat for every name. */
+        if (stream || errno != EEXIST) return stream;
+    }
+    errno = EEXIST;
+    return NULL;
+}
+
 static void release_output(CsvOutputFile *output)
 {
     free(output->path);
@@ -76,11 +93,19 @@ bool simulation_csv_output_open(CsvOutputFile *output, const char *path)
      * destination; links, FIFOs, devices and directories are refused. */
     struct stat existing;
     mode_t mode = S_IRUSR | S_IWUSR;
+    if (!*path) {
+        errno = ENOENT;
+        return false;
+    }
     if (lstat(path, &existing) == 0) {
         if (!S_ISREG(existing.st_mode)) {
             errno = S_ISLNK(existing.st_mode) ? ELOOP : EINVAL;
             return false;
         }
+        /* rename() needs permission on the directory, not on the file, so it
+         * would silently replace a read-only file. Ask first, keeping the old
+         * O_TRUNC behaviour: a file you cannot write is refused (EACCES). */
+        if (access(path, W_OK) != 0) return false;
         mode = existing.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
     } else if (errno != ENOENT) {
         return false;
@@ -109,7 +134,8 @@ bool simulation_csv_output_open(CsvOutputFile *output, const char *path)
         release_output(output);
         return false;
     }
-    if (fchmod(descriptor, mode) != 0 || !(output->stream = fdopen(descriptor, "w"))) {
+    if (fchmod(descriptor, mode) == 0) output->stream = fdopen(descriptor, "w");
+    if (!output->stream) {
         close_preserving_errno(descriptor);
         int error = errno;
         simulation_csv_output_abort(output);
@@ -119,6 +145,31 @@ bool simulation_csv_output_open(CsvOutputFile *output, const char *path)
     return true;
 #endif
 }
+
+#ifndef _WIN32
+/* The new name lives in the directory, so a crash right after rename() can
+ * still lose it until the directory itself reaches the disk. Best effort:
+ * the data is already complete, and some filesystems refuse to fsync a
+ * directory, so failures here do not fail the export. */
+static void sync_parent_directory(const char *path)
+{
+    const char *slash = strrchr(path, '/');
+    size_t length = slash ? (size_t)(slash - path) : 0;
+    char *directory = malloc(length + 2);
+    if (!directory) return;
+    if (!slash) memcpy(directory, ".", 2);
+    else if (length == 0) memcpy(directory, "/", 2);
+    else {
+        memcpy(directory, path, length);
+        directory[length] = '\0';
+    }
+    int descriptor = open(directory, O_RDONLY);
+    free(directory);
+    if (descriptor < 0) return;
+    fsync(descriptor);
+    close(descriptor);
+}
+#endif
 
 bool simulation_csv_output_commit(CsvOutputFile *output)
 {
@@ -139,6 +190,8 @@ bool simulation_csv_output_commit(CsvOutputFile *output)
         int error = errno;
         unlink(output->temp_path);
         errno = error;
+    } else {
+        sync_parent_directory(output->path);
     }
 #endif
     release_output(output);

@@ -205,6 +205,16 @@ int simulation_session_find_body(const SimulationSession *session, const char *q
     return -1;
 }
 
+bool simulation_session_state_is_finite(const SimulationSession *session)
+{
+    for (size_t i = 0; i < session->system.body_count; ++i) {
+        const Body *body = &session->system.bodies[i];
+        /* A length is finite only if every component is, so one test per vector. */
+        if (!isfinite(vec3d_length(body->position_m)) || !isfinite(vec3d_length(body->velocity_mps))) return false;
+    }
+    return true;
+}
+
 BodyInspection simulation_session_inspect(const SimulationSession *session)
 {
     return simulation_session_inspect_body(session, session->selected_body_index);

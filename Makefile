@@ -80,6 +80,7 @@ TEST_BINS += $(TEST_DIR)/test_learning_lab
 TEST_BINS += $(TEST_DIR)/test_advanced_lessons
 TEST_BINS += $(TEST_DIR)/test_comparison
 TEST_BINS += $(TEST_DIR)/test_input_file
+TEST_BINS += $(TEST_DIR)/test_csv_export
 HEADLESS_TEST_BINS = $(filter-out $(TEST_RENDERER),$(TEST_BINS))
 SOURCE_HEADERS := $(wildcard src/app/*.h src/sim/*.h src/render/*.h src/sim/*.inc)
 
@@ -252,6 +253,10 @@ $(TEST_DIR)/test_advanced_lessons: tests/test_advanced_lessons.c $(SESSION_SRCS)
 	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
 $(TEST_DIR)/test_comparison: tests/test_comparison.c $(LAB_SRCS) build/revision.h
+	@mkdir -p $(@D)
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+
+$(TEST_DIR)/test_csv_export: tests/test_csv_export.c $(LAB_SRCS) build/revision.h
 	@mkdir -p $(@D)
 	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 

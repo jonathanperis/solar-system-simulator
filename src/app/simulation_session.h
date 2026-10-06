@@ -67,6 +67,9 @@ void simulation_session_set_speed(SimulationSession *session, int preset);
 void simulation_session_select_body(SimulationSession *session, int index);
 int simulation_session_find_body(const SimulationSession *session, const char *query, size_t start);
 double simulation_session_time_scale(const SimulationSession *session);
+/* False once any position or velocity is NaN or infinite: the integration
+ * has broken down and no later state is physically meaningful. */
+bool simulation_session_state_is_finite(const SimulationSession *session);
 /* Physical inspection of the selected body. */
 BodyInspection simulation_session_inspect(const SimulationSession *session);
 /* The same parent-relative SI measurements for any body index, independent of
