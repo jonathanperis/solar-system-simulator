@@ -75,7 +75,7 @@ TEST_BINS += $(TEST_DIR)/test_input_file
 HEADLESS_TEST_BINS = $(filter-out $(TEST_RENDERER),$(TEST_BINS))
 SOURCE_HEADERS := $(wildcard src/app/*.h src/sim/*.h src/render/*.h src/sim/*.inc)
 
-.PHONY: all run headless test test-binaries test-core test-sanitize test-build test-cli test-validators web raylib-web dist-wasm docs-assets docs-check clean FORCE
+.PHONY: all run headless test test-binaries test-core test-sanitize test-build test-cli test-validators web raylib-web dist-wasm docs-assets docs-check analysis-web-boundary clean FORCE
 
 all: $(APP)
 
@@ -138,6 +138,12 @@ dist-wasm: web
 	@rm -f $(WASM_ZIP)
 	python3 -m zipfile -c $(WASM_ZIP) $(WEB_APP) $(WEB_WASM) $(WEB_DIR)/catalog-orbits.wasm $(LAB_WEB_JS) $(LAB_WEB_WASM) $(WEB_MANIFEST)
 	@echo "Created $(WASM_ZIP)"
+
+# Compile the browser descriptor/command boundary with the host compiler so
+# CodeQL analyzes it too; emcc-only code is otherwise never traced.
+analysis-web-boundary: build/revision.h
+	@mkdir -p build/analysis
+	$(CC) $(CPPFLAGS) -Itools/analysis-stubs $(CFLAGS) -DPLATFORM_WEB -c src/lab_web.c -o build/analysis/lab_web.o
 
 docs-check:
 	python3 tools/check_docs_routes.py docs/dist
