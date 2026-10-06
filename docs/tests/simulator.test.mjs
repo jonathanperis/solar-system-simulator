@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createSimulatorModule, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard } from '../src/lib/simulator.ts';
+import { readFile } from 'node:fs/promises';
+import { createSimulatorModule, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes } from '../src/lib/simulator.ts';
+import { errorMessage, downloadText } from '../src/lib/browser.ts';
 
 test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolling', () => {
   for (const [key, focused, reachesGlfw, cancelled] of [
@@ -134,4 +136,68 @@ test('lesson diagnostics distinguish physical units, normalized energy, and edit
   runtime.reportLabState({ ...state, factor: 1.3, isolated: false });
   assert.equal(controls.factor.value, '1.3');
   assert.match(readouts.momentum.textContent, /fixed-body constraint/);
+});
+
+test('recoverable Emscripten stderr is logged without disabling the runtime; fatal paths still fail', () => {
+  const readouts = Object.fromEntries(['status', 'controls', 'elapsed', 'interval', 'parent', 'distance', 'speed', 'mass', 'radius', 'camera', 'achieved', 'pending']
+    .map(key => [key, { textContent: '' }]));
+  const panels = [{ disabled: true, closest: () => null }];
+  const controls = { panels, filterStatus: { textContent: '' }, pause: { textContent: '' }, step: { disabled: true },
+    rotate: { checked: true }, body: { value: '', replaceChildren() {} }, speed: { value: '' }, view: { textContent: '' }, search: { value: '' }, group: { value: '' } };
+  const runtime = createSimulatorModule({}, readouts, new URL('https://example.test/runtime.js'), controls);
+  const logged = [], original = console.warn;
+  console.warn = message => logged.push(message);
+  try {
+    runtime.printErr('wasm streaming compile failed: TypeError: Failed to execute \'compile\' on \'WebAssembly\': Incorrect response MIME type.');
+    runtime.printErr('falling back to ArrayBuffer instantiation');
+    runtime.printErr('WebGL: INVALID_ENUM: getParameter: invalid parameter name');
+  } finally { console.warn = original; }
+  assert.equal(logged.length, 3);
+  runtime.setStatus('Running...');
+  assert.equal(readouts.status.textContent, 'Running...');
+  runtime.reportState({ body: 'Sun', parent: 'None', view: 'Illustrative', cameraTarget: 'Sun', selected: 0, paused: false, speedPreset: 1,
+    autoRotate: false, elapsedSeconds: 0, intervalSeconds: 300, trailsFailed: false, hasParent: false, distanceM: 0, speedMps: 0,
+    massKg: 1.989e30, radiusM: 6.957e8, zoom: 1, massQuality: 0, radiusQuality: 0, achievedTimeScale: 0, pendingSeconds: 0, shortTimescale: false });
+  assert.equal(readouts.status.textContent, 'Running physics simulation');
+  assert.equal(panels[0].disabled, false);
+  runtime.onExit(0);
+  assert.equal(panels[0].disabled, false);
+  runtime.onExit(1);
+  assert.equal(panels[0].disabled, true);
+  assert.equal(readouts.status.textContent, 'Runtime error: The simulator stopped (exit status 1). Reload to restart.');
+});
+
+test('prepared catalog experiments are untrusted session data bounded by the C parser limit', async () => {
+  const header = await readFile(new URL('../../src/sim/experiment.h', import.meta.url), 'utf8');
+  assert.equal(experimentTextLimitBytes, Number(header.match(/#define SOLAR_EXPERIMENT_TEXT_BYTES (\d+)/)[1]));
+  const text = 'SOLAR_EXPERIMENT_V1 2461200.5\n20000001\tCeres\n';
+  assert.deepEqual(parsePreparedExperiment(JSON.stringify({ text, snapshot: 'abc', count: 1 })), { text, snapshot: 'abc', count: 1 });
+  for (const [stored, message] of [
+    [null, /No prepared experiment/],
+    ['{not json', /could not be read/],
+    [JSON.stringify({ text, snapshot: 'abc', count: 17 }), /Invalid prepared experiment/],
+    [JSON.stringify({ text, snapshot: 7, count: 1 }), /Invalid prepared experiment/],
+    [JSON.stringify({ text: 'SOLAR_LAB_V1 circular', snapshot: 'abc', count: 1 }), /Invalid prepared experiment/],
+    [JSON.stringify({ text: text + 'x'.repeat(experimentTextLimitBytes), snapshot: 'abc', count: 1 }), /too large/],
+    // Multi-byte UTF-8 counts toward the C byte limit, not JavaScript string length.
+    [JSON.stringify({ text: text + 'é'.repeat(experimentTextLimitBytes / 2), snapshot: 'abc', count: 1 }), /too large/]
+  ]) assert.throws(() => parsePreparedExperiment(stored), message);
+});
+
+test('user-facing messages omit raw error prefixes and downloads revoke their URL later', () => {
+  assert.equal(errorMessage(new Error('Catalog snapshot mismatch.')), 'Catalog snapshot mismatch.');
+  assert.equal(errorMessage(new TypeError('Failed to fetch')), 'Failed to fetch');
+  assert.equal(errorMessage('plain text'), 'plain text');
+  const revoked = [], clicked = [], scheduled = [];
+  const env = {
+    createObjectURL: () => 'blob:fixture', revokeObjectURL: url => revoked.push(url),
+    createAnchor: () => ({ href: '', download: '', click() { clicked.push([this.href, this.download]); } }),
+    schedule: (callback, delay) => scheduled.push([callback, delay])
+  };
+  downloadText('a,b\n', 'run.csv', 'text/csv', env);
+  assert.deepEqual(clicked, [['blob:fixture', 'run.csv']]);
+  assert.deepEqual(revoked, []);
+  assert.ok(scheduled[0][1] >= 1000);
+  scheduled[0][0]();
+  assert.deepEqual(revoked, ['blob:fixture']);
 });
