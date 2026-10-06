@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { test, expect, analyticsUrl } from './fixtures';
 
 const base = '/solar-system-simulator/';
 
@@ -16,12 +17,14 @@ async function watchPolicy(page: Page): Promise<string[]> {
   return violations;
 }
 
-test('every page runs under its CSP with self-hosted fonts and no third-party requests', async ({ page }) => {
+test('every page runs under its CSP with self-hosted fonts and no third-party requests', async ({ page, analyticsRequests }) => {
   const violations = await watchPolicy(page);
   const external: string[] = [];
   page.on('request', request => {
     const url = new URL(request.url());
-    if (!['127.0.0.1', 'localhost'].includes(url.hostname) && url.protocol.startsWith('http')) external.push(request.url());
+    // Analytics hosts are stubbed by the fixture and asserted separately below.
+    if (!['127.0.0.1', 'localhost'].includes(url.hostname) && url.protocol.startsWith('http') && !analyticsUrl.test(request.url()))
+      external.push(request.url());
   });
   for (const route of ['', 'docs/', 'docs/build-and-web/', 'physics/', 'body-catalog/', 'source-atlas/', 'pipeline/']) {
     await page.goto(`${base}${route}`);
@@ -49,6 +52,11 @@ test('every page runs under its CSP with self-hosted fonts and no third-party re
   await expect(page.getByRole('button', { name: '433 Eros (A898 PA)', exact: true })).toBeVisible({ timeout: 30000 });
   expect(violations).toEqual([]);
   expect(external).toEqual([]);
+  // V17: only builds carrying PUBLIC_GA_ID load the analytics bootstrap, and
+  // then the CSP must admit its loader; other builds contact nobody at all.
+  const analyticsBuild = await page.locator('script[data-ga-id]').count() > 0;
+  if (analyticsBuild) expect(analyticsRequests.some(url => url.startsWith('https://www.googletagmanager.com/gtag/js?id='))).toBe(true);
+  else expect(analyticsRequests).toEqual([]);
 });
 
 test('oversized or malformed session experiments are rejected visibly before reaching C', async ({ page }) => {

@@ -189,6 +189,21 @@ jobs:
         working-directory: docs
         run: npm run test:browser
 
+      # PR builds are analytics-free (V17), but main builds embed PUBLIC_GA_ID.
+      # Rebuild PRs once with a dummy measurement ID so the analytics variant's
+      # CSP, route checks and browser security test run before merge. The
+      # Playwright fixture stubs Google hosts, so no real page view is sent,
+      # and this throwaway dist is never uploaded (uploads are main-only).
+      - name: Verify the analytics build variant (pull requests)
+        if: github.event_name == 'pull_request'
+        working-directory: docs
+        env:
+          PUBLIC_GA_ID: G-TEST000000
+        run: |
+          npm run build
+          python3 ../tools/check_docs_routes.py dist
+          npm run test:browser -- security.spec.ts
+
       - name: Preserve browser failure evidence
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
