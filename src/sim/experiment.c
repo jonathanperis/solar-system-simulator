@@ -12,8 +12,19 @@
 _Static_assert(1 + SOLAR_EXPERIMENT_PLANET_COUNT + SOLAR_EXPERIMENT_CAPACITY <= SOLAR_SYSTEM_BODY_CAPACITY,
     "catalog experiments must fit the scene body array");
 
+/* Horizons heliocentric states of the planetary-system barycenters (Mercury
+ * and Venus have no moons, so their centres are their barycenters). */
 static const double planet_states[SOLAR_EXPERIMENT_PLANET_COUNT][6] = {
 #include "planet_epoch.inc"
+};
+
+/* Experiments omit every moon, so each planet body stands for its whole
+ * system: it sits at the system barycenter and pulls with the system's GM
+ * (DE440, https://ssd.jpl.nasa.gov/astro_par.html, m^3/s^2). Earth-Moon is the
+ * sum of the Earth and Moon GMs. Mercury and Venus keep their planet GMs. */
+static const double planet_system_gm_m3ps2[SOLAR_EXPERIMENT_PLANET_COUNT] = {
+    SOLAR_MERCURY_GM_M3PS2, SOLAR_VENUS_GM_M3PS2, (398600.435507 + 4902.800118) * 1e9, 42828.375816e9,
+    126712764.1e9, 37940584.8418e9, 5794556.4e9, 6836527.10058e9,
 };
 
 #define EXPERIMENT_HEADER "SOLAR_EXPERIMENT_V1 " SOLAR_CATALOG_EPOCH_TEXT "\n"
@@ -98,9 +109,10 @@ bool experiment_parse(const char *text, SolarSystem *out,
         solar_system_create_saturn_at_perihelion, solar_system_create_uranus_at_perihelion,
         solar_system_create_neptune_at_perihelion};
     for (size_t i = 0; i < SOLAR_EXPERIMENT_PLANET_COUNT; ++i) {
-        /* Factories supply identity and physical data; the Horizons snapshot
-         * supplies the source-epoch heliocentric state in simulation axes. */
+        /* Factories supply identity and radius; the Horizons snapshot supplies
+         * the source-epoch barycentric system state in simulation axes. */
         Body b = factories[i]();
+        b.mass_kg = planet_system_gm_m3ps2[i] / SOLAR_G;
         const double *s = planet_states[i];
         b.position_m = (Vec3d){s[0], s[1], s[2]};
         b.velocity_mps = (Vec3d){s[3], s[4], s[5]};
