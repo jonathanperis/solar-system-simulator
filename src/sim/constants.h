@@ -3,18 +3,27 @@
 
 #include <math.h>
 
-/* Baseline physical values: NASA Planetary Fact Sheet and JPL Solar System
- * Dynamics satellite parameters. They seed an educational model, not dated
- * ephemerides; periapsis distances and vis-viva speeds below are derived. */
+/* Baseline physical values: JPL Solar System Dynamics planetary/satellite
+ * parameters and the NASA Planetary Fact Sheet. They seed an educational
+ * model, not dated ephemerides; periapsis distances and vis-viva speeds below
+ * are derived.
+ *
+ * Masses come from GM: orbit fits measure the product G*M (m^3/s^2) far more
+ * precisely than G itself, so M = GM / G keeps every acceleration G*M/r^2
+ * equal to the measured GM. GM values are DE440 numbers from
+ * https://ssd.jpl.nasa.gov/astro_par.html and
+ * https://ssd.jpl.nasa.gov/planets/phys_par.html (checked 2026-10-06). */
 
-#define SOLAR_G 6.67430e-11
+#define SOLAR_G 6.67430e-11 /* CODATA 2018, m^3 kg^-1 s^-2 */
 #define SOLAR_AU_METERS 149597870700.0
 #define SOLAR_DAY_SECONDS 86400.0
 
-#define SOLAR_SUN_MASS_KG 1.98847e30
+#define SOLAR_SUN_GM_M3PS2 1.32712440041279419e20
+#define SOLAR_SUN_MASS_KG (SOLAR_SUN_GM_M3PS2 / SOLAR_G)
 #define SOLAR_SUN_RADIUS_M 695700000.0
 
-#define SOLAR_MERCURY_MASS_KG 3.3011e23
+#define SOLAR_MERCURY_GM_M3PS2 2.2031868551e13
+#define SOLAR_MERCURY_MASS_KG (SOLAR_MERCURY_GM_M3PS2 / SOLAR_G)
 #define SOLAR_MERCURY_RADIUS_M 2439700.0
 #define SOLAR_MERCURY_SEMI_MAJOR_AXIS_M 57909050000.0
 #define SOLAR_MERCURY_ECCENTRICITY 0.205630
@@ -24,7 +33,8 @@
     (sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * \
         ((2.0 / SOLAR_MERCURY_PERIHELION_M) - (1.0 / SOLAR_MERCURY_SEMI_MAJOR_AXIS_M))))
 
-#define SOLAR_VENUS_MASS_KG 4.8675e24
+#define SOLAR_VENUS_GM_M3PS2 3.24858592e14
+#define SOLAR_VENUS_MASS_KG (SOLAR_VENUS_GM_M3PS2 / SOLAR_G)
 #define SOLAR_VENUS_RADIUS_M 6051800.0
 #define SOLAR_VENUS_SEMI_MAJOR_AXIS_M 108208000000.0
 #define SOLAR_VENUS_ECCENTRICITY 0.006772
@@ -34,7 +44,8 @@
     (sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * \
         ((2.0 / SOLAR_VENUS_PERIHELION_M) - (1.0 / SOLAR_VENUS_SEMI_MAJOR_AXIS_M))))
 
-#define SOLAR_EARTH_MASS_KG 5.9736e24
+#define SOLAR_EARTH_GM_M3PS2 3.98600435436e14
+#define SOLAR_EARTH_MASS_KG (SOLAR_EARTH_GM_M3PS2 / SOLAR_G)
 #define SOLAR_EARTH_RADIUS_M 6371000.0
 #define SOLAR_EARTH_SEMI_MAJOR_AXIS_M 149597887155.76578
 #define SOLAR_EARTH_ECCENTRICITY 0.01671022
@@ -44,7 +55,8 @@
     (sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * \
         ((2.0 / SOLAR_EARTH_PERIHELION_M) - (1.0 / SOLAR_EARTH_SEMI_MAJOR_AXIS_M))))
 
-#define SOLAR_MOON_MASS_KG 7.346e22
+#define SOLAR_MOON_GM_M3PS2 4.902800118e12
+#define SOLAR_MOON_MASS_KG (SOLAR_MOON_GM_M3PS2 / SOLAR_G)
 #define SOLAR_MOON_RADIUS_M 1737400.0
 #define SOLAR_MOON_SEMI_MAJOR_AXIS_M 384400000.0
 #define SOLAR_MOON_ECCENTRICITY 0.0549
@@ -54,8 +66,9 @@
     (sqrt(SOLAR_G * (SOLAR_EARTH_MASS_KG + SOLAR_MOON_MASS_KG) * \
         ((2.0 / SOLAR_MOON_PERIGEE_M) - (1.0 / SOLAR_MOON_SEMI_MAJOR_AXIS_M))))
 
-#define SOLAR_MARS_MASS_KG 6.419e23
-#define SOLAR_MARS_RADIUS_M 3390000.0
+#define SOLAR_MARS_GM_M3PS2 4.2828375214e13
+#define SOLAR_MARS_MASS_KG (SOLAR_MARS_GM_M3PS2 / SOLAR_G)
+#define SOLAR_MARS_RADIUS_M 3389500.0 /* JPL mean radius */
 #define SOLAR_MARS_SEMI_MAJOR_AXIS_M 227900000000.0
 #define SOLAR_MARS_ECCENTRICITY 0.0934
 #define SOLAR_MARS_PERIHELION_M \
