@@ -134,16 +134,16 @@ Simulation code lives under `src/sim/` and is independent from raylib.
 
 Current simulation data:
 
-Baseline planet values follow NASA/JPL references; Jupiter through Neptune use [JPL physical parameters](https://ssd.jpl.nasa.gov/planets/phys_par.html) and [JPL approximate orbital elements](https://ssd.jpl.nasa.gov/planets/approx_pos.html). Satellite values follow JPL Solar System Dynamics. Vesta's pinned physical values and osculating elements are attributed to JPL SBDB solution 36; the [live SBDB query](https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1) may return a newer solution. Derived periapsis distances and vis-viva speeds are calculated in `src/sim/constants.h`. See the [provenance and precision policy](data/README.md#provenance-and-precision-policy) for missing legacy retrieval dates and uncertainty limitations.
+Baseline planet values follow NASA/JPL references. Sun, Mercury, Venus, Earth, Moon and Mars masses are `GM / G` from DE440 GM values ([JPL astrodynamic parameters](https://ssd.jpl.nasa.gov/astro_par.html), [planetary physical parameters](https://ssd.jpl.nasa.gov/planets/phys_par.html)) with CODATA 2018 `G = 6.67430e-11`; Jupiter through Neptune use [JPL physical parameters](https://ssd.jpl.nasa.gov/planets/phys_par.html) and [JPL approximate orbital elements](https://ssd.jpl.nasa.gov/planets/approx_pos.html). Satellite values follow JPL Solar System Dynamics. Vesta's pinned physical values and osculating elements are attributed to JPL SBDB solution 36; the [live SBDB query](https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1) may return a newer solution. Derived periapsis distances and vis-viva speeds are calculated in `src/sim/constants.h`. See the [provenance and precision policy](data/README.md#provenance-and-precision-policy) for missing legacy retrieval dates and uncertainty limitations.
 
 | Body | Mass | Radius | Initial state |
 |---|---:|---:|---|
-| Sun | `1.98847e30 kg` | `695700000 m` | fixed at origin |
-| Mercury | `3.3011e23 kg` | `2439700 m` | perihelion position and tangential speed |
-| Venus | `4.8675e24 kg` | `6051800 m` | perihelion position and tangential speed |
-| Earth | `5.9736e24 kg` | `6371000 m` | perihelion position and tangential speed |
-| Moon | `7.346e22 kg` | `1737400 m` | Earth-relative perigee offset and tangential relative speed |
-| Mars | `6.419e23 kg` | `3390000 m` | perihelion position and tangential speed |
+| Sun | `1.98841e30 kg` | `695700000 m` | fixed at origin |
+| Mercury | `3.301001e23 kg` | `2439700 m` | perihelion position and tangential speed |
+| Venus | `4.867306e24 kg` | `6051800 m` | perihelion position and tangential speed |
+| Earth | `5.972168e24 kg` | `6371000 m` | perihelion position and tangential speed |
+| Moon | `7.345789e22 kg` | `1737400 m` | Earth-relative perigee offset and tangential relative speed |
+| Mars | `6.416909e23 kg` | `3389500 m` | perihelion position and tangential speed |
 | Phobos | `1.061834199841182e16 kg` | `11080 m` | Mars-relative periareion offset and tangential relative speed |
 | Deimos | `1.441349654645431e15 kg` | `6200 m` | Mars-relative periareion offset and tangential relative speed |
 | Vesta | `2.590276793071933e20 kg` | `261385 m` | heliocentric perihelion position and tangential speed |
@@ -176,28 +176,28 @@ Mercury orbital values used for initialization:
 - semi-major axis: `57909050000 m`
 - eccentricity: `0.205630`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `46001212048.5 m`
-- perihelion speed: `58977.28405570045 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
+- perihelion speed: `58976.392351713628 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
 
 Venus orbital values used for initialization:
 
 - semi-major axis: `108208000000 m`
 - eccentricity: `0.006772`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `107475215424.0 m`
-- perihelion speed: `35259.30808092215 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
+- perihelion speed: `35258.774979642702 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
 
 Earth orbital values used for initialization:
 
 - semi-major axis: `149597887155.76578 m`
 - eccentricity: `0.01671022`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `147098073549.85776 m`
-- perihelion speed: `30287.085630725956 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
+- perihelion speed: `30286.627706705909 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
 
 Moon orbital values used for initialization around Earth:
 
 - semi-major axis: `384400000 m`
 - eccentricity: `0.0549`
 - perigee distance: `semi-major axis * (1 - eccentricity)` = `363296440 m`
-- perigee relative speed: `1082.5552631364333 m/s`, computed from `sqrt(G * (EarthMass + MoonMass) * (2 / perigee - 1 / semiMajorAxis))`
+- perigee relative speed: `1082.426923000336 m/s`, computed from `sqrt(G * (EarthMass + MoonMass) * (2 / perigee - 1 / semiMajorAxis))`
 - absolute Moon state: Earth heliocentric state plus the Earth-relative perigee offset and relative tangential velocity
 - The core keeps Earth's existing heliocentric perihelion state. The separate Earth–Moon lesson initializes an isolated barycentric pair.
 
@@ -207,7 +207,7 @@ Mars orbital values used for initialization:
 - eccentricity: `0.0934`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `206614140000 m`
 - aphelion distance: `semi-major axis * (1 + eccentricity)` = `249185860000 m`
-- perihelion speed: `26501.588011990192 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
+- perihelion speed: `26501.187322605019 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
 
 Martian moon orbital values used for initialization around Mars:
 
@@ -215,12 +215,12 @@ Martian moon orbital values used for initialization around Mars:
 - Phobos eccentricity: `0.0151`
 - Phobos periareion distance: `semi-major axis * (1 - eccentricity)` = `9235407.3 m`
 - Phobos apoareion distance: `semi-major axis * (1 + eccentricity)` = `9518592.7 m`
-- Phobos periareion relative speed: `2170.0160220561597 m/s`, computed from `sqrt(G * (MarsMass + PhobosMass) * (2 / periareion - 1 / semiMajorAxis))`
+- Phobos periareion relative speed: `2169.6625368064592 m/s`, computed from `sqrt(G * (MarsMass + PhobosMass) * (2 / periareion - 1 / semiMajorAxis))`
 - Deimos semi-major axis: `23460000 m`
 - Deimos eccentricity: `0.00033`
 - Deimos periareion distance: `semi-major axis * (1 - eccentricity)` = `23452258.2 m`
 - Deimos apoareion distance: `semi-major axis * (1 + eccentricity)` = `23467741.8 m`
-- Deimos periareion relative speed: `1351.8106494404324 m/s`, computed from `sqrt(G * (MarsMass + DeimosMass) * (2 / periareion - 1 / semiMajorAxis))`
+- Deimos periareion relative speed: `1351.5904459364303 m/s`, computed from `sqrt(G * (MarsMass + DeimosMass) * (2 / periareion - 1 / semiMajorAxis))`
 - absolute Phobos/Deimos state: Mars heliocentric state plus each moon's Mars-relative periareion offset and relative tangential velocity
 
 Vesta orbital values used for initialization:
@@ -230,7 +230,7 @@ Vesta orbital values used for initialization:
 - semi-major axis: `353255320326.53925 m`
 - eccentricity: `0.09020374382834395`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `321390367905.8045 m`
-- perihelion speed: `21217.7725508384 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
+- perihelion speed: `21217.451749827014 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
 - Vesta remains in the default X/Z plane. Its measured inclination is deliberately deferred until a dedicated orbital-geometry milestone.
 
 Jupiter orbital values used for initialization:
@@ -239,7 +239,7 @@ Jupiter orbital values used for initialization:
 - semi-major axis: `778340816692.7108 m`
 - eccentricity: `0.04838624`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `740679831134.4213 m`
-- perihelion speed: `13705.906982917822 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
+- perihelion speed: `13705.69975716819 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
 - Jupiter remains in the default X/Z plane. JPL's listed inclination is deliberately deferred until a dedicated orbital-geometry milestone.
 
 Saturn orbital values used for initialization:
@@ -248,7 +248,7 @@ Saturn orbital values used for initialization:
 - semi-major axis: `1426666414179.921 m`
 - eccentricity: `0.05386179`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `1349823607379.3088 m`
-- perihelion speed: `10179.248179798748 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
+- perihelion speed: `10179.094275183943 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
 - Saturn remains in the default X/Z plane. Its visible ring system uses [NASA's roughly `282000 km` overall extent and `26.73` degree tilt](https://science.nasa.gov/saturn/facts/) only at the rendering boundary.
 
 ## Rendering model
