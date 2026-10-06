@@ -409,7 +409,7 @@ static bool update_body_search(SolarApp *state)
 
 static void solar_app_update_draw(void *user_data)
 {
-    SolarApp *app = user_data;
+    SolarApp *state = user_data;
 
 #if defined(PLATFORM_WEB)
     /* CSS owns the frame; keep raylib's projection/backing size in sync after
@@ -418,80 +418,80 @@ static void solar_app_update_draw(void *user_data)
     int height = solar_web_initial_canvas_height();
     if (width != GetScreenWidth() || height != GetScreenHeight()) {
         SetWindowSize(width, height);
-        if (app->system_framed) frame_selected_system(app);
-        else if (app->body_framed) frame_selected_body(app);
+        if (state->system_framed) frame_selected_system(state);
+        else if (state->body_framed) frame_selected_body(state);
     }
 #endif
 
 #if defined(PLATFORM_WEB)
     bool controls_active = solar_web_canvas_has_focus();
 #else
-    bool controls_active = !update_body_search(app);
+    bool controls_active = !update_body_search(state);
 #endif
     if (controls_active) {
-        bool next = IsKeyPressed(KEY_C);
+        bool cycle_selection = IsKeyPressed(KEY_C);
 #if !defined(PLATFORM_WEB)
-        next = next || IsKeyPressed(KEY_TAB);
+        cycle_selection = cycle_selection || IsKeyPressed(KEY_TAB);
 #endif
-        if (next) solar_app_command(app, SOLAR_COMMAND_SELECT,
-            (int)((app->session.selected_body_index + 1) % app->session.system.body_count));
+        if (cycle_selection) solar_app_command(state, SOLAR_COMMAND_SELECT,
+            (int)((state->session.selected_body_index + 1) % state->session.system.body_count));
         for (int i = 0; i < 9; ++i) {
-            if (IsKeyPressed(KEY_ONE + i)) solar_app_command(app, SOLAR_COMMAND_SELECT, i);
+            if (IsKeyPressed(KEY_ONE + i)) solar_app_command(state, SOLAR_COMMAND_SELECT, i);
         }
-        if (IsKeyPressed(KEY_ZERO)) solar_app_command(app, SOLAR_COMMAND_SELECT, 9);
-        if (IsKeyPressed(KEY_SPACE)) solar_app_command(app, SOLAR_COMMAND_PAUSE, 0);
-        if (IsKeyPressed(KEY_N)) solar_app_command(app, SOLAR_COMMAND_STEP, 0);
-        if (IsKeyPressed(KEY_R)) solar_app_command(app, SOLAR_COMMAND_RESET, 0);
-        if (IsKeyPressed(KEY_A)) solar_app_command(app, SOLAR_COMMAND_ROTATE, 0);
-        if (IsKeyPressed(KEY_F)) solar_app_command(app, SOLAR_COMMAND_FRAME, 0);
-        if (IsKeyPressed(KEY_B)) solar_app_command(app, SOLAR_COMMAND_FRAME_BODY, 0);
-        if (IsKeyPressed(KEY_V)) solar_app_command(app, SOLAR_COMMAND_VIEW, 0);
-        if (IsKeyPressed(KEY_LEFT_BRACKET)) solar_app_command(app, SOLAR_COMMAND_SPEED, app->session.speed_preset - 1);
-        if (IsKeyPressed(KEY_RIGHT_BRACKET)) solar_app_command(app, SOLAR_COMMAND_SPEED, app->session.speed_preset + 1);
-        if (IsKeyPressed(KEY_T)) solar_app_command(app, SOLAR_COMMAND_TRAILS, 0);
-        if (IsKeyPressed(KEY_X)) solar_app_command(app, SOLAR_COMMAND_VECTORS, 0);
-        if (IsKeyPressed(KEY_M)) solar_app_command(app, SOLAR_COMMAND_CONTACT, 0);
+        if (IsKeyPressed(KEY_ZERO)) solar_app_command(state, SOLAR_COMMAND_SELECT, 9);
+        if (IsKeyPressed(KEY_SPACE)) solar_app_command(state, SOLAR_COMMAND_PAUSE, 0);
+        if (IsKeyPressed(KEY_N)) solar_app_command(state, SOLAR_COMMAND_STEP, 0);
+        if (IsKeyPressed(KEY_R)) solar_app_command(state, SOLAR_COMMAND_RESET, 0);
+        if (IsKeyPressed(KEY_A)) solar_app_command(state, SOLAR_COMMAND_ROTATE, 0);
+        if (IsKeyPressed(KEY_F)) solar_app_command(state, SOLAR_COMMAND_FRAME, 0);
+        if (IsKeyPressed(KEY_B)) solar_app_command(state, SOLAR_COMMAND_FRAME_BODY, 0);
+        if (IsKeyPressed(KEY_V)) solar_app_command(state, SOLAR_COMMAND_VIEW, 0);
+        if (IsKeyPressed(KEY_LEFT_BRACKET)) solar_app_command(state, SOLAR_COMMAND_SPEED, state->session.speed_preset - 1);
+        if (IsKeyPressed(KEY_RIGHT_BRACKET)) solar_app_command(state, SOLAR_COMMAND_SPEED, state->session.speed_preset + 1);
+        if (IsKeyPressed(KEY_T)) solar_app_command(state, SOLAR_COMMAND_TRAILS, 0);
+        if (IsKeyPressed(KEY_X)) solar_app_command(state, SOLAR_COMMAND_VECTORS, 0);
+        if (IsKeyPressed(KEY_M)) solar_app_command(state, SOLAR_COMMAND_CONTACT, 0);
         if (IsKeyPressed(KEY_E)) {
             char name[32];
-            if (export_snapshot(app, name, sizeof(name)))
-                snprintf(app->feedback, sizeof(app->feedback), "Snapshot saved: %s (SI units)", name);
-            else snprintf(app->feedback, sizeof(app->feedback), "Could not write snapshot CSV.");
+            if (export_snapshot(state, name, sizeof(name)))
+                snprintf(state->feedback, sizeof(state->feedback), "Snapshot saved: %s (SI units)", name);
+            else snprintf(state->feedback, sizeof(state->feedback), "Could not write snapshot CSV.");
         }
 #if !defined(PLATFORM_WEB)
         if (IsKeyPressed(KEY_L)) {
-            LessonPreset next = (LessonPreset)((app->session.lesson + 1) % LESSON_COUNT);
-            start_app_lesson(app, next, 1, PHYSICS_VERLET, lesson_default_step(next));
+            LessonPreset next = (LessonPreset)((state->session.lesson + 1) % LESSON_COUNT);
+            start_app_lesson(state, next, 1, PHYSICS_VERLET, lesson_default_step(next));
         }
-        if (!app->session.catalog_experiment && app->session.lesson != LESSON_CORE) {
-            double dt = simulation_clock_step_seconds(&app->session.clock);
-            if (IsKeyPressed(KEY_I)) start_app_lesson(app, app->session.lesson, app->session.velocity_factor,
-                app->session.clock.integrator == PHYSICS_VERLET ? PHYSICS_EULER : PHYSICS_VERLET, dt);
-            if (IsKeyPressed(KEY_D)) start_app_lesson(app, app->session.lesson, app->session.velocity_factor,
-                app->session.clock.integrator, app->session.lesson == LESSON_COLLISION ? (dt == .1 ? .2 : .1) : dt == 15 ? 75 : dt == 75 ? 150 : dt == 150 ? 300 : 15);
-            if (IsKeyPressed(KEY_EQUAL) || IsKeyPressed(KEY_MINUS)) start_app_lesson(app, app->session.lesson,
-                fmax(lesson_minimum_velocity_factor(app->session.lesson),
-                    fmin(2, app->session.velocity_factor + (IsKeyPressed(KEY_EQUAL) ? 0.1 : -0.1))), app->session.clock.integrator, dt);
+        if (!state->session.catalog_experiment && state->session.lesson != LESSON_CORE) {
+            double dt = simulation_clock_step_seconds(&state->session.clock);
+            if (IsKeyPressed(KEY_I)) start_app_lesson(state, state->session.lesson, state->session.velocity_factor,
+                state->session.clock.integrator == PHYSICS_VERLET ? PHYSICS_EULER : PHYSICS_VERLET, dt);
+            if (IsKeyPressed(KEY_D)) start_app_lesson(state, state->session.lesson, state->session.velocity_factor,
+                state->session.clock.integrator, state->session.lesson == LESSON_COLLISION ? (dt == .1 ? .2 : .1) : dt == 15 ? 75 : dt == 75 ? 150 : dt == 150 ? 300 : 15);
+            if (IsKeyPressed(KEY_EQUAL) || IsKeyPressed(KEY_MINUS)) start_app_lesson(state, state->session.lesson,
+                fmax(lesson_minimum_velocity_factor(state->session.lesson),
+                    fmin(2, state->session.velocity_factor + (IsKeyPressed(KEY_EQUAL) ? 0.1 : -0.1))), state->session.clock.integrator, dt);
         }
 #endif
     }
 
     float frame_time = GetFrameTime();
 #if !defined(PLATFORM_WEB)
-    simulation_session_set_background(&app->session, IsWindowMinimized());
+    simulation_session_set_background(&state->session, IsWindowMinimized());
 #endif
-    orbit_camera_apply_zoom(&app->orbit_camera, GetMouseWheelMove());
+    orbit_camera_apply_zoom(&state->orbit_camera, GetMouseWheelMove());
     /* A stalled frame (sleep, debugger) is discarded by the simulation clock;
      * the camera skips it too instead of jumping to an arbitrary angle. */
-    if (app->auto_rotate && !simulation_frame_is_stall(frame_time)) orbit_camera_advance(&app->orbit_camera, frame_time);
-    simulation_session_update(&app->session, frame_time);
+    if (state->auto_rotate && !simulation_frame_is_stall(frame_time)) orbit_camera_advance(&state->orbit_camera, frame_time);
+    simulation_session_update(&state->session, frame_time);
 #if defined(PLATFORM_WEB)
-    if (app->web_body_count != app->session.system.body_count) populate_web_bodies();
+    if (state->web_body_count != state->session.system.body_count) populate_web_bodies();
 #endif
-    Vec3d origin = renderer_body_position(&app->session.system, camera_target_index(app), app->render_mode);
-    apply_orbit_camera(&app->camera, &app->orbit_camera, (Vector3){0,0,0});
+    Vec3d origin = renderer_body_position(&state->session.system, camera_target_index(state), state->render_mode);
+    apply_orbit_camera(&state->camera, &state->orbit_camera, (Vector3){0,0,0});
 
 #if defined(PLATFORM_WEB)
-    report_web_state(app);
+    report_web_state(state);
 #endif
 
     BeginDrawing();
@@ -499,21 +499,21 @@ static void solar_app_update_draw(void *user_data)
 
     /* Real-scale moon systems need a near plane smaller than raylib's default.
      * Clip distances follow the camera only; SI positions and radii stay intact. */
-    rlSetClipPlanes(fmax(1e-9, app->orbit_camera.distance * 0.001), fmax(1000.0, app->orbit_camera.distance * 4.0));
-    BeginMode3D(app->camera);
-    renderer_draw_solar_system(&app->session.system, &app->session.trails, app->render_mode, app->trail_frame, origin);
-    if (app->vectors) renderer_draw_vectors(&app->session.system, app->session.selected_body_index, app->render_mode, origin);
+    rlSetClipPlanes(fmax(1e-9, state->orbit_camera.distance * 0.001), fmax(1000.0, state->orbit_camera.distance * 4.0));
+    BeginMode3D(state->camera);
+    renderer_draw_solar_system(&state->session.system, &state->session.trails, state->render_mode, state->trail_frame, origin);
+    if (state->vectors) renderer_draw_vectors(&state->session.system, state->session.selected_body_index, state->render_mode, origin);
     EndMode3D();
 
 #if !defined(PLATFORM_WEB)
     /* Astro presents these readouts outside the web canvas for accessibility
      * and mobile layout. Native builds retain their in-window HUD. */
     DrawText("Solar System Simulator", 20, 20, 20, RAYWHITE);
-    BodyInspection body = simulation_session_inspect(&app->session);
-    DrawText(TextFormat("%s | %.0f simulated seconds | %.0f sim s/real s", app->session.paused ? "Paused" : "Running",
-        app->session.system.elapsed_seconds, simulation_session_time_scale(&app->session)), 20, 50, 18, RAYWHITE);
+    BodyInspection body = simulation_session_inspect(&state->session);
+    DrawText(TextFormat("%s | %.0f simulated seconds | %.0f sim s/real s", state->session.paused ? "Paused" : "Running",
+        state->session.system.elapsed_seconds, simulation_session_time_scale(&state->session)), 20, 50, 18, RAYWHITE);
     DrawText(TextFormat("Selected: %s | Parent: %s | View: %s", body.name, body.parent_name,
-        renderer_scale_mode_label(app->render_mode)), 20, 75, 18, RAYWHITE);
+        renderer_scale_mode_label(state->render_mode)), 20, 75, 18, RAYWHITE);
     const char *mass = body.mass_quality == PHYSICAL_UNKNOWN ? "Unknown (test particle)"
         : TextFormat("%.6g kg%s", body.mass_kg, body.mass_quality == PHYSICAL_ESTIMATED ? " (estimated)" : body.mass_quality == PHYSICAL_PUBLISHED ? " (published)" : "");
     const char *radius = body.radius_quality == PHYSICAL_UNKNOWN ? "Unknown (marker only)"
@@ -521,43 +521,43 @@ static void solar_app_update_draw(void *user_data)
     DrawText(TextFormat("Mass: %s | Physical radius: %s", mass, radius), 20, 100, 18, RAYWHITE);
     DrawText(body.has_parent ? TextFormat("Parent-relative: %.3f km | %.6f km/s", body.distance_m / 1000.0, body.speed_mps / 1000.0)
         : "Parent-relative distance/speed: N/A (no parent)", 20, 125, 18, RAYWHITE);
-    DrawText(TextFormat("Space: pause | N: +%.1f s (paused) | R: reset | [ / ]: speed", simulation_clock_step_seconds(&app->session.clock)), 20, 155, 18, RAYWHITE);
+    DrawText(TextFormat("Space: pause | N: +%.1f s (paused) | R: reset | [ / ]: speed", simulation_clock_step_seconds(&state->session.clock)), 20, 155, 18, RAYWHITE);
     DrawText("1-9 / 0 / Tab / C: select | V: scale | F: family | B: body | Wheel: zoom", 20, 180, 18, RAYWHITE);
-    DrawText(TextFormat("A: camera rotation (%s) | Camera target: %s", app->auto_rotate ? "on" : "off",
-        app->session.system.bodies[camera_target_index(app)].name), 20, 205, 18, RAYWHITE);
+    DrawText(TextFormat("A: camera rotation (%s) | Camera target: %s", state->auto_rotate ? "on" : "off",
+        state->session.system.bodies[camera_target_index(state)].name), 20, 205, 18, RAYWHITE);
     DrawText(TextFormat("Achieved: %.2f days/second | Pending: %.3f days",
-        app->session.paused ? 0 : app->session.achieved_time_scale / SOLAR_DAY_SECONDS,
-        app->session.clock.pending_seconds / SOLAR_DAY_SECONDS), 20, 230, 18, RAYWHITE);
-    DrawText(app->searching ? TextFormat("Find: %s | %s | Down: next | Enter: select | Esc: close", app->search,
-        app->search_match >= 0 ? app->session.system.bodies[app->search_match].name : "No match")
+        state->session.paused ? 0 : state->session.achieved_time_scale / SOLAR_DAY_SECONDS,
+        state->session.clock.pending_seconds / SOLAR_DAY_SECONDS), 20, 230, 18, RAYWHITE);
+    DrawText(state->searching ? TextFormat("Find: %s | %s | Down: next | Enter: select | Esc: close", state->search,
+        state->search_match >= 0 ? state->session.system.bodies[state->search_match].name : "No match")
         : "/: find body by name, designation, or moon group", 20, 280, 18, RAYWHITE);
-    if (body_trails_recording_failed(&app->session.trails)) {
+    if (body_trails_recording_failed(&state->session.trails)) {
         DrawText("Trail recording paused: memory unavailable.", 20, 255, 18, RED);
     }
-    PhysicsDiagnostics diagnostics = physics_diagnostics(&app->session.system);
-    DrawText(TextFormat("%s | %s | dt %.1f s | tick %llu | Accel %.5g m/s^2", lesson_name(app->session.lesson),
-        app->session.clock.integrator == PHYSICS_EULER ? "Euler (teaching)" : "Verlet",
-        simulation_clock_step_seconds(&app->session.clock), (unsigned long long)app->session.clock.ticks, body.acceleration_mps2), 20, 310, 16, RAYWHITE);
+    PhysicsDiagnostics diagnostics = physics_diagnostics(&state->session.system);
+    DrawText(TextFormat("%s | %s | dt %.1f s | tick %llu | Accel %.5g m/s^2", lesson_name(state->session.lesson),
+        state->session.clock.integrator == PHYSICS_EULER ? "Euler (teaching)" : "Verlet",
+        simulation_clock_step_seconds(&state->session.clock), (unsigned long long)state->session.clock.ticks, body.acceleration_mps2), 20, 310, 16, RAYWHITE);
     const char *magnification = body.radius_quality == PHYSICAL_UNKNOWN ? "Unknown radius (marker only)"
-        : TextFormat("%.3gx", renderer_radius_magnification(&app->session.system.bodies[app->session.selected_body_index], app->render_mode));
+        : TextFormat("%.3gx", renderer_radius_magnification(&state->session.system.bodies[state->session.selected_body_index], state->render_mode));
     DrawText(TextFormat("Energy %.6g J | dE/(K0+|U0|) %.3g | Radius magnification %s", diagnostics.total_energy_j,
-        simulation_session_energy_change(&app->session, &diagnostics),
+        simulation_session_energy_change(&state->session, &diagnostics),
         magnification), 20, 335, 16, RAYWHITE);
     DrawText("L: lesson | I: integrator | D: dt | - / =: initial speed | M: contact model (changes reset)", 20, 360, 16, RAYWHITE);
     DrawText(TextFormat("T: trails (%s) | X: vector directions | E: export SI snapshot",
-        app->trail_frame == RENDER_TRAILS_PARENT ? "parent-relative" : "absolute"), 20, 385, 16, RAYWHITE);
+        state->trail_frame == RENDER_TRAILS_PARENT ? "parent-relative" : "absolute"), 20, 385, 16, RAYWHITE);
     DrawText("Vectors: green velocity / orange acceleration; lengths are illustrative", 20, 410, 16, RAYWHITE);
-    DrawText(app->feedback, 20, 435, 16, RAYWHITE);
-    if (app->session.clock.contact_tick) {
+    DrawText(state->feedback, 20, 435, 16, RAYWHITE);
+    if (state->session.clock.contact_tick) {
         DrawText(TextFormat("Contact at %.0f s: bodies touched; point-mass motion after this is not physical and lesson errors are withheld",
-            (double)app->session.clock.contact_tick * simulation_clock_step_seconds(&app->session.clock)), 20, 540, 16, RED);
+            (double)state->session.clock.contact_tick * simulation_clock_step_seconds(&state->session.clock)), 20, 540, 16, RED);
     }
     ForceContribution forces[3];
-    size_t force_count = physics_force_breakdown(&app->session.system, app->session.selected_body_index, forces, 3);
+    size_t force_count = physics_force_breakdown(&state->session.system, state->session.selected_body_index, forces, 3);
     for (size_t i = 0; i < force_count; ++i) {
         ForceContribution f = forces[i];
         DrawText(TextFormat("Gravity from %s: %.4g m/s^2 (%.2f%% of source magnitudes), [%.3g, %.3g, %.3g]",
-            app->session.system.bodies[f.source_index].name, f.magnitude_mps2, f.magnitude_fraction * 100,
+            state->session.system.bodies[f.source_index].name, f.magnitude_mps2, f.magnitude_fraction * 100,
             f.acceleration_mps2.x, f.acceleration_mps2.y, f.acceleration_mps2.z), 20, 465 + (int)i * 20, 15, RAYWHITE);
     }
 #endif
