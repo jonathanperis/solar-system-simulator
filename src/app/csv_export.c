@@ -6,6 +6,8 @@
 #include "revision.h"
 #include <errno.h>
 #include <fcntl.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #ifdef _WIN32
 #include <io.h>
@@ -15,31 +17,142 @@
 
 const char *solar_build_revision(void) { return SOLAR_BUILD_REVISION; }
 
-FILE *simulation_csv_open_output(const char *path)
+/* Close a descriptor without letting close() overwrite the errno that
+ * explains the original failure. */
+static void close_preserving_errno(int descriptor)
+{
+    int error = errno;
+#ifdef _WIN32
+    _close(descriptor);
+#else
+    close(descriptor);
+#endif
+    errno = error;
+}
+
+FILE *simulation_csv_create_new(const char *path)
 {
 #ifdef _WIN32
-    int descriptor = _open(path, _O_WRONLY | _O_CREAT | _O_TRUNC | _O_TEXT, _S_IREAD | _S_IWRITE);
+    int descriptor = _open(path, _O_WRONLY | _O_CREAT | _O_EXCL | _O_TEXT, _S_IREAD | _S_IWRITE);
     if (descriptor < 0) return NULL;
     FILE *stream = _fdopen(descriptor, "w");
-    if (!stream) _close(descriptor);
 #else
+    /* O_EXCL fails if anything at all already has this name, including a
+     * symlink or FIFO, so this call can never write through or block on one. */
     int descriptor = open(path, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
-    if (descriptor >= 0) {
-        /* Override umask only on the file this call created, never an existing destination. */
-        if (fchmod(descriptor, S_IRUSR | S_IWUSR) != 0) {
-            int error = errno;
-            close(descriptor);
-            errno = error;
-            return NULL;
-        }
-    } else if (errno == EEXIST) {
-        descriptor = open(path, O_WRONLY | O_TRUNC);
-    }
     if (descriptor < 0) return NULL;
+    /* The creation mode is filtered by umask; set 0600 explicitly instead. */
+    if (fchmod(descriptor, S_IRUSR | S_IWUSR) != 0) {
+        close_preserving_errno(descriptor);
+        unlink(path);
+        return NULL;
+    }
     FILE *stream = fdopen(descriptor, "w");
-    if (!stream) close(descriptor);
 #endif
+    if (!stream) close_preserving_errno(descriptor);
     return stream;
+}
+
+static void release_output(CsvOutputFile *output)
+{
+    free(output->path);
+    free(output->temp_path);
+    *output = (CsvOutputFile){0};
+}
+
+bool simulation_csv_output_open(CsvOutputFile *output, const char *path)
+{
+    *output = (CsvOutputFile){0};
+#ifdef _WIN32
+    /* No atomic replace here: Windows writes the destination in place. */
+    int descriptor = _open(path, _O_WRONLY | _O_CREAT | _O_TRUNC | _O_TEXT, _S_IREAD | _S_IWRITE);
+    if (descriptor < 0) return false;
+    output->stream = _fdopen(descriptor, "w");
+    if (!output->stream) close_preserving_errno(descriptor);
+    return output->stream != NULL;
+#else
+    /* lstat describes the name itself rather than whatever a symlink points
+     * at. Only a missing path or an existing regular file is an acceptable
+     * destination; links, FIFOs, devices and directories are refused. */
+    struct stat existing;
+    mode_t mode = S_IRUSR | S_IWUSR;
+    if (lstat(path, &existing) == 0) {
+        if (!S_ISREG(existing.st_mode)) {
+            errno = S_ISLNK(existing.st_mode) ? ELOOP : EINVAL;
+            return false;
+        }
+        mode = existing.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
+    } else if (errno != ENOENT) {
+        return false;
+    }
+
+    /* The temporary file lives beside the destination so the final rename()
+     * stays within one filesystem, where POSIX makes it atomic. */
+    static const char suffix[] = ".XXXXXX";
+    size_t length = strlen(path);
+    output->path = malloc(length + 1);
+    output->temp_path = malloc(length + sizeof(suffix));
+    if (!output->path || !output->temp_path) {
+        release_output(output);
+        errno = ENOMEM;
+        return false;
+    }
+    memcpy(output->path, path, length + 1);
+    memcpy(output->temp_path, path, length);
+    memcpy(output->temp_path + length, suffix, sizeof(suffix));
+
+    /* mkstemp creates a fresh, uniquely named 0600 file with O_EXCL, so it
+     * never reuses or follows anything already present. A replaced file keeps
+     * its permission bits; a new one stays owner-only even under umask 0. */
+    int descriptor = mkstemp(output->temp_path);
+    if (descriptor < 0) {
+        release_output(output);
+        return false;
+    }
+    if (fchmod(descriptor, mode) != 0 || !(output->stream = fdopen(descriptor, "w"))) {
+        close_preserving_errno(descriptor);
+        int error = errno;
+        simulation_csv_output_abort(output);
+        errno = error;
+        return false;
+    }
+    return true;
+#endif
+}
+
+bool simulation_csv_output_commit(CsvOutputFile *output)
+{
+    if (!output->stream) return false;
+    bool ok = fflush(output->stream) == 0 && !ferror(output->stream);
+#ifndef _WIN32
+    /* Make the bytes durable before the name points at them; otherwise a crash
+     * just after rename() could expose an empty file under the final name. */
+    if (ok && fsync(fileno(output->stream)) != 0) ok = false;
+#endif
+    if (fclose(output->stream) != 0) ok = false;
+    output->stream = NULL;
+#ifndef _WIN32
+    /* rename() replaces the destination's directory entry in one step and never
+     * writes through it: readers see the old file or the complete new one. */
+    if (ok && rename(output->temp_path, output->path) != 0) ok = false;
+    if (!ok) {
+        int error = errno;
+        unlink(output->temp_path);
+        errno = error;
+    }
+#endif
+    release_output(output);
+    return ok;
+}
+
+void simulation_csv_output_abort(CsvOutputFile *output)
+{
+    if (output->stream) fclose(output->stream);
+#ifndef _WIN32
+    /* Discard only our private temporary; the destination was never touched. */
+    if (output->temp_path) unlink(output->temp_path);
+#endif
+    release_output(output);
 }
 
 static void csv_string(FILE *stream, const char *text)

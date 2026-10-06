@@ -13,7 +13,9 @@ static int usage(FILE *stream)
         "  [--integrator verlet|euler] [--velocity-factor 0.1..2] [--collision none|bounce|merge] [--output FILE]\n"
         "  [--experiment FILE] | --compare FILE | --catalog | --lessons | --version | --help\n"
         "Defaults: circular, 86400 s duration, 15 s step, 3600 s samples, Verlet.\n"
-        "Duration and sample spacing must be whole multiples of dt. Core/catalog use 15 s Verlet.\n", stream);
+        "Duration and sample spacing must be whole multiples of dt. Core/catalog use 15 s Verlet.\n"
+        "At most 1e9 ticks (duration/dt) per run. --output must be a new path or a regular file;\n"
+        "it is replaced only after a complete run.\n", stream);
     return stream == stdout ? 0 : 2;
 }
 
@@ -126,8 +128,13 @@ int main(int argc, char **argv)
         fputs("Invalid lesson configuration or experiment input.\n", stderr);
         return 2;
     }
-    FILE *stream = output ? simulation_csv_open_output(output) : stdout;
-    if (!stream) { perror("CSV output"); simulation_session_destroy(&session); return 1; }
+    CsvOutputFile file = {0};
+    if (output && !simulation_csv_output_open(&file, output)) {
+        fprintf(stderr, "CSV output %s: %s (use a new path or an existing regular file)\n", output, strerror(errno));
+        simulation_session_destroy(&session);
+        return 1;
+    }
+    FILE *stream = output ? file.stream : stdout;
     bool ok = simulation_csv_begin(stream, &session) && simulation_csv_sample(stream, &session);
     /* Stream samples instead of retaining a series. No graphics or wall clock
      * enters this run: ticks are the sole source of simulation time. */
@@ -136,9 +143,14 @@ int main(int argc, char **argv)
         simulation_session_advance_tick(&session, false);
         if (tick % sample_ticks == 0 || tick == total_ticks) ok = simulation_csv_sample(stream, &session);
     }
-    if (fflush(stream) != 0) ok = false;
-    if (output && fclose(stream) != 0) ok = false;
+    /* A file destination is replaced only after every sample is written; on
+     * failure its temporary is deleted and any previous file stays intact. */
+    if (output) {
+        if (ok) ok = simulation_csv_output_commit(&file);
+        else simulation_csv_output_abort(&file);
+    } else if (fflush(stream) != 0) ok = false;
     simulation_session_destroy(&session);
-    if (!ok) fputs("Could not finish writing CSV output.\n", stderr);
+    if (!ok) fputs(output ? "Could not finish writing CSV output; no partial file was kept.\n"
+        : "Could not finish writing CSV output.\n", stderr);
     return ok ? 0 : 1;
 }

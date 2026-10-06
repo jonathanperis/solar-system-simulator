@@ -91,7 +91,7 @@ build/solar-lab --scene circular --days 30 --dt 300 --sample 3600 --integrator e
 build/solar-lab --help`}</code></pre>
       <p>Duration and sample spacing must be whole multiples of the timestep. Lessons accept steps from 0.01 to 3600 seconds and initial-speed factors from 0.1 to 2, with the tighter 0.01–0.25-second contact bound. These ranges permit intentionally inaccurate experiments; they are not promises of orbital accuracy. Invalid inputs fail before emitting CSV.</p>
       <p>CSV includes revision, configuration, physical-data quality, simulation time/ticks, every body's absolute SI vectors, total energy, momentum and center of mass. Unknown physical values remain empty with an explicit <code>unknown</code> quality. Each sample streams directly to the output, so long runs do not retain an unbounded series in memory.</p>
-      <p>Web <strong>Advanced → Download measurements (CSV)</strong> and native <kbd>E</kbd> use the same C CSV writer. The browser downloads <code>solar-snapshot.csv</code>; native writes that name in the working directory. Compare matching lesson, parameters and ticks across native/WASM within floating-point tolerance, not different frame durations.</p>
+      <p>Web <strong>Advanced → Download measurements (CSV)</strong> and native <kbd>E</kbd> use the same C CSV writer. The browser downloads <code>solar-snapshot.csv</code>; native writes the next free <code>solar-snapshot-001.csv</code>, <code>-002.csv</code>, … in the working directory and never overwrites an earlier snapshot. Compare matching lesson, parameters and ticks across native/WASM within floating-point tolerance, not different frame durations.</p>
     </details>
 
     <details class="doc-panel"><summary>Developer reference: engineering exercises</summary>
