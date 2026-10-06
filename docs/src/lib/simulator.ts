@@ -1,5 +1,6 @@
 import { lessonOptions } from './lessonCatalog.ts';
 import { implementedBodies } from './bodies.ts';
+import { downloadText, errorMessage } from './browser.ts';
 type Readout = Pick<HTMLElement, 'textContent'>;
 interface RuntimeReadouts {
   status: Readout;
@@ -89,6 +90,31 @@ export function runtimeBodyFilterStatus(bodies: RuntimeBody[], search: string, g
   return `${matches.length ? `${matches.length} matching ${matches.length === 1 ? 'body' : 'bodies'}.` : 'No matching bodies.'}${retained}`;
 }
 
+/** Mirrors SOLAR_EXPERIMENT_TEXT_BYTES in src/sim/experiment.h: C rejects any
+ * experiment whose UTF-8 text (excluding the terminator) reaches this size. */
+export const experimentTextLimitBytes = 16384;
+
+interface PreparedExperiment { text: string; snapshot: string; count: number }
+
+/** Validate a prepared catalog experiment read from sessionStorage before any
+ * of it reaches C. Session storage is shared by every page on the github.io
+ * origin, so its content is untrusted: the shape is checked here and the text
+ * is bounded by the C parser limit. ccall('string') copies the argument onto
+ * the 256 KiB WebAssembly stack, so an unbounded value could exhaust it before
+ * C can reject it. C still performs the authoritative parse. */
+export function parsePreparedExperiment(stored: string | null): PreparedExperiment {
+  if (!stored) throw new Error('No prepared experiment. Choose bodies in the small-body atlas first.');
+  let value: unknown;
+  try { value = JSON.parse(stored); } catch { throw new Error('The prepared experiment could not be read. Prepare it again in the atlas.'); }
+  const prepared = value as Partial<PreparedExperiment> | null;
+  if (!prepared || typeof prepared.text !== 'string' || typeof prepared.snapshot !== 'string' || !/^[0-9a-f]{1,128}$/i.test(prepared.snapshot)
+    || !Number.isInteger(prepared.count) || prepared.count! < 1 || prepared.count! > 16 || !prepared.text.startsWith('SOLAR_EXPERIMENT_V1 '))
+    throw new Error('Invalid prepared experiment. Return to the atlas.');
+  if (new TextEncoder().encode(prepared.text).length >= experimentTextLimitBytes)
+    throw new Error(`Prepared experiment is too large (limit ${experimentTextLimitBytes.toLocaleString('en-US')} bytes). Prepare it again in the atlas.`);
+  return { text: prepared.text, snapshot: prepared.snapshot, count: prepared.count! };
+}
+
 function setText(element: Readout, text: string): void {
   if (element.textContent !== text) element.textContent = text;
 }
@@ -138,7 +164,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
   const fail = (reason: unknown): void => {
     failed = true;
     controls.panels.forEach(panel => { panel.disabled = true; panel.closest<HTMLDialogElement>('dialog')?.close(); });
-    setText(readouts.status, `Runtime error: ${String(reason)}`);
+    setText(readouts.status, `Runtime error: ${errorMessage(reason)}`);
   };
 
   return {
@@ -169,11 +195,19 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       return url.href;
     },
     print: (message: string) => console.log(message),
-    printErr: (message: string) => { console.error(message); fail(message); },
+    // Emscripten routes recoverable warnings through stderr (for example
+    // "wasm streaming compile failed... falling back to ArrayBuffer
+    // instantiation" or WebGL notices). Log them only: real failures arrive
+    // through onAbort, onExit, script.onerror, WebGL unavailability or context
+    // loss, and an early fail() here would freeze a working runtime.
+    printErr: (message: string) => { console.warn(message); },
     setStatus(message: string) {
       if (!failed && message) setText(readouts.status, message);
     },
     onAbort: fail,
+    onExit(status: number) {
+      if (status !== 0) fail(`The simulator stopped (exit status ${status}). Reload to restart.`);
+    },
     forceSample: { time: 0, rows: [] as { name: string; magnitude: number; fraction: number; vector: number[] }[] },
     reportForces(sample: { time: number; rows: { name: string; magnitude: number; fraction: number; vector: number[] }[] }) {
       if (failed) return;
@@ -197,12 +231,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       }
     },
     downloadCsv(text: string) {
-      const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'solar-snapshot.csv';
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
+      downloadText(text, 'solar-snapshot.csv', 'text/csv;charset=utf-8');
     },
     reportLabState(state: LabState) {
       if (failed) return;
@@ -432,18 +461,14 @@ export function mountSimulator(root: HTMLElement): void {
   });
 
   const experimentStatus=root.querySelector<HTMLElement>('[data-experiment-status]')!;
-  let prepared: {text:string;snapshot:string;count:number}|undefined;
+  let prepared: PreparedExperiment|undefined;
   let experimentAction=0;
   if(new URLSearchParams(location.search).has('experiment')) {
     root.querySelector<HTMLDialogElement>('#advanced-panel')!.showModal();
     try {
-      const stored=sessionStorage.getItem('solar-catalog-experiment');
-      if(!stored) throw new Error('No prepared experiment. Choose bodies in the small-body atlas first.');
-      prepared=JSON.parse(stored);
-      if(!prepared || typeof prepared.text!=='string' || !Number.isInteger(prepared.count) || prepared.count<1 || prepared.count>16)
-        throw new Error('Invalid prepared experiment. Return to the atlas.');
+      prepared=parsePreparedExperiment(sessionStorage.getItem('solar-catalog-experiment'));
       experimentStatus.textContent=`Prepared: ${prepared.count} catalog bodies plus Sun/eight planets. Press Start prepared experiment to replace the demonstration.`;
-    } catch(error) {experimentStatus.textContent=String(error);prepared=undefined;}
+    } catch(error) {experimentStatus.textContent=errorMessage(error);prepared=undefined;}
   }
   root.querySelector('[data-start-experiment]')!.addEventListener('click', async()=>{
     const action=++experimentAction;
@@ -458,7 +483,7 @@ export function mountSimulator(root: HTMLElement): void {
       const accepted=runtime.ccall?.('solar_web_experiment','number',['string'],[chosen.text]);
       if(!accepted) throw new Error('C rejected the experiment input. Return to the atlas to prepare it again.');
       experimentStatus.textContent=`Catalog experiment started with ${chosen.count+9} active bodies. Reset restores this same experiment.`;
-    } catch(error) {if(action===experimentAction)experimentStatus.textContent=String(error);}
+    } catch(error) {if(action===experimentAction)experimentStatus.textContent=errorMessage(error);}
   });
   root.querySelector('[data-demo]')!.addEventListener('click',()=>{
     ++experimentAction;
@@ -472,6 +497,13 @@ export function mountSimulator(root: HTMLElement): void {
   const routeKeyboard = (event: KeyboardEvent): void => routeSimulatorKeyboard(event, document.activeElement === canvas);
   window.addEventListener('keydown', routeKeyboard, true);
   window.addEventListener('keypress', routeKeyboard, true);
+  // raylib's web backend needs WebGL. Probe a detached canvas so the runtime's
+  // own canvas keeps the context attributes Emscripten requests.
+  const probe = document.createElement('canvas');
+  if (!probe.getContext('webgl2') && !probe.getContext('webgl')) {
+    runtime.onAbort('WebGL is unavailable in this browser, so the 3D simulator cannot start. The documentation and comparison lab remain available.');
+    return;
+  }
   const script = document.createElement('script');
   script.src = artifactUrl.href;
   script.onerror = () => runtime.onAbort('Could not download simulator JavaScript. Reload to retry.');

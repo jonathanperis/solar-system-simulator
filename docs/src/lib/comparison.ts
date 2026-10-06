@@ -1,4 +1,5 @@
 import { comparisonPresets } from './lessonCatalog.ts';
+import { downloadText, errorMessage as messageOf } from './browser.ts';
 
 interface LabModule {
   ccall(name: string, result: string, types: string[], args: unknown[]): unknown;
@@ -31,11 +32,7 @@ export function plotSegments(points: PlotPoint[], bounds: [number, number, numbe
   flush(); return segments;
 }
 
-function download(text: string, filename: string, type: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const anchor = document.createElement('a'); anchor.href = url; anchor.download = filename; anchor.click();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
-}
+const download = downloadText;
 
 const compact = (value: number) => Number.isFinite(value) ? value.toExponential(4) : 'Unavailable';
 
@@ -76,7 +73,7 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
   };
   form.addEventListener('invalid', () => { settings.open = true; }, true);
   let lab: LabModule, activeDefinition = '', running = false, stepping = false, stepStart = 0, frame = 0, lastDraw = 0;
-  const fail = (error: unknown): void => { running = stepping = false; panel.disabled = true; status.textContent = `Comparison runtime unavailable: ${String(error)}`; };
+  const fail = (error: unknown): void => { running = stepping = false; panel.disabled = true; status.textContent = `Comparison runtime unavailable: ${messageOf(error)}`; };
   try {
     const url = new URL(root.dataset.labSrc!, document.baseURI);
     const { default: createLab } = await import(/* @vite-ignore */ url.href);
@@ -229,7 +226,7 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
       const definition = readForm();
       if (!lab.ccall('lab_start', 'number', ['string'], [definition])) throw new Error('C rejected configuration.');
       activeDefinition = definition.trim(); markPending(); running = true; setStatus('Computing matched checkpoints…'); render(); schedule();
-    } catch (error) { setStatus(`${String(error)} Previous run retained and paused.`); }
+    } catch (error) { setStatus(`${messageOf(error)} Previous run retained and paused.`); }
   });
   root.querySelector('[data-pause-comparison]')!.addEventListener('click', () => { running = stepping = false; render(); setStatus('Comparison paused. Plots show the last matched checkpoint.'); });
   root.querySelector('[data-resume-comparison]')!.addEventListener('click', () => {
@@ -255,21 +252,21 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
     else setStatus('Start a comparison before exporting measurements.');
   });
   root.querySelector('[data-save-config]')!.addEventListener('click', () => {
-    try { download(readForm(), 'experiment.solar', 'text/plain'); } catch (error) { setStatus(String(error)); }
+    try { download(readForm(), 'experiment.solar', 'text/plain'); } catch (error) { setStatus(messageOf(error)); }
   });
   root.querySelector('[data-share-config]')!.addEventListener('click', () => {
     try {
       const url = new URL(location.pathname, location.origin); url.searchParams.set('lab', readForm().trim()); url.searchParams.set('revision', revision);
       const share = root.querySelector<HTMLInputElement>('[data-share-link]')!; share.value = url.href; share.focus(); share.select();
       setStatus('Share link ready. Opening it loads parameters without starting a run.');
-    } catch (error) { setStatus(String(error)); }
+    } catch (error) { setStatus(messageOf(error)); }
   });
   root.querySelector<HTMLInputElement>('[data-import-config]')!.addEventListener('change', async event => {
     const file = (event.target as HTMLInputElement).files?.[0]; if (!file) return;
     try {
       if (file.size >= 512) throw new Error('Configuration must be smaller than 512 bytes.');
       fill(await file.text()); describeCustomExperiment('Explore an imported experiment'); setStatus('Configuration imported. Press Start comparison to run it.');
-    } catch (error) { setStatus(`${String(error)} Previous configuration retained.`); }
+    } catch (error) { setStatus(`${messageOf(error)} Previous configuration retained.`); }
   });
   root.querySelector('[data-load-challenge]')!.addEventListener('click', () => {
     const choice = input('challenge').value;
@@ -289,5 +286,5 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
     fill(params.get('lab') ?? comparisonPresets.circular);
     if (params.has('lab')) describeCustomExperiment('Explore a shared experiment');
     setStatus(params.has('lab') ? `Shared configuration loaded; press Start comparison. Created revision: ${params.get('revision') ?? 'not recorded'}; running revision: ${revision}.` : 'Comparison lab ready. Your first experiment is configured; press Start comparison.');
-  } catch (error) { fill(comparisonPresets.circular); setStatus(`Shared configuration rejected: ${String(error)}`); }
+  } catch (error) { fill(comparisonPresets.circular); setStatus(`Shared configuration rejected: ${messageOf(error)}`); }
 }
