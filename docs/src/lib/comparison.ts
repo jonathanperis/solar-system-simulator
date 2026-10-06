@@ -210,6 +210,11 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
     const feedback = root.querySelector<HTMLElement>('[data-challenge-feedback]')!;
     const scene = activeDefinition.split(/\s+/)[1];
     const touched = [0, 1].filter(side => latest.values[side].contact_sphere_crossed === 1).map(side => side ? 'B' : 'A');
+    // NaN means C withheld the maximum after a contact-sphere crossing: the
+    // budget is then unproven, not exceeded.
+    const budgetVerdict = (maximum: number) => !Number.isFinite(maximum)
+      ? 'Budget not demonstrated: run A crossed a contact sphere; reduce A timestep and repeat.'
+      : maximum < 1 ? 'Budget met: below 1°.' : 'Budget exceeded: reduce A timestep and repeat.';
     const phase = (side: number) => Number.isFinite(lab._lab_status(7 + side)) ? `${lab._lab_status(7 + side).toFixed(6)}°` : 'unavailable after a contact-sphere crossing';
     if (input('challenge').value === 'timestep') {
       feedback.textContent = scene === 'circular' ? `Analytical phase error: A ${compact(latest.values[0].phase_error_deg)}°, B ${compact(latest.values[1].phase_error_deg)}°. Compare both at this same time; small energy change alone does not prove accurate motion.`
@@ -217,7 +222,7 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
     } else if (input('challenge').value === 'phase') {
       feedback.textContent = scene !== 'phobos' || Number(activeDefinition.split(/\s+/)[2]) !== 1 ? 'Load the Phobos challenge with initial speed factor 1 to measure its analytical phase error.'
         : latest.time < 8640000 ? 'Complete 100 simulated days before judging the phase budget.'
-        : `Run A maximum sampled phase error: ${phase(0)}. ${lab._lab_status(7) < 1 ? 'Budget met: below 1°.' : 'Budget not demonstrated: reduce A timestep and repeat.'} Run B: ${phase(1)}.`;
+        : `Run A maximum sampled phase error: ${phase(0)}. ${budgetVerdict(lab._lab_status(7))} Run B: ${phase(1)}.`;
     } else if (input('challenge').value === 'escape') {
       feedback.textContent = `Specific energy A: ${compact(latest.values[0].specific_energy_jpkg)} J/kg. Negative is bound, positive unbound, near zero marginal. Repeat the escape preset at factors 0.99 and 1.01.`;
     } else if (input('challenge').value === 'momentum') {
