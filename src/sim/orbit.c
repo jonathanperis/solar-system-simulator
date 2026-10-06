@@ -59,6 +59,20 @@ bool orbit_state(double q, double e, double mu, double dt, OrbitState *out)
     return true;
 }
 
+double orbit_closest_approach_m(Vec3d r, Vec3d v, double mu)
+{
+    /* Conic geometry: specific angular momentum h = |r x v| fixes the
+     * semi-latus rectum p = h^2 / mu; specific energy E = v^2/2 - mu/r fixes
+     * the eccentricity e = sqrt(1 + 2 E h^2 / mu^2). Periapsis q = p / (1 + e)
+     * (a radial orbit, h = 0, falls straight to q = 0). */
+    double distance = vec3d_length(r);
+    double h_squared = vec3d_length_squared(vec3d_cross(r, v));
+    double energy = 0.5 * vec3d_length_squared(v) - mu / distance;
+    if (energy >= 0 && vec3d_dot(r, v) >= 0) return distance;
+    double e = sqrt(fmax(0.0, 1.0 + 2.0 * energy * h_squared / (mu * mu)));
+    return h_squared / (mu * (1.0 + e));
+}
+
 Vec3d orbit_rotate_to_reference(Vec3d v, double inclination, double node, double periapsis)
 {
     /* R = Rz(node) * Rx(inclination) * Rz(periapsis), angles in degrees. */

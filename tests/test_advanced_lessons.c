@@ -7,6 +7,7 @@
 #include "app/simulation_session.h"
 #include "sim/collisions.h"
 #include "sim/constants.h"
+#include "sim/orbit.h"
 
 static void test_barycentric_translation_and_force_decomposition(void)
 {
@@ -84,8 +85,94 @@ static void test_head_on_collision_conservation_and_reset(void)
     }
 }
 
+/* Point-mass gravity has no surface: below these factors the analytic
+ * two-body periapsis lies inside the parent plus subject radius (A54). */
+static void test_lessons_refuse_speeds_whose_orbit_enters_the_parent(void)
+{
+    const struct { LessonPreset preset; double low, high, former_failure; } limits[] = {
+        {LESSON_PHOBOS, 0.72, 0.74, 0.5},      /* 1,343 km periapsis vs 3,390 km Mars */
+        {LESSON_EARTH_MOON, 0.20, 0.21, 0.15}, /* Earth + Moon radii */
+        {LESSON_ECCENTRIC, 0.11, 0.12, 0.1},   /* Sun + Earth radii from 0.5 AU */
+        {LESSON_ENCOUNTER, 0.28, 0.31, 0.25},  /* hyperbolic flyby, 4 Earth radii offset */
+    };
+    for (size_t k = 0; k < sizeof(limits) / sizeof(limits[0]); ++k) {
+        double minimum = lesson_minimum_velocity_factor(limits[k].preset);
+        assert(minimum >= limits[k].low && minimum <= limits[k].high);
+        assert(fabs(minimum * 100 - round(minimum * 100)) < 1e-9); /* whole hundredths for UI steps */
+        SolarSystem system;
+        assert(!lesson_create(limits[k].preset, limits[k].former_failure, &system));
+        assert(!lesson_create(limits[k].preset, minimum - 0.01, &system));
+        assert(!lesson_configuration_valid(limits[k].preset, limits[k].former_failure, PHYSICS_VERLET, 15, COLLISION_NONE));
+        assert(lesson_create(limits[k].preset, minimum, &system));
+        assert(lesson_configuration_valid(limits[k].preset, minimum, PHYSICS_VERLET, 15, COLLISION_NONE));
+        size_t subject = lesson_subject_index(limits[k].preset);
+        int parent = solar_system_parent_index(&system, subject);
+        assert(parent >= 0);
+        const Body *body = &system.bodies[subject], *center = &system.bodies[parent];
+        double mu = SOLAR_G * (center->mass_kg + (center->fixed ? 0 : body->mass_kg));
+        double closest = orbit_closest_approach_m(vec3d_sub(body->position_m, center->position_m),
+            vec3d_sub(body->velocity_mps, center->velocity_mps), mu);
+        assert(closest >= center->radius_m + body->radius_m);
+    }
+    /* Lessons that never reach contact keep the general 0.1 floor; fixed
+     * presets keep factor 1; the collision lesson models contact itself. */
+    assert(lesson_minimum_velocity_factor(LESSON_CIRCULAR) == 0.1);
+    assert(lesson_minimum_velocity_factor(LESSON_ESCAPE) == 0.1);
+    assert(lesson_minimum_velocity_factor(LESSON_INCLINED) == 0.1);
+    assert(lesson_minimum_velocity_factor(LESSON_RESONANCE) == 0.1);
+    assert(lesson_minimum_velocity_factor(LESSON_COLLISION) == 0.1);
+    assert(lesson_minimum_velocity_factor(LESSON_CORE) == 1.0);
+    assert(lesson_minimum_velocity_factor(LESSON_BARYCENTRIC_CORE) == 1.0);
+
+    /* Independent closed form for one case: from apoapsis r0 with tangential
+     * speed v, the other apsis is r0 k / (2 - k) with k = v^2 r0 / mu. */
+    double r0 = SOLAR_PHOBOS_PERIAREION_M, mu = SOLAR_G * (SOLAR_MARS_MASS_KG + SOLAR_PHOBOS_MASS_KG);
+    double v = 0.5 * SOLAR_PHOBOS_PERIAREION_SPEED_MPS, kk = v * v * r0 / mu;
+    double expected = r0 * kk / (2 - kk);
+    assert(fabs(orbit_closest_approach_m((Vec3d){r0, 0, 0}, (Vec3d){0, 0, -v}, mu) / expected - 1) < 1e-12);
+    assert(expected < 1.4e6 && expected > 1.3e6); /* the audit's 1,343 km */
+    /* An open orbit already moving away has no future periapsis. */
+    assert(orbit_closest_approach_m((Vec3d){1e7, 0, 0}, (Vec3d){1e5, 0, 0}, mu) == 1e7);
+}
+
+static void test_contact_is_detected_along_each_step(void)
+{
+    SolarSystem system = {.body_count = 2};
+    system.bodies[0] = body_create("A", BODY_KIND_PLANET, 1, 10, vec3d_zero(), vec3d_zero(), false);
+    system.bodies[1] = body_create("B", BODY_KIND_ASTEROID, 1, 0, (Vec3d){-100, 1, 0}, vec3d_zero(), false);
+    Vec3d before[2] = {system.bodies[0].position_m, system.bodies[1].position_m};
+    /* The endpoints are 100 m apart on either side, but the straight path
+     * between them passes 1 m from A's center: a 10 m sphere was crossed. */
+    system.bodies[1].position_m = (Vec3d){100, 1, 0};
+    assert(collision_contact_during_step(before, &system));
+    system.bodies[1].position_m = (Vec3d){100, 20, 0};
+    before[1] = (Vec3d){-100, 20, 0};
+    assert(!collision_contact_during_step(before, &system));
+
+    /* A session flags the first contact tick and keeps it until reset. */
+    SimulationSession session = simulation_session_create();
+    double minimum = lesson_minimum_velocity_factor(LESSON_PHOBOS);
+    assert(simulation_session_start_lesson(&session, LESSON_PHOBOS, minimum, PHYSICS_VERLET, 15));
+    assert(session.clock.monitor_contact && session.clock.contact_tick == 0);
+    session.paused = true;
+    Body *moon = &session.system.bodies[1];
+    Vec3d inward = vec3d_scale(vec3d_sub(session.system.bodies[0].position_m, moon->position_m), 1.0 / 15.0);
+    moon->velocity_mps = vec3d_add(session.system.bodies[0].velocity_mps, inward);
+    simulation_session_single_step(&session);
+    assert(session.clock.contact_tick == 1);
+    simulation_session_single_step(&session);
+    assert(session.clock.contact_tick == 1);
+    simulation_session_reset(&session);
+    assert(session.clock.contact_tick == 0 && session.clock.monitor_contact);
+    assert(simulation_session_start_lesson(&session, LESSON_CORE, 1, PHYSICS_VERLET, 15));
+    assert(!session.clock.monitor_contact);
+    simulation_session_destroy(&session);
+}
+
 int main(void)
 {
+    test_lessons_refuse_speeds_whose_orbit_enters_the_parent();
+    test_contact_is_detected_along_each_step();
     test_barycentric_translation_and_force_decomposition();
     test_resonance_and_encounter_states_are_explicit_experiments();
     test_head_on_collision_conservation_and_reset();

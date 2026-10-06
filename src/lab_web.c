@@ -55,6 +55,14 @@ EMSCRIPTEN_KEEPALIVE double lab_status(int field)
     }
 }
 
+/* Per-lesson lower initial-speed bound from C, so the form can explain rejection. */
+EMSCRIPTEN_KEEPALIVE double lab_minimum_velocity_factor(const char *scene)
+{
+    for (int i = 0; i < LESSON_COUNT; ++i)
+        if (!strcmp(scene, lesson_name((LessonPreset)i))) return lesson_minimum_velocity_factor((LessonPreset)i);
+    return NAN;
+}
+
 EMSCRIPTEN_KEEPALIVE int lab_point_count(void) { return (int)comparison_point_count(&lab); }
 
 EMSCRIPTEN_KEEPALIVE double lab_point(int index, int side, int field)

@@ -36,6 +36,8 @@ class HeadlessLab(unittest.TestCase):
         self.assertEqual(earth["name"], "Earth")
         radius = math.hypot(float(earth["x_m"]), float(earth["z_m"]))
         self.assertLess(abs(radius / 149597870700 - 1), 1e-6)
+        self.assertIn("# contact_monitor: on", a.stdout)
+        self.assertEqual(earth["contact_detected"], "0")
         euler = self.run_lab(*args, "--integrator", "euler")
         self.assertEqual(euler.returncode, 0, euler.stderr)
         self.assertNotEqual(euler.stdout, a.stdout)
@@ -43,7 +45,8 @@ class HeadlessLab(unittest.TestCase):
     def test_invalid_or_unaligned_inputs_fail_without_csv(self):
         for args in [("--dt", "nan"), ("--duration", "31"), ("--sample", "14"),
                      ("--scene", "typo"), ("--velocity-factor", "0"), ("--dt", "0"),
-                     ("--integrator", "rk4"), ("--scene", "core", "--integrator", "euler")]:
+                     ("--integrator", "rk4"), ("--scene", "core", "--integrator", "euler"),
+                     ("--scene", "phobos", "--velocity-factor", "0.5")]:
             with self.subTest(args=args):
                 result = self.run_lab(*args)
                 self.assertNotEqual(result.returncode, 0)

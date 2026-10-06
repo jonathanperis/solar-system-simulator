@@ -29,6 +29,11 @@ typedef struct SimulationClock {
     CollisionMode collision_mode;
     uint64_t collision_count;
     double dissipated_energy_j;
+    /* Lessons only (A54): point-mass gravity has no surface, so a run that
+     * brings two spheres into contact is flagged at its first contact tick
+     * (0 = none) and its analytical lesson errors stop being published. */
+    bool monitor_contact;
+    uint64_t contact_tick;
 } SimulationClock;
 
 double simulation_clock_step_seconds(const SimulationClock *clock);
