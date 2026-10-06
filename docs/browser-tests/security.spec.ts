@@ -51,6 +51,23 @@ test('every page runs under its CSP with self-hosted fonts and no third-party re
   expect(external).toEqual([]);
 });
 
+test('oversized or malformed session experiments are rejected visibly before reaching C', async ({ page }) => {
+  await page.goto(`${base}simulator/`);
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
+  for (const [stored, message] of [
+    [JSON.stringify({ text: `SOLAR_EXPERIMENT_V1 2461200.5\n${'x'.repeat(20000)}`, snapshot: 'abc', count: 1 }), 'too large'],
+    ['{"text":', 'could not be read']
+  ]) {
+    await page.evaluate(value => sessionStorage.setItem('solar-catalog-experiment', value), stored);
+    await page.goto(`${base}simulator/?experiment=1`);
+    await expect(page.locator('[data-experiment-status]')).toContainText(message);
+    await expect(page.locator('[data-experiment-status]')).not.toContainText('Error:');
+    await page.getByRole('button', { name: 'Start prepared experiment' }).click();
+    await expect(page.locator('[data-experiment-status]')).toContainText('Choose bodies in the small-body atlas first.');
+    await expect(page.locator('[data-runtime-status]')).not.toContainText('Runtime error');
+  }
+});
+
 test('the historic runtime URL is an Astro page that forwards to the simulator', async ({ page }) => {
   const violations = await watchPolicy(page);
   await page.goto(`${base}wasm/solar-system-simulator.html`);
