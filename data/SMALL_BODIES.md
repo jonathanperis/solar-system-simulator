@@ -22,7 +22,8 @@ planets; it does not infer masses from arbitrary density or albedo assumptions.
 
 `planet_epoch.json` contains Sun-centered J2000 ecliptic geometric vectors from
 Horizons for the eight planet centers at the same epoch. `planet_epoch.inc`
-converts km to m and swaps source `(x,y,z)` to simulation `(x,z,y)`. Experiments
+converts km to m and maps source ecliptic `(X,Y,Z)` to simulation `(X,Z,−Y)`, the
+proper rotation that keeps prograde orbits counterclockwise from ecliptic north. Experiments
 use those initial vectors followed by the existing fixed-Sun Newtonian model.
 Planetary moons are represented only through the existing planetary mass
 baseline in this separate experiment, not as additional active satellite bodies.
