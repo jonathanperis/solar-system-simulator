@@ -1,5 +1,6 @@
 """Exercise Make's exit-status and transitive-header contracts without editing sources."""
 import os
+import re
 import subprocess
 import unittest
 from pathlib import Path
@@ -48,6 +49,17 @@ class BuildContract(unittest.TestCase):
         self.assertEqual(changed.returncode, 0, changed.stderr)
         self.assertIn("-o build/tests/test_vec3d", changed.stdout)
         self.assertIn("-o build/catalog-orbits.dylib", changed.stdout)
+
+    def test_simulation_layer_has_no_raylib_or_presentation_policy(self):
+        # V1 plus A58: src/sim owns SI physics only. Render units, illustrative
+        # radii and visual ring ratios belong to src/render/render_scale.*.
+        forbidden = re.compile(r"raylib|\bVector3\b|SOLAR_RENDER_\w+|SOLAR_ILLUSTRATIVE_\w+|"
+                               r"SOLAR_MIN_VISIBLE_\w+|\w*_VISUAL_\w*|meters_(?:vec_)?to_render\w*")
+        for source in sorted((ROOT / "src/sim").rglob("*")):
+            if source.suffix not in {".c", ".h", ".inc"}:
+                continue
+            with self.subTest(source=source.name):
+                self.assertEqual(forbidden.findall(source.read_text()), [])
 
 
 if __name__ == "__main__":

@@ -373,7 +373,7 @@ src/
 ├── headless.c          # raylib-free solar-lab CLI
 ├── lab_web.c           # C-only comparison WebAssembly entrypoint
 ├── main.c             # raylib app loop, camera, overlay, simulation stepping
-├── render/            # raylib drawing code
+├── render/            # raylib drawing code and render-scale policy (render units, illustrative sizes)
 └── sim/               # raylib-independent physics/data model
 
 docs/src/pages/        # static Astro site, field guide, simulator and comparison pages

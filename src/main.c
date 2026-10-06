@@ -86,7 +86,6 @@ EM_JS(int, solar_web_canvas_has_focus, (void), {
 #include "app/input_file.h"
 #include "sim/constants.h"
 #include "sim/solar_system.h"
-#include "sim/units.h"
 #include "render/renderer.h"
 
 typedef struct SolarApp {

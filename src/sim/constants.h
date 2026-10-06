@@ -118,7 +118,8 @@
         ((2.0 / SOLAR_JUPITER_PERIHELION_M) - (1.0 / SOLAR_JUPITER_SEMI_MAJOR_AXIS_M))))
 
 /* Saturn uses the same JPL planetary tables and planar perihelion policy as
- * Jupiter. Ring dimensions and tilt below are renderer-only NASA values. */
+ * Jupiter. Ring dimensions and tilt below are NASA values used only by the renderer;
+ * Saturn's physical radius and gravity never include the rings. */
 #define SOLAR_SATURN_MASS_KG 5.68317e26
 #define SOLAR_SATURN_RADIUS_M 58232000.0
 #define SOLAR_SATURN_SEMI_MAJOR_AXIS_M (9.53667594 * SOLAR_AU_METERS)
@@ -130,10 +131,8 @@
         ((2.0 / SOLAR_SATURN_PERIHELION_M) - (1.0 / SOLAR_SATURN_SEMI_MAJOR_AXIS_M))))
 #define SOLAR_SATURN_RING_SYSTEM_DIAMETER_M 282000000.0
 #define SOLAR_SATURN_RING_OUTER_RADIUS_M (SOLAR_SATURN_RING_SYSTEM_DIAMETER_M / 2.0)
-#define SOLAR_SATURN_RING_VISUAL_INNER_RATIO 1.15
 #define SOLAR_SATURN_AXIAL_TILT_DEGREES 26.73
 
-#define SOLAR_RENDER_UNITS_PER_AU 10.0
 /* JPL physical parameters and approximate-position Table 1, checked 2026-09-14.
  * Like the earlier demo planets these start in the X/Z perihelion plane. */
 #define SOLAR_URANUS_MASS_KG 86.8099e24
@@ -144,9 +143,5 @@
 #define SOLAR_NEPTUNE_RADIUS_M 24622000.0
 #define SOLAR_NEPTUNE_SEMI_MAJOR_AXIS_M (30.06992276 * SOLAR_AU_METERS)
 #define SOLAR_NEPTUNE_ECCENTRICITY .00859048
-#define SOLAR_MIN_VISIBLE_BODY_RADIUS 0.5f
-#define SOLAR_ILLUSTRATIVE_PLANET_RADIUS 0.12f
-#define SOLAR_ILLUSTRATIVE_ASTEROID_RADIUS 0.03f
-#define SOLAR_ILLUSTRATIVE_MOON_DISTANCE_FACTOR 8.0
 
 #endif

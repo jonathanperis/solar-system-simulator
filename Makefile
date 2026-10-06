@@ -50,7 +50,7 @@ SIM_SRCS := \
 
 SESSION_SRCS := src/app/body_trails.c src/app/simulation_step.c src/app/simulation_session.c
 LAB_SRCS := src/app/csv_export.c src/app/input_file.c src/app/lab_config.c src/app/comparison.c $(SESSION_SRCS) $(SIM_SRCS)
-APP_SRCS := src/main.c src/app/orbit_camera.c src/render/renderer.c $(LAB_SRCS)
+APP_SRCS := src/main.c src/app/orbit_camera.c src/render/renderer.c src/render/render_scale.c $(LAB_SRCS)
 APP_OBJS := $(APP_SRCS:%.c=build/%.o)
 
 # Shared session/clock layouts must rebuild every native consumer after a header edit.
@@ -166,7 +166,7 @@ build/src/app/csv_export.o: build/revision.h
 
 $(TEST_BINS): $(SOURCE_HEADERS)
 
-$(TEST_VEC3D): tests/test_vec3d.c src/sim/vec3d.c src/sim/units.c
+$(TEST_VEC3D): tests/test_vec3d.c src/sim/vec3d.c src/sim/units.c src/render/render_scale.c
 	@mkdir -p $(@D)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 
@@ -194,9 +194,9 @@ $(TEST_SIMULATION_STEP): tests/test_simulation_step.c src/app/simulation_step.c 
 	@mkdir -p $(@D)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_simulation_step.c src/app/simulation_step.c src/app/body_trails.c $(SIM_SRCS) $(LDLIBS) -o $@
 
-$(TEST_RENDERER): tests/test_renderer.c src/render/renderer.c src/render/renderer.h src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
+$(TEST_RENDERER): tests/test_renderer.c src/render/renderer.c src/render/renderer.h src/render/render_scale.c src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
 	@mkdir -p $(@D)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(RAYLIB_CFLAGS) tests/test_renderer.c src/render/renderer.c src/app/body_trails.c $(SIM_SRCS) $(RAYLIB_LIBS) $(LDLIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(RAYLIB_CFLAGS) tests/test_renderer.c src/render/renderer.c src/render/render_scale.c src/app/body_trails.c $(SIM_SRCS) $(RAYLIB_LIBS) $(LDLIBS) -o $@
 
 $(TEST_SIMULATION_SESSION): tests/test_simulation_session.c src/app/simulation_session.c src/app/simulation_session.h src/app/simulation_step.c src/app/simulation_step.h src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
 	@mkdir -p $(@D)

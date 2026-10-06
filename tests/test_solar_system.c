@@ -323,6 +323,24 @@ static void test_current_scene_appends_saturn_without_identity_collisions(void)
     }
 }
 
+static void test_scene_capacity_is_named_and_appends_are_bounded(void)
+{
+    SolarSystem system = solar_system_create_current();
+    assert(SOLAR_CORE_SCENE_BODY_COUNT == 128);
+    assert(system.body_count == SOLAR_CORE_SCENE_BODY_COUNT);
+    assert(SOLAR_SYSTEM_BODY_CAPACITY >= SOLAR_CORE_SCENE_BODY_COUNT);
+
+    /* A full scene refuses another body and leaves every byte untouched. */
+    if (system.body_count == SOLAR_SYSTEM_BODY_CAPACITY) {
+        SolarSystem before = system;
+        assert(!solar_system_append(&system, solar_system_create_mercury_at_perihelion()));
+        assert(memcmp(&before, &system, sizeof(system)) == 0);
+    }
+    SolarSystem small = solar_system_create_sun_only();
+    assert(solar_system_append(&small, solar_system_create_mercury_at_perihelion()));
+    assert(small.body_count == 2 && small.bodies[1].id == BODY_ID_MERCURY);
+}
+
 static void test_mercury_body_starts_at_perihelion_with_tangential_velocity(void)
 {
     Body mercury = solar_system_create_mercury_at_perihelion();
@@ -976,6 +994,7 @@ static void test_saturn_accelerates_toward_sun_and_moves_tangentially(void)
 int main(void)
 {
     test_sun_body_creation_preserves_fields();
+    test_scene_capacity_is_named_and_appends_are_bounded();
     test_current_scene_bodies_have_stable_catalog_ids_and_parents();
     test_sun_only_system_has_one_real_sun();
     test_sun_only_step_advances_time_and_keeps_sun_fixed();
