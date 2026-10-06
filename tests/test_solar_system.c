@@ -358,6 +358,52 @@ static void test_scene_capacity_is_named_and_appends_are_bounded(void)
     assert(small.body_count == 2 && small.bodies[1].id == BODY_ID_MERCURY);
 }
 
+/* The intended heliocentric perihelion state belongs to a planet's family
+ * barycenter (planet + direct moons, mass-weighted; massless test particles
+ * weigh nothing), so the family as a whole follows the intended orbit. */
+static void assert_family_follows(const SolarSystem *system, size_t parent, Body intended, double min_shift_m)
+{
+    double mass = 0.0;
+    Vec3d weighted_r = vec3d_zero(), weighted_v = vec3d_zero();
+    for (size_t i = 0; i < system->body_count; ++i) {
+        const Body *b = &system->bodies[i];
+        if (i != parent && b->parent_id != system->bodies[parent].id) continue;
+        mass += b->mass_kg;
+        weighted_r = vec3d_add(weighted_r, vec3d_scale(vec3d_sub(b->position_m, intended.position_m), b->mass_kg));
+        weighted_v = vec3d_add(weighted_v, vec3d_scale(vec3d_sub(b->velocity_mps, intended.velocity_mps), b->mass_kg));
+    }
+    assert(vec3d_length(vec3d_scale(weighted_r, 1.0 / mass)) < 1e-3);
+    assert(vec3d_length(vec3d_scale(weighted_v, 1.0 / mass)) < 1e-9);
+    /* The parent itself is displaced opposite its moons. */
+    assert(vec3d_length(vec3d_sub(system->bodies[parent].position_m, intended.position_m)) > min_shift_m);
+}
+
+static void test_moon_families_place_their_barycenter_on_the_intended_orbit(void)
+{
+    Body earth = solar_system_create_earth_at_perihelion();
+    Body mars = solar_system_create_mars_at_perihelion();
+    Body jupiter = solar_system_create_jupiter_at_perihelion();
+    SolarSystem pair = solar_system_create_sun_mercury_venus_earth_moon();
+    SolarSystem martian = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
+    SolarSystem core = solar_system_create_current();
+    /* Earth sits ~4,670 km from the Earth-Moon barycenter. */
+    assert_family_follows(&pair, 3, earth, 4.0e6);
+    assert_family_follows(&martian, 3, earth, 4.0e6);
+    assert_family_follows(&core, 3, earth, 4.0e6);
+    assert_family_follows(&martian, 5, mars, 0.05); /* Phobos and Deimos offsets partly cancel: ~0.1 m. */
+    assert_family_follows(&core, 5, mars, 0.05);
+    assert_family_follows(&core, 9, jupiter, 1.0e4);
+
+    /* Moons keep their sourced parent-relative state exactly as before. */
+    Body moon = solar_system_create_moon_at_perigee_near_earth(&earth);
+    Vec3d relative = vec3d_sub(core.bodies[4].position_m, core.bodies[3].position_m);
+    Vec3d expected = vec3d_sub(moon.position_m, earth.position_m);
+    assert(vec3d_length(vec3d_sub(relative, expected)) < 1e-4);
+    Vec3d relative_v = vec3d_sub(core.bodies[4].velocity_mps, core.bodies[3].velocity_mps);
+    Vec3d expected_v = vec3d_sub(moon.velocity_mps, earth.velocity_mps);
+    assert(vec3d_length(vec3d_sub(relative_v, expected_v)) < 1e-9);
+}
+
 static void test_mercury_body_starts_at_perihelion_with_tangential_velocity(void)
 {
     Body mercury = solar_system_create_mercury_at_perihelion();
@@ -1013,6 +1059,7 @@ int main(void)
     test_masses_derive_from_cited_gm_values();
     test_sun_body_creation_preserves_fields();
     test_scene_capacity_is_named_and_appends_are_bounded();
+    test_moon_families_place_their_barycenter_on_the_intended_orbit();
     test_current_scene_bodies_have_stable_catalog_ids_and_parents();
     test_sun_only_system_has_one_real_sun();
     test_sun_only_step_advances_time_and_keeps_sun_fixed();
