@@ -33,6 +33,10 @@ of perihelion (degrees), perihelion JD TDB, mass kg, radius m, mass quality, rad
 quality. Quality codes are 0 measured, 1 estimated, 2 unknown, 3 published with
 unclassified quality. Unknown physical values use zero in the force/marker model,
 never a claimed physical measurement. A selected Vesta maps to its existing ID.
+The C reader is strict: exactly twelve fields separated by single tab bytes, one
+row per `\n` line (the last newline is optional), names of 1–95 bytes without
+control characters, and numbers written as finite plain decimals (optional sign,
+fraction and exponent; no spaces, hex floats, `inf`/`nan` or trailing text).
 
 Sources:
 - https://ssd-api.jpl.nasa.gov/doc/sbdb_query.html
