@@ -1,0 +1,81 @@
+name: Build pinned raylib
+description: >-
+  Single source of truth for the raylib revision used by every workflow.
+  Builds raylib for native Linux or Emscripten, restoring a cached build when
+  the same revision and toolchain were already compiled.
+
+inputs:
+  platform:
+    description: "native (static library installed under /usr/local) or web (Emscripten library left in the returned source directory)"
+    required: true
+  toolchain-key:
+    description: "Extra cache-key text for toolchain-sensitive builds, such as the Emscripten version"
+    required: false
+    default: "system"
+
+outputs:
+  revision:
+    description: "Immutable raylib commit that was built"
+    value: ${{ steps.pin.outputs.revision }}
+  web-src:
+    description: "raylib/src directory containing raylib.h and libraylib.web.a for web builds"
+    value: ${{ steps.pin.outputs.web-src }}
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve raylib pin
+      id: pin
+      shell: bash
+      env:
+        PLATFORM: ${{ inputs.platform }}
+      run: |
+        # raylib 6.0. Change only this line to move every workflow together.
+        echo "revision=dbc56a87da87d973a9c5baa4e7438a9d20121d28" >> "$GITHUB_OUTPUT"
+        echo "prefix=$RUNNER_TEMP/raylib-$PLATFORM" >> "$GITHUB_OUTPUT"
+        echo "web-src=$RUNNER_TEMP/raylib-$PLATFORM/src" >> "$GITHUB_OUTPUT"
+        case "$PLATFORM" in native|web) ;; *) echo "unknown platform: $PLATFORM" >&2; exit 1 ;; esac
+
+    # Caches are scoped by branch: pull requests may read main's cache but
+    # cannot write into it, so a PR cannot poison the build that deploys.
+    - name: Restore cached raylib build
+      id: cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.pin.outputs.prefix }}
+        key: raylib-${{ inputs.platform }}-${{ runner.os }}-${{ runner.arch }}-${{ steps.pin.outputs.revision }}-${{ inputs.toolchain-key }}
+
+    - name: Build raylib from the pinned commit
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        PLATFORM: ${{ inputs.platform }}
+        REVISION: ${{ steps.pin.outputs.revision }}
+        PREFIX: ${{ steps.pin.outputs.prefix }}
+      run: |
+        source_dir="$RUNNER_TEMP/raylib-source"
+        git init "$source_dir"
+        git -C "$source_dir" remote add origin https://github.com/raysan5/raylib.git
+        git -C "$source_dir" fetch --depth 1 origin "$REVISION"
+        git -C "$source_dir" checkout --detach FETCH_HEAD
+        if [ "$PLATFORM" = native ]; then
+          cmake -S "$source_dir" -B "$source_dir/build" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_EXAMPLES=OFF
+          cmake --build "$source_dir/build" --parallel
+          cmake --install "$source_dir/build" --prefix "$PREFIX"
+        else
+          make PLATFORM=PLATFORM_WEB -C "$source_dir/src"
+          mkdir -p "$PREFIX"
+          cp -R "$source_dir/src" "$PREFIX/src"
+        fi
+
+    - name: Install native raylib into the system prefix
+      if: inputs.platform == 'native'
+      shell: bash
+      env:
+        PREFIX: ${{ steps.pin.outputs.prefix }}
+      run: |
+        sudo cp -R "$PREFIX"/. /usr/local/
+        sudo ldconfig

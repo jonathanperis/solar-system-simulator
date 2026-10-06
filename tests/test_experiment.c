@@ -1,3 +1,5 @@
+#include "require_assert.h"
+
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>

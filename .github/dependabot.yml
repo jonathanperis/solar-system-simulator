@@ -10,9 +10,20 @@ updates:
       docs-dependencies:
         patterns:
           - "*"
+    ignore:
+      # @astrojs/check 0.9.x declares a TypeScript ^5 || ^6 peer range, so a
+      # TypeScript 7 bump cannot install. Remove once the checker supports it.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
     cooldown:
       default-days: 3
+    groups:
+      # init and analyze must move together; separate PRs leave CodeQL split
+      # across two action revisions.
+      codeql-action:
+        patterns:
+          - "github/codeql-action/*"
