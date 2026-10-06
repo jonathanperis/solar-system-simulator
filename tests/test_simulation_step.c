@@ -73,6 +73,21 @@ static void test_frame_partitioning_preserves_state_and_pending_time(void)
     body_trails_destroy(&partitioned_trails);
 }
 
+static void test_stalled_frames_are_distinguished_from_slow_frames(void)
+{
+    /* Ordinary and merely slow frames are real elapsed playback time. */
+    assert(!simulation_frame_is_stall(0.0));
+    assert(!simulation_frame_is_stall(1.0 / 60.0));
+    assert(!simulation_frame_is_stall(0.5));
+    assert(!simulation_frame_is_stall(SOLAR_APP_STALL_FRAME_SECONDS));
+    /* Sleep, debugger pauses and corrupt clocks are not playback time. */
+    assert(simulation_frame_is_stall(nextafter(SOLAR_APP_STALL_FRAME_SECONDS, INFINITY)));
+    assert(simulation_frame_is_stall(8.0 * 3600.0));
+    assert(simulation_frame_is_stall(-0.01));
+    assert(simulation_frame_is_stall(NAN));
+    assert(simulation_frame_is_stall(INFINITY));
+}
+
 static void test_martian_moons_keep_phase_over_100_days(void)
 {
     const double duration = 100.0 * SOLAR_DAY_SECONDS;
@@ -135,6 +150,7 @@ static void test_full_scene_converges_over_100_days(void)
 
 int main(void)
 {
+    test_stalled_frames_are_distinguished_from_slow_frames();
     test_martian_moons_keep_phase_over_100_days();
     test_full_scene_converges_over_100_days();
     test_trail_sampling_is_independent_of_physics_step_size();
