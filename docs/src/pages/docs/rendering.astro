@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import DocsShell from '../../components/DocsShell.astro';
+import { jovianMoonCount } from '../../lib/siteCounts';
 ---
 <BaseLayout title="Rendering docs">
   <DocsShell
@@ -20,7 +21,7 @@ import DocsShell from '../../components/DocsShell.astro';
       <h2>Scale modes</h2>
       <p>Parent-aware visual separation also applies to the encounter probe, so illustrative Earth cannot hide it. Its parent-relative SI state stays unchanged. Real-scale mode retains physical positions and the explicitly nonphysical unknown-radius wire marker.</p>
       <p>Illustrative mode keeps planets readable, renders Vesta as a distinct smaller asteroid, and expands close moon separation only as a visual transform. Real-scale mode uses the same physical scale for positions and radii, so planets and asteroids can become nearly invisible.</p>
-      <p>Unknown radii are the explicit exception: wire markers in either view are nonphysical symbols, with Unknown shown in the inspector. Individual-body framing lets you inspect a Jovian moon without framing Jupiter and its entire 115-moon family.</p>
+      <p>Unknown radii are the explicit exception: wire markers in either view are nonphysical symbols, with Unknown shown in the inspector. Individual-body framing lets you inspect a Jovian moon without framing Jupiter and its entire {jovianMoonCount}-moon family.</p>
       <p>Saturn's pale ring lines use NASA's ring-system extent and 26.73-degree axial tilt. They affect drawing and camera framing only; gravity and the inspector retain Saturn's JPL mean radius.</p>
       <p>Both modes use the same simulation source. The difference is presentation policy at the raylib boundary.</p>
       <p>Camera-relative subtraction takes place in double precision before conversion to raylib floats. This preserves local detail at large heliocentric distances. The 0.1-AU grid is a bounded local patch of at most 512 slices; it does not grow without limit for distant objects.</p>
