@@ -50,6 +50,39 @@ static void test_orbital_elements_preserve_geometry_and_parent_motion(void)
     assert(fabs(v.z - sqrt(SOLAR_G * parent.mass_kg * (2 / 1.1e9 - 1 / 1e9))) < 1e-8);
 }
 
+/* Parent-relative states produced by the former fixed-12-iteration
+ * eccentric-anomaly solver in satellite.c, captured before orbit.c became the
+ * only Kepler solver (A58). Aoede has the catalog's largest eccentricity. */
+static void test_shared_conic_solver_reproduces_former_jovian_states(void)
+{
+    const struct { int code; Vec3d r, v; } former[] = {
+    {501, {399575698.28771973, 10358419.917243615, 130027180.29385185}, {-5423.6301040120397, 513.27701459524815, 16516.265081396425}},
+    {502, {-561543514.51696777, -17846866.935899183, -356257518.30371094}, {7455.4697554733511, -206.80339833419112, -11681.936870667454}},
+    {506, {-4975624582.7926025, 4570634900.7620564, 9129780032.6524658}, {-2849.7185993760531, 1054.3877480410076, -1414.4343158764841}},
+    {541, {7518843363.793335, -11354612099.834766, -30691348141.629383}, {-1465.2261142717032, -264.83318574687002, -2.4894121291381452}},
+    };
+    Body jupiter = solar_system_create_jupiter_at_perihelion();
+    double max_e = 0;
+    for (size_t i = 0; i < SOLAR_JOVIAN_MOON_COUNT; ++i) max_e = fmax(max_e, solar_jovian_moons[i].eccentricity);
+    size_t matched = 0;
+    for (size_t k = 0; k < sizeof(former) / sizeof(former[0]); ++k) {
+        for (size_t i = 0; i < SOLAR_JOVIAN_MOON_COUNT; ++i) {
+            const SatelliteDefinition *d = &solar_jovian_moons[i];
+            if (d->code != former[k].code) continue;
+            if (d->code == 541) assert(d->eccentricity == max_e);
+            Body moon = satellite_create(d, &jupiter);
+            Vec3d r = vec3d_sub(moon.position_m, jupiter.position_m);
+            Vec3d v = vec3d_sub(moon.velocity_mps, jupiter.velocity_mps);
+            /* The former values were differences of ~7e11 m absolute
+             * positions, so they carry ~1e-4 m roundoff of their own. */
+            assert(vec3d_length(vec3d_sub(r, former[k].r)) / vec3d_length(former[k].r) < 1e-11);
+            assert(vec3d_length(vec3d_sub(v, former[k].v)) / vec3d_length(former[k].v) < 1e-11);
+            ++matched;
+        }
+    }
+    assert(matched == 4);
+}
+
 static void test_complete_jovian_catalog_and_initial_orbits(void)
 {
     SolarSystem system = solar_system_create_current();
@@ -86,6 +119,7 @@ static void test_complete_jovian_catalog_and_initial_orbits(void)
 int main(void)
 {
     test_orbital_elements_preserve_geometry_and_parent_motion();
+    test_shared_conic_solver_reproduces_former_jovian_states();
     test_complete_jovian_catalog_and_initial_orbits();
     puts("test_satellites passed");
 }
