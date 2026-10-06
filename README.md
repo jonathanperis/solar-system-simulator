@@ -26,7 +26,7 @@ build/solar-lab --scene circular --days 30 --dt 300 --sample 3600 --integrator e
 make test-core test-build test-cli test-validators
 ```
 
-Lessons include circular, eccentric (`a=1 AU`, `e=0.5`), escape threshold, isolated barycentric Earth–Moon, 30° inclined orbit, and Phobos resolution. Their intentionally artificial initial conditions are separate from the 128-body core and source-epoch catalog experiments. Lessons allow an initial-speed factor up to 2 and a fixed timestep from 0.01 to 3600 seconds, with the tighter contact bound described below. Each lesson's lowest factor comes from C: the analytic two-body periapsis must stay outside the parent plus subject radius (Phobos 0.73, eccentric 0.12, Earth–Moon 0.21, encounter 0.29; others 0.1), because point-mass gravity has no surface. Runs also watch every pair for contact along each step; after contact, CSV rows carry `contact_detected=1` and analytical reference/phase errors are withheld. Euler is a labeled teaching comparison; core/catalog runs retain 15-second Verlet.
+Lessons include circular, eccentric (`a=1 AU`, `e=0.5`), escape threshold, isolated barycentric Earth–Moon, 30° inclined orbit, and Phobos resolution. Their intentionally artificial initial conditions are separate from the 128-body core and source-epoch catalog experiments. Lessons allow an initial-speed factor up to 2 and a fixed timestep from 0.01 to 3600 seconds, with the tighter contact bound described below. Each lesson's lowest factor comes from C: the analytic two-body periapsis must stay outside the parent plus subject radius (Phobos 0.73, eccentric 0.12, Earth–Moon 0.21, encounter 0.29; others 0.1), because point-mass gravity has no surface. Lesson and catalog-experiment runs also test every pair's straight-line drift within each step against the sum of radii; after the first crossing, CSV rows carry `contact_sphere_crossed=1` and analytical reference/phase errors are withheld. The swept test is conservative: a coarse step can cut across a curved arc that never entered the sphere. Euler is a labeled teaching comparison; core/catalog runs retain 15-second Verlet.
 
 The CLI streams CSV with configuration/revision, SI state, ticks, data quality, energy, momentum and center of mass. Duration and sample spacing must align to whole ticks; the final sample is always emitted. A run may contain at most 10⁹ ticks (`duration / dt`), which bounds work to minutes for lesson scenes and under two hours for the full core scene. `--output` must name a new path or an existing regular file: symlinks, FIFOs and devices are refused, and the file is replaced atomically only after a complete run, so a failed run leaves the previous file (or nothing) instead of partial CSV. `--experiment build/selected.tsv` runs a prepared catalog input; `--catalog` exposes the C core manifest for cross-language checks. See `build/solar-lab --help`.
 
@@ -142,13 +142,13 @@ Baseline planet values follow NASA/JPL references. Sun, Mercury, Venus, Earth, M
 | Sun | `1.98841e30 kg` | `695700000 m` | fixed at origin |
 | Mercury | `3.301001e23 kg` | `2439700 m` | perihelion position and tangential speed |
 | Venus | `4.867306e24 kg` | `6051800 m` | perihelion position and tangential speed |
-| Earth | `5.972168e24 kg` | `6371000 m` | perihelion position and tangential speed |
+| Earth | `5.972168e24 kg` | `6371000 m` | Earth–Moon barycenter at perihelion with vis-viva speed; Earth sits opposite the Moon about it |
 | Moon | `7.345789e22 kg` | `1737400 m` | Earth-relative perigee offset and tangential relative speed |
-| Mars | `6.416909e23 kg` | `3389500 m` | perihelion position and tangential speed |
+| Mars | `6.416909e23 kg` | `3389500 m` | Mars–Phobos–Deimos barycenter at perihelion with vis-viva speed; Mars offset about 0.1 m |
 | Phobos | `1.061834199841182e16 kg` | `11080 m` | Mars-relative periareion offset and tangential relative speed |
 | Deimos | `1.441349654645431e15 kg` | `6200 m` | Mars-relative periareion offset and tangential relative speed |
 | Vesta | `2.590276793071933e20 kg` | `261385 m` | heliocentric perihelion position and tangential speed |
-| Jupiter | `1.898125e27 kg` | `69911000 m` | heliocentric perihelion position and tangential speed |
+| Jupiter | `1.898125e27 kg` | `69911000 m` | Jovian-system barycenter (Jupiter plus known-mass moons) at heliocentric perihelion with vis-viva speed |
 | Saturn | `5.68317e26 kg` | `58232000 m` | heliocentric perihelion position and tangential speed |
 | Uranus | `8.68099e25 kg` | `25362000 m` | heliocentric perihelion, `a=19.18916464 AU`, `e=0.04725744` |
 | Neptune | `1.024092e26 kg` | `24622000 m` | heliocentric perihelion, `a=30.06992276 AU`, `e=0.00859048` |

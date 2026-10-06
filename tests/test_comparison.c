@@ -102,9 +102,9 @@ static void test_unformattable_configuration_writes_no_header(void)
     fclose(stream);
 }
 
-/* A coarse step can carry a valid starting orbit through the parent. The run
- * keeps going (it is still a numerical experiment) but withholds its
- * analytical reference errors from the first contact onward (A54). */
+/* A run keeps going after a contact-sphere crossing (it is still a numerical
+ * experiment) but withholds its analytical reference errors and maximum phase
+ * error from the first crossing onward (A54). */
 static void test_contact_withholds_reference_errors(void)
 {
     LabConfiguration config;
@@ -112,18 +112,23 @@ static void test_contact_withholds_reference_errors(void)
     assert(lab_configuration_parse("SOLAR_LAB_V1 phobos 0.73 verlet 1800 none verlet 15 none 21600 8640000", &config));
     ComparisonRun run = {0};
     assert(comparison_start(&run, &config));
-    assert(run.latest.run[0][LAB_CONTACT_DETECTED] == 0 && run.latest.run[1][LAB_CONTACT_DETECTED] == 0);
+    assert(run.latest.run[0][LAB_CONTACT_SPHERE_CROSSED] == 0 && run.latest.run[1][LAB_CONTACT_SPHERE_CROSSED] == 0);
     while (!run.complete && !run.failed) comparison_advance(&run, 2048);
     assert(!run.failed);
-    assert(strcmp(comparison_field_name(LAB_CONTACT_DETECTED), "contact_detected") == 0);
-    /* Within 100 days run A (1800 s steps, about 1/8 of this low orbit) is
-     * carried through Mars; run B (15 s) stays outside. Deterministic: all C
-     * is compiled with -ffp-contract=off. */
-    assert(run.latest.run[0][LAB_CONTACT_DETECTED] == 1);
+    assert(strcmp(comparison_field_name(LAB_CONTACT_SPHERE_CROSSED), "contact_sphere_crossed") == 0);
+    /* Run A's 1800 s steps are about 1/8 of this low orbit. Within 100 days
+     * one step's straight chord cuts across Mars's contact sphere although
+     * every sampled position stays above it: a coarse-step artifact the
+     * conservative swept test still flags. Run B (15 s) never crosses.
+     * Deterministic: all C is compiled with -ffp-contract=off. */
+    const double contact = SOLAR_MARS_RADIUS_M + SOLAR_PHOBOS_RADIUS_M;
+    assert(run.latest.run[0][LAB_CONTACT_SPHERE_CROSSED] == 1);
+    assert(run.minimum_distance[0] > contact);
     assert(isnan(run.latest.run[0][LAB_REFERENCE_ERROR_M]) && isnan(run.latest.run[0][LAB_PHASE_ERROR_DEG]));
-    assert(run.latest.run[1][LAB_CONTACT_DETECTED] == 0);
+    assert(isnan(run.maximum_phase_error[0]) && isfinite(run.maximum_phase_error[1]));
+    assert(run.latest.run[1][LAB_CONTACT_SPHERE_CROSSED] == 0);
     assert(isfinite(run.latest.run[1][LAB_REFERENCE_ERROR_M]) && isfinite(run.latest.run[1][LAB_PHASE_ERROR_DEG]));
-    assert(run.minimum_distance[1] >= SOLAR_MARS_RADIUS_M + SOLAR_PHOBOS_RADIUS_M);
+    assert(run.minimum_distance[1] >= contact);
     comparison_destroy(&run);
 }
 

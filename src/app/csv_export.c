@@ -177,10 +177,11 @@ bool simulation_csv_begin(FILE *stream, const SimulationSession *session)
     if (session->catalog_experiment) fprintf(stream, "# epoch_jd_tdb: %.1f\n", SOLAR_CATALOG_EPOCH_JD);
     fprintf(stream, "# collision_policy: %s\n", collision_mode_name(session->clock.collision_mode));
     fprintf(stream, "# contact_monitor: %s\n", session->clock.monitor_contact
-        ? "on; contact_detected=1 marks rows after two bodies touched, where point-mass results are not physical" : "off");
+        ? "on; contact_sphere_crossed=1 marks rows after a step's straight-line drift crossed a contact sphere"
+          " (sum of radii; may be a coarse-step artifact); lesson reference errors are then withheld" : "off");
     fputs("time_s,tick,id,name,parent_id,mass_kg,radius_m,mass_quality,radius_quality,x_m,y_m,z_m,"
         "vx_mps,vy_mps,vz_mps,ax_mps2,ay_mps2,az_mps2,total_energy_j,normalized_energy_change,"
-        "px_kg_mps,py_kg_mps,pz_kg_mps,lx_kg_m2ps,ly_kg_m2ps,lz_kg_m2ps,com_x_m,com_y_m,com_z_m,contact_detected\n", stream);
+        "px_kg_mps,py_kg_mps,pz_kg_mps,lx_kg_m2ps,ly_kg_m2ps,lz_kg_m2ps,com_x_m,com_y_m,com_z_m,contact_sphere_crossed\n", stream);
     return !ferror(stream);
 }
 

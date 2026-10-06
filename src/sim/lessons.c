@@ -22,10 +22,13 @@ double lesson_default_step(LessonPreset preset) { return preset == LESSON_COLLIS
 
 #define LESSON_FACTOR_FLOOR 0.1
 #define LESSON_FACTOR_CEILING 2.0
-_Static_assert(SOLAR_SYSTEM_BODY_CAPACITY >= SOLAR_CONTACT_MONITOR_MAX_BODIES, "small lessons must fit the body array");
+/* Bisection halves [0.1, 2] each pass: 30 passes leave an interval of about
+ * 2e-9, far below the 0.01 rounding of the published limit. */
+#define LESSON_FACTOR_BISECTIONS 30
 
 bool lesson_monitors_contact(LessonPreset preset)
 {
+    if (preset == LESSON_CATALOG) return true;
     return preset >= 0 && preset < LESSON_COUNT && preset != LESSON_CORE && preset != LESSON_BARYCENTRIC_CORE &&
         preset != LESSON_COLLISION;
 }
@@ -78,8 +81,9 @@ static void build_lesson(LessonPreset preset, double velocity_factor, SolarSyste
             probe.velocity_mps = orbit_ecliptic_to_simulation(
                 (Vec3d){0, velocity_factor * sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * (2 / q - 1 / a)), 0});
         } else {
-            /* Start 40 Earth radii behind Earth along its motion, offset 4 radii
-             * sunward-outward, and overtake it at 10 km/s times the factor. */
+            /* Start 40 Earth radii behind Earth along its motion and 4 radii
+             * farther from the Sun (Earth sits on ecliptic +X), then overtake
+             * it at 10 km/s times the factor. */
             probe.position_m = vec3d_add(planet.position_m,
                 orbit_ecliptic_to_simulation((Vec3d){4 * SOLAR_EARTH_RADIUS_M, -40 * SOLAR_EARTH_RADIUS_M, 0}));
             probe.velocity_mps = vec3d_add(planet.velocity_mps,
@@ -141,27 +145,40 @@ static bool lesson_orbit_clears_parent(LessonPreset preset, double velocity_fact
     return closest >= center->radius_m + body->radius_m;
 }
 
-double lesson_minimum_velocity_factor(LessonPreset preset)
+static double compute_minimum_velocity_factor(LessonPreset preset)
 {
-    if (preset == LESSON_CORE || preset == LESSON_BARYCENTRIC_CORE || preset < 0 || preset >= LESSON_COUNT) return 1.0;
+    if (preset == LESSON_CORE || preset == LESSON_BARYCENTRIC_CORE) return 1.0;
     if (!lesson_monitors_contact(preset) || lesson_orbit_clears_parent(preset, LESSON_FACTOR_FLOOR)) return LESSON_FACTOR_FLOOR;
+    /* No allowed factor clears: the lesson would be unusable. Say so with NaN
+     * (every validator rejects it) instead of quietly publishing the ceiling. */
+    if (!lesson_orbit_clears_parent(preset, LESSON_FACTOR_CEILING)) return NAN;
     /* Slower starts lower the periapsis monotonically, so bisect between a
      * failing and a clearing factor, then round up to whole hundredths so the
      * published limit is a readable slider value that still clears. */
     double low = LESSON_FACTOR_FLOOR, high = LESSON_FACTOR_CEILING;
-    for (int i = 0; i < 60; ++i) {
+    for (int i = 0; i < LESSON_FACTOR_BISECTIONS; ++i) {
         double middle = 0.5 * (low + high);
         if (lesson_orbit_clears_parent(preset, middle)) high = middle; else low = middle;
     }
-    double rounded = ceil(high * 100.0 - 1e-9) / 100.0;
-    while (!lesson_orbit_clears_parent(preset, rounded) && rounded < LESSON_FACTOR_CEILING) rounded += 0.01;
-    return rounded;
+    double rounded = fmin(LESSON_FACTOR_CEILING, ceil(high * 100.0 - 1e-9) / 100.0);
+    return lesson_orbit_clears_parent(preset, rounded) ? rounded : high;
+}
+
+double lesson_minimum_velocity_factor(LessonPreset preset)
+{
+    if (preset < 0 || preset >= LESSON_COUNT) return 1.0;
+    /* Lesson initial states are fixed, so each limit is computed once and
+     * reused (the web runtime asks every frame). Zero marks "not yet computed". */
+    static double cached[LESSON_COUNT];
+    if (cached[preset] == 0.0) cached[preset] = compute_minimum_velocity_factor(preset);
+    return cached[preset];
 }
 
 bool lesson_create(LessonPreset preset, double velocity_factor, SolarSystem *result)
 {
+    /* Written as !(x >= minimum) so a NaN minimum (no clearing factor) rejects. */
     if (preset < 0 || preset >= LESSON_COUNT || !isfinite(velocity_factor) ||
-        velocity_factor < lesson_minimum_velocity_factor(preset) || velocity_factor > LESSON_FACTOR_CEILING)
+        !(velocity_factor >= lesson_minimum_velocity_factor(preset)) || velocity_factor > LESSON_FACTOR_CEILING)
         return false;
     if ((preset == LESSON_CORE || preset == LESSON_BARYCENTRIC_CORE) && velocity_factor != 1.0) return false;
     build_lesson(preset, velocity_factor, result);
@@ -203,6 +220,10 @@ bool lesson_reference_position(const SolarSystem *initial, size_t subject, doubl
     if (initial->body_count != 2 || subject != 1 || initial->bodies[1].parent_id != initial->bodies[0].id) return false;
     const Body *parent = &initial->bodies[0], *body = &initial->bodies[1];
     Vec3d r = vec3d_sub(body->position_m, parent->position_m), v = vec3d_sub(body->velocity_mps, parent->velocity_mps);
+    /* Every two-body lesson starts at an apsis (velocity perpendicular to the
+     * radius), so the start is periapsis or apoapsis and the apsis geometry
+     * below applies. Refuse any other start rather than publish a wrong reference. */
+    if (fabs(vec3d_dot(r, v)) > 1e-9 * vec3d_length(r) * vec3d_length(v)) return false;
     double distance = vec3d_length(r), mu = SOLAR_G * (parent->mass_kg + (parent->fixed ? 0 : body->mass_kg));
     double ratio = vec3d_length_squared(v) * distance / mu;
     double e = fabs(ratio - 1), q = distance, offset = 0;
