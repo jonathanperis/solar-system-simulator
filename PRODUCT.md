@@ -34,10 +34,9 @@ Solar System Simulator is a learning-first, physics-first C11 + raylib project t
 
 ## Tone and voice
 
-- Precise, patient, educational, and scientifically playful.
-- Public-site voice is archival, precise, and quietly playful: an illustrated solar chart that points learners to inspectable source and SI physics.
-- Use playful labels when they clarify navigation, then ground claims in source-backed facts.
-- Prefer grounded explanations over hype.
+- Precise, patient and plain. Labels and numbers before sentences.
+- Explain a choice once, on the page that owns it, and link to it elsewhere.
+- Prefer grounded explanations over hype; never use marketing adjectives.
 
 ## Anti-references
 
@@ -51,8 +50,7 @@ Solar System Simulator is a learning-first, physics-first C11 + raylib project t
 
 - Native app: C11 + raylib, built by `Makefile`.
 - Simulation: Newtonian N-body baseline with velocity-Verlet / kick-drift-kick stepping.
-- Core scene: 128 bodies — the Sun, all eight planets, Vesta, Earth's Moon, Phobos, Deimos, and 115 Jovian moons. The default Sun is fixed; the explicit barycentric-core lesson releases it.
-- Small-body atlas: 1,564,244 qualifying records in the pinned 2026-09-14 JPL snapshot, separate from the active scene. Selected experiments use epoch-aligned Sun/eight planets plus at most 16 objects.
-- Learning lab: ten guided presets beyond the core, explicit Verlet/Euler comparisons, scientific diagnostics, force inspection, bounded A/B plots, save/share/import descriptors, and SI CSV export. The same C model runs natively, in WebAssembly, and through the raylib-free CLI.
-- Verification: C physics/app/renderer tests, offline source-catalog checks, Python CLI/build/artifact contracts, Node integration tests, Astro type/build/route checks, sanitizers, and sandboxed browser tests in CI.
-- Public site: Astro static GitHub Pages atlas with `/simulator/`, `/compare/`, `/small-bodies/`, field-guide docs, source atlas, physics notes, body catalog, and pipeline docs. Build produces the validated site; Deploy Pages publishes that exact artifact and revision.
+- Scenes: a 32-body main scene (Sun, eight planets, Vesta, Pluto, the Earth and Mars systems and 18 major moons) and six system scenes with every catalogued moon of Jupiter, Saturn, Uranus, Neptune and Pluto plus the Didymos binary; 472 bodies in all. The default Sun is fixed; the barycentric-core lesson releases it.
+- Small-body atlas: 1,564,244 records in the pinned JPL snapshot, separate from the active scenes.
+- Learning lab: guided presets, Verlet/Euler comparisons, diagnostics, force inspection, A/B plots, descriptors and SI CSV export; the same C model runs natively, in WebAssembly and in the raylib-free CLI.
+- Public site: being redesigned (SPEC A99–A105, DESIGN.md) into a simulator-first homepage with Learn, Catalog and About pages.

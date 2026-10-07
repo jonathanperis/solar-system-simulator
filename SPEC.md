@@ -20,7 +20,7 @@ C6: new behavior tests RED before implementation.
 
 C7: GitHub Pages static output under `/solar-system-simulator/`; no SSR-only surface.
 
-C8: public site follows archival solar-chart direction in `DESIGN.md`.
+C8: public site follows `DESIGN.md`. The 2026-10-07 overhaul (A99–A105) replaces the archival-atlas direction with a simulator-first instrument and lab-notebook pages.
 
 C9: the renderer follows the explicit 2026-10-07 cinematic task (A64–A68); further visual overhauls need their own explicit task. The June beauty-pass rollback (B5) stays the cautionary baseline: change rendering in verified, screenshot-checked increments and never alter the viewport/canvas contract (V12).
 
@@ -410,6 +410,40 @@ A89|Pluto's small moons start around the Pluto–Charon barycenter with the pair
 A90|The Didymos system scene (11 bodies) holds Didymos at its SBDB planar perihelion on ecliptic +X (1.4 AU from Earth's start) and Dimorphos on its retrograde 11.8-hour orbit; both masses are estimates (V25); the scene converges within 1% over 20 days|`test_solar_system`, `test_satellites`, `test_simulation_step`
 A91|Both systems complete V15: presets `pluto-system` and `didymos-system` (scene picker, native K, `solar-lab --scene/--catalog`), deep links for Nix, Dimorphos and the rest, atlas plates for Pluto and Didymos with Pluto on the heliocentric plate, a dwarf-planet render size and label rule, flat display colours, C/TypeScript parity for all seven scenes, docs and route checks|full C/WASM/docs/browser suites
 
+## §A — Dated sky, oblate planets and new lessons (plan), 2026-10-07
+
+Jonathan asked to "work on all" of the remaining options: real dated positions, tilted orbits, planet flattening, Pluto–Charon and DART lessons, Saturn at 60 fps on phones, and Renovate. A prototype that propagated JPL mean elements from their epochs to 2026 missed Horizons positions by up to 178° (Io 121°, Titan 170°, Phobos 178°): resonances and forced eccentricities make mean periods useless over decades. Dated positions therefore come from a pinned snapshot of Horizons state vectors at one epoch, not from propagated mean elements.
+
+id|criterion|verify
+A92|Every scene starts at the real configuration of JD 2461200.5 TDB (2026-06-09), the epoch catalog experiments already use: planetary-system barycenters from `data/planet_epoch.json`; every moon, Vesta, Pluto, Didymos and Dimorphos from a pinned Horizons vector snapshot (`data/scene_epoch.json`, refreshed only by `tools/scene_epoch.py --refresh`, checked offline). Orbits are therefore inclined as in reality. A moon Horizons does not serve under its own name (checked by name, e.g. Uranus's S/2025 U 1, whose code resolves to an asteroid) keeps its mean-element state and is listed as undated; V6 family barycenters still take the planets' states. The `*_at_perihelion` factories remain for lessons and tests|`tests/test_scene_epoch.py`, C tests comparing scene states with the pinned vectors, undated list
+A93|The inspector and HUD show the scene's calendar date (epoch plus elapsed simulated time); docs replace "not the sky on a particular date" with "starts from the real sky of 2026-06-09, then follows this model"; the explicit model limits (point masses, no relativity, fixed Sun) stay|docs/route checks, browser journey reading the date
+A94|Oblateness: Earth, Mars, Jupiter, Saturn, Uranus and Neptune carry J2 and an equatorial radius from the NASA Planetary Fact Sheets and an IAU pole (as `src/sim` constants). Each oblate body pulls its own moons with the J2 term and feels the equal and opposite reaction, so momentum stays conserved; bodies outside a planet's family see it as a point mass. A test particle's nodal precession matches −3/2 n J2 (R/a)² cos i within 2%, and point-mass-plus-J2 periods of the inner moons move toward JPL's (Mimas within 0.1%)|`test_physics` precession, momentum and period tests
+A95|The inspector reports a two-body orbital period (from the specific energy around the parent) next to distance and speed|session test, browser journey
+A96|Lesson `pluto-charon`: the isolated pair at its barycenter, which lies outside Pluto; lesson `dart`: Didymos and Dimorphos on the pre-impact orbit (Horizons s547 at 2022-09-01), where the speed slider is the along-track change and the default 0.9845× reproduces DART's ~2.7 mm/s slowdown and the 11.92 → ~11.37 hour period change, read from the period readout|lesson tests, comparison descriptor support, browser journey
+A97|The 300-body Saturn scene holds ≥59 fps on the 4×-throttled phone profile at default speed|CDP frame-rate probe recorded in the PR
+A98|Renovate: the configuration is valid (dry run) but the hosted Renovate GitHub App has not run on the repository; activating it requires Jonathan to grant the app access (GitHub Settings → Applications → Renovate). Recorded as an owner action, not a code task|owner action
+
+## §A — Design overhaul (plan), 2026-10-07
+
+Jonathan: "plan a design overhaul … the current one has a ton of info and is not so good at UX … a very non AI based website, interactive, lean and according to the project scope". Findings: 16 page routes; the field guide alone has 8 pages and about 6,400 words; the homepage is a decorative illustrative atlas (its positions are explicitly not physical), so the actual simulator is one click away; the simulator page carries about 2,500 words of copy around the canvas; navigation splits "Explore/Learn/Experiments/Reference" across overlapping pages.
+
+Principles:
+- The simulator is the product, so it is the homepage. Everything else supports it.
+- An instrument, not a brochure: controls are terse labels and numbers with units; explanations live one click away, never as paragraphs around the canvas.
+- No generic AI-site patterns: no hero banner, no feature-card grids, no icon-in-circle rows, no gradients or glass, no marketing adjectives, no emoji. Real data, real numbers, plain typography.
+- Lean: four routes, each with one job. Every old URL keeps working through an Astro redirect page that preserves `?body=` and fragments.
+
+id|criterion|verify
+A99|Routes: `/` simulator (full viewport), `/learn/` (lessons, including A/B comparison at `/learn/compare/`), `/catalog/` (every simulated body plus the small-body atlas at `/catalog/small-bodies/`), `/about/` (model, data sources, build and tests, credits on one indexed page). Old routes (`/simulator/`, `/compare/`, `/physics/`, `/body-catalog/`, `/small-bodies/`, `/source-atlas/`, `/pipeline/`, `/docs/…`, `/wasm/solar-system-simulator.html`) are Astro redirect pages that preserve query and fragment|route checks, redirect journey
+A100|Simulator page: the canvas fills the viewport below a thin bar (wordmark, Learn, Catalog, About, source link). One bottom dock: play/pause, speed (1 h–15 d per second), date, scene picker (Solar system, Jupiter, Saturn, Uranus, Neptune, Pluto, Didymos), and body search. Selecting a body opens a compact inspector (parent, distance, speed, period, mass, radius with quality). View settings (scale, trails, vectors, grid, labels) and keyboard help are small popovers. Visible copy on the page stays under 150 words; status and errors remain announced|word-count check, browser journeys, screenshots at desktop and phone sizes
+A101|Learn: each lesson is one row: a question, what to watch, and Run, which opens `/?lesson=NAME` with a lesson strip (method, step, speed factor, reset) over the canvas. Comparison keeps its C-backed charts and descriptors behind a question-first form|browser journeys
+A102|Catalog: one sortable, searchable table of all simulated bodies (name, kind, parent, scene, mass, radius with quality) where each row opens the simulator at that body; the small-body atlas keeps its search, map and experiment basket with trimmed copy|browser journeys, Node tests
+A103|About: one page with an in-page index: what the model is and is not, units and integrator, J2 and limits, data sources (one table), build and verification commands, credits and licenses. It replaces the 8 field-guide pages, Physics, Source atlas and Pipeline|route checks, link checks
+A104|Visual system (DESIGN.md): the simulator is a dark instrument (canvas, hairline borders, one amber accent, mono labels and numbers); text pages are a lab notebook (warm paper, serif headings, readable 65-character measure, mono data tables, footnote-style source links). Accessibility stays: keyboard paths, visible focus, 12 px minimum text, reduced motion, valid semantics, CSP without inline code|screenshots, axe-style checks in browser journeys, CSP route checks
+A105|The decorative homepage atlas and its plates are removed. Its tests are replaced by catalog and simulator journeys; V20/V21 retire with it|test inventory in the PR
+
+Order: T80 dated epoch scenes → T81 J2 and period readout → T82 lessons → T83 Saturn 60 fps → T84 redesign: routes, redirects and simulator home → T85 redesign: learn, catalog, about, removals. Each is its own PR.
+
 ## §T
 
 id|status|task|cites
@@ -493,6 +527,12 @@ T76|x|folded into T74 (Uranus family scene)|A84
 T77|x|folded into T74 (Neptune family scene)|A85
 T78|x|scope small-body satellite systems and add the Pluto and Didymos systems|A87,A88,A89,A90,A91,R21,R22,R23
 T79|x|review the expansion plan against current sources, frames, epochs, model error, throughput and storage|A78–A86
+T80|.|start every scene from the Horizons sky of 2026-06-09 with a pinned vector snapshot|A92,A93
+T81|.|add J2 oblateness for Earth, Mars and the giants, and an orbital-period readout|A94,A95
+T82|.|add the Pluto–Charon and DART lessons|A96
+T83|.|hold 59 fps for the Saturn scene on the throttled phone profile|A97
+T84|.|redesign: four routes, redirects and the simulator as the homepage|A99,A100,A104
+T85|.|redesign: Learn, Catalog and About pages; remove the atlas and field-guide pages|A101,A102,A103,A105
 
 Audit remediation verification, 2026-10-06: delivered through PRs #20, #21, #22, #24, #25 (round 1), #26 (main CI/analytics blocker found by round 2) and #27 (round 2), each rebase-merged after the required Build/CodeQL checks passed and every review thread was resolved. Production Pages served 81eb308 after #26 with CSP, Astro generator marker, generated sitemap and no robots.txt verified on the live site. Locally, round 2 passed `make clean && make test-sanitize`, `make && make test test-build test-cli test-validators`, catalog/command/epoch/Jovian/small-body checks, a fresh raylib WASM build with native/WASM replay of every example, `npm ci`/`npm audit`/37 Node tests/`astro check`/build, route checks, and 17/17 sandboxed Chrome journeys for both analytics-free and `PUBLIC_GA_ID` builds. The second audit's Medium findings (main CI red, experiment Earth-centre start, debug-info WASM, duplicate SPEC IDs, PR-only workflow docs, invisible catalog download) are closed. Remaining Low/Info items are recorded rather than changed: Jonathan later chose Renovate over Dependabot (A63) and asked for every non-main branch to be deleted; CI stays Linux-only and the browser lane stays on Ubuntu 22.04 per R13; browser specs are type-checked by Playwright, not `astro check` (adding `@types/node` was deferred); GA consent policy remains V17; the pre-existing desktop atlas Vesta/Uranus label overlap, Saturn's illustrative ring tilt and literal Jupiter–Neptune masses (V6 scopes GM-derived masses to Sun–Mars) are unchanged.
 
