@@ -439,9 +439,7 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
     draw_reference_grid(origin, camera_distance);
     rlDrawRenderBatchActive();
     rlEnableDepthMask();
-    /* Trails do write depth, so a body in front still hides them. */
-    draw_trails(system, trails, mode, trail_frame, origin);
-    rlDrawRenderBatchActive();
+
 
     /* The light source is the first star; lessons without one (the two-sphere
      * contact demo) light each body from the camera instead. */
@@ -491,11 +489,26 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
             render_atmosphere_for_body(body->id), city_lights ? &resources->textures[RENDER_TEXTURE_EARTH_NIGHT] : NULL);
     }
     rlDrawRenderBatchActive();
-    if (!resources->ready) return;
+    if (!resources->ready) {
+        /* Flat-colour fallback: trails still draw, just without the
+         * translucent layers that need the shader. */
+        rlDisableDepthMask();
+        draw_trails(system, trails, mode, trail_frame, origin);
+        rlDrawRenderBatchActive();
+        rlEnableDepthMask();
+        return;
+    }
 
     /* 4. Translucent layers after every opaque surface, testing depth but not
-     * writing it, so they blend over bodies without hiding each other. */
+     * writing it, so they blend over bodies without hiding each other. Trails
+     * come first: if they wrote depth before the planets were drawn, even a
+     * faint, nearly transparent old segment would punch a dark line through
+     * any planet behind it. Additive blending lets a trail only brighten what
+     * lies behind it. */
     rlDisableDepthMask();
+    BeginBlendMode(BLEND_ADDITIVE);
+    draw_trails(system, trails, mode, trail_frame, origin);
+    EndBlendMode();
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
         if (body->radius_quality == PHYSICAL_UNKNOWN) continue;
