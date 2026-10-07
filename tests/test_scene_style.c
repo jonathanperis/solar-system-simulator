@@ -187,6 +187,23 @@ static void test_projected_radius_follows_pinhole_camera(void)
     assert(render_projected_radius_pixels(-1, 1, 45, 1000) == 0);
 }
 
+static void test_trail_detail_follows_screen_extent(void)
+{
+    /* A full 1025-point trail across 4000 px keeps every sample; across
+     * 2000 px (1000 points at 2 px spacing) every second one... */
+    assert(render_trail_stride_for_extent(1025, 1, 4000) == 1);
+    assert(render_trail_stride_for_extent(1025, 1, 2000) == 2);
+    /* ...one spanning 100 px needs ~50 points (2 px apart)... */
+    size_t stride = render_trail_stride_for_extent(1025, 1, 100);
+    assert(stride >= 20 && stride <= 22 && 1024 / stride >= 46);
+    /* ...a sub-pixel trail keeps the 24-point floor so its shape survives,
+     * and the renderer's own segment budget is never undercut. */
+    assert(1024 / render_trail_stride_for_extent(1025, 1, 0.5) >= RENDER_TRAIL_MIN_POINTS - 1);
+    assert(render_trail_stride_for_extent(5000, 5, 4000) == 5);
+    assert(render_trail_stride_for_extent(10, 1, 1) == 1);
+    assert(render_trail_stride_for_extent(1025, 1, -1) == 1);
+}
+
 static void test_trail_segments_stop_at_the_body_surface(void)
 {
     Vec3d center = {0, 0, 0};
@@ -273,6 +290,7 @@ int main(void)
     test_trail_and_grid_fades();
     test_grid_levels_cross_fade_by_decade();
     test_projected_radius_follows_pinhole_camera();
+    test_trail_detail_follows_screen_extent();
     test_trail_segments_stop_at_the_body_surface();
     test_sphere_matches_simulation_handedness_and_map_layout();
     test_ring_annulus_spans_requested_radii();

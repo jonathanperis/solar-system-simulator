@@ -434,9 +434,31 @@ static void draw_reference_grid(Vec3d origin, double camera_distance)
     rlEnd();
 }
 
-static void draw_trails(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode,
-    RenderTrailFrame trail_frame, Vec3d origin)
+/* Approximate on-screen size (pixels) of a body's trail: the spread of five
+ * evenly spaced samples, seen from the nearest of them. Cheap enough to run
+ * per body every frame, and only used to choose how finely to draw. */
+static double trail_extent_pixels(const RenderFrameCache *cache, const SolarSystem *system, const BodyTrails *trails,
+    size_t body, size_t count, RenderScaleMode mode, RenderTrailFrame frame, Vec3d camera_world, const Camera3D *camera,
+    double viewport_height)
 {
+    Vec3d samples[5], centroid = {0, 0, 0};
+    for (int k = 0; k < 5; ++k) {
+        samples[k] = renderer_trail_point_cached(cache, system, trails, body, (count - 1) * (size_t)k / 4, mode, frame);
+        centroid = vec3d_add(centroid, vec3d_scale(samples[k], 0.2));
+    }
+    double spread = 0, nearest = INFINITY;
+    for (int k = 0; k < 5; ++k) {
+        spread = fmax(spread, vec3d_length(vec3d_sub(samples[k], centroid)));
+        nearest = fmin(nearest, vec3d_length(vec3d_sub(samples[k], camera_world)));
+    }
+    return 2.0 * render_projected_radius_pixels(spread, fmax(nearest, 1e-9), camera->fovy, viewport_height);
+}
+
+static void draw_trails(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode,
+    RenderTrailFrame trail_frame, Vec3d origin, const Camera3D *camera)
+{
+    Vec3d camera_world = vec3d_add(origin, (Vec3d){camera->position.x, camera->position.y, camera->position.z});
+    double viewport_height = (double)GetRenderHeight();
     /* Up to ~130k samples per frame: resolve parents and positions once. */
     static RenderFrameCache cache;
     renderer_frame_cache_build(&cache, system, mode);
@@ -448,7 +470,9 @@ static void draw_trails(const SolarSystem *system, const BodyTrails *trails, Ren
         if (point_count < 2) continue;
         Color color = renderer_body_color(body);
         color.a = 235;
-        size_t stride = renderer_trail_sample_stride(point_count);
+        /* Draw only as finely as the trail's on-screen size can show. */
+        size_t stride = render_trail_stride_for_extent(point_count, renderer_trail_sample_stride(point_count),
+            trail_extent_pixels(&cache, system, trails, i, point_count, mode, trail_frame, camera_world, camera, viewport_height));
         /* The live endpoint is the body's centre: stop the trail at its drawn
          * surface so it never pokes out through the near side. */
         Vec3d center = cache.position[i];
@@ -569,7 +593,7 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
         /* Flat-colour fallback: trails still draw, just without the
          * translucent layers that need the shader. */
         rlDisableDepthMask();
-        draw_trails(system, trails, mode, trail_frame, origin);
+        draw_trails(system, trails, mode, trail_frame, origin, &camera);
         rlDrawRenderBatchActive();
         rlEnableDepthMask();
         return;
@@ -583,7 +607,7 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
      * lies behind it. */
     rlDisableDepthMask();
     BeginBlendMode(BLEND_ADDITIVE);
-    draw_trails(system, trails, mode, trail_frame, origin);
+    draw_trails(system, trails, mode, trail_frame, origin, &camera);
     EndBlendMode();
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
