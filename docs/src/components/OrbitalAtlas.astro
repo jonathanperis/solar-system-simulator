@@ -52,11 +52,7 @@ const plates = [
   </div>
 
   <div class="atlas-stage" data-atlas-stage tabindex="0" aria-label="Interactive illustrative solar-system chart">
-    <div class="atlas-engraving" aria-hidden="true">
-      <span class="atlas-coordinate atlas-coordinate-x">illustrative bearing</span>
-      <span class="atlas-coordinate atlas-coordinate-y">reference plate</span>
-      <span class="atlas-figure">fig. i / scale and positions illustrative</span>
-    </div>
+    <div class="atlas-engraving" aria-hidden="true"></div>
 
     {plates.map((plate) => (
       <section class="atlas-plate" data-atlas-plate={plate.id} hidden={plate.id !== 'heliocentric'} aria-label={plate.detail}>
@@ -91,7 +87,7 @@ const plates = [
             </>}
           </g>
           <g class="atlas-plate-labels">
-            <text x="500" y={plate.id === 'jupiter' ? '170' : '78'} text-anchor="middle">{plate.detail}</text>
+            <text x="500" y={plate.id === 'jupiter' ? '170' : '916'} text-anchor="middle">{plate.detail}</text>
             <text x="500" y="942" text-anchor="middle">positions are a readable chart index, not an ephemeris</text>
           </g>
         </svg>
