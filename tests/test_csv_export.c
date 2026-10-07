@@ -44,10 +44,15 @@ static void test_create_new_is_exclusive_and_owner_only(void)
     /* Anything already at the name, even a dangling link, is refused. */
     errno = 0;
     assert(!simulation_csv_create_new(path) && errno == EEXIST);
-    const char *link = fixture_path("dangling.csv");
-    assert(symlink(fixture_path("missing-target.csv"), link) == 0);
+    /* fixture_path() reuses one static buffer, so copy each result before
+     * calling it again; otherwise the link would point at itself. */
+    char target[640], link[640]; /* same size as fixture_path()'s buffer */
+    snprintf(target, sizeof(target), "%s", fixture_path("missing-target.csv"));
+    snprintf(link, sizeof(link), "%s", fixture_path("dangling.csv"));
+    assert(strcmp(target, link) != 0);
+    assert(symlink(target, link) == 0);
     assert(!simulation_csv_create_new(link) && errno == EEXIST);
-    assert(access(fixture_path("missing-target.csv"), F_OK) != 0);
+    assert(access(target, F_OK) != 0);
     umask(previous);
 }
 
