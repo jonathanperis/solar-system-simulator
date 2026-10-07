@@ -166,11 +166,14 @@ major moons with a measured GM of at least 2 km³/s²: the Galilean moons, Satur
 seven rounded moons, Uranus's five and Triton. Every other moon runs in its
 planet's system scene, which holds the Sun, the eight planets and that planet's
 complete catalog (major moons first). Keeping hundreds of small moons out of the
-main scene makes it about three times faster than the former 128-body scene
-(102 versus 32 simulated days per wall second natively) and less cluttered.
-Native throughput by scene: Jupiter system 40, Saturn system 13 (its 300 bodies
-fall below the 15 days/s preset, so the achieved rate is reported), Uranus
-system 163 and Neptune system 229 days/second.
+main scene and a vectorized gravity kernel make it about five times faster than
+the former 128-body scene (172 versus 32 simulated days per wall second
+natively) and less cluttered.
+Native throughput by scene: Jupiter system 58, Saturn system 20 (its 300 bodies
+fall short of the 15 days/s preset on slower devices, where the achieved rate is
+reported), Uranus and Neptune systems above 150 days/second. Every scene holds
+about 60 fps on desktop Chrome and 58–59 fps on a 4×-CPU-throttled phone
+emulation at the default speed.
 
 Two small-body systems follow the same rules. Pluto (Horizons GM, SBDB orbit)
 and Charon belong to the main scene: Charon is 12% of Pluto's mass, so Pluto
