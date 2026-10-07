@@ -66,6 +66,17 @@ Vec3d renderer_body_position(const SolarSystem *system, size_t body_index, Rende
 Vec3d renderer_trail_point_position(const SolarSystem *system, const BodyTrails *trails, size_t body_index, size_t point_index, RenderScaleMode mode);
 Vec3d renderer_trail_point_in_frame(const SolarSystem *system, const BodyTrails *trails, size_t body_index,
     size_t point_index, RenderScaleMode mode, RenderTrailFrame frame);
+/* Per-frame lookups the trail drawer would otherwise repeat for every stored
+ * sample: each body's parent index (a scan of the body list) and its drawn
+ * position. Build once per frame; renderer_trail_point_cached returns exactly
+ * what renderer_trail_point_in_frame would. */
+typedef struct RenderFrameCache {
+    int parent[SOLAR_SYSTEM_BODY_CAPACITY];
+    Vec3d position[SOLAR_SYSTEM_BODY_CAPACITY];
+} RenderFrameCache;
+void renderer_frame_cache_build(RenderFrameCache *cache, const SolarSystem *system, RenderScaleMode mode);
+Vec3d renderer_trail_point_cached(const RenderFrameCache *cache, const SolarSystem *system, const BodyTrails *trails,
+    size_t body_index, size_t point_index, RenderScaleMode mode, RenderTrailFrame frame);
 Vec3d renderer_vector_tip(const SolarSystem *system, size_t body_index, RenderScaleMode mode, bool acceleration);
 double renderer_radius_magnification(const Body *body, RenderScaleMode mode);
 void renderer_draw_vectors(const SolarSystem *system, size_t selected, RenderScaleMode mode, Vec3d origin);
