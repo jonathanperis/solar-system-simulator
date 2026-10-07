@@ -81,6 +81,9 @@ R14|Simulator textures|Solar System Scope 2k maps (Sun, planets, Moon, Saturn ri
 R15|Spin orientation|IAU WGCCRE 2015 rotation elements (pole alpha0/delta0, prime meridian W(d)); periodic terms omitted except Neptune's N|Archinal et al. 2018, Celest Mech Dyn Astr 130:22, https://doi.org/10.1007/s10569-017-9805-5
 R16|Image decoder|stb_image v2.30 (MIT / public domain) pinned at nothings/stb 2c980bb, SHA-256 594c2fe3…; raylib builds with JPEG disabled|https://github.com/nothings/stb
 R17|Uranus/Neptune physical|planet-only GM=`5793950.6103` and `6835099.97 km^3/s^2` (mass = GM/G); checked 2026-10-07|https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='799'&OBJ_DATA='YES'&MAKE_EPHEM='NO' ; https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='899'&OBJ_DATA='YES'&MAKE_EPHEM='NO'
+R18|Giant-planet satellite mean elements|JPL table checked 2026-10-07: Saturn 291 rows (24 Laplace-frame SAT441/SAT415, 267 ecliptic SAT455–SAT459; 234 provisional; 210 retrograde; max e=0.909; all epoch 2000-01-01.5 TDB); Uranus 30 rows for 29 moons (Puck appears in both URA182 "equatorial" and URA184 Laplace), epochs 2000-01-01.5/2020-01-01.0/2025-01-01.0, the equatorial rows carry no pole columns and the Laplace rows give pole RA/Dec 77.3°/15.2° with tilt 180°; Neptune 16 rows, epochs 2000-01-01.5/2020-01-01.0, Laplace (Triton i=157.3°) and ecliptic|https://ssd.jpl.nasa.gov/sats/elem/
+R19|Giant-planet satellite physical data|GM values: Saturn 16, Uranus 5, Neptune 8 satellites (Jupiter 9); others have no GM and become test particles under V25; checked 2026-10-07|https://ssd.jpl.nasa.gov/sats/phys_par/
+R20|Recognized moon counts|NASA, checked 2026-10-07: Saturn page states both 274 (summary) and 293 "as of August 2026" (body); Uranus 29 "as of August 2026"; Neptune 16. Counts are context, not the simulated inventory|https://science.nasa.gov/saturn/moons/ ; https://science.nasa.gov/uranus/moons/ ; https://science.nasa.gov/neptune/moons/
 
 ## §V
 
@@ -367,6 +370,35 @@ A77|`npm run check` type-checks the Playwright specs and config (Node types are 
 
 Decision: Jonathan asked to "work on everything open" before any further body expansion. These items were the Low/Info residuals recorded after the second audit and the renderer rounds; the macOS job is informative (not a required check) so a hosted-runner image change cannot block delivery. Saturn's ring plane already follows the IAU pole (A66); `SOLAR_SATURN_AXIAL_TILT_DEGREES` remains only as the NASA obliquity the orientation tests compare against.
 
+## §A — Moon-system expansion plan, 2026-10-07
+
+Plan review before the next body milestone, requested by Jonathan ("revisit the plan to guarantee that the plan itself is in a good shape before we keep expanding"). It replaces the one-line T18 and the README list with sourced, staged and testable work. Nothing below is implemented yet.
+
+Findings:
+- Inventory: the simulated set must be orbit-bearing JPL element rows (R18), one per NAIF code. NASA's counts (R20) disagree with each other and with JPL for Saturn (274 / 293 vs 291 rows), and Uranus's 30 JPL rows hold 29 moons because Puck is listed twice. A full giant-planet set is 291 + 29 + 16 = 336 moons; the scene would grow from 128 to 464 bodies.
+- Frames and epochs: unlike the Jovian table (one epoch, ecliptic/Laplace), Uranus mixes three epochs and adds a planet-equatorial frame with no pole columns. JPL's Uranian Laplace pole (RA 77.3°, Dec +15.2°, tilt 180°) is the antipode of the IAU north pole (257.31°, −15.18°): the regular moons orbit in Uranus's spin sense about it. Neptune's Triton is a massive, retrograde moon.
+- Point-mass model error: two-body periods from JPL mean `a` and planet-only GM differ from the JPL period column by at most 0.75 % in all four systems (Mimas +0.51 %, Pan +0.27 %, Cordelia +0.18 %, Naiad +0.13 %; Europa +0.75 % already ships). The difference is oblateness (J2), resonances and rounding: the model omits them. Docs must name it as model error, not numerical error.
+- Throughput: gravity costs one pair per (body × massive body). The 128-body scene has 22 massive bodies and runs at 26 simulated days per wall second natively (benchmark, M-series, trails included). Measured with the real kernel on synthetic scenes, cost scales with that pair count: 179 bodies with 51 massive is 2.9× slower, and 464 with 51 is 7.8× slower (about 3 days/s natively, far less on a throttled phone). Putting every moon in the core scene would break the 15 days/s guarantee (A11, A17, A72).
+- Storage: `SolarSystem` holds bodies by value (136 B each; 17 KB today, about 63 KB at 464). Session reset/trial paths and the headless runner hold full copies as locals, comparison state embeds several scenes, and the simulator's WASM stack is 256 KB. Trails cost 1,025 points per body (about 11 MB at 464). The web body selector, labels and the homepage atlas were sized for 115 Jovian moons.
+
+id|criterion|verify
+A78|One catalog tool serves every giant planet: `tools/satellite_catalog.py --system jupiter|saturn|uranus|neptune` writes `data/<system>_moons.json` and `src/sim/<system>_moons.inc` from pinned JPL snapshots; `--check` is offline; `--refresh` is explicit; Jovian output stays byte-identical. Duplicate NAIF codes resolve by an explicit, recorded ephemeris preference; provisional spellings (`S2025_U_1`, `S2023_U1`, `S2002_N5`) normalize to IAU form; no moon code collides with a planet center (599/699/799/899)|tool tests, `--check` for all systems, Jovian byte-identity test
+A79|Every element set keeps its own source epoch and frame; phases are mutually consistent only within one ephemeris solution, and docs never present a mixed-solution family as a dated snapshot. Ecliptic, Laplace (table pole) and planet-equatorial frames (IAU WGCCRE pole as an `src/sim` constant, never borrowed from `src/render`) all convert through `orbit.c`|frame tests: same-planet regular moons from different solutions share an orbit normal within 1°; Uranian regulars orbit in the spin sense; Triton's angular momentum opposes Neptune's spin
+A80|Point-mass periods stay within 1 % of the JPL period column for every simulated moon, and the docs attribute the gap to the omitted J2/resonance physics|table-driven C test over all catalogs, docs copy check
+A81|Scale prerequisites land before any new moon: scene capacity is decoupled from the 128-body core count, no full `SolarSystem` copy lives on the WASM stack (or the stack is resized with a measured margin), trail memory and draw cost stay bounded for the largest planned scene, and the selector/labels/atlas page or group families of 300 moons|static asserts, sanitizer run, WASM stack test, benchmark, browser journey with the largest scene
+A82|Throughput budget per scene: the core scene keeps A11/A17/A72 exactly. Each new scene states its native benchmark and throttled-phone results, holds 60 fps at default speed, and reports achieved speed honestly at higher presets (V8): it never drops time or enlarges steps|`benchmark_simulation`, Chrome 4× CPU throttle profile, recorded in the delivering PR
+A83|Saturn system (replaces T18): all 291 R18 moons with Saturn parent, NAIF codes, R19 GM where measured (estimated/unknown provenance otherwise, V25), Saturn family barycenter per V6, regular moons within 1° of Saturn's IAU equator (the renderer's ring plane), and 100-day half-step discrepancy below 1 % including the Janus/Epimetheus co-orbitals and the Tethys/Dione trojans|catalog, frame, barycenter and convergence C tests; ring-plane cross-check
+A84|Uranus system: 29 unique moons; the equatorial frame, three epochs, Puck de-duplication and the tilt-180° Laplace pole convert correctly; Uranus's regular moons sit near its 98°-obliquity equator|frame/epoch/de-duplication C tests
+A85|Neptune system: 16 moons; Triton is massive and retrograde, Nereid (e=0.751) and the distant irregulars use the shared conic kernel|catalog and orbit-sense C tests
+A86|Each system milestone completes V15: inspector quality labels, illustrative/real-scale visibility (Titan and Triton get atmosphere rim tints only if a source-backed table entry exists; no borrowed textures, A65), family framing, labels, grouped search (Saturn: major, inner/shepherd, co-orbital/trojan, Inuit/Gallic/Norse irregulars), C/TypeScript catalog parity, atlas plate, docs, CSV catalog and route checks|full C/WASM/docs/browser suites
+
+Decision pending — scene composition (Jonathan). The numbers above rule out "all 336 moons in the core scene at 15 days/s". Options:
+1. Recommended: family scenes. The 128-body core is unchanged. Saturn, Uranus and Neptune systems load like presets (Sun, eight planets, the planet and its full catalog) through the existing reset/lesson machinery. Cost relative to the core: about 2.7× for Saturn and under 1.3× for Uranus or Neptune.
+2. Hybrid: the core gains only the massive regular moons (about 13: seven Saturnian, five Uranian, Triton; about 1.75×, native speed near the 15 days/s line), and the full catalogs live in family scenes.
+3. Everything in the core: requires a measured kernel speed-up of about 8× first (structure-of-arrays/SIMD, or an error-bounded source truncation for massless tracers). Either is a physics-engine change that needs its own amendment.
+
+Order: T73 → T74 → decision → T75 Saturn → T76 Uranus → T77 Neptune. Each is its own PR. C5 is read as one moon system per milestone, the precedent set by A12 for Jupiter. Small-body satellite systems (T78) stay unscoped until a plan names their source, frame and active-scene policy. Pluto–Charon and asteroid binaries live outside the active scene today.
+
 ## §T
 
 id|status|task|cites
@@ -387,7 +419,7 @@ T14|x|add 4 Vesta asteroid milestone: sourced constants, planar heliocentric per
 T15|x|add Jupiter milestone: sourced constants, planar heliocentric perihelion state, ten-body scene, selection/render/catalog/docs integration, verification and Pages delivery|A9,A10,C5,C6,V5,V6,V15
 T16|x|add all 115 Jovian moons from a reproducible catalog, orbital geometry, data-quality model and five speed presets|A11,A12,V5,V7,V8,V23,V25
 T17|x|add Saturn as the 126th body with sourced perihelion state, renderer-only rings, controls/catalog/docs integration, and verification|A15,A16,A17,C5,C6,V5,V6,V10,V15,V24
-T18|.|add complete Saturnian moon catalog after reconciling the NASA/JPL inventory|C5,C6,V15
+T18|x|superseded by the staged moon-system plan T73–T79 (inventory reconciled in R18–R20)|A78–A86
 T19|x|add Uranus milestone|A19,C5,C6,V15
 T20|x|add Neptune milestone|A19,C5,C6,V15
 T21|x|add complete small-body atlas, conic geometry and selected source-epoch experiments|A18,A20,A21,A22,A23,A24,C5,C6,V15
@@ -443,6 +475,13 @@ T69|x|lazy-load textures in the browser, document attribution and controls, veri
 T70|x|polish lighting (linear light, glint, halos, ring shadows), trail ordering/clipping/adaptive detail, sunlit framing, grid toggle, and verify 60 fps on throttled phones|A69,A70,A71,A72
 T71|x|add decluttered, occlusion-aware body labels with an embedded OFL font and a toggle|A73
 T72|x|close the recorded audit residuals: GM-derived giant masses, homepage atlas collisions, macOS native CI with a shader render test, type-checked browser specs, Renovate re-onboarding|A74,A75,A76,A77
+T73|.|generalize the satellite catalog tool to every giant planet with offline checks, de-duplication, epoch/frame metadata and a Jovian byte-identity regression|A78,A79
+T74|.|land scale prerequisites (capacity, stack, trails, selector/atlas paging) and measure scene throughput; then record the scene-composition decision|A81,A82
+T75|.|add the Saturn system per the recorded decision|A79,A80,A82,A83,A86,V15
+T76|.|add the Uranus system|A79,A80,A82,A84,A86,V15
+T77|.|add the Neptune system|A79,A80,A82,A85,A86,V15
+T78|.|scope small-body satellite systems (source, frames, active-scene policy) before any implementation|C5,C10
+T79|x|review the expansion plan against current sources, frames, epochs, model error, throughput and storage|A78–A86
 
 Audit remediation verification, 2026-10-06: delivered through PRs #20, #21, #22, #24, #25 (round 1), #26 (main CI/analytics blocker found by round 2) and #27 (round 2), each rebase-merged after the required Build/CodeQL checks passed and every review thread was resolved. Production Pages served 81eb308 after #26 with CSP, Astro generator marker, generated sitemap and no robots.txt verified on the live site. Locally, round 2 passed `make clean && make test-sanitize`, `make && make test test-build test-cli test-validators`, catalog/command/epoch/Jovian/small-body checks, a fresh raylib WASM build with native/WASM replay of every example, `npm ci`/`npm audit`/37 Node tests/`astro check`/build, route checks, and 17/17 sandboxed Chrome journeys for both analytics-free and `PUBLIC_GA_ID` builds. The second audit's Medium findings (main CI red, experiment Earth-centre start, debug-info WASM, duplicate SPEC IDs, PR-only workflow docs, invisible catalog download) are closed. Remaining Low/Info items are recorded rather than changed: Jonathan later chose Renovate over Dependabot (A63) and asked for every non-main branch to be deleted; CI stays Linux-only and the browser lane stays on Ubuntu 22.04 per R13; browser specs are type-checked by Playwright, not `astro check` (adding `@types/node` was deferred); GA consent policy remains V17; the pre-existing desktop atlas Vesta/Uranus label overlap, Saturn's illustrative ring tilt and literal Jupiter–Neptune masses (V6 scopes GM-derived masses to Sun–Mars) are unchanged.
 
