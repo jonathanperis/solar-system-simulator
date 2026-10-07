@@ -187,6 +187,24 @@ static void test_projected_radius_follows_pinhole_camera(void)
     assert(render_projected_radius_pixels(-1, 1, 45, 1000) == 0);
 }
 
+static void test_trail_segments_stop_at_the_body_surface(void)
+{
+    Vec3d center = {0, 0, 0};
+    /* Outside -> centre: the end moves out to the surface along the segment. */
+    Vec3d a = {3, 0, 0}, b = {0, 0, 0};
+    assert(render_clip_segment_outside_sphere(&a, &b, center, 1.0));
+    assert(fabs(a.x - 3) < 1e-12 && fabs(b.x - 1) < 1e-12 && b.y == 0 && b.z == 0);
+    /* Centre -> outside: the start moves out instead. */
+    a = (Vec3d){0, 0, 0}; b = (Vec3d){0, 0, -4};
+    assert(render_clip_segment_outside_sphere(&a, &b, center, 2.0));
+    assert(fabs(a.z + 2) < 1e-12 && fabs(b.z + 4) < 1e-12);
+    /* Entirely outside: untouched. Entirely inside: dropped. */
+    a = (Vec3d){5, 0, 0}; b = (Vec3d){6, 1, 0};
+    assert(render_clip_segment_outside_sphere(&a, &b, center, 1.0) && a.x == 5 && b.x == 6);
+    a = (Vec3d){0.1, 0, 0}; b = (Vec3d){0.2, 0, 0};
+    assert(!render_clip_segment_outside_sphere(&a, &b, center, 1.0));
+}
+
 static void test_sphere_matches_simulation_handedness_and_map_layout(void)
 {
     const int slices = 16, rings = 8;
@@ -255,6 +273,7 @@ int main(void)
     test_trail_and_grid_fades();
     test_grid_levels_cross_fade_by_decade();
     test_projected_radius_follows_pinhole_camera();
+    test_trail_segments_stop_at_the_body_surface();
     test_sphere_matches_simulation_handedness_and_map_layout();
     test_ring_annulus_spans_requested_radii();
     puts("test_scene_style passed");
