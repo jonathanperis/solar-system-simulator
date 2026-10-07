@@ -4,7 +4,7 @@ type Density = Record<string,number[][]>;
 type Kernel = {catalog_coordinate:(...v:number[])=>number; catalog_period_days:(q:number,e:number)=>number; _initialize?:()=>void};
 type SearchReply = {type:'search'; request:number; done:boolean; hits?:CatalogHit[]; total?:number; waiting?:boolean; error?:string;
   cancelled?:boolean; needsFullScan?:{bytes:number; files:number}; source?:string};
-type BuildReply = {type:'build'; state:'progress'|'done'|'cancelled'|'error'; files:number; totalFiles:number; bytes:number; totalBytes:number; error?:string};
+type BuildReply = {type:'build'; buildId:number; state:'progress'|'done'|'cancelled'|'error'; files:number; totalFiles:number; bytes:number; totalBytes:number; error?:string};
 type RecordReply = {type:'record'; request:number; record?:CatalogRecord; error?:string};
 
 export async function mountCatalog(root: HTMLElement): Promise<void> {
@@ -19,6 +19,7 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
   const scanProgress = get('[data-scan-progress]'), scanBar = get<HTMLProgressElement>('[data-scan-progress-bar]');
   const scanText = get('[data-scan-progress-text]'), scanAnnounce = get('[data-scan-announce]');
   let announceProgress = createProgressAnnouncer();
+  let activeBuildId = 0;
   let inspectedId: number | undefined, shownResults = '';
   const form = get<HTMLFormElement>('[data-catalog-search]');
   const group = form.elements.namedItem('group') as HTMLSelectElement;
@@ -181,6 +182,10 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
     };
     const megabytes=(bytes:number)=>(bytes/1e6).toFixed(1);
     const showBuild=(message:BuildReply)=>{
+      // A cancelled download can still finish hashing a file and report after
+      // its replacement started; only the newest download drives the UI.
+      if(message.buildId<activeBuildId)return;
+      activeBuildId=message.buildId;
       if(message.state==='progress'){
         if(scanProgress.hidden){scanProgress.hidden=false;announceProgress=createProgressAnnouncer();}
         scanBar.max=message.totalFiles;scanBar.value=message.files;

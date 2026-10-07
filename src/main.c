@@ -377,7 +377,11 @@ static double next_lesson_step(LessonPreset lesson, double dt)
     bool contact = lesson == LESSON_COLLISION;
     const double *steps = contact ? contact_steps : orbit_steps;
     size_t count = contact ? sizeof(contact_steps) / sizeof(contact_steps[0]) : sizeof(orbit_steps) / sizeof(orbit_steps[0]);
-    for (size_t i = 0; i < count; ++i) if (dt == steps[i]) return steps[(i + 1) % count];
+    /* dt normally holds one of these exact literals, but compare with a
+     * relative tolerance anyway: == on doubles breaks as soon as a value is
+     * computed (e.g. 0.1 + 0.1) rather than copied from the table. */
+    for (size_t i = 0; i < count; ++i)
+        if (fabs(dt - steps[i]) <= 1e-9 * steps[i]) return steps[(i + 1) % count];
     return steps[0];
 }
 
