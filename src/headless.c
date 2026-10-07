@@ -63,7 +63,7 @@ static int usage(FILE *stream)
     fputs("solar-lab [--scene NAME] (use --lessons for available presets)\n"
         "  [--duration SECONDS | --days DAYS] [--dt SECONDS] [--sample SECONDS]\n"
         "  [--integrator verlet|euler] [--velocity-factor F (lesson minimum..2)] [--collision none|bounce|merge] [--output FILE]\n"
-        "  [--experiment FILE] | --compare FILE | --catalog | --lessons | --version | --help\n"
+        "  [--experiment FILE] | --compare FILE | --catalog [SCENE] | --lessons | --version | --help\n"
         "Defaults: circular, 86400 s duration, 15 s step, 3600 s samples, Verlet.\n"
         "Duration and sample spacing must be whole multiples of dt. Core/catalog use 15 s Verlet.\n"
         "At most 1e9 ticks (duration/dt) per run.\n"
@@ -118,8 +118,17 @@ int main(int argc, char **argv)
         for (int i = 0; i < LESSON_COUNT; ++i) puts(lesson_name((LessonPreset)i));
         return 0;
     }
-    if (argc == 2 && !strcmp(argv[1], "--catalog")) {
+    if ((argc == 2 || argc == 3) && !strcmp(argv[1], "--catalog")) {
+        /* --catalog lists the main scene; --catalog NAME lists a family scene. */
         SolarSystem system = solar_system_create_current();
+        if (argc == 3) {
+            LessonPreset scene = LESSON_COUNT;
+            for (int j = 0; j < LESSON_COUNT; ++j) if (!strcmp(argv[2], lesson_name((LessonPreset)j))) scene = (LessonPreset)j;
+            if (scene == LESSON_COUNT || !lesson_is_scene(scene) || !lesson_create(scene, 1, &system)) {
+                fprintf(stderr, "--catalog accepts a scene: core, jupiter-system, saturn-system, uranus-system or neptune-system\n");
+                return 2;
+            }
+        }
         const char *kinds[] = {"Star", "Planet", "Moon", "Asteroid", "Dwarf planet"};
         puts("id\tname\tkind\tparent");
         for (size_t i = 0; i < system.body_count; ++i) {

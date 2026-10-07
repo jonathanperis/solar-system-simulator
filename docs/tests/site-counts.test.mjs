@@ -1,18 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readdir, readFile } from 'node:fs/promises';
-import { coreBodyCount, jovianMoonCount, smallBodyCatalogCount, formatCount } from '../src/lib/siteCounts.ts';
-import { implementedBodies } from '../src/lib/bodies.ts';
+import { coreBodyCount, familyMoonCount, jovianMoonCount, smallBodyCatalogCount, totalBodyCount, formatCount } from '../src/lib/siteCounts.ts';
+import { implementedBodies, mainSceneBodies } from '../src/lib/bodies.ts';
 import manifest from '../public/catalog/manifest.json' with { type: 'json' };
 
 // Literals such as "1,564,244" are matched verbatim, not as patterns.
 const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 test('page copy derives scene and catalog counts from data instead of literals', async () => {
-  assert.equal(coreBodyCount, implementedBodies.length);
+  assert.equal(coreBodyCount, mainSceneBodies.length);
+  assert.equal(totalBodyCount, implementedBodies.length);
+  assert.equal(familyMoonCount, totalBodyCount - coreBodyCount);
   assert.equal(jovianMoonCount, implementedBodies.filter(body => body.parent === 'Jupiter').length);
   assert.equal(smallBodyCatalogCount, manifest.count);
-  const literals = [String(coreBodyCount), formatCount(smallBodyCatalogCount), String(smallBodyCatalogCount), `${jovianMoonCount}-moon`];
+  const literals = [String(totalBodyCount), String(familyMoonCount), formatCount(smallBodyCatalogCount), String(smallBodyCatalogCount), `${jovianMoonCount}-moon`, `${coreBodyCount}-body`];
   const pages = (await readdir(new URL('../src/', import.meta.url), { recursive: true })).filter(file => file.endsWith('.astro'));
   assert.ok(pages.length > 10);
   for (const file of pages) {

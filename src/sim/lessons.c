@@ -8,12 +8,32 @@
 const char *lesson_name(LessonPreset preset)
 {
     const char *names[] = {"core", "circular", "eccentric", "escape", "earth-moon", "inclined", "phobos",
-        "barycentric-core", "resonance", "encounter", "collision"};
+        "barycentric-core", "resonance", "encounter", "collision",
+        "jupiter-system", "saturn-system", "uranus-system", "neptune-system"};
+    _Static_assert(sizeof(names) / sizeof(names[0]) == LESSON_COUNT, "every preset needs a name");
     return preset >= 0 && preset < LESSON_COUNT ? names[preset] : "catalog";
+}
+
+BodyId lesson_family_planet(LessonPreset preset)
+{
+    switch (preset) {
+        case LESSON_JUPITER_SYSTEM: return BODY_ID_JUPITER;
+        case LESSON_SATURN_SYSTEM: return BODY_ID_SATURN;
+        case LESSON_URANUS_SYSTEM: return BODY_ID_URANUS;
+        case LESSON_NEPTUNE_SYSTEM: return BODY_ID_NEPTUNE;
+        default: return BODY_ID_NONE;
+    }
+}
+
+bool lesson_is_scene(LessonPreset preset)
+{
+    return preset == LESSON_CORE || lesson_family_planet(preset) != BODY_ID_NONE;
 }
 
 size_t lesson_subject_index(LessonPreset preset)
 {
+    /* A family scene opens on its planet. */
+    if (lesson_family_planet(preset) != BODY_ID_NONE) return (size_t)solar_system_family_planet_index(lesson_family_planet(preset));
     if (preset == LESSON_CORE || preset == LESSON_BARYCENTRIC_CORE) return 0;
     return preset == LESSON_RESONANCE || preset == LESSON_ENCOUNTER ? 2 : 1;
 }
@@ -29,7 +49,7 @@ double lesson_default_step(LessonPreset preset) { return preset == LESSON_COLLIS
 bool lesson_monitors_contact(LessonPreset preset)
 {
     if (preset == LESSON_CATALOG) return true;
-    return preset >= 0 && preset < LESSON_COUNT && preset != LESSON_CORE && preset != LESSON_BARYCENTRIC_CORE &&
+    return preset >= 0 && preset < LESSON_COUNT && !lesson_is_scene(preset) && preset != LESSON_BARYCENTRIC_CORE &&
         preset != LESSON_COLLISION;
 }
 
@@ -37,7 +57,9 @@ bool lesson_monitors_contact(LessonPreset preset)
 static void build_lesson(LessonPreset preset, double velocity_factor, SolarSystem *result)
 {
     SolarSystem system = {0};
-    if (preset == LESSON_CORE || preset == LESSON_BARYCENTRIC_CORE) {
+    if (lesson_family_planet(preset) != BODY_ID_NONE) {
+        (void)solar_system_create_family(lesson_family_planet(preset), &system);
+    } else if (preset == LESSON_CORE || preset == LESSON_BARYCENTRIC_CORE) {
         system = solar_system_create_current();
         if (preset == LESSON_BARYCENTRIC_CORE) {
             PhysicsDiagnostics d = physics_diagnostics(&system);
@@ -147,7 +169,7 @@ static bool lesson_orbit_clears_parent(LessonPreset preset, double velocity_fact
 
 static double compute_minimum_velocity_factor(LessonPreset preset)
 {
-    if (preset == LESSON_CORE || preset == LESSON_BARYCENTRIC_CORE) return 1.0;
+    if (lesson_is_scene(preset) || preset == LESSON_BARYCENTRIC_CORE) return 1.0;
     if (!lesson_monitors_contact(preset) || lesson_orbit_clears_parent(preset, LESSON_FACTOR_FLOOR)) return LESSON_FACTOR_FLOOR;
     /* No allowed factor clears: the lesson would be unusable. Say so with NaN
      * (every validator rejects it) instead of quietly publishing the ceiling. */
@@ -180,7 +202,7 @@ bool lesson_create(LessonPreset preset, double velocity_factor, SolarSystem *res
     if (preset < 0 || preset >= LESSON_COUNT || !isfinite(velocity_factor) ||
         !(velocity_factor >= lesson_minimum_velocity_factor(preset)) || velocity_factor > LESSON_FACTOR_CEILING)
         return false;
-    if ((preset == LESSON_CORE || preset == LESSON_BARYCENTRIC_CORE) && velocity_factor != 1.0) return false;
+    if ((lesson_is_scene(preset) || preset == LESSON_BARYCENTRIC_CORE) && velocity_factor != 1.0) return false;
     build_lesson(preset, velocity_factor, result);
     return true;
 }

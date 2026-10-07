@@ -56,14 +56,15 @@ bool lesson_configuration_valid(LessonPreset lesson, double velocity_factor, Phy
     /* The lower factor bound is lesson-specific: slower starts would carry the
      * subject's orbit through its parent. Core and barycentric-core report a
      * minimum of 1 and must keep their sourced speeds unchanged. */
-    bool fixed_speed = lesson == LESSON_CORE || lesson == LESSON_BARYCENTRIC_CORE;
+    bool fixed_speed = lesson_is_scene(lesson) || lesson == LESSON_BARYCENTRIC_CORE;
     double maximum_factor = fixed_speed ? 1.0 : 2.0;
     if (!isfinite(velocity_factor) || !(velocity_factor >= lesson_minimum_velocity_factor(lesson)) ||
         velocity_factor > maximum_factor) return false;
     if (!isfinite(step_seconds) || step_seconds < .01 || step_seconds > 3600) return false;
     if (integrator != PHYSICS_VERLET && integrator != PHYSICS_EULER) return false;
     bool core_policy = integrator == PHYSICS_VERLET && step_seconds == SOLAR_APP_MAX_PHYSICS_STEP_SECONDS;
-    if (lesson == LESSON_CORE && !core_policy) return false;
+    /* The main and family scenes always run the 15-second Verlet policy. */
+    if (lesson_is_scene(lesson) && !core_policy) return false;
     if (lesson != LESSON_COLLISION) return collision_mode == COLLISION_NONE;
     /* At the largest allowed speed, a .25 s drift is only 10 m: smaller than
      * the 20 m contact separation. These head-on spheres cannot tunnel. */

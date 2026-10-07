@@ -1,4 +1,12 @@
 import jovianCatalog from '../../../data/jovian_moons.json' with { type: 'json' };
+import saturnianCatalog from '../../../data/saturnian_moons.json' with { type: 'json' };
+import uranianCatalog from '../../../data/uranian_moons.json' with { type: 'json' };
+import neptunianCatalog from '../../../data/neptunian_moons.json' with { type: 'json' };
+
+/** Scenes mirror the C presets: `core` is the main scene of large bodies;
+ * each family scene holds one giant planet's complete moon catalog. */
+export type SceneName = 'core' | 'jupiter-system' | 'saturn-system' | 'uranus-system' | 'neptune-system';
+export type MoonPlate = 'jupiter' | 'saturn' | 'uranus' | 'neptune';
 
 export type ImplementedBody = {
   slug: string;
@@ -10,12 +18,15 @@ export type ImplementedBody = {
   source: string;
   accent: 'solar' | 'cyan' | 'earth' | 'moon' | 'mars' | 'asteroid' | 'jupiter' | 'saturn' | 'uranus' | 'neptune';
   chart: {
-    plate: 'heliocentric' | 'earth' | 'mars' | 'jupiter';
+    plate: 'heliocentric' | 'earth' | 'mars' | MoonPlate;
     angle: number;
     radius: number;
   };
   summary: string;
   group?: string;
+  /** Where the body is simulated: the main scene, or (small moons only) its
+   * planet's family scene. Major moons appear in both; `core` is listed. */
+  scene: SceneName;
 };
 
 /** Beginner copy uses the same identity and parent relationship as the catalog. */
@@ -25,7 +36,58 @@ export function bodyIntroduction(body: ImplementedBody): string {
   return `${body.name} orbits the ${body.parent}. Watch its path, change your view, and compare its motion with other worlds.`;
 }
 
-export const implementedBodies: ImplementedBody[] = [
+type CatalogMoon = (typeof jovianCatalog.moons)[number] & { major?: boolean };
+type MoonFamily = { parent: string; plate: MoonPlate; scene: SceneName; adjective: string; milestone: string;
+  source: string; moons: CatalogMoon[] };
+
+/** The Jovian snapshot predates the `major` flag: its Galilean group is major. */
+const isMajor = (moon: CatalogMoon): boolean => moon.major ?? moon.group === 'Galilean moons';
+
+const moonFamilies: MoonFamily[] = [
+  { parent: 'Jupiter', plate: 'jupiter', scene: 'jupiter-system', adjective: 'Jovian', milestone: 'Complete Jovian moon catalog',
+    source: 'data/jovian_moons.json', moons: jovianCatalog.moons },
+  { parent: 'Saturn', plate: 'saturn', scene: 'saturn-system', adjective: 'Saturnian', milestone: 'Saturn system scene',
+    source: 'data/saturnian_moons.json', moons: saturnianCatalog.moons as CatalogMoon[] },
+  { parent: 'Uranus', plate: 'uranus', scene: 'uranus-system', adjective: 'Uranian', milestone: 'Uranus system scene',
+    source: 'data/uranian_moons.json', moons: uranianCatalog.moons as CatalogMoon[] },
+  { parent: 'Neptune', plate: 'neptune', scene: 'neptune-system', adjective: 'Neptunian', milestone: 'Neptune system scene',
+    source: 'data/neptunian_moons.json', moons: neptunianCatalog.moons as CatalogMoon[] }
+];
+
+/** A family's moons in C scene order: major moons first, each group in
+ * catalog order (solar_system.c append_moons). */
+const orderedMoons = (family: MoonFamily): CatalogMoon[] =>
+  [...family.moons.filter(isMajor), ...family.moons.filter(moon => !isMajor(moon))];
+
+/** Six marker slots per moon-plate page. The upper-left quadrant stays empty
+ * so wide layouts never put a marker under the hero copy. */
+const moonChartAngles = [30, 90, 140, 185, 228, 330];
+
+function moonBody(family: MoonFamily, moon: CatalogMoon, index: number): ImplementedBody {
+  const major = isMajor(moon);
+  return {
+    slug: moon.slug,
+    name: moon.name,
+    kind: 'Moon',
+    parent: family.parent,
+    milestone: major ? 'Main-scene major moon' : family.milestone,
+    group: moon.group,
+    initialization: `${moon.frame}-frame mean elements (epoch ${moon.epoch_tdb} TDB) converted to ${family.parent}-relative SI position and velocity.`,
+    source: family.source,
+    accent: family.plate,
+    chart: { plate: family.plate, angle: moonChartAngles[index % moonChartAngles.length], radius: 72 },
+    summary: `${moon.group}. ${major ? `In the main scene and the ${family.parent} system scene.` : `In the ${family.parent} system scene.`} ${moon.inclination_deg > 90 ? 'Retrograde' : 'Prograde'} in the source frame. Mass: ${moon.mass_quality === 'unknown' ? 'unknown — test particle' : moon.mass_quality}. Radius: ${moon.radius_quality === 'unknown' ? 'unknown — marker only' : moon.radius_quality}.`,
+    scene: major ? 'core' : family.scene
+  };
+}
+
+const familyMoons = Object.fromEntries(moonFamilies.map(family =>
+  [family.parent, orderedMoons(family).map((moon, index) => moonBody(family, moon, index))])) as Record<string, ImplementedBody[]>;
+const majorMoonsOf = (parent: string) => familyMoons[parent].filter(body => body.scene === 'core');
+
+type NamedBody = Omit<ImplementedBody, 'scene'>;
+const named = (bodies: NamedBody[]): ImplementedBody[] => bodies.map(body => ({ ...body, scene: 'core' }));
+const [sun, mercury, venus, earth, moon, mars, phobos, deimos, vesta, jupiter] = named([
   {
     slug: 'sun',
     name: 'Sun',
@@ -146,49 +208,45 @@ export const implementedBodies: ImplementedBody[] = [
     chart: { plate: 'heliocentric', angle: 112, radius: 91 },
     summary: 'First gas giant, initialized at heliocentric perihelion.'
   },
-  ...jovianCatalog.moons.map((moon, index): ImplementedBody => ({
-    slug: moon.slug,
-    name: moon.name,
-    kind: 'Moon',
-    parent: 'Jupiter',
-    milestone: 'Complete Jovian moon catalog',
-    group: moon.group,
-    initialization: `${moon.frame}-frame mean elements converted to Jupiter-relative SI position and velocity.`,
-    source: 'data/jovian_moons.json',
-    accent: 'jupiter',
-    chart: { plate: 'jupiter', angle: (index % 6) * 60 + 30, radius: 72 },
-    summary: `${moon.group}. ${moon.inclination_deg > 90 ? 'Retrograde' : 'Prograde'} in the source frame. Mass: ${moon.mass_quality === 'unknown' ? 'unknown — test particle' : moon.mass_quality}. Radius: ${moon.radius_quality === 'unknown' ? 'unknown — marker only' : moon.radius_quality}.`
-  })),
+
+]);
+const [saturn, uranus, neptune] = named([
   {
     slug: 'saturn',
     name: 'Saturn',
     kind: 'Planet',
     parent: 'Sun',
     milestone: 'Saturn pass',
-    initialization: 'Planar heliocentric perihelion position with vis-viva tangential speed.',
+    initialization: 'Saturn-system barycenter (Saturn plus known-mass moons) at planar heliocentric perihelion with vis-viva tangential speed.',
     source: 'src/sim/solar_system.c',
     accent: 'saturn',
     chart: { plate: 'heliocentric', angle: 214, radius: 97 },
     summary: 'Ringed gas giant initialized at heliocentric perihelion; rings are renderer-only.'
   },
   {slug:'uranus',name:'Uranus',kind:'Planet',parent:'Sun',milestone:'Uranus foundation',
-    initialization:'Planar heliocentric perihelion with vis-viva speed.',source:'src/sim/solar_system.c',accent:'uranus',
+    initialization:'Uranus-system barycenter (Uranus plus known-mass moons) at planar heliocentric perihelion with vis-viva speed.',source:'src/sim/solar_system.c',accent:'uranus',
     chart:{plate:'heliocentric',angle:62,radius:83},summary:'Ice giant with JPL-sourced mass, mean radius, and orbital elements.'},
   {slug:'neptune',name:'Neptune',kind:'Planet',parent:'Sun',milestone:'Neptune foundation',
-    initialization:'Planar heliocentric perihelion with vis-viva speed.',source:'src/sim/solar_system.c',accent:'neptune',
+    initialization:'Neptune-system barycenter (Neptune plus known-mass moons) at planar heliocentric perihelion with vis-viva speed.',source:'src/sim/solar_system.c',accent:'neptune',
     chart:{plate:'heliocentric',angle:150,radius:91},summary:'Outer giant included in every selected small-body experiment.'}
-];
+]);
 
-// Staged moon-system plan (SPEC A78–A86, T73–T78). The full giant-planet
-// catalogs would grow the scene from 128 to 464 bodies, so the catalog tool and
-// throughput prerequisites come before any new moon.
+/** The main scene, in the C order of solar_system_create_current(). */
+export const mainSceneBodies: ImplementedBody[] = [sun, mercury, venus, earth, moon, mars, phobos, deimos, vesta, jupiter,
+  ...majorMoonsOf('Jupiter'), saturn, ...majorMoonsOf('Saturn'), uranus, ...majorMoonsOf('Uranus'), neptune,
+  ...majorMoonsOf('Neptune')];
+
+/** A family scene, in the C order of solar_system_create_family(). */
+export const familySceneBodies = (parent: 'Jupiter' | 'Saturn' | 'Uranus' | 'Neptune'): ImplementedBody[] =>
+  [sun, mercury, venus, earth, mars, jupiter, saturn, uranus, neptune, ...familyMoons[parent]];
+
+/** Every simulated body once: the main scene, then each family's small moons. */
+export const implementedBodies: ImplementedBody[] = [...mainSceneBodies,
+  ...moonFamilies.flatMap(family => familyMoons[family.parent].filter(body => body.scene !== 'core'))];
+
+// Remaining roadmap (SPEC T78): every giant-planet moon now has a scene.
 export const plannedBodies = [
-  'one satellite catalog tool for every giant planet',
-  'scale prerequisites and a measured throughput budget per scene',
-  'Saturn system: 291 JPL-catalogued moons',
-  'Uranus system: 29 moons',
-  'Neptune system: 16 moons',
   'small-body satellite systems, once scoped'
 ];
 
-export const bodyFocusOrder = implementedBodies.map((body) => body.name);
+export const bodyFocusOrder = mainSceneBodies.map((body) => body.name);
