@@ -30,14 +30,21 @@ static void test_decodes_rgb_jpeg_and_rgba_png(void)
     render_free_image(&image);
     assert(image.pixels == NULL);
 
+    size_t jpeg_length = length;
     unsigned char *png = read_file("tests/fixtures/texture_rgba.png", &length);
     assert(render_decode_image(png, length, &image));
     assert(image.width == 4 && image.height == 2 && image.channels == 4);
     assert(image.pixels[0] == 10 && image.pixels[1] == 200 && image.pixels[2] == 30 && image.pixels[3] == 128);
     render_free_image(&image);
 
-    /* Truncated input fails cleanly instead of reading past the buffer. */
-    assert(!render_decode_image(jpeg, length / 3 > 40 ? 40 : length / 3, &image));
+    /* A JPEG cut off partway through its image data must never read past the
+     * buffer. stb is lenient and may return a partly decoded image, so either
+     * outcome is accepted here; the AddressSanitizer build (make
+     * test-sanitize) is what proves no out-of-bounds read happens. A cut
+     * inside the header (~160 bytes) must fail outright. */
+    assert(jpeg_length > 400);
+    assert(!render_decode_image(jpeg, jpeg_length - 200, &image) || (render_free_image(&image), true));
+    assert(!render_decode_image(jpeg, 40, &image));
     assert(image.pixels == NULL);
     free(jpeg);
     free(png);
