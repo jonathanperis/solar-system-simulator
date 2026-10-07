@@ -82,14 +82,19 @@ RenderGridLevels render_grid_levels(double camera_distance);
 /* Apparent radius in pixels of a sphere `radius` units across seen from
  * `distance` units away through a perspective camera with vertical field of
  * view `fovy_degrees` on a viewport `viewport_height` pixels tall. Bodies
- * smaller than a pixel are drawn as single points instead of full meshes:
+ * smaller than a pixel are drawn as small dots instead of full meshes:
  * a mesh draw costs dozens of WebGL calls, and most of the 115 Jovian moons
  * are sub-pixel in the overview. Returns 0 for degenerate input. */
 double render_projected_radius_pixels(double radius, double distance, double fovy_degrees, double viewport_height);
 #define RENDER_MESH_MIN_RADIUS_PIXELS 0.75
+/* World size of one screen pixel at `distance` (the inverse of the pinhole
+ * projection above). Sub-pixel bodies are drawn as dots RENDER_DOT_PIXELS
+ * wide in this many world units, so they stay visible but tiny. */
+double render_world_units_per_pixel(double distance, double fovy_degrees, double viewport_height);
+#define RENDER_DOT_PIXELS 2.5
 
 /* Sample stride for drawing a trail of `point_count` samples whose on-screen
- * extent is about `extent_pixels`: roughly one drawn point every
+ * path length is about `extent_pixels`: roughly one drawn point every
  * RENDER_TRAIL_PIXELS_PER_POINT pixels (never fewer than
  * RENDER_TRAIL_MIN_POINTS), and never finer than `base_stride`, the renderer's
  * fixed segment budget. A Jovian moon's trail seen from Saturn spans a few

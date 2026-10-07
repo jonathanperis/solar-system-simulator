@@ -184,6 +184,11 @@ static void test_projected_radius_follows_pinhole_camera(void)
      * well under a pixel, so it is drawn as a point. */
     assert(render_projected_radius_pixels(0.012, 30, 45, 1000) < RENDER_MESH_MIN_RADIUS_PIXELS);
     assert(render_projected_radius_pixels(1, 0, 45, 1000) == 0);
+    /* One pixel back in world units is the inverse: a body that many units
+     * across projects to exactly one pixel. */
+    double pixel = render_world_units_per_pixel(30, 45, 1000);
+    assert(fabs(render_projected_radius_pixels(pixel / 2, 30, 45, 1000) - 0.5) < 1e-9);
+    assert(render_world_units_per_pixel(0, 45, 1000) == 0);
     assert(render_projected_radius_pixels(-1, 1, 45, 1000) == 0);
 }
 

@@ -74,8 +74,9 @@ RenderAtmosphere render_atmosphere_for_body(BodyId id)
  * alpha0 = alpha + alpha_rate*T and declination delta0 = delta + delta_rate*T;
  * the prime meridian sits W = w0 + w_rate*d degrees east of the node where the
  * body's equator crosses the ICRF equator. T is Julian centuries and d is days
- * since J2000 TDB. Small periodic terms are omitted; they move these axes by
- * well under a degree, invisible at simulator scales. */
+ * since J2000 TDB. Periodic terms are omitted; for the planets they move these axes by well
+ * under a degree. The Moon's are larger (pole ~1.5 deg, prime meridian ~3.6
+ * deg), acceptable for an illustrative texture orientation. */
 typedef struct RotationModel {
     BodyId id;
     double alpha, alpha_rate, delta, delta_rate, w0, w_rate;
@@ -256,6 +257,12 @@ void render_declutter_labels(RenderLabelBox *boxes, size_t count)
         if (clear) boxes[best].visible = true;
         else boxes[best].priority = INT_MIN; /* rejected: never revisit */
     }
+}
+
+double render_world_units_per_pixel(double distance, double fovy_degrees, double viewport_height)
+{
+    if (!(distance > 0) || !(fovy_degrees > 0) || !(viewport_height > 0)) return 0;
+    return distance * 2 * tan(fovy_degrees * DEG / 2) / viewport_height;
 }
 
 float render_glow_intensity(double r)
