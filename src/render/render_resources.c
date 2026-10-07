@@ -45,6 +45,12 @@ static const char vertex_shader[] = SHADER_HEADER_VS
     "    gl_Position = mvp * vec4(vertexPosition, 1.0);\n"
     "}\n";
 
+/* Lighting happens in linear light. Texture files store sRGB values (roughly
+ * the square of the physical brightness, gamma 2.2), so the shader decodes
+ * them, applies Lambert's cosine law, and re-encodes for the display. Doing the
+ * maths on raw sRGB values would darken mid-tones and smear the terminator.
+ * The ambient term is tiny in linear light (0.004 shows as ~8% grey) and
+ * stands in for starlight so night sides keep their shape. */
 static const char fragment_shader[] = SHADER_HEADER_FS
     "IN vec2 fragTexCoord;\n"
     "IN vec3 fragNormal;\n"
@@ -56,8 +62,10 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "uniform vec3 lightDir;\n"        /* unit vector from the body toward the Sun */
     "uniform vec3 viewPos;\n"
     "uniform vec4 atmosphere;\n"      /* rim tint (rgb) and strength (a) */
-    "uniform float nightLights;\n"
+    "uniform float nightLights;\n"    /* 1 = Earth: city lights and ocean glint */
     SHADER_OUTPUT
+    "vec3 toLinear(vec3 c) { return pow(c, vec3(2.2)); }\n"
+    "vec3 toDisplay(vec3 c) { return pow(clamp(c, 0.0, 1.0), vec3(1.0 / 2.2)); }\n"
     "void main() {\n"
     "    vec4 surface = TEX(texture0, fragTexCoord) * colDiffuse;\n"
     "    vec3 n = normalize(fragNormal);\n"
@@ -70,30 +78,36 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "        FRAG_COLOR = vec4(surface.rgb * (0.55 + 0.6 * pow(mu, 0.5)), 1.0);\n"
     "        return;\n"
     "    }\n"
-    /* Lambert's law: brightness follows the cosine of the Sun's angle. The
-     * smoothstep wraps light slightly past 90 degrees for a soft terminator. */
+    /* Lambert's law: brightness follows the cosine of the Sun's angle; a 5%
+     * wrap stands in for light scattered just past the terminator. */
+    "    vec3 albedo = toLinear(surface.rgb);\n"
     "    float ndl = dot(n, lightDir);\n"
-    "    float light = smoothstep(-0.12, 1.0, ndl);\n"
-    "    if (mode > 2.5) {\n" /* rings: thin, lit from either face */
-    "        FRAG_COLOR = vec4(surface.rgb * (0.2 + 0.8 * abs(ndl)), surface.a);\n"
+    "    float lit = clamp((ndl + 0.05) / 1.05, 0.0, 1.0);\n"
+    "    if (mode > 2.5) {\n" /* rings: thin ice and dust, lit from either face */
+    "        FRAG_COLOR = vec4(toDisplay(albedo * (0.02 + 0.98 * abs(ndl))), surface.a);\n"
     "        return;\n"
     "    }\n"
     "    if (mode > 1.5) {\n" /* clouds: the map's brightness is its opacity */
-    "        FRAG_COLOR = vec4(vec3(light), surface.r * (0.15 + 0.75 * light));\n"
+    "        FRAG_COLOR = vec4(toDisplay(vec3(0.004 + lit)), surface.r * (0.12 + 0.78 * smoothstep(-0.1, 0.3, ndl)));\n"
     "        return;\n"
     "    }\n"
-    "    /* A small ambient term stands in for starlight and scattered light so\n"
-    "     * night sides keep their shape instead of vanishing into the sky. */\n"
-    "    vec3 color = surface.rgb * (0.06 + 0.94 * light);\n"
+    "    vec3 color = albedo * (0.004 + lit);\n"
     "    if (nightLights > 0.5) {\n"
+    /* City lights fade in across the terminator. */
     "        float night = 1.0 - smoothstep(-0.18, 0.06, ndl);\n"
-    "        color += TEX(texture1, fragTexCoord).rgb * night * 1.4;\n"
+    "        color += toLinear(TEX(texture1, fragTexCoord).rgb) * night * 2.0;\n"
+    /* Sun glint: a Blinn-Phong highlight (half vector between Sun and eye)
+     * masked to water, found where the day map is clearly bluer than it is
+     * red or green. Land and ice stay matte. */
+    "        float water = smoothstep(0.04, 0.16, surface.b - max(surface.r, surface.g));\n"
+    "        vec3 h = normalize(lightDir + v);\n"
+    "        color += vec3(1.0, 0.93, 0.8) * pow(max(dot(n, h), 0.0), 70.0) * water * max(ndl, 0.0) * 0.9;\n"
     "    }\n"
     /* Atmosphere rim: grazing sight lines cross more air (Fresnel-like
      * falloff), lit mostly on the day side. */
     "    float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);\n"
-    "    color += atmosphere.rgb * atmosphere.a * rim * smoothstep(-0.3, 0.45, ndl);\n"
-    "    FRAG_COLOR = vec4(color, 1.0);\n"
+    "    color += toLinear(atmosphere.rgb) * atmosphere.a * rim * smoothstep(-0.3, 0.45, ndl);\n"
+    "    FRAG_COLOR = vec4(toDisplay(color), 1.0);\n"
     "}\n";
 
 /* Copy generated geometry into raylib-owned buffers (UnloadMesh frees them
