@@ -299,7 +299,7 @@ typedef struct RingShadow {
     Texture2D ring_opacity;
 } RingShadow;
 
-typedef enum ShadeMode { SHADE_LIT = 0, SHADE_STAR = 1, SHADE_CLOUDS = 2, SHADE_RING = 3, SHADE_SKY = 4 } ShadeMode;
+typedef enum ShadeMode { SHADE_LIT = 0, SHADE_STAR = 1, SHADE_CLOUDS = 2, SHADE_RING = 3, SHADE_SKY = 4, SHADE_HALO = 5 } ShadeMode;
 
 /* Set this draw's uniforms and maps, then issue it. DrawMesh draws at once
  * (it is not batched), so per-body uniforms take effect immediately. */
@@ -590,6 +590,26 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
                 SHADE_CLOUDS, resources->textures[RENDER_TEXTURE_EARTH_CLOUDS], WHITE, light, (RenderAtmosphere){0}, NULL, NULL);
         }
     }
+
+    /* Atmospheric halos: a shell a few percent above each body with air,
+     * added on top so the limb glows like Earth seen from orbit. Bodies too
+     * small on screen to show a limb are skipped. */
+    BeginBlendMode(BLEND_ADDITIVE);
+    for (size_t i = 0; i < system->body_count; ++i) {
+        const Body *body = &system->bodies[i];
+        RenderAtmosphere air = render_atmosphere_for_body(body->id);
+        if (air.strength <= 0 || body->radius_quality == PHYSICAL_UNKNOWN) continue;
+        Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
+        float radius = renderer_body_radius(body, mode);
+        Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
+        double distance = sqrt(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z);
+        if (render_projected_radius_pixels(radius, distance, camera.fovy, viewport_height) < 6.0) continue;
+        Vector3 light = unit_vector((Vector3){star_position.x - position.x, star_position.y - position.y,
+            star_position.z - position.z}, (Vector3){0, 1, 0});
+        Matrix halo = body_matrix(render_body_orientation(body->id, view->orientation_days), position, radius * 1.035f);
+        draw_shaded(resources, &resources->sphere_detailed, &halo, SHADE_HALO, resources->white, WHITE, light, air, NULL, NULL);
+    }
+    EndBlendMode();
 
     /* 5. The Sun's halo, added on top of everything (additive blending). Far
      * away it keeps a small minimum apparent size so the Sun still reads as a
