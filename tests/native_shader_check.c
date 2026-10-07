@@ -55,8 +55,14 @@ int main(void)
 {
     CGLPixelFormatAttribute attributes[] = {kCGLPFAOpenGLProfile, (CGLPixelFormatAttribute)kCGLOGLPVersion_3_2_Core, 0};
     CGLPixelFormatObj pf; GLint npf; CGLContextObj ctx;
-    if (CGLChoosePixelFormat(attributes, &pf, &npf) || !pf || CGLCreateContext(pf, NULL, &ctx)) { puts("no OpenGL 3.2 core context; skipping"); return 0; }
-    CGLSetCurrentContext(ctx);
+    /* This target exists to exercise the real shaders, so a missing context
+     * is a failure, not a silent pass. */
+    CGLError error = CGLChoosePixelFormat(attributes, &pf, &npf);
+    if (error || !pf) { fprintf(stderr, "CGLChoosePixelFormat failed: %s\n", CGLErrorString(error)); return 1; }
+    error = CGLCreateContext(pf, NULL, &ctx);
+    CGLDestroyPixelFormat(pf);
+    if (error) { fprintf(stderr, "CGLCreateContext failed: %s\n", CGLErrorString(error)); return 1; }
+    if ((error = CGLSetCurrentContext(ctx))) { fprintf(stderr, "CGLSetCurrentContext failed: %s\n", CGLErrorString(error)); return 1; }
     const int W = 640, H = 640;
     GLuint fbo, color, depth; glGenFramebuffers(1, &fbo); glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glGenRenderbuffers(1, &color); glBindRenderbuffer(GL_RENDERBUFFER, color); glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, W, H);
