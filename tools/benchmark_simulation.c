@@ -1,18 +1,25 @@
 /* Headless throughput probe for the actual fixed-step scene and trail policy.
  * Compile natively or with Emscripten/Node; browser rendering is measured in UI. */
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 
 #include "app/body_trails.h"
 #include "app/simulation_step.h"
 #include "sim/constants.h"
 #include "sim/experiment.h"
+#include "sim/lessons.h"
 
+/* Usage: benchmark_simulation [EXPERIMENT_FILE | --scene NAME] */
 int main(int argc, char **argv)
 {
     SolarSystem system = solar_system_create_current();
     char names[SOLAR_EXPERIMENT_CAPACITY][SOLAR_EXPERIMENT_NAME_BYTES];
-    if(argc==2) {
+    if (argc == 3 && !strcmp(argv[1], "--scene")) {
+        LessonPreset scene = LESSON_COUNT;
+        for (int i = 0; i < LESSON_COUNT; ++i) if (!strcmp(argv[2], lesson_name((LessonPreset)i))) scene = (LessonPreset)i;
+        if (scene == LESSON_COUNT || !lesson_is_scene(scene) || !lesson_create(scene, 1, &system)) return 1;
+    } else if(argc==2) {
         FILE *file=fopen(argv[1],"rb");
         char input[SOLAR_EXPERIMENT_TEXT_BYTES];
         size_t count=file?fread(input,1,sizeof(input)-1,file):0;

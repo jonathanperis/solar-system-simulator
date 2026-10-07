@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <string.h>
 #include <stdio.h>
 
 #include "app/body_trails.h"
@@ -258,8 +259,8 @@ static void test_system_frame_contains_selected_family_in_both_modes(void)
 {
     SolarSystem system = solar_system_create_current();
     SolarSystem original = system;
-    const size_t selections[] = {0, 3, 4, 5, 6, 7, 8, 9, 10, 124, 125};
-    const size_t roots[] = {0, 3, 3, 5, 5, 5, 8, 9, 9, 9, 125};
+    const size_t selections[] = {0, 3, 4, 5, 6, 7, 8, 9, 10, 13, 14, 20, 22, 27, 28, 29};
+    const size_t roots[] = {0, 3, 3, 5, 5, 5, 8, 9, 9, 9, 14, 14, 22, 22, 28, 28};
     for (int mode = RENDER_SCALE_ILLUSTRATIVE; mode <= RENDER_SCALE_REAL; ++mode) {
         for (size_t s = 0; s < sizeof(selections) / sizeof(selections[0]); ++s) {
             RenderSystemFrame frame = renderer_system_frame(&system, selections[s], mode);
@@ -287,28 +288,33 @@ static void test_saturn_body_frame_contains_renderer_only_rings(void)
     SolarSystem original = system;
 
     for (int mode = RENDER_SCALE_ILLUSTRATIVE; mode <= RENDER_SCALE_REAL; ++mode) {
-        RenderSystemFrame frame = renderer_body_frame(&system, 125, mode);
-        assert(frame.root_index == 125);
-        assert_close(frame.radius, renderer_body_visual_radius(&system.bodies[125], mode), 1e-12);
-        assert(frame.radius > renderer_body_radius(&system.bodies[125], mode));
+        RenderSystemFrame frame = renderer_body_frame(&system, 14, mode);
+        assert(frame.root_index == 14);
+        assert_close(frame.radius, renderer_body_visual_radius(&system.bodies[14], mode), 1e-12);
+        assert(frame.radius > renderer_body_radius(&system.bodies[14], mode));
     }
-    assert_close(system.bodies[125].radius_m, SOLAR_SATURN_RADIUS_M, 0.0);
-    assert_close(vec3d_length(vec3d_sub(system.bodies[125].position_m, original.bodies[125].position_m)), 0.0, 0.0);
+    assert_close(system.bodies[14].radius_m, SOLAR_SATURN_RADIUS_M, 0.0);
+    assert_close(vec3d_length(vec3d_sub(system.bodies[14].position_m, original.bodies[14].position_m)), 0.0, 0.0);
 }
 
 static void test_individual_moon_frame_and_unknown_radius_marker(void)
 {
-    SolarSystem system = solar_system_create_current();
+    /* Small moons with unknown radii live in family scenes: Jupiter's puts
+     * Io at index 9 and its last catalog moon, S/2021 J 8, at 123. */
+    SolarSystem system;
+    assert(solar_system_create_family(BODY_ID_JUPITER, &system));
+    assert(strcmp(system.bodies[123].name, "S/2021 J 8") == 0);
     for (int mode = RENDER_SCALE_ILLUSTRATIVE; mode <= RENDER_SCALE_REAL; ++mode) {
-        RenderSystemFrame io = renderer_body_frame(&system, 10, mode);
-        RenderSystemFrame family = renderer_system_frame(&system, 10, mode);
-        RenderSystemFrame unknown = renderer_body_frame(&system, 124, mode);
-        assert(io.root_index == 10 && io.radius > 0 && io.radius < family.radius);
-        assert(unknown.root_index == 124 && unknown.radius > 0);
-        assert(system.bodies[124].radius_m == 0);
-        assert(system.bodies[124].radius_quality == PHYSICAL_UNKNOWN);
+        RenderSystemFrame io = renderer_body_frame(&system, 9, mode);
+        RenderSystemFrame family = renderer_system_frame(&system, 9, mode);
+        RenderSystemFrame unknown = renderer_body_frame(&system, 123, mode);
+        assert(io.root_index == 9 && io.radius > 0 && io.radius < family.radius);
+        assert(family.root_index == 5);
+        assert(unknown.root_index == 123 && unknown.radius > 0);
+        assert(system.bodies[123].radius_m == 0);
+        assert(system.bodies[123].radius_quality == PHYSICAL_UNKNOWN);
     }
-    assert_close(renderer_body_radius(&system.bodies[10], RENDER_SCALE_REAL),
+    assert_close(renderer_body_radius(&system.bodies[9], RENDER_SCALE_REAL),
         meters_to_render_units(1821490), 1e-12);
 }
 

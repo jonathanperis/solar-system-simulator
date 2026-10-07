@@ -8,8 +8,15 @@ const plates = [
   { id: 'heliocentric', label: 'Heliocentric', detail: 'Sun-centered reference plate' },
   { id: 'earth', label: 'Earth system', detail: 'Earth-relative reference plate' },
   { id: 'mars', label: 'Mars system', detail: 'Mars-relative reference plate' },
-  { id: 'jupiter', label: 'Jupiter system', detail: 'Jupiter-relative moon index' }
+  { id: 'jupiter', label: 'Jupiter system', detail: 'Jupiter-relative moon index' },
+  { id: 'saturn', label: 'Saturn system', detail: 'Saturn-relative moon index' },
+  { id: 'uranus', label: 'Uranus system', detail: 'Uranus-relative moon index' },
+  { id: 'neptune', label: 'Neptune system', detail: 'Neptune-relative moon index' }
 ] as const;
+const moonPlates: readonly string[] = ['jupiter', 'saturn', 'uranus', 'neptune'];
+// Each moon plate opens on its first group (the major moons); the rest are
+// reached through the group picker and pages.
+const firstGroup = (plate: string) => implementedBodies.find(body => body.chart.plate === plate)?.group;
 
 ---
 <section class="orbital-atlas" aria-labelledby="atlas-title" data-orbital-atlas data-base={base}>
@@ -41,7 +48,7 @@ const plates = [
   </div>
 
   <div class="atlas-moon-tools" data-atlas-moon-tools hidden>
-    <label>Jupiter moon group
+    <label>Moon group
       <select data-atlas-moon-group>
         <option>Galilean moons</option><option>Inner small moons</option><option>Irregular moons</option>
       </select>
@@ -80,14 +87,14 @@ const plates = [
               <ellipse cx="500" cy="500" rx="286" ry="236" />
               <circle cx="500" cy="500" r="392" stroke-dasharray="3 12" />
             </>}
-            {plate.id === 'jupiter' && <>
+            {moonPlates.includes(plate.id) && <>
               <circle cx="500" cy="500" r="150" />
               <circle cx="500" cy="500" r="250" />
               <circle cx="500" cy="500" r="350" />
             </>}
           </g>
           <g class="atlas-plate-labels">
-            <text x="500" y={plate.id === 'jupiter' ? '170' : '916'} text-anchor="middle">{plate.detail}</text>
+            <text x="500" y={moonPlates.includes(plate.id) ? '170' : '916'} text-anchor="middle">{plate.detail}</text>
             <text x="500" y="942" text-anchor="middle">positions are a readable chart index, not an ephemeris</text>
           </g>
         </svg>
@@ -106,7 +113,7 @@ const plates = [
             data-plate={body.chart.plate}
             data-angle={body.chart.angle}
             data-compact-angle={compactAngle(body.slug, body.chart.angle)}
-            hidden={body.parent === 'Jupiter' && body.group !== 'Galilean moons'}
+            hidden={moonPlates.includes(body.chart.plate) && body.group !== firstGroup(body.chart.plate)}
             aria-controls="atlas-note"
             aria-pressed={body.slug === 'sun' ? 'true' : 'false'}
           >
@@ -197,15 +204,24 @@ const plates = [
     let dragging = false;
     let moonPage = 0;
     const moonsPerPage = 6;
+    const moonPlates: readonly Plate[] = ['jupiter', 'saturn', 'uranus', 'neptune'];
+    const isMoonPlate = (plate: Plate): boolean => moonPlates.includes(plate);
+    // The group picker lists the active moon plate's groups, major moons first.
+    const syncMoonGroups = (plate: Plate): void => {
+      if (!isMoonPlate(plate)) return;
+      const groups = [...new Set(implementedBodies.filter(body => body.chart.plate === plate).map(body => body.group!))];
+      if ([...moonGroup.options].map(option => option.value).join('|') === groups.join('|')) return;
+      moonGroup.replaceChildren(...groups.map(group => new Option(group, group)));
+    };
 
     const currentBodies = (): ImplementedBody[] => implementedBodies.filter((body) => body.chart.plate === activePlate
-      && (activePlate !== 'jupiter' || body.group === moonGroup.value));
-    const visibleBodies = (): ImplementedBody[] => activePlate === 'jupiter'
+      && (!isMoonPlate(activePlate) || body.group === moonGroup.value));
+    const visibleBodies = (): ImplementedBody[] => isMoonPlate(activePlate)
       ? currentBodies().slice(moonPage * moonsPerPage, (moonPage + 1) * moonsPerPage) : currentBodies();
     const refreshMoonPage = (): void => {
-      moonTools.hidden = activePlate !== 'jupiter';
+      moonTools.hidden = !isMoonPlate(activePlate);
       const visible = new Set(visibleBodies().map(body => body.slug));
-      bodyControls.filter(control => control.dataset.plate === 'jupiter').forEach(control => {
+      bodyControls.filter(control => isMoonPlate(control.dataset.plate as Plate)).forEach(control => {
         control.hidden = !visible.has(control.dataset.slug!);
       });
       const pages = Math.ceil(currentBodies().length / moonsPerPage);
@@ -245,7 +261,8 @@ const plates = [
       const body = implementedBodies.find((item) => item.slug === slug);
       if (!body) return;
       if (body.chart.plate !== activePlate) setPlate(body.chart.plate, false);
-      if (body.chart.plate === 'jupiter') {
+      if (isMoonPlate(body.chart.plate)) {
+        syncMoonGroups(body.chart.plate);
         moonGroup.value = body.group!;
         moonPage = Math.floor(currentBodies().findIndex(item => item.slug === slug) / moonsPerPage);
       }
@@ -266,6 +283,8 @@ const plates = [
 
     const setPlate = (plate: Plate, retainSelection = true): void => {
       activePlate = plate;
+      syncMoonGroups(plate);
+      if (isMoonPlate(plate) && !retainSelection) { moonGroup.selectedIndex = 0; moonPage = 0; }
       plates.forEach((element) => { element.hidden = element.dataset.atlasPlate !== plate; });
       plateTabs.forEach((tab) => { tab.setAttribute('aria-pressed', String(tab.dataset.atlasPlateTab === plate)); });
       const current = selectedBody();

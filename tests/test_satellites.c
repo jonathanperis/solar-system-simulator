@@ -12,6 +12,8 @@
 #include "sim/orbit.h"
 #include "sim/solar_system.h"
 
+static Vec3d icrf_direction(double ra_deg, double dec_deg);
+
 static void test_orbital_elements_preserve_geometry_and_parent_motion(void)
 {
     Body parent = solar_system_create_jupiter_at_perihelion();
@@ -100,23 +102,26 @@ static void test_shared_conic_solver_reproduces_former_jovian_states(void)
 
 static void test_complete_jovian_catalog_and_initial_orbits(void)
 {
-    SolarSystem system = solar_system_create_current();
-    assert(SOLAR_JOVIAN_MOON_COUNT == 115 && system.body_count == 128);
-    assert(system.bodies[9].id == BODY_ID_JUPITER);
-    assert(strcmp(system.bodies[10].name, "Io") == 0);
-    assert(strcmp(system.bodies[13].name, "Callisto") == 0);
+    /* The whole catalog lives in Jupiter's family scene (Jupiter at index 5,
+     * then the catalog from index 9; the Galilean moons lead both). */
+    SolarSystem system;
+    assert(solar_system_create_family(BODY_ID_JUPITER, &system));
+    assert(SOLAR_JOVIAN_MOON_COUNT == 115 && system.body_count == 124);
+    assert(system.bodies[5].id == BODY_ID_JUPITER);
+    assert(strcmp(system.bodies[9].name, "Io") == 0);
+    assert(strcmp(system.bodies[12].name, "Callisto") == 0);
     size_t unknown = 0;
     for (size_t i = 0; i < SOLAR_JOVIAN_MOON_COUNT; ++i) {
         const SatelliteDefinition *def = &solar_jovian_moons[i];
-        Body *body = &system.bodies[10 + i];
+        Body *body = &system.bodies[9 + i];
         assert((int)body->id == def->code);
         assert(body->parent_id == BODY_ID_JUPITER && !body->fixed);
-        assert(solar_system_parent_index(&system, 10 + i) == 9);
-        for (size_t j = 0; j < i; ++j) assert(body->id != system.bodies[10 + j].id);
-        Vec3d r = vec3d_sub(body->position_m, system.bodies[9].position_m);
-        Vec3d v = vec3d_sub(body->velocity_mps, system.bodies[9].velocity_mps);
+        assert(solar_system_parent_index(&system, 9 + i) == 5);
+        for (size_t j = 0; j < i; ++j) assert(body->id != system.bodies[9 + j].id);
+        Vec3d r = vec3d_sub(body->position_m, system.bodies[5].position_m);
+        Vec3d v = vec3d_sub(body->velocity_mps, system.bodies[5].velocity_mps);
         double a = def->a_km * 1000;
-        double mu = SOLAR_G * (system.bodies[9].mass_kg + body->mass_kg);
+        double mu = SOLAR_G * (system.bodies[5].mass_kg + body->mass_kg);
         double energy = vec3d_length_squared(v) / 2 - mu / vec3d_length(r);
         assert(fabs(energy / (-mu / (2 * a)) - 1) < 1e-9);
         assert(vec3d_length(r) >= a * (1 - def->eccentricity) - 0.001);
@@ -127,16 +132,27 @@ static void test_complete_jovian_catalog_and_initial_orbits(void)
         }
     }
     assert(unknown == 106);
-    assert(fabs(system.bodies[10].mass_kg * SOLAR_G / 1e9 - 5959.91547) < 1e-8);
-    assert(system.bodies[10].radius_m == 1821490);
+    assert(fabs(system.bodies[9].mass_kg * SOLAR_G / 1e9 - 5959.91547) < 1e-8);
+    assert(system.bodies[9].radius_m == 1821490);
 }
 
 /* +1 when an orbit is prograde (counterclockwise seen from ecliptic north),
- * -1 when retrograde. Jovian moons use their source-frame inclination. */
+ * -1 when retrograde. Catalog moons follow their source frame: an ecliptic
+ * inclination above 90 degrees is retrograde; in a Laplace or equatorial
+ * frame the plane's pole decides, so Uranus's regular moons, which orbit a
+ * pole tilted past the ecliptic (obliquity ~98 degrees), count as retrograde. */
 static int expected_direction(const Body *body)
 {
-    for (size_t i = 0; i < SOLAR_JOVIAN_MOON_COUNT; ++i)
-        if ((int)body->id == solar_jovian_moons[i].code) return solar_jovian_moons[i].inclination_deg > 90 ? -1 : 1;
+    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE};
+    for (size_t k = 0; k < 4; ++k) {
+        const SatelliteCatalog *catalog = satellite_catalog_for(planets[k]);
+        for (size_t i = 0; i < catalog->count; ++i) {
+            const SatelliteDefinition *d = &catalog->moons[i];
+            if ((int)body->id != d->code) continue;
+            double up = d->frame == SATELLITE_FRAME_ECLIPTIC ? 1 : icrf_direction(d->pole_ra_deg, d->pole_dec_deg).y;
+            return up * cos(d->inclination_deg * acos(-1.0) / 180) > 0 ? 1 : -1;
+        }
+    }
     return 1;
 }
 
@@ -172,6 +188,12 @@ static void test_ecliptic_frame_is_a_proper_rotation_with_prograde_plus_y(void)
 
     SolarSystem core = solar_system_create_current();
     assert_orbit_directions(&core, NULL);
+    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE};
+    for (size_t k = 0; k < 4; ++k) {
+        SolarSystem family;
+        assert(solar_system_create_family(planets[k], &family));
+        assert_orbit_directions(&family, NULL);
+    }
     size_t retrograde = 0;
     for (size_t i = 0; i < SOLAR_JOVIAN_MOON_COUNT; ++i) retrograde += solar_jovian_moons[i].inclination_deg > 90;
     assert(retrograde > 0 && retrograde < SOLAR_JOVIAN_MOON_COUNT);

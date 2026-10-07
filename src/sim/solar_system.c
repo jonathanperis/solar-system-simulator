@@ -4,8 +4,12 @@
 #include "orbit.h"
 #include "physics.h"
 
-_Static_assert(SOLAR_CORE_SCENE_BODY_COUNT == 128, "V5: the core scene has 128 bodies");
-_Static_assert(SOLAR_CORE_SCENE_BODY_COUNT <= SOLAR_SYSTEM_BODY_CAPACITY, "core scene must fit the body array");
+_Static_assert(SOLAR_CORE_SCENE_BODY_COUNT == 30, "V5: the main scene has 30 bodies");
+_Static_assert(SOLAR_CORE_SCENE_BODY_COUNT <= SOLAR_SYSTEM_BODY_CAPACITY, "main scene must fit the body array");
+_Static_assert(SOLAR_FAMILY_SCENE_PLANET_COUNT + SOLAR_JOVIAN_MOON_COUNT <= SOLAR_SYSTEM_BODY_CAPACITY &&
+    SOLAR_FAMILY_SCENE_PLANET_COUNT + SOLAR_URANIAN_MOON_COUNT <= SOLAR_SYSTEM_BODY_CAPACITY &&
+    SOLAR_FAMILY_SCENE_PLANET_COUNT + SOLAR_NEPTUNIAN_MOON_COUNT <= SOLAR_SYSTEM_BODY_CAPACITY,
+    "every family scene must fit the body array");
 
 /* Body is ~136 bytes, so it is passed by const pointer and copied once into
  * the array instead of being copied again into the parameter. */
@@ -410,30 +414,79 @@ SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos(
 SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta(void)
 {
     SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos();
-    /* Nine of 128 slots are used here, so the bounded append cannot fail. */
+    /* Nine of the array's slots are used here, so the bounded append cannot fail. */
     Body vesta = solar_system_create_vesta_at_perihelion();
     (void)solar_system_append(&system, &vesta);
     return system;
+}
+
+/* Appends a planet's moons: its major moons only (main scene) or the whole
+ * catalog with the major moons first (family scene). */
+static void append_moons(SolarSystem *system, size_t planet_index, bool major_only)
+{
+    const SatelliteCatalog *catalog = satellite_catalog_for(system->bodies[planet_index].id);
+    for (int pass = 0; pass < 2; ++pass) {
+        for (size_t i = 0; i < catalog->count; ++i) {
+            if (catalog->moons[i].major != (pass == 0)) continue;
+            Body moon = satellite_create(&catalog->moons[i], &system->bodies[planet_index]);
+            (void)solar_system_append(system, &moon);
+        }
+        if (major_only) break;
+    }
 }
 
 SolarSystem solar_system_create_current(void)
 {
     SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter();
     /* The static assertions above prove the inventory fits; tests also check
-     * that body_count reaches SOLAR_CORE_SCENE_BODY_COUNT. */
-    for (size_t i = 0; i < SOLAR_JOVIAN_MOON_COUNT; ++i) {
-        Body moon = satellite_create(&solar_jovian_moons[i], &system.bodies[9]);
-        (void)solar_system_append(&system, &moon);
-    }
+     * that body_count reaches SOLAR_CORE_SCENE_BODY_COUNT. Each giant planet
+     * carries only its major moons here, and its family barycenter takes the
+     * planet's intended heliocentric state (V6). */
+    append_moons(&system, 9, true);
     place_family_barycenter(&system, 9);
-    Body outer_planets[] = {
-        solar_system_create_saturn_at_perihelion(),
-        solar_system_create_uranus_at_perihelion(),
-        solar_system_create_neptune_at_perihelion(),
-    };
-    for (size_t i = 0; i < sizeof(outer_planets) / sizeof(outer_planets[0]); ++i)
-        (void)solar_system_append(&system, &outer_planets[i]);
+    Body (*const giants[])(void) = {solar_system_create_saturn_at_perihelion, solar_system_create_uranus_at_perihelion,
+        solar_system_create_neptune_at_perihelion};
+    for (size_t i = 0; i < sizeof(giants) / sizeof(giants[0]); ++i) {
+        Body planet = giants[i]();
+        size_t index = system.body_count;
+        (void)solar_system_append(&system, &planet);
+        append_moons(&system, index, true);
+        place_family_barycenter(&system, index);
+    }
     return system;
+}
+
+int solar_system_family_planet_index(BodyId planet)
+{
+    switch (planet) {
+        case BODY_ID_JUPITER: return 5;
+        case BODY_ID_SATURN: return 6;
+        case BODY_ID_URANUS: return 7;
+        case BODY_ID_NEPTUNE: return 8;
+        default: return -1;
+    }
+}
+
+bool solar_system_create_family(BodyId planet, SolarSystem *result)
+{
+    int planet_index = solar_system_family_planet_index(planet);
+    if (planet_index < 0) return false;
+    /* The same synthetic perihelion states as the main scene, without the
+     * other planets' moons: their pull on a distant family is negligible and
+     * leaving them out keeps the largest scene affordable (SPEC A82). */
+    SolarSystem system = solar_system_create_sun_only();
+    Body (*const planets[])(void) = {solar_system_create_mercury_at_perihelion, solar_system_create_venus_at_perihelion,
+        solar_system_create_earth_at_perihelion, solar_system_create_mars_at_perihelion,
+        solar_system_create_jupiter_at_perihelion, solar_system_create_saturn_at_perihelion,
+        solar_system_create_uranus_at_perihelion, solar_system_create_neptune_at_perihelion};
+    for (size_t i = 0; i < sizeof(planets) / sizeof(planets[0]); ++i) {
+        Body body = planets[i]();
+        (void)solar_system_append(&system, &body);
+    }
+    append_moons(&system, (size_t)planet_index, false);
+    place_family_barycenter(&system, (size_t)planet_index);
+    *result = system;
+    return true;
 }
 
 Body solar_system_create_uranus_at_perihelion(void)

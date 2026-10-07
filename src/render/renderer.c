@@ -256,6 +256,11 @@ Color renderer_body_color(const Body *body)
         case BODY_ID_EUROPA: return (Color){205, 215, 223, 255};
         case BODY_ID_GANYMEDE: return (Color){164, 152, 129, 255};
         case BODY_ID_CALLISTO: return (Color){130, 145, 160, 255};
+        /* Main-scene moons without texture maps keep honest flat colours:
+         * Titan's orange haze, Enceladus's bright ice, Triton's pinkish frost. */
+        case BODY_ID_TITAN: return (Color){214, 168, 92, 255};
+        case BODY_ID_ENCELADUS: return (Color){236, 242, 248, 255};
+        case BODY_ID_TRITON: return (Color){214, 196, 186, 255};
         case BODY_ID_UNKNOWN:
         case BODY_ID_NONE:
         default:

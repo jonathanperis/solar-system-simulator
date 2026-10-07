@@ -57,8 +57,10 @@ ROUTES: dict[str, list[str]] = {
 
 FOOTER_MARKERS = ["data-footer-credits", "Jonathan Peris", "Learning laboratory", "raylib", "Emscripten", "Astro", "GitHub Pages"]
 ATLAS_BODY_ANCHORS = ["sun", "mercury", "venus", "earth", "moon", "mars", "phobos", "deimos", "vesta", "jupiter"]
-ATLAS_BODY_ANCHORS += [moon["slug"] for moon in json.loads((Path(__file__).resolve().parents[1] / "data/jovian_moons.json").read_text())["moons"]]
 ATLAS_BODY_ANCHORS += ["saturn", "uranus", "neptune"]
+# Every giant-planet moon (main scene or planet-system scene) has an anchor.
+for catalog in ("jovian", "saturnian", "uranian", "neptunian"):
+    ATLAS_BODY_ANCHORS += [moon["slug"] for moon in json.loads((Path(__file__).resolve().parents[1] / f"data/{catalog}_moons.json").read_text())["moons"]]
 
 
 class ReferenceParser(HTMLParser):

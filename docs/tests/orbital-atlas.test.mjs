@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { cycleIndex, nearestBodyIndex, normalizeDegrees, createSettledAnnouncer } from '../src/lib/orbitalAtlas.ts';
-import { implementedBodies, plannedBodies } from '../src/lib/bodies.ts';
+import { familySceneBodies, implementedBodies, mainSceneBodies, plannedBodies } from '../src/lib/bodies.ts';
 import { atlasPositionCss } from '../src/lib/atlasLayout.ts';
 
 test('V21 normalizes any bearing into one chart revolution', () => {
@@ -44,7 +44,8 @@ test('V18/V21 atlas announcements are immediate for discrete actions and settle 
 });
 
 test('A10 publishes Jupiter as the tenth implemented atlas body', () => {
-  assert.equal(implementedBodies.length, 128);
+  assert.equal(mainSceneBodies.length, 30);
+  assert.equal(implementedBodies.length, 30 + 111 + 284 + 24 + 15);
   assert.deepEqual(implementedBodies[9], {
     slug: 'jupiter',
     name: 'Jupiter',
@@ -55,24 +56,40 @@ test('A10 publishes Jupiter as the tenth implemented atlas body', () => {
     source: 'src/sim/solar_system.c',
     accent: 'jupiter',
     chart: { plate: 'heliocentric', angle: 112, radius: 91 },
-    summary: 'First gas giant, initialized at heliocentric perihelion.'
+    summary: 'First gas giant, initialized at heliocentric perihelion.',
+    scene: 'core'
   });
 });
 
-test('Saturn is the appended heliocentric milestone', () => {
-  assert.deepEqual(implementedBodies[125], {
+test('the main scene keeps the large bodies and family scenes hold every moon', () => {
+  assert.deepEqual(mainSceneBodies[14], {
     slug: 'saturn',
     name: 'Saturn',
     kind: 'Planet',
     parent: 'Sun',
     milestone: 'Saturn pass',
-    initialization: 'Planar heliocentric perihelion position with vis-viva tangential speed.',
+    initialization: 'Saturn-system barycenter (Saturn plus known-mass moons) at planar heliocentric perihelion with vis-viva tangential speed.',
     source: 'src/sim/solar_system.c',
     accent: 'saturn',
     chart: { plate: 'heliocentric', angle: 214, radius: 97 },
-    summary: 'Ringed gas giant initialized at heliocentric perihelion; rings are renderer-only.'
+    summary: 'Ringed gas giant initialized at heliocentric perihelion; rings are renderer-only.',
+    scene: 'core'
   });
-  assert.equal(plannedBodies[2], 'Saturn system: 291 JPL-catalogued moons');
+  assert.deepEqual(mainSceneBodies.filter(body => body.kind === 'Moon' && !['Earth', 'Mars'].includes(body.parent)).map(body => body.name),
+    ['Io', 'Europa', 'Ganymede', 'Callisto', 'Mimas', 'Enceladus', 'Tethys', 'Dione', 'Rhea', 'Titan', 'Iapetus',
+      'Ariel', 'Umbriel', 'Titania', 'Oberon', 'Miranda', 'Triton']);
+  assert.ok(mainSceneBodies.every(body => body.scene === 'core'));
+  const counts = { Jupiter: 115, Saturn: 291, Uranus: 29, Neptune: 16 };
+  for (const [planet, count] of Object.entries(counts)) {
+    const scene = familySceneBodies(planet);
+    assert.equal(scene.length, 9 + count);
+    assert.deepEqual(scene.slice(0, 9).map(body => body.name),
+      ['Sun', 'Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune']);
+    // Every small moon is reachable: it lives only in its family scene.
+    assert.ok(scene.slice(9).every(body => body.parent === planet && (body.scene === 'core' || body.scene === `${planet.toLowerCase()}-system`)));
+  }
+  assert.equal(new Set(implementedBodies.map(body => body.slug)).size, implementedBodies.length);
+  assert.deepEqual(plannedBodies, ['small-body satellite systems, once scoped']);
 });
 
 test('the Jovian atlas exposes every sourced moon with unique anchors and explicit data quality', () => {

@@ -89,8 +89,9 @@ static void test_session_exposes_jupiter_and_appended_saturn(void)
 {
     SimulationSession session = simulation_session_create();
 
-    assert(session.system.body_count == 128);
-    assert(simulation_session_find_body(&session, "s/2021 j 8", 0) == 124);
+    assert(session.system.body_count == SOLAR_CORE_SCENE_BODY_COUNT);
+    /* Small moons are not in the main scene; their family scene has them. */
+    assert(simulation_session_find_body(&session, "s/2021 j 8", 0) == -1);
     assert(simulation_session_find_body(&session, "Galilean moons", 0) == 10);
     assert(simulation_session_find_body(&session, "Galilean moons", 11) == 11);
     assert(simulation_session_find_body(&session, "no such body", 0) == -1);
@@ -103,24 +104,36 @@ static void test_session_exposes_jupiter_and_appended_saturn(void)
     assert(fabs(inspection.distance_m - SOLAR_JUPITER_PERIHELION_M) < 3.0e5);
     assert(inspection.mass_kg == SOLAR_JUPITER_MASS_KG);
     assert(inspection.radius_m == SOLAR_JUPITER_RADIUS_M);
-    assert(simulation_session_find_body(&session, "saturn", 0) == 125);
-    simulation_session_select_body(&session, 125);
+    assert(simulation_session_find_body(&session, "saturn", 0) == 14);
+    simulation_session_select_body(&session, 14);
     inspection = simulation_session_inspect(&session);
     assert(strcmp(inspection.name, "Saturn") == 0);
     assert(strcmp(inspection.parent_name, "Sun") == 0);
-    assert(fabs(inspection.distance_m - SOLAR_SATURN_PERIHELION_M) < 0.001);
+    /* Saturn's family barycenter (mostly Titan) shifts it by ~290 km. */
+    assert(fabs(inspection.distance_m - SOLAR_SATURN_PERIHELION_M) < 3.0e5);
     assert(inspection.mass_kg == SOLAR_SATURN_MASS_KG);
     assert(inspection.radius_m == SOLAR_SATURN_RADIUS_M);
     session.paused = true;
     simulation_session_reset(&session);
-    assert(session.selected_body_index == 125);
-    assert(body_trails_point_count(&session.trails, 125) == 1);
+    assert(session.selected_body_index == 14);
+    assert(body_trails_point_count(&session.trails, 14) == 1);
+
+    /* A family scene is a fixed 15 s Verlet scene that opens on its planet. */
+    assert(!simulation_session_start_lesson(&session, LESSON_SATURN_SYSTEM, 1, PHYSICS_EULER, 15));
+    assert(!simulation_session_start_lesson(&session, LESSON_SATURN_SYSTEM, 1.5, PHYSICS_VERLET, 15));
+    assert(simulation_session_start_lesson(&session, LESSON_JUPITER_SYSTEM, 1, PHYSICS_VERLET, 15));
+    assert(session.system.body_count == 9 + SOLAR_JOVIAN_MOON_COUNT && session.selected_body_index == 5);
+    assert(simulation_session_find_body(&session, "s/2021 j 8", 0) == 123);
+    assert(simulation_session_start_lesson(&session, LESSON_SATURN_SYSTEM, 1, PHYSICS_VERLET, 15));
+    assert(session.system.body_count == SOLAR_SYSTEM_BODY_CAPACITY && session.selected_body_index == 6);
     simulation_session_destroy(&session);
 }
 
 static void test_overloaded_playback_retains_time_and_freezes_while_paused(void)
 {
+    /* Jupiter's family scene carries the unknown-mass small moons. */
     SimulationSession session = simulation_session_create();
+    assert(simulation_session_start_lesson(&session, LESSON_JUPITER_SYSTEM, 1, PHYSICS_VERLET, 15));
     simulation_session_set_speed(&session, 4);
     simulation_session_update(&session, 1.0);
     assert(session.system.elapsed_seconds == SOLAR_APP_MAX_STEPS_PER_UPDATE * 15.0);
@@ -130,13 +143,13 @@ static void test_overloaded_playback_retains_time_and_freezes_while_paused(void)
     session.paused = true;
     simulation_session_update(&session, 2.0);
     assert(session.clock.pending_seconds == pending);
-    simulation_session_select_body(&session, 124);
+    simulation_session_select_body(&session, 123);
     BodyInspection body = simulation_session_inspect(&session);
     assert(body.mass_quality == PHYSICAL_UNKNOWN && body.radius_quality == PHYSICAL_UNKNOWN);
     simulation_session_reset(&session);
-    assert(session.selected_body_index == 124 && session.speed_preset == 4 && session.paused);
+    assert(session.selected_body_index == 123 && session.speed_preset == 4 && session.paused);
     assert(session.clock.pending_seconds == 0 && session.achieved_time_scale == 0);
-    assert(body_trails_point_count(&session.trails, 124) == 1);
+    assert(body_trails_point_count(&session.trails, 123) == 1);
     simulation_session_destroy(&session);
 }
 
@@ -201,7 +214,7 @@ static void test_lessons_reset_configuration_and_exclude_background_time(void)
     assert(fabs(session.trails.last_sample_seconds - floor(session.system.elapsed_seconds / spacing) * spacing) < 1e-8);
     simulation_session_demo(&session);
     assert(session.clock.step_seconds == 15 && session.clock.integrator == PHYSICS_VERLET);
-    assert(session.lesson == LESSON_CORE && session.system.body_count == 128);
+    assert(session.lesson == LESSON_CORE && session.system.body_count == SOLAR_CORE_SCENE_BODY_COUNT);
     simulation_session_destroy(&session);
 }
 

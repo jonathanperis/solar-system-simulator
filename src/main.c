@@ -209,7 +209,12 @@ static bool start_app_lesson(SolarApp *state, LessonPreset lesson, double factor
         state->session.selected_body_index = 0;
         frame_selected_system(state, true);
     }
-    snprintf(state->feedback, sizeof(state->feedback), "Lesson: %s | Initial speed factor %.2f", lesson_name(lesson), factor);
+    /* A family scene opens framed on its planet and complete moon system. */
+    if (lesson_family_planet(lesson) != BODY_ID_NONE) frame_selected_system(state, true);
+    if (lesson_is_scene(lesson))
+        snprintf(state->feedback, sizeof(state->feedback), "Scene: %s | %zu bodies", lesson_name(lesson), state->session.system.body_count);
+    else
+        snprintf(state->feedback, sizeof(state->feedback), "Lesson: %s | Initial speed factor %.2f", lesson_name(lesson), factor);
     return true;
 }
 
@@ -521,10 +526,17 @@ static void solar_app_update_draw(void *user_data)
         }
 #if !defined(PLATFORM_WEB)
         if (IsKeyPressed(KEY_L)) {
-            LessonPreset next = (LessonPreset)((state->session.lesson + 1) % LESSON_COUNT);
+            /* L walks the guided lessons; K walks the astronomy scenes. */
+            LessonPreset next = state->session.lesson;
+            do next = (LessonPreset)((next + 1) % LESSON_COUNT); while (lesson_family_planet(next) != BODY_ID_NONE);
             start_app_lesson(state, next, 1, PHYSICS_VERLET, lesson_default_step(next));
         }
-        if (!state->session.catalog_experiment && state->session.lesson != LESSON_CORE) {
+        if (IsKeyPressed(KEY_K)) {
+            LessonPreset next = state->session.lesson;
+            do next = (LessonPreset)((next + 1) % LESSON_COUNT); while (!lesson_is_scene(next));
+            start_app_lesson(state, next, 1, PHYSICS_VERLET, lesson_default_step(next));
+        }
+        if (!state->session.catalog_experiment && !lesson_is_scene(state->session.lesson)) {
             double dt = simulation_clock_step_seconds(&state->session.clock);
             if (IsKeyPressed(KEY_I)) start_app_lesson(state, state->session.lesson, state->session.velocity_factor,
                 state->session.clock.integrator == PHYSICS_VERLET ? PHYSICS_EULER : PHYSICS_VERLET, dt);
@@ -615,7 +627,7 @@ static void solar_app_update_draw(void *user_data)
     DrawText(TextFormat("Energy %.6g J | dE/(K0+|U0|) %.3g | Radius magnification %s", diagnostics.total_energy_j,
         simulation_session_energy_change(&state->session, &diagnostics),
         magnification), 20, 335, 16, RAYWHITE);
-    DrawText("L: lesson | I: integrator | D: dt | - / =: initial speed | M: contact model (changes reset)", 20, 360, 16, RAYWHITE);
+    DrawText("K: scene | L: lesson | I: integrator | D: dt | - / =: initial speed | M: contact model (changes reset)", 20, 360, 16, RAYWHITE);
     DrawText(TextFormat("T: trails (%s) | X: vector directions | G: grid | H: labels | E: export SI snapshot",
         state->trail_frame == RENDER_TRAILS_PARENT ? "parent-relative" : "absolute"), 20, 385, 16, RAYWHITE);
     DrawText("Vectors: green velocity / orange acceleration; lengths are illustrative", 20, 410, 16, RAYWHITE);

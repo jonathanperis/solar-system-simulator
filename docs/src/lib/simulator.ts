@@ -1,4 +1,4 @@
-import { lessonOptions } from './lessonCatalog.ts';
+import { lessonOptions, sceneNames } from './lessonCatalog.ts';
 import { implementedBodies } from './bodies.ts';
 import { downloadText, errorMessage } from './browser.ts';
 type Readout = Pick<HTMLElement, 'textContent'>;
@@ -40,6 +40,7 @@ interface RuntimeControls {
   search: HTMLInputElement;
   group: HTMLSelectElement;
   lesson: HTMLSelectElement;
+  scene: HTMLSelectElement;
   method: HTMLSelectElement;
   dt: HTMLInputElement;
   factor: HTMLInputElement;
@@ -65,6 +66,10 @@ interface LabState {
 }
 
 export const lessonNames = lessonOptions.map(([, label]) => label);
+/** Preset indices of the astronomy scenes (main and family), as C numbers them. */
+export const sceneIndices = lessonOptions.flatMap(([name], index) => sceneNames.includes(name) ? [index] : []);
+/** Preset index C uses for a body's home scene (0 = main scene). */
+export const sceneIndexOf = (scene: string): number => lessonOptions.findIndex(([name]) => name === scene);
 const collisionLesson = lessonOptions.findIndex(([name]) => name === 'collision');
 const barycentricLesson = lessonOptions.findIndex(([name]) => name === 'barycentric-core');
 
@@ -213,7 +218,10 @@ export async function loadRuntimeTextures(runtime: TextureRuntime, canvas: HTMLC
   }
 }
 
-export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: RuntimeReadouts, artifactUrl: URL, controls: RuntimeControls, requestedBody?: string) {
+/** A body requested by `?body=slug`, with the preset index of its home scene. */
+export interface RequestedBody { name: string; scene: number }
+
+export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: RuntimeReadouts, artifactUrl: URL, controls: RuntimeControls, requestedBody?: RequestedBody) {
   let failed = false;
   let reportedBody = -1;
   let reportedSpeed = -1;
@@ -222,6 +230,8 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
   let activeBodyCount = 0;
   let shortTimescale = false, lastForceTime = -Infinity, lastForceBody = -1;
   let initialSelectionApplied = false;
+  // Name to select once the scene that holds it has published its body list.
+  let pendingBody: string | undefined;
   const bodies: RuntimeBody[] = [];
   const groups = new Set<string>();
   const filterBodies = (): void => {
@@ -312,7 +322,9 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       if (failed) return;
       const config = `${state.lesson}:${state.method}:${state.dt}:${state.factor}`;
       if (config !== reportedConfig) {
-        controls.lesson.value = String(state.lesson);
+        // Family scenes are chosen in the scene picker, not the lesson list.
+        if (!sceneIndices.includes(state.lesson) || state.lesson === 0) controls.lesson.value = String(state.lesson);
+        controls.scene.value = sceneIndices.includes(state.lesson) ? String(state.lesson) : '';
         controls.method.value = String(state.method);
         controls.dt.value = String(state.dt);
         controls.factor.value = String(state.factor);
@@ -382,16 +394,24 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       setText(readouts.achieved, shortTimescale ? `${(state.paused ? 0 : state.achievedTimeScale).toFixed(2)} seconds / second`
         : `${(state.paused ? 0 : state.achievedTimeScale / 86400).toFixed(2)} days / second`);
       setText(readouts.pending, `${(state.pendingSeconds / 86400).toFixed(3)} days`);
-      // Resolve a core-catalog link once, after C has published its actual list.
-      // Later lesson changes and resets keep the runtime's own selection policy.
+      // Resolve a catalog link once, after C has published its actual list.
+      // A small moon first loads its planet's family scene; the selection
+      // waits for that scene's body list. Later lesson changes and resets keep
+      // the runtime's own selection policy.
       if (!initialSelectionApplied) {
         initialSelectionApplied = true;
         void loadRuntimeTextures(this, canvas, artifactUrl);
-        const target = bodies.find(body => body.name === requestedBody);
+        pendingBody = requestedBody?.name;
+        if (requestedBody && requestedBody.scene > 0)
+          this.ccall?.('solar_web_lesson', 'number', ['number', 'number', 'number', 'number'], [requestedBody.scene, 1, 0, 15]);
+      }
+      if (pendingBody) {
+        const target = bodies.find(body => body.name === pendingBody);
         if (target) {
+          pendingBody = undefined;
           this._solar_web_command!(runtimeCommands.select, target.index);
           this._solar_web_command!(runtimeCommands.frame, 0);
-        }
+        } else if (!requestedBody || requestedBody.scene === 0) pendingBody = undefined;
       }
     }
   };
@@ -418,6 +438,7 @@ export function mountSimulator(root: HTMLElement): void {
     search: root.querySelector<HTMLInputElement>('[data-runtime-search]')!,
     group: root.querySelector<HTMLSelectElement>('[data-runtime-group]')!,
     lesson: root.querySelector<HTMLSelectElement>('[data-lesson]')!,
+    scene: root.querySelector<HTMLSelectElement>('[data-runtime-scene]')!,
     method: root.querySelector<HTMLSelectElement>('[data-integrator]')!,
     dt: root.querySelector<HTMLInputElement>('[data-dt]')!,
     factor: root.querySelector<HTMLInputElement>('[data-velocity-factor]')!,
@@ -451,7 +472,10 @@ export function mountSimulator(root: HTMLElement): void {
     magnification: root.querySelector<HTMLElement>('[data-magnification]')!,
     position: root.querySelector<HTMLElement>('[data-inspector-position]')!,
     velocity: root.querySelector<HTMLElement>('[data-inspector-velocity]')!
-  }, artifactUrl, controls, implementedBodies.find(body => body.slug === new URLSearchParams(location.search).get('body'))?.name);
+  }, artifactUrl, controls, (() => {
+    const body = implementedBodies.find(item => item.slug === new URLSearchParams(location.search).get('body'));
+    return body && { name: body.name, scene: sceneIndexOf(body.scene) };
+  })());
 
   const send = (command: keyof typeof runtimeCommands, value = 0): void => {
     if (!controls.panels[0].disabled) runtime._solar_web_command!(runtimeCommands[command], value);
@@ -476,7 +500,15 @@ export function mountSimulator(root: HTMLElement): void {
       if (button.hasAttribute('data-open-diagnostics')) root.querySelector('#diagnostics-heading')!.closest('details')!.open = true;
     });
   });
-  for (const select of [controls.body, controls.speed, controls.group, controls.lesson, controls.method]) {
+  const sceneStatus = root.querySelector<HTMLElement>('[data-scene-status]')!;
+  root.querySelector('[data-load-scene]')!.addEventListener('click', () => {
+    if (!controls.scene.value) return;
+    const accepted = runtime.ccall?.('solar_web_lesson', 'number', ['number', 'number', 'number', 'number'],
+      [Number(controls.scene.value), 1, 0, 15]);
+    sceneStatus.textContent = accepted ? `${controls.scene.selectedOptions[0].text} loaded from its initial state.`
+      : 'The scene could not be loaded.';
+  });
+  for (const select of [controls.body, controls.speed, controls.group, controls.scene, controls.lesson, controls.method]) {
     select.addEventListener('keydown', event => {
       if (moveSelectByKey(select, event.key)) {
         event.preventDefault();

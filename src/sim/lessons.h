@@ -7,10 +7,18 @@ typedef enum LessonPreset {
     LESSON_CORE, LESSON_CIRCULAR, LESSON_ECCENTRIC, LESSON_ESCAPE,
     LESSON_EARTH_MOON, LESSON_INCLINED, LESSON_PHOBOS,
     LESSON_BARYCENTRIC_CORE, LESSON_RESONANCE, LESSON_ENCOUNTER, LESSON_COLLISION,
+    /* Family scenes: a giant planet with its complete moon catalog. Like the
+     * main scene they are fixed 15-second Verlet scenes, not guided lessons. */
+    LESSON_JUPITER_SYSTEM, LESSON_SATURN_SYSTEM, LESSON_URANUS_SYSTEM, LESSON_NEPTUNE_SYSTEM,
     LESSON_COUNT, LESSON_CATALOG = -1
 } LessonPreset;
 
 const char *lesson_name(LessonPreset preset);
+/* True for the main scene and the four family scenes: fixed 15 s Verlet
+ * astronomy scenes rather than guided lessons. */
+bool lesson_is_scene(LessonPreset preset);
+/* The giant planet a family scene centres on, or BODY_ID_NONE. */
+BodyId lesson_family_planet(LessonPreset preset);
 /* Accepts initial-speed factors from lesson_minimum_velocity_factor() to 2. */
 bool lesson_create(LessonPreset preset, double velocity_factor, SolarSystem *result);
 /* Smallest initial-speed factor whose analytic two-body orbit keeps the subject

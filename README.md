@@ -6,7 +6,7 @@ A hands-on orbital mechanics and engineering laboratory written in C11 with [ray
 
 ## Start here
 
-- **Explore:** 128 core bodies — the Sun, all eight planets, Vesta, Earth's Moon, Phobos, Deimos, and 115 Jovian moons. The separate [small-body atlas](https://jonathanperis.github.io/solar-system-simulator/small-bodies/) contains 1,564,244 pinned records; it does not load them all into the physics scene.
+- **Explore:** a 30-body main scene — the Sun, all eight planets, Vesta, Earth's Moon, Phobos, Deimos and the 17 major moons of the giant planets — plus four planet-system scenes with every catalogued moon of Jupiter (115), Saturn (291), Uranus (29) and Neptune (16). The separate [small-body atlas](https://jonathanperis.github.io/solar-system-simulator/small-bodies/) contains 1,564,244 pinned records; it does not load them all into the physics scene.
 - **Learn:** use [guided experiments](https://jonathanperis.github.io/solar-system-simulator/docs/experiments/) and matched A/B comparisons, then export SI measurements as CSV.
 - **Run locally:** start with the [raylib-free CLI](#learning-laboratory), or check [prerequisites](#build-prerequisites) before `make && make run` for the 3D app.
 - **Contribute:** read [architecture](https://jonathanperis.github.io/solar-system-simulator/docs/architecture/), [build and web](https://jonathanperis.github.io/solar-system-simulator/docs/build-and-web/), and the [project layout](#project-layout). [Data provenance](data/README.md) distinguishes pinned measurements, estimates, and unknowns.
@@ -26,9 +26,9 @@ build/solar-lab --scene circular --days 30 --dt 300 --sample 3600 --integrator e
 make test-core test-build test-cli test-validators
 ```
 
-Lessons include circular, eccentric (`a=1 AU`, `e=0.5`), escape threshold, isolated barycentric Earth–Moon, 30° inclined orbit, and Phobos resolution. Their intentionally artificial initial conditions are separate from the 128-body core and source-epoch catalog experiments. Lessons allow an initial-speed factor up to 2 and a fixed timestep from 0.01 to 3600 seconds, with the tighter contact bound described below. Each lesson's lowest factor comes from C: the analytic two-body periapsis must stay outside the parent plus subject radius (Phobos 0.73, eccentric 0.12, Earth–Moon 0.21, encounter 0.29; others 0.1), because point-mass gravity has no surface. Orbital lessons and catalog-experiment runs also test every pair's straight-line drift within each step against the sum of radii (the core, barycentric-core and collision lessons are not monitored, so `contact_sphere_crossed=0` there means "not checked", not "clear"); after the first crossing, CSV rows carry `contact_sphere_crossed=1` and analytical reference/phase errors are withheld. The swept test is conservative: a coarse step can cut across a curved arc that never entered the sphere. Euler is a labeled teaching comparison; core/catalog runs retain 15-second Verlet.
+Lessons include circular, eccentric (`a=1 AU`, `e=0.5`), escape threshold, isolated barycentric Earth–Moon, 30° inclined orbit, and Phobos resolution. Their intentionally artificial initial conditions are separate from the main and planet-system scenes and source-epoch catalog experiments. Lessons allow an initial-speed factor up to 2 and a fixed timestep from 0.01 to 3600 seconds, with the tighter contact bound described below. Each lesson's lowest factor comes from C: the analytic two-body periapsis must stay outside the parent plus subject radius (Phobos 0.73, eccentric 0.12, Earth–Moon 0.21, encounter 0.29; others 0.1), because point-mass gravity has no surface. Orbital lessons and catalog-experiment runs also test every pair's straight-line drift within each step against the sum of radii (the core, barycentric-core and collision lessons are not monitored, so `contact_sphere_crossed=0` there means "not checked", not "clear"); after the first crossing, CSV rows carry `contact_sphere_crossed=1` and analytical reference/phase errors are withheld. The swept test is conservative: a coarse step can cut across a curved arc that never entered the sphere. Euler is a labeled teaching comparison; core/catalog runs retain 15-second Verlet.
 
-The CLI streams CSV with configuration/revision, SI state, ticks, data quality, energy, momentum and center of mass. Duration and sample spacing must align to whole ticks; the final sample is always emitted. A run may contain at most 10⁹ ticks (`duration / dt`), which bounds work to minutes for lesson scenes and under two hours for the full core scene. `--output` must name a new path or an existing regular file you can write, in a directory you can write: symlinks, FIFOs, devices and read-only files are refused, an interrupted run (Ctrl-C/SIGTERM) removes its temporary, and the file is replaced atomically only after a complete run, so a failed run leaves the previous file (or nothing) instead of partial CSV. `--experiment build/selected.tsv` runs a prepared catalog input; `--catalog` exposes the C core manifest for cross-language checks. See `build/solar-lab --help`.
+The CLI streams CSV with configuration/revision, SI state, ticks, data quality, energy, momentum and center of mass. Duration and sample spacing must align to whole ticks; the final sample is always emitted. A run may contain at most 10⁹ ticks (`duration / dt`), which bounds work to minutes for lesson scenes and under two hours for the largest scene. `--output` must name a new path or an existing regular file you can write, in a directory you can write: symlinks, FIFOs, devices and read-only files are refused, an interrupted run (Ctrl-C/SIGTERM) removes its temporary, and the file is replaced atomically only after a complete run, so a failed run leaves the previous file (or nothing) instead of partial CSV. `--experiment build/selected.tsv` runs a prepared catalog input; `--catalog [SCENE]` exposes the C manifest of the main scene or a planet-system scene for cross-language checks. See `build/solar-lab --help`.
 
 Both visual runtimes offer SI snapshot export, parent-relative history, optional velocity/acceleration directions and scientific diagnostics. Energy change uses `ΔE / (K₀ + |U₀|)` so near-zero escape energy is well-conditioned. Massless tracers contribute no totals; linear momentum is conserved only in unconstrained systems. Physical vectors keep SI values; drawn arrow lengths and illustrative radius magnification are explicitly presentation-only.
 
@@ -53,7 +53,7 @@ Methods are `verlet`/`euler`; contact policies are `none`/`bounce`/`merge`. Samp
 
 Four additional presets explore specific model choices:
 
-- `barycentric-core`: releases the Sun and translates all 128 states into a mass-weighted center-of-mass frame, preserving relative initial states. Moving stars record synchronized history so parent-relative trails use the historical Sun position.
+- `barycentric-core`: releases the Sun and translates all 30 main-scene states into a mass-weighted center-of-mass frame, preserving relative initial states. Moving stars record synchronized history so parent-relative trails use the historical Sun position.
 - `resonance`: a massless particle starts at an interior 3:2 period ratio with a circular Jupiter perturber. Inspect `3λ_J − 2λ_particle − ϖ_particle` over long runs; a starting period ratio alone does not establish resonance.
 - `encounter`: a test particle passes Earth with controlled initial impact geometry. Compare timestep-dependent deflection and minimum integrated distance.
 - `collision`: two chosen classroom spheres (10 kg, 10 m radius) approach head-on. Bounce conserves contact kinetic energy/momentum; merge combines mass/volume and explicitly loses kinetic energy. Its 0.01–0.25 s steps prevent tunneling for the allowed initial speeds; contact timing still has finite-step error. Other presets retain point-mass gravity without contact handling.
@@ -62,7 +62,7 @@ The 3D collision preset defaults to real scale and slower 1/5/10/25/50 simulated
 
 ## Complete small-body atlas and all eight planets
 
-The core demonstration contains 128 bodies through Neptune. The separate [small-body atlas](https://jonathanperis.github.io/solar-system-simulator/small-bodies/) exposes all 1,564,244 qualifying entries in the pinned JPL snapshot, including main-belt asteroids, near-Earth asteroids, Trojans, Centaurs and trans-Neptunian bodies. Select up to 16 objects for a C-owned experiment with the Sun and all eight planets.
+The main scene contains the 30 large bodies through Neptune; the planet-system scenes add every catalogued giant-planet moon. The separate [small-body atlas](https://jonathanperis.github.io/solar-system-simulator/small-bodies/) exposes all 1,564,244 qualifying entries in the pinned JPL snapshot, including main-belt asteroids, near-Earth asteroids, Trojans, Centaurs and trans-Neptunian bodies. Select up to 16 objects for a C-owned experiment with the Sun and all eight planets.
 
 ### Small-body catalog and experiments
 
@@ -70,7 +70,7 @@ The core demonstration contains 128 bodies through Neptune. The separate [small-
 - Orbital subsets overlap with the overall total: 1,466,940 belt asteroids, 7,287 trans-Neptunian objects and 1,047 Centaurs. The catalog includes named, provisional and hyperbolic objects, including Oumuamua.
 - 203 shard pairs (one compressed index and one compressed data file per shard) plus a source-accounted density overview total approximately 141 MB. Search runs in a worker; each result page contains at most 50 rows. Digits-only queries look up an asteroid number or SPK-ID in the shards whose ID range contains it, and unfiltered browsing loads only the shard holding the page. Name and filter searches state the full index download (about 33 MB compressed) and run only after the visitor confirms; that one scan builds a compact in-memory columnar index (about 60 MB) that serves later searches without downloading again. Object details load in the worker from a small cache of data shards. Downloads are SHA-256 verified, so the atlas needs HTTPS or localhost. Catalog, density-cell, result and active-physics counts stay distinct.
 - `src/sim/orbit.c` provides the shared universal-variable conic solver for native/WASM physics and orbital previews. Catalog previews two-body propagate source elements to JD 2461200.5 TDB; their original epochs and quality remain visible.
-- Experiments initialize all eight planets from `data/planet_epoch.json`, a Sun-centered Horizons vector snapshot of the planetary-system barycenters at the same epoch. With no moons present, each planet stands for its whole system (barycenter state, DE440 system GM), so no unbalanced lunar wobble enters the run. They start explicitly and reset to the same session-owned initial state. The 128-body perihelion demonstration remains independently available.
+- Experiments initialize all eight planets from `data/planet_epoch.json`, a Sun-centered Horizons vector snapshot of the planetary-system barycenters at the same epoch. With no moons present, each planet stands for its whole system (barycenter state, DE440 system GM), so no unbalanced lunar wobble enters the run. They start explicitly and reset to the same session-owned initial state. The perihelion demonstration scenes remain independently available.
 - Missing mass uses a test particle; missing radius stays Unknown. Bulk SBDB physical values are labeled published with unclassified measurement/estimate quality. `data/small_body_physical.json` adds explicitly sourced dwarf-planet measurements/estimates where the bulk catalog lacks them.
 - The Sun stays fixed and bodies are point masses. Source epoch alignment does not make subsequent two-body previews or fixed-Sun experiments ephemeris predictions; close encounters require particular numerical caution.
 
@@ -95,7 +95,7 @@ Review source counts, quality and generated changes before publishing a refreshe
 Current milestone behavior:
 
 - Opens a raylib 3D scene titled `Solar System Simulator`.
-- Models 128 core bodies: the original ten bodies, 115 Jovian moons, Saturn, Uranus and Neptune. Known radii render as spheres; unknown radii use explicitly nonphysical wire markers.
+- Models a 30-body main scene (the original ten bodies, Saturn, Uranus, Neptune and the 17 major moons: Io, Europa, Ganymede, Callisto; Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Iapetus; Ariel, Umbriel, Titania, Oberon, Miranda; Triton) and four planet-system scenes (`jupiter-system` 124 bodies, `saturn-system` 300, `uranus-system` 38, `neptune-system` 25: the Sun, eight planets and one planet's complete moon catalog). Load a system from the simulator's scene picker, native `K`, or `solar-lab --scene NAME`; links to a small moon open its system. Known radii render as spheres; unknown radii use explicitly nonphysical wire markers.
 - Keeps the Sun fixed at the origin for a stable heliocentric baseline.
 - Uses right-handed simulation axes: `(x, y, z) = (X, Z, -Y)` of the J2000 ecliptic, so `+y` is ecliptic north and the ecliptic plane is the x/z plane. Prograde orbits have angular momentum along `+y` and appear counterclockwise when viewed from above (north).
 - Initializes Mercury at perihelion on the +X axis with prograde tangential velocity (toward -Z, ecliptic +Y) from the vis-viva equation.
@@ -106,8 +106,8 @@ Current milestone behavior:
 - Initializes Phobos and Deimos at Mars-relative periareion with tangential relative velocities from the Mars-moon vis-viva equations.
 - Initializes Vesta at heliocentric perihelion on the +X axis with prograde tangential velocity (toward -Z) from the vis-viva equation.
 - Initializes the Jovian-system barycenter (Jupiter plus its known-mass moons) at heliocentric perihelion on the -X axis with prograde tangential velocity (toward +Z) from the vis-viva equation.
-- Initializes Jovian moons from sourced mean orbital elements, preserving inclination and retrograde/prograde direction through a common-frame conversion, then adds Jupiter's absolute position and velocity.
-- Initializes Saturn at heliocentric perihelion on the -Z axis with prograde tangential velocity (toward -X) from the vis-viva equation.
+- Initializes giant-planet moons from sourced mean orbital elements (ecliptic, Laplace-plane or, for Uranus's major moons, spin-pole equatorial frames), preserving inclination and retrograde/prograde direction through a common-frame conversion, then adds the planet's absolute position and velocity.
+- Initializes the Saturn-system barycenter at heliocentric perihelion on the -Z axis with prograde tangential velocity (toward -X) from the vis-viva equation; Uranus and Neptune systems likewise.
 - Advances moving bodies with Newtonian gravity from all nonzero-mass sources using the shared simulation integrator. Unknown-mass moons are test particles, not invented physical masses.
 - Supports illustrative/default and real-scale visualization modes.
 - Draws bounded motion traces for non-star bodies and moving stars, with uniform full-run sampling that coarsens as the run grows and an always-current endpoint. Only fixed stars omit history.
@@ -129,9 +129,9 @@ Simulation code lives under `src/sim/` and is independent from raylib.
   - `a = G * source_mass / distance^3 * displacement`
 - Core/catalog time stepping uses velocity-Verlet / kick-drift-kick; isolated lessons can compare explicit Euler.
 - Core/catalog playback uses a fixed 15-second simulation step and carries frame remainders in an accumulator. Requested presets are one hour, one day (default), five days, ten days, and fifteen days per real second. Each update executes at most 2048 steps, retaining unconsumed time and reporting achieved speed/pending time. Display-frame partitioning does not change the sequence of physics steps once pending work is drained. Hidden-tab/minimized-window wall time is excluded, including the first resumed frame. A single frame longer than one second (laptop sleep with the window visible, a debugger pause) is discarded the same way; shorter slow frames keep their pending time.
-- `tests/test_simulation_step.c` verifies less than one degree of isolated Phobos/Deimos phase error over 100 days and less than 1% parent-relative position discrepancy against half-sized steps for the full 128-body scene. These are numerical accuracy checks, not ephemeris validation.
+- `tests/test_simulation_step.c` verifies less than one degree of isolated Phobos/Deimos phase error over 100 days and less than 1% parent-relative position discrepancy against half-sized steps for the main scene, and over 20 days for each planet-system scene (including Saturn's co-orbital and trojan moons). These are numerical accuracy checks, not ephemeris validation.
 - The default core/catalog Sun stays fixed. The explicit barycentric-core lesson releases it and starts in the center-of-mass frame.
-- This is a deterministic physics baseline, not an ephemeris-accurate model. The core perihelion demonstration remains planar through Neptune, with Jovian moon inclinations from their source frames. Catalog experiments align their initial epoch, then use the same fixed-Sun point-mass gravity. Relativity, planetary oblateness and omitted-body perturbations are outside this model.
+- This is a deterministic physics baseline, not an ephemeris-accurate model. The perihelion demonstration scenes remain planar through Neptune, with moon inclinations from their source frames. Catalog experiments align their initial epoch, then use the same fixed-Sun point-mass gravity. Relativity, planetary oblateness and omitted-body perturbations are outside this model.
 
 Current simulation data:
 
@@ -149,36 +149,43 @@ Baseline planet values follow NASA/JPL references. Sun, Mercury, Venus, Earth, M
 | Deimos | `1.441349654645431e15 kg` | `6200 m` | Mars-relative periareion offset and tangential relative speed |
 | Vesta | `2.590276793071933e20 kg` | `261385 m` | heliocentric perihelion position and tangential speed |
 | Jupiter | `1.8981246e27 kg` | `69911000 m` | Jovian-system barycenter (Jupiter plus known-mass moons) at heliocentric perihelion with vis-viva speed |
-| Saturn | `5.6831737e26 kg` | `58232000 m` | heliocentric perihelion position and tangential speed |
-| Uranus | `8.6809862e25 kg` | `25362000 m` | heliocentric perihelion, `a=19.18916464 AU`, `e=0.04725744` |
-| Neptune | `1.0240924e26 kg` | `24622000 m` | heliocentric perihelion, `a=30.06992276 AU`, `e=0.00859048` |
+| Saturn | `5.6831737e26 kg` | `58232000 m` | Saturn-system barycenter (Saturn plus the scene's known-mass moons) at heliocentric perihelion with vis-viva speed |
+| Uranus | `8.6809862e25 kg` | `25362000 m` | Uranus-system barycenter at heliocentric perihelion, `a=19.18916464 AU`, `e=0.04725744` |
+| Neptune | `1.0240924e26 kg` | `24622000 m` | Neptune-system barycenter at heliocentric perihelion, `a=30.06992276 AU`, `e=0.00859048` |
 
-### Jovian satellite data and approximations
+### Giant-planet satellite data and scenes
 
-The complete [versioned catalog](data/jovian_moons.json) supplies both generated
-C initialization and Astro metadata. It contains four Galilean moons, four
-smaller inner moons, and 107 irregular moons. See [data provenance](data/README.md)
-for source links, units, epochs, and frame conversion.
+Versioned catalogs for [Jupiter](data/jovian_moons.json) (115),
+[Saturn](data/saturnian_moons.json) (291), [Uranus](data/uranian_moons.json) (29)
+and [Neptune](data/neptunian_moons.json) (16) supply both generated C
+initialization and Astro metadata. See [data provenance](data/README.md) for
+source links, units, epochs, and frame conversion.
 
-Nine moons have JPL physical-table entries. Published model estimates are
-labeled in both inspectors. The other 106 have unknown mass/radius in this
-snapshot: they feel known-source gravity with no gravitational backreaction,
-and their wire markers in either view never claim a physical size. Measured,
-estimated, and unknown values remain distinct. Mean orbital elements describe
-shape/orientation, not a dated ephemeris or an exact resonant configuration.
+The main scene carries the large bodies only. Its giant-planet moons are the 17
+major moons with a measured GM of at least 2 km³/s²: the Galilean moons, Saturn's
+seven rounded moons, Uranus's five and Triton. Every other moon runs in its
+planet's system scene, which holds the Sun, the eight planets and that planet's
+complete catalog (major moons first). Keeping hundreds of small moons out of the
+main scene makes it about three times faster than the former 128-body scene
+(102 versus 32 simulated days per wall second natively) and less cluttered.
+Native throughput by scene: Jupiter system 40, Saturn system 13 (its 300 bodies
+fall below the 15 days/s preset, so the achieved rate is reported), Uranus
+system 163 and Neptune system 229 days/second.
+
+Moons without a JPL physical-table GM have unknown mass: they feel known-source
+gravity with no gravitational backreaction, and moons without a radius draw
+wire markers that never claim a physical size. Measured, estimated, and unknown
+values remain distinct. Mean orbital elements describe shape/orientation, not a
+dated ephemeris or an exact resonant configuration; each moon keeps its ephemeris
+solution's epoch, so phases are consistent only within one solution. Point-mass
+periods differ from JPL's by at most 0.75% because the model omits oblateness.
 
 Normal builds are offline. `python3 tools/satellite_catalog.py --check` detects
 stale generated C data; `--refresh` explicitly updates the source snapshot for
 review. `make build/benchmark_simulation && build/benchmark_simulation` measures
-headless full-scene fixed-step/trail throughput, independently of rendering.
-
-The same tool also pins the [Saturnian](data/saturnian_moons.json) (291),
-[Uranian](data/uranian_moons.json) (29) and [Neptunian](data/neptunian_moons.json)
-(16) catalogs and generates their C tables. Each moon keeps its own ephemeris
-epoch and reference plane, including Uranus's spin-pole "equatorial" frame;
-tests check the frame conversions, Triton's retrograde orbit and that
-point-mass periods stay within 1% of JPL's. These moons are not yet part of a
-scene (SPEC T74–T77).
+headless fixed-step/trail throughput of the main scene, independently of
+rendering; `build/benchmark_simulation --scene saturn-system` measures a
+planet-system scene.
 
 Mercury orbital values used for initialization:
 
@@ -275,7 +282,7 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 - Illustrative mode is the default: planets keep the previous large visible radius, asteroids use a distinct `0.03` render-unit radius, and moons render smaller in proportion to Earth's physical radius with a small visible floor for tiny moons. Parent-relative moon offsets are expanded only in illustrative mode as needed so the large visual spheres remain readable without changing the underlying physics state.
 - Trails start with one historical sample per 300 simulated seconds, rounded up to whole configured ticks in lessons. At the 1,025-point budget, historical spacing and future sampling cadence both double. This preserves distributed coverage instead of repeatedly erasing early curvature. The current endpoint updates on every physics step; parent/child sample times stay synchronized, including the moving Sun in the barycentric lesson.
 - Resolution decreases uniformly during long runs. Fine satellite loops eventually become less resolved; trails are an approximation of recorded motion, not complete predicted orbital ellipses. The browser reports the current historical spacing.
-- The ground grid sits just below the orbital plane and adapts to zoom: power-of-ten minor and major lines (one render unit is 0.1 AU) cross-fade between decades and fade with distance, so they never crowd into moiré. It writes no depth, so bodies always draw over it, and `G` hides it. Trails fade with age, stop at each body's surface and are drawn only as finely as their on-screen size needs. Bodies behind the camera are skipped and sub-pixel bodies drawn as small dots, which keeps the 128-body scene at 60 fps even on a CPU-throttled phone emulation.
+- The ground grid sits just below the orbital plane and adapts to zoom: power-of-ten minor and major lines (one render unit is 0.1 AU) cross-fade between decades and fade with distance, so they never crowd into moiré. It writes no depth, so bodies always draw over it, and `G` hides it. Trails fade with age, stop at each body's surface and are drawn only as finely as their on-screen size needs. Bodies behind the camera are skipped and sub-pixel bodies drawn as small dots, which keeps the scenes at 60 fps even on a CPU-throttled phone emulation.
 - Real-scale mode uses the same physical render scale for both positions and radii with no radius clamp. Planets may be nearly invisible in this mode; that is physically expected at solar-system scale.
 
 ## Camera model
@@ -393,7 +400,7 @@ docs/src/pages/        # static Astro site, field guide, simulator and compariso
 docs/src/lib/          # presentation, C bridges, catalog worker and shared site metadata
 docs/public/catalog/   # pinned compressed small-body snapshot
 docs/tests/            # Node tests; docs/browser-tests/ holds browser checks
-data/                  # source provenance, Jovian catalog and planetary epoch snapshot
+data/                  # source provenance, giant-planet moon catalogs and planetary epoch snapshot
 examples/              # replayable SOLAR_LAB_V1 comparison descriptors
 tools/                 # source importers, artifact/route validators and CI helpers
 tests/                 # C tests and Python CLI/build/validator tests
@@ -406,11 +413,6 @@ When updating documentation, check shared claims in the README, `docs/src/lib/si
 
 ## Next planned iterations
 
-Each future body or moon system is added one iteration at a time, with physical constants, initial conditions, tests, and rendering checks scoped to it. The staged plan, its sources and its acceptance criteria live in `SPEC.md` (A78–A86, T73–T78):
+Each future body or moon system is added one iteration at a time, with physical constants, initial conditions, tests, and rendering checks scoped to it. Every catalogued giant-planet moon now has a scene (SPEC A78–A86). What remains (T78):
 
-1. one satellite catalog tool for every giant planet (offline checks, epoch/frame metadata, de-duplication)
-2. scale prerequisites and a measured throughput budget per scene; then decide whether new moons join the core scene or load as family scenes (all 336 giant-planet moons in the core would cut native speed about 8×)
-3. Saturn system: 291 JPL-catalogued moons
-4. Uranus system: 29 moons
-5. Neptune system: 16 moons
-6. small-body satellite systems, once scoped
+1. small-body satellite systems (asteroid binaries, Pluto–Charon), once a plan names their source, frames and active-scene policy

@@ -129,24 +129,47 @@ static void test_martian_moons_keep_phase_over_100_days(void)
     }
 }
 
-static void test_full_scene_converges_over_100_days(void)
+/* Steps a scene with the app step and with half steps, then checks every
+ * body's parent-relative position agrees within 1% (V22). */
+static void assert_scene_converges(SolarSystem actual, double days, bool print)
 {
-    SolarSystem actual = solar_system_create_current();
     SolarSystem reference = actual;
     const double dt = SOLAR_APP_MAX_PHYSICS_STEP_SECONDS;
-    for (double t = 0.0; t < 100.0 * SOLAR_DAY_SECONDS; t += dt) {
+    for (double t = 0.0; t < days * SOLAR_DAY_SECONDS; t += dt) {
         solar_system_step(&actual, dt);
         solar_system_step(&reference, dt * 0.5);
         solar_system_step(&reference, dt * 0.5);
     }
+    double worst = 0;
     for (size_t i = 1; i < actual.body_count; ++i) {
         int parent_index = solar_system_parent_index(&actual, i);
         assert(parent_index >= 0);
         Vec3d position = vec3d_sub(actual.bodies[i].position_m, actual.bodies[parent_index].position_m);
         Vec3d expected = vec3d_sub(reference.bodies[i].position_m, reference.bodies[parent_index].position_m);
         double relative_error = vec3d_length(vec3d_sub(position, expected)) / vec3d_length(expected);
-        printf("%s 100-day half-step discrepancy: %.6f%%\n", actual.bodies[i].name, 100.0 * relative_error);
+        if (print) printf("%s %.0f-day half-step discrepancy: %.6f%%\n", actual.bodies[i].name, days, 100.0 * relative_error);
+        worst = fmax(worst, relative_error);
         assert(relative_error < 0.01);
+    }
+    if (!print) printf("worst %.0f-day half-step discrepancy over %zu bodies: %.6f%%\n", days, actual.body_count, 100.0 * worst);
+}
+
+static void test_full_scene_converges_over_100_days(void)
+{
+    assert_scene_converges(solar_system_create_current(), 100, true);
+}
+
+/* Family scenes hold up to 300 bodies; 20 days still spans dozens of orbits
+ * of the fast inner moons (Pan, Cordelia, Naiad: 7-8 hours) and keeps the
+ * sanitizer run affordable. Saturn's Janus/Epimetheus co-orbitals and the
+ * Tethys/Dione trojans are included. */
+static void test_family_scenes_converge_over_20_days(void)
+{
+    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE};
+    for (size_t k = 0; k < 4; ++k) {
+        SolarSystem family;
+        assert(solar_system_create_family(planets[k], &family));
+        assert_scene_converges(family, 20, false);
     }
 }
 
@@ -155,6 +178,7 @@ int main(void)
     test_stalled_frames_are_distinguished_from_slow_frames();
     test_martian_moons_keep_phase_over_100_days();
     test_full_scene_converges_over_100_days();
+    test_family_scenes_converge_over_20_days();
     test_trail_sampling_is_independent_of_physics_step_size();
     test_frame_partitioning_preserves_state_and_pending_time();
     puts("test_simulation_step passed");

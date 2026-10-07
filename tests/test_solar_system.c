@@ -327,36 +327,74 @@ static void test_saturn_constants_and_derived_perihelion_state(void)
     assert_close(SOLAR_SATURN_PERIHELION_SPEED_MPS, expected_speed, 1e-6);
 }
 
-static void test_current_scene_appends_saturn_without_identity_collisions(void)
+static void test_main_scene_holds_the_large_bodies_in_a_stable_order(void)
 {
+    /* SPEC 2026-10-07 scene split: the Sun, planets, Vesta, the Earth and
+     * Mars systems and the 17 major moons. Small moons live in family scenes. */
+    const char *names[] = {"Sun", "Mercury", "Venus", "Earth", "Moon", "Mars", "Phobos", "Deimos", "Vesta", "Jupiter",
+        "Io", "Europa", "Ganymede", "Callisto", "Saturn", "Mimas", "Enceladus", "Tethys", "Dione", "Rhea", "Titan",
+        "Iapetus", "Uranus", "Ariel", "Umbriel", "Titania", "Oberon", "Miranda", "Neptune", "Triton"};
     SolarSystem system = solar_system_create_current();
-
-    assert(SOLAR_SYSTEM_BODY_CAPACITY == 128);
-    assert(system.body_count == 128);
-    assert(system.bodies[9].id == BODY_ID_JUPITER);
-    assert(strcmp(system.bodies[124].name, "S/2021 J 8") == 0);
-    assert(strcmp(system.bodies[125].name, "Saturn") == 0);
-    assert(system.bodies[125].id == BODY_ID_SATURN);
-    assert(system.bodies[125].parent_id == BODY_ID_SUN);
+    assert(SOLAR_SYSTEM_BODY_CAPACITY == 300);
+    assert(system.body_count == sizeof(names) / sizeof(names[0]));
     for (size_t i = 0; i < system.body_count; ++i) {
+        assert(strcmp(system.bodies[i].name, names[i]) == 0);
+        /* Every main-scene body is massive: no test particles here. */
+        assert(system.bodies[i].mass_kg > 0 && system.bodies[i].mass_quality != PHYSICAL_UNKNOWN);
         for (size_t j = 0; j < i; ++j) assert(system.bodies[i].id != system.bodies[j].id);
     }
+    assert(system.bodies[9].id == BODY_ID_JUPITER && system.bodies[14].id == BODY_ID_SATURN);
+    assert(system.bodies[22].id == BODY_ID_URANUS && system.bodies[28].id == BODY_ID_NEPTUNE);
+    assert(solar_system_parent_index(&system, 20) == 14 && solar_system_parent_index(&system, 29) == 28);
+    assert(system.bodies[14].parent_id == BODY_ID_SUN);
+}
+
+static void test_family_scenes_hold_a_planet_and_its_complete_catalog(void)
+{
+    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE};
+    const size_t majors[] = {4, 7, 5, 1};
+    SolarSystem scene;
+    assert(!solar_system_create_family(BODY_ID_EARTH, &scene));
+    for (size_t k = 0; k < 4; ++k) {
+        const SatelliteCatalog *catalog = satellite_catalog_for(planets[k]);
+        assert(solar_system_create_family(planets[k], &scene));
+        assert(scene.body_count == SOLAR_FAMILY_SCENE_PLANET_COUNT + catalog->count);
+        const BodyId order[] = {BODY_ID_SUN, BODY_ID_MERCURY, BODY_ID_VENUS, BODY_ID_EARTH, BODY_ID_MARS,
+            BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE};
+        for (size_t i = 0; i < SOLAR_FAMILY_SCENE_PLANET_COUNT; ++i) assert(scene.bodies[i].id == order[i]);
+        int planet = solar_system_family_planet_index(planets[k]);
+        assert(planet == (int)(5 + k));
+        /* Major moons first, then the rest, each in catalog order. */
+        size_t index = SOLAR_FAMILY_SCENE_PLANET_COUNT;
+        for (int pass = 0; pass < 2; ++pass)
+            for (size_t i = 0; i < catalog->count; ++i)
+                if (catalog->moons[i].major == (pass == 0)) {
+                    assert((int)scene.bodies[index].id == catalog->moons[i].code);
+                    assert(solar_system_parent_index(&scene, index) == planet);
+                    ++index;
+                }
+        for (size_t i = 0; i < majors[k]; ++i) assert(scene.bodies[SOLAR_FAMILY_SCENE_PLANET_COUNT + i].mass_kg > 0);
+        for (size_t i = 0; i < scene.body_count; ++i)
+            for (size_t j = 0; j < i; ++j) assert(scene.bodies[i].id != scene.bodies[j].id);
+    }
+    /* Saturn's family is the largest scene and exactly fills the array. */
+    assert(solar_system_create_family(BODY_ID_SATURN, &scene) && scene.body_count == SOLAR_SYSTEM_BODY_CAPACITY);
 }
 
 static void test_scene_capacity_is_named_and_appends_are_bounded(void)
 {
     SolarSystem system = solar_system_create_current();
-    assert(SOLAR_CORE_SCENE_BODY_COUNT == 128);
+    assert(SOLAR_CORE_SCENE_BODY_COUNT == 30);
     assert(system.body_count == SOLAR_CORE_SCENE_BODY_COUNT);
     assert(SOLAR_SYSTEM_BODY_CAPACITY >= SOLAR_CORE_SCENE_BODY_COUNT);
 
     /* A full scene refuses another body and leaves every byte untouched. */
     Body mercury = solar_system_create_mercury_at_perihelion();
-    if (system.body_count == SOLAR_SYSTEM_BODY_CAPACITY) {
-        SolarSystem before = system;
-        assert(!solar_system_append(&system, &mercury));
-        assert(memcmp(&before, &system, sizeof(system)) == 0);
-    }
+    SolarSystem full;
+    assert(solar_system_create_family(BODY_ID_SATURN, &full) && full.body_count == SOLAR_SYSTEM_BODY_CAPACITY);
+    SolarSystem before = full;
+    assert(!solar_system_append(&full, &mercury));
+    assert(memcmp(&before, &full, sizeof(full)) == 0);
     SolarSystem small = solar_system_create_sun_only();
     assert(solar_system_append(&small, &mercury));
     assert(small.body_count == 2 && small.bodies[1].id == BODY_ID_MERCURY);
@@ -397,6 +435,20 @@ static void test_moon_families_place_their_barycenter_on_the_intended_orbit(void
     assert_family_follows(&martian, 5, mars, 0.05); /* Phobos and Deimos offsets partly cancel: ~0.1 m. */
     assert_family_follows(&core, 5, mars, 0.05);
     assert_family_follows(&core, 9, jupiter, 1.0e4);
+    /* Saturn shifts ~290 km toward Titan, Neptune ~75 km toward Triton. */
+    assert_family_follows(&core, 14, solar_system_create_saturn_at_perihelion(), 1.0e5);
+    assert_family_follows(&core, 22, solar_system_create_uranus_at_perihelion(), 1.0e3);
+    assert_family_follows(&core, 28, solar_system_create_neptune_at_perihelion(), 1.0e4);
+    for (BodyId planet = BODY_ID_JUPITER; planet != BODY_ID_NONE;
+         planet = planet == BODY_ID_JUPITER ? BODY_ID_SATURN : planet == BODY_ID_SATURN ? BODY_ID_URANUS
+             : planet == BODY_ID_URANUS ? BODY_ID_NEPTUNE : BODY_ID_NONE) {
+        SolarSystem family;
+        assert(solar_system_create_family(planet, &family));
+        int index = solar_system_family_planet_index(planet);
+        Body intended = planet == BODY_ID_JUPITER ? jupiter : planet == BODY_ID_SATURN ? solar_system_create_saturn_at_perihelion()
+            : planet == BODY_ID_URANUS ? solar_system_create_uranus_at_perihelion() : solar_system_create_neptune_at_perihelion();
+        assert_family_follows(&family, (size_t)index, intended, 1.0e2);
+    }
 
     /* Moons keep their sourced parent-relative state exactly as before. */
     Body moon = solar_system_create_moon_at_perigee_near_earth(&earth);
@@ -1096,7 +1148,8 @@ int main(void)
     test_vesta_perihelion_speed_matches_vis_viva();
     test_jupiter_constants_and_derived_perihelion_state();
     test_saturn_constants_and_derived_perihelion_state();
-    test_current_scene_appends_saturn_without_identity_collisions();
+    test_main_scene_holds_the_large_bodies_in_a_stable_order();
+    test_family_scenes_hold_a_planet_and_its_complete_catalog();
     test_mercury_body_starts_at_perihelion_with_tangential_velocity();
     test_venus_body_starts_at_perihelion_with_tangential_velocity();
     test_earth_body_starts_at_perihelion_with_tangential_velocity();

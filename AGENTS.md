@@ -9,7 +9,7 @@ A physics-first 3D solar system simulator written in C11 with raylib. This repos
 - **Language:** C11 only for simulator/runtime code.
 - **Graphics/windowing:** raylib.
 - **Architecture:** deterministic SI-unit simulation isolated from rendering.
-- **Current scene:** original ten bodies, all 115 Jovian moons, Saturn, Uranus and Neptune; 128 core bodies. The separate small-body atlas contains 1,564,244 pinned records in compressed shards, not in the active scene or HTML body list.
+- **Current scenes:** a 30-body main scene of large bodies (Sun, eight planets, Vesta, the Earth and Mars systems and the 17 major moons) and four planet-system scenes holding every catalogued moon of Jupiter (115), Saturn (291), Uranus (29) and Neptune (16); 464 bodies in all. The separate small-body atlas contains 1,564,244 pinned records in compressed shards, not in the active scene or HTML body list.
 - **Primary goal:** teach and verify orbital mechanics foundations before visual polish.
 - **Current public-site direction:** archival solar chart, source-backed and playful, with an accessible illustrative orrery wrapped around SI-unit physics. The docs hub and Astro-owned `/simulator/` runtime share the atlas layout.
 
@@ -88,9 +88,10 @@ solar-system-simulator/
 
 ## Current technical notes
 
-- Gravity is Newtonian point-mass acceleration.
+- Gravity is Newtonian point-mass acceleration. `physics_compute_accelerations` processes targets in structure-of-arrays blocks so compilers vectorize it (WebAssembly builds with `-msimd128`); keep it bit-identical to the scalar formula: same per-target source order, no FMA (`-ffp-contract=off`) and no fast-math.
+- Scenes: the main scene (`solar_system_create_current`, preset `core`) holds the 30 large bodies; `solar_system_create_family` builds the Jupiter/Saturn/Uranus/Neptune family scenes (presets `*-system`: Sun, Mercury–Neptune at 1–8, then the complete catalog with major moons first). Keep C (`solar-lab --catalog [SCENE]`) and TypeScript (`mainSceneBodies`, `familySceneBodies` in `docs/src/lib/bodies.ts`) in the same order; `tools/check_catalog.mjs` checks all five. A body's `scene` field drives deep links: small moons load their family scene first.
 - Unknown-mass moons are explicit test particles. Unknown radius is never a physical zero readout: show Unknown and draw a render-only wire marker. Preserve measured/estimated/unknown provenance.
-- Jovian satellite mean elements use ecliptic or Laplace frames; convert the reference node/pole correctly before adding Jupiter's absolute state. Legacy initial states remain planar; source-backed Jovian inclinations/retrograde directions are intentional.
+- Giant-planet satellite mean elements use ecliptic, Laplace or (Uranus's major moons) spin-pole equatorial frames; convert the reference node/pole correctly before adding the planet's absolute state. Legacy initial states remain planar; source-backed Jovian inclinations/retrograde directions are intentional.
 - Time stepping uses velocity-Verlet / kick-drift-kick.
 - Guided lessons may compare explicit Euler and configure a fixed timestep; core/catalog scenes retain 15-second Verlet. Lesson changes reset the clock and energy baseline. Keep numerical/model/render error distinctions in docs.
 - `make headless` builds the raylib-free `solar-lab` CSV runner. `src/app/csv_export.*` serves native, browser and headless exports; never export illustrative coordinates as physical state. Headless `--output` replaces a regular file atomically via a sibling temporary and refuses symlinks/FIFOs/devices; native `E` uses exclusive creation of numbered snapshots. `src/app/input_file.*` is the one bounded reader for experiment/descriptor files. `SOLAR_LAB_MAX_TICKS` (10⁹) caps ticks per comparison side or headless run.

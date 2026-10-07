@@ -2,7 +2,20 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { normalizeBase } from '../lib/base';
 import { buildRevision } from '../lib/site';
-import { lessonNames } from '../lib/simulator';
+import { lessonOptions, sceneNames } from '../lib/lessonCatalog';
+import { coreBodyCount, jovianMoonCount, saturnianMoonCount, uranianMoonCount, neptunianMoonCount } from '../lib/siteCounts';
+// Family scenes have their own picker; the Learn list keeps guided lessons
+// (and the main scene) at their C preset indices.
+const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label, index }))
+  .filter(({ name }) => name === 'core' || !sceneNames.includes(name));
+const sceneIndex = (scene: string) => lessonOptions.findIndex(([name]) => name === scene);
+const sceneChoices = [
+  { index: sceneIndex('core'), label: `Main scene — Sun, planets and major moons (${coreBodyCount} bodies)` },
+  { index: sceneIndex('jupiter-system'), label: `Jupiter system — all ${jovianMoonCount} moons` },
+  { index: sceneIndex('saturn-system'), label: `Saturn system — all ${saturnianMoonCount} moons` },
+  { index: sceneIndex('uranus-system'), label: `Uranus system — all ${uranianMoonCount} moons` },
+  { index: sceneIndex('neptune-system'), label: `Neptune system — all ${neptunianMoonCount} moons` }
+];
 const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 <BaseLayout title="Live simulator" description="Run the C11 and raylib solar system in your browser, with fixed-step SI physics and source-backed controls.">
@@ -66,6 +79,14 @@ const base = normalizeBase(import.meta.env.BASE_URL);
       <fieldset data-runtime-panel disabled>
        <legend class="sr-only">Object selection</legend>
        <div class="control-row">
+        <label>Scene <select data-runtime-scene>
+          {sceneChoices.map(({ index, label }) => <option value={index}>{label}</option>)}
+          <option value="" disabled>A lesson or catalog experiment is running</option>
+        </select></label>
+        <button type="button" data-load-scene>Load scene</button>
+      </div>
+      <p data-scene-status role="status">The main scene holds the large bodies. Small moons live in their planet's system scene; loading a scene restarts its physical state.</p>
+       <div class="control-row">
         <label>Find a body <input type="search" data-runtime-search placeholder="Name or designation" /></label>
         <label>Body group <select data-runtime-group><option value="">All groups</option></select></label>
         <button type="button" data-clear-filters>Clear filters</button>
@@ -111,7 +132,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
           <button type="button" data-activity="3"><strong>When can a world escape?</strong><span>Explore the boundary between returning and escaping.</span></button>
         </div>
         <label>Lesson preset <select data-lesson>
-          {lessonNames.map((name, index) => <option value={index}>{name}</option>)}
+          {lessonChoices.map(({ label, index }) => <option value={index}>{label}</option>)}
           <option value="-1" disabled>Prepared catalog experiment</option>
         </select></label>
         <details class="lesson-settings"><summary>Advanced physics settings</summary>
