@@ -398,8 +398,11 @@ When updating documentation, check shared claims in the README, `docs/src/lib/si
 
 ## Next planned iterations
 
-Each future body should be added one iteration at a time, with physical constants, initial conditions, tests, and rendering checks scoped to that body.
+Each future body or moon system is added one iteration at a time, with physical constants, initial conditions, tests, and rendering checks scoped to it. The staged plan, its sources and its acceptance criteria live in `SPEC.md` (A78–A86, T73–T78):
 
-1. complete Saturnian moons
-2. Uranian and Neptunian moon catalogs
-3. Small-body satellite systems
+1. one satellite catalog tool for every giant planet (offline checks, epoch/frame metadata, de-duplication)
+2. scale prerequisites and a measured throughput budget per scene; then decide whether new moons join the core scene or load as family scenes (all 336 giant-planet moons in the core would cut native speed about 8×)
+3. Saturn system: 291 JPL-catalogued moons
+4. Uranus system: 29 moons
+5. Neptune system: 16 moons
+6. small-body satellite systems, once scoped

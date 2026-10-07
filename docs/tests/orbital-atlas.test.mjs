@@ -72,7 +72,7 @@ test('Saturn is the appended heliocentric milestone', () => {
     chart: { plate: 'heliocentric', angle: 214, radius: 97 },
     summary: 'Ringed gas giant initialized at heliocentric perihelion; rings are renderer-only.'
   });
-  assert.equal(plannedBodies[0], 'complete Saturnian moons');
+  assert.equal(plannedBodies[2], 'Saturn system: 291 JPL-catalogued moons');
 });
 
 test('the Jovian atlas exposes every sourced moon with unique anchors and explicit data quality', () => {

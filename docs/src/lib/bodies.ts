@@ -179,10 +179,16 @@ export const implementedBodies: ImplementedBody[] = [
     chart:{plate:'heliocentric',angle:150,radius:91},summary:'Outer giant included in every selected small-body experiment.'}
 ];
 
+// Staged moon-system plan (SPEC A78–A86, T73–T78). The full giant-planet
+// catalogs would grow the scene from 128 to 464 bodies, so the catalog tool and
+// throughput prerequisites come before any new moon.
 export const plannedBodies = [
-  'complete Saturnian moons',
-  'Uranian and Neptunian moon catalogs',
-  'small-body satellite systems'
+  'one satellite catalog tool for every giant planet',
+  'scale prerequisites and a measured throughput budget per scene',
+  'Saturn system: 291 JPL-catalogued moons',
+  'Uranus system: 29 moons',
+  'Neptune system: 16 moons',
+  'small-body satellite systems, once scoped'
 ];
 
 export const bodyFocusOrder = implementedBodies.map((body) => body.name);
