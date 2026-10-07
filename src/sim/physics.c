@@ -24,32 +24,49 @@ Vec3d gravitational_acceleration_from(const Body *target, const Body *source)
     return vec3d_scale(displacement, scale);
 }
 
+/* Targets are processed in blocks through structure-of-arrays scratch so the
+ * inner loop reads and writes contiguous doubles: compilers vectorize it
+ * (SSE2/NEON natively, f64x2 with -msimd128 in WebAssembly) without changing
+ * any result, because every lane still performs the same IEEE operations in
+ * the same source order. The scratch is static: the simulator is
+ * single-threaded. */
+#define PHYSICS_TARGET_BLOCK 512
+static double block_x[PHYSICS_TARGET_BLOCK], block_y[PHYSICS_TARGET_BLOCK], block_z[PHYSICS_TARGET_BLOCK];
+static double block_ax[PHYSICS_TARGET_BLOCK], block_ay[PHYSICS_TARGET_BLOCK], block_az[PHYSICS_TARGET_BLOCK];
+
 void physics_compute_accelerations(Body *bodies, size_t body_count)
 {
-    for (size_t i = 0; i < body_count; ++i) {
-        bodies[i].acceleration_mps2 = vec3d_zero();
-    }
-
-    /* Most new satellites are explicitly massless tracers. Iterate sources
-     * first to skip their entire zero-contribution columns, while preserving
-     * the original source summation order for every target. Direct component
-     * arithmetic keeps this measured hot loop free of cross-file vector calls. */
-    for (size_t j = 0; j < body_count; ++j) {
-        if (bodies[j].mass_kg == 0.0) continue;
-        const Vec3d source = bodies[j].position_m;
-        const double gm = SOLAR_G * bodies[j].mass_kg;
-        for (size_t i = 0; i < body_count; ++i) {
-            if (i == j) continue;
-            double x = source.x - bodies[i].position_m.x;
-            double y = source.y - bodies[i].position_m.y;
-            double z = source.z - bodies[i].position_m.z;
-            double r2 = x * x + y * y + z * z;
-            if (r2 == 0.0) continue;
-            double scale = gm / (r2 * sqrt(r2));
-            bodies[i].acceleration_mps2.x += x * scale;
-            bodies[i].acceleration_mps2.y += y * scale;
-            bodies[i].acceleration_mps2.z += z * scale;
+    for (size_t start = 0; start < body_count; start += PHYSICS_TARGET_BLOCK) {
+        const size_t count = body_count - start < PHYSICS_TARGET_BLOCK ? body_count - start : PHYSICS_TARGET_BLOCK;
+        for (size_t i = 0; i < count; ++i) {
+            block_x[i] = bodies[start + i].position_m.x;
+            block_y[i] = bodies[start + i].position_m.y;
+            block_z[i] = bodies[start + i].position_m.z;
+            block_ax[i] = block_ay[i] = block_az[i] = 0.0;
         }
+        /* Most satellites are explicitly massless tracers. Iterate sources
+         * first to skip their entire zero-contribution columns, while
+         * preserving the original source summation order for every target. */
+        for (size_t j = 0; j < body_count; ++j) {
+            if (bodies[j].mass_kg == 0.0) continue;
+            const double sx = bodies[j].position_m.x, sy = bodies[j].position_m.y, sz = bodies[j].position_m.z;
+            const double gm = SOLAR_G * bodies[j].mass_kg;
+            for (size_t i = 0; i < count; ++i) {
+                double x = sx - block_x[i];
+                double y = sy - block_y[i];
+                double z = sz - block_z[i];
+                double r2 = x * x + y * y + z * z;
+                /* a = G*M*r_vec/r^3. The source itself (and any coincident
+                 * body) has r2 == 0 and contributes nothing; a select rather
+                 * than a branch keeps the loop vectorizable. */
+                double scale = r2 > 0.0 ? gm / (r2 * sqrt(r2)) : 0.0;
+                block_ax[i] += x * scale;
+                block_ay[i] += y * scale;
+                block_az[i] += z * scale;
+            }
+        }
+        for (size_t i = 0; i < count; ++i)
+            bodies[start + i].acceleration_mps2 = (Vec3d){block_ax[i], block_ay[i], block_az[i]};
     }
 }
 
@@ -82,25 +99,28 @@ void physics_step_from_accelerations(Body *bodies, size_t body_count, double dt_
 {
     /* Velocity-Verlet: half-kick velocities, drift positions, recompute
      * acceleration from the new positions, then finish the second half-kick.
-     * This is more orbit-friendly than explicit Euler for the same simple API. */
+     * This is more orbit-friendly than explicit Euler for the same simple API.
+     * Component arithmetic matches vec3d_add/vec3d_scale operation for
+     * operation (same results) without cross-file calls in this hot loop. */
+    const double half = 0.5 * dt_seconds;
     for (size_t i = 0; i < body_count; ++i) {
-        if (bodies[i].fixed) {
-            continue;
-        }
-
-        Vec3d half_kick = vec3d_scale(bodies[i].acceleration_mps2, 0.5 * dt_seconds);
-        bodies[i].velocity_mps = vec3d_add(bodies[i].velocity_mps, half_kick);
-        bodies[i].position_m = vec3d_add(bodies[i].position_m, vec3d_scale(bodies[i].velocity_mps, dt_seconds));
+        Body *b = &bodies[i];
+        if (b->fixed) continue;
+        b->velocity_mps.x += b->acceleration_mps2.x * half;
+        b->velocity_mps.y += b->acceleration_mps2.y * half;
+        b->velocity_mps.z += b->acceleration_mps2.z * half;
+        b->position_m.x += b->velocity_mps.x * dt_seconds;
+        b->position_m.y += b->velocity_mps.y * dt_seconds;
+        b->position_m.z += b->velocity_mps.z * dt_seconds;
     }
 
     physics_compute_accelerations(bodies, body_count);
 
     for (size_t i = 0; i < body_count; ++i) {
-        if (bodies[i].fixed) {
-            continue;
-        }
-
-        Vec3d half_kick = vec3d_scale(bodies[i].acceleration_mps2, 0.5 * dt_seconds);
-        bodies[i].velocity_mps = vec3d_add(bodies[i].velocity_mps, half_kick);
+        Body *b = &bodies[i];
+        if (b->fixed) continue;
+        b->velocity_mps.x += b->acceleration_mps2.x * half;
+        b->velocity_mps.y += b->acceleration_mps2.y * half;
+        b->velocity_mps.z += b->acceleration_mps2.z * half;
     }
 }
