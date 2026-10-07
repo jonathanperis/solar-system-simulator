@@ -30,7 +30,9 @@ runs:
       env:
         PLATFORM: ${{ inputs.platform }}
       run: |
-        # raylib 6.0. Change only this line to move every workflow together.
+        # Change only these two lines to move every workflow together; Renovate
+        # updates the tag and its commit as a pair.
+        # renovate: datasource=github-tags depName=raysan5/raylib currentValue=6.0
         echo "revision=dbc56a87da87d973a9c5baa4e7438a9d20121d28" >> "$GITHUB_OUTPUT"
         echo "prefix=$RUNNER_TEMP/raylib-$PLATFORM" >> "$GITHUB_OUTPUT"
         echo "web-src=$RUNNER_TEMP/raylib-$PLATFORM/src" >> "$GITHUB_OUTPUT"
