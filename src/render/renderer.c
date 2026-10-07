@@ -490,11 +490,22 @@ static double trail_path_pixels(const RenderFrameCache *cache, const SolarSystem
 
 /* `cache` holds this frame's parents and positions: trails visit up to ~130k
  * samples, so those lookups are resolved once per frame, not per sample. */
+/* Measuring a trail's on-screen path length samples up to 128 points per
+ * trail, the largest trail cost in a 300-body scene. Each trail is re-measured
+ * every TRAIL_EXTENT_REFRESH_FRAMES frames, staggered across bodies, and at
+ * once when its history shrinks (reset, new scene). Drawing detail can lag a
+ * camera move by a few frames; it never drops below RENDER_TRAIL_MIN_POINTS. */
+#define TRAIL_EXTENT_REFRESH_FRAMES 8
+static double trail_extent_pixels[SOLAR_SYSTEM_BODY_CAPACITY];
+static size_t trail_extent_points[SOLAR_SYSTEM_BODY_CAPACITY];
+static unsigned trail_extent_frame;
+
 static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system, const BodyTrails *trails,
     RenderScaleMode mode, RenderTrailFrame trail_frame, Vec3d origin, const Camera3D *camera)
 {
     Vec3d camera_world = vec3d_add(origin, (Vec3d){camera->position.x, camera->position.y, camera->position.z});
     double viewport_height = (double)GetRenderHeight();
+    ++trail_extent_frame;
     rlBegin(RL_LINES);
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
@@ -504,8 +515,13 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
         Color color = renderer_body_color(body);
         color.a = 235;
         /* Draw only as finely as the trail's on-screen length can show. */
+        if ((i + trail_extent_frame) % TRAIL_EXTENT_REFRESH_FRAMES == 0 || point_count < trail_extent_points[i]) {
+            trail_extent_pixels[i] = trail_path_pixels(cache, system, trails, i, point_count, mode, trail_frame,
+                camera_world, camera, viewport_height);
+            trail_extent_points[i] = point_count;
+        }
         size_t stride = render_trail_stride_for_extent(point_count, renderer_trail_sample_stride(point_count),
-            trail_path_pixels(cache, system, trails, i, point_count, mode, trail_frame, camera_world, camera, viewport_height));
+            trail_extent_pixels[i]);
         /* The live endpoint is the body's centre: stop the trail at its drawn
          * surface so it never pokes out through the near side. */
         Vec3d center = cache->position[i];
