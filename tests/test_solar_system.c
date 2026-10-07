@@ -300,7 +300,9 @@ static void test_vesta_perihelion_speed_matches_vis_viva(void)
 
 static void test_jupiter_constants_and_derived_perihelion_state(void)
 {
-    assert_close(SOLAR_JUPITER_MASS_KG, 1.898125e27, 1.898125e27 * 1e-12);
+    /* Planet-only Horizons GM; G*M must reproduce it exactly (no system GM). */
+    assert_close(SOLAR_G * SOLAR_JUPITER_MASS_KG, 1.266865319e17, 1.266865319e17 * 1e-14);
+    assert_close(SOLAR_JUPITER_MASS_KG, 1.8981246e27, 1.8981246e27 * 1e-7);
     assert_close(SOLAR_JUPITER_RADIUS_M, 69911000.0, 1e-6);
     assert_close(SOLAR_JUPITER_SEMI_MAJOR_AXIS_M, 5.20288700 * SOLAR_AU_METERS, 1e-3);
     assert_close(SOLAR_JUPITER_ECCENTRICITY, 0.04838624, 1e-15);
@@ -313,7 +315,8 @@ static void test_jupiter_constants_and_derived_perihelion_state(void)
 
 static void test_saturn_constants_and_derived_perihelion_state(void)
 {
-    assert_close(SOLAR_SATURN_MASS_KG, 5.68317e26, 5.68317e26 * 1e-12);
+    assert_close(SOLAR_G * SOLAR_SATURN_MASS_KG, 3.7931206234e16, 3.7931206234e16 * 1e-14);
+    assert_close(SOLAR_SATURN_MASS_KG, 5.6831737e26, 5.6831737e26 * 1e-7);
     assert_close(SOLAR_SATURN_RADIUS_M, 58232000.0, 1e-6);
     assert_close(SOLAR_SATURN_SEMI_MAJOR_AXIS_M, 9.53667594 * SOLAR_AU_METERS, 1e-3);
     assert_close(SOLAR_SATURN_ECCENTRICITY, 0.05386179, 1e-15);

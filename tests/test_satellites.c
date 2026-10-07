@@ -81,10 +81,17 @@ static void test_shared_conic_solver_reproduces_former_jovian_states(void)
             Vec3d v = vec3d_sub(moon.velocity_mps, jupiter.velocity_mps);
             r.z = -r.z;
             v.z = -v.z;
+            /* The former states used Jupiter's earlier literal mass 1.898125e27
+             * kg; it is now GM/G (A74). A conic's position at a given mean
+             * anomaly does not depend on mu, and its velocity scales as
+             * sqrt(mu), so rescale the captured velocity to the current mu. */
+            double moon_mass = d->gm_km3_s2 * 1e9 / SOLAR_G;
+            Vec3d former_v = vec3d_scale(former[k].v,
+                sqrt((jupiter.mass_kg + moon_mass) / (1.898125e27 + moon_mass)));
             /* The former values were differences of ~7e11 m absolute
              * positions, so they carry ~1e-4 m roundoff of their own. */
             assert(vec3d_length(vec3d_sub(r, former[k].r)) / vec3d_length(former[k].r) < 1e-11);
-            assert(vec3d_length(vec3d_sub(v, former[k].v)) / vec3d_length(former[k].v) < 1e-11);
+            assert(vec3d_length(vec3d_sub(v, former_v)) / vec3d_length(former_v) < 1e-11);
             ++matched;
         }
     }
