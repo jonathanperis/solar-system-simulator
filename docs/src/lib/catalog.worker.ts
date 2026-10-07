@@ -50,6 +50,9 @@ const indexShards = new ShardCache<IndexRow[]>(shardCacheSize);
 const dataShards = new ShardCache<CatalogRecord[]>(shardCacheSize);
 let columnar: { snapshot: string; index: ColumnarIndex } | undefined;
 let build: { snapshot: string; controller: AbortController; done: Promise<ColumnarIndex> } | undefined;
+// Each download carries an increasing ID so the page can ignore a late
+// terminal reply from a cancelled download after a replacement has started.
+let buildSequence = 0;
 let searchGeneration = 0, recordGeneration = 0;
 
 const post = (message: unknown): void => { self.postMessage(message); };
@@ -61,11 +64,12 @@ const fetchIndex = (base: string, manifest: Manifest, shard: Shard): Promise<Ind
 
 function startBuild(base: string, manifest: Manifest): Promise<ColumnarIndex> {
   if (build?.snapshot === manifest.sourceSha256) return build.done;
+  const buildId = ++buildSequence;
   build?.controller.abort();
   const controller = new AbortController();
   const totalBytes = manifest.shards.reduce((n, s) => n + s.index.bytes, 0), totalFiles = manifest.shards.length;
   const status = (state: 'progress' | 'done' | 'cancelled' | 'error', files: number, bytes: number, error?: string) =>
-    post({ type: 'build', state, files, totalFiles, bytes, totalBytes, ...(error ? { error } : {}) });
+    post({ type: 'build', buildId, state, files, totalFiles, bytes, totalBytes, ...(error ? { error } : {}) });
   const request = (i: number): Promise<IndexRow[]> => {
     const loading = fetchPacked<IndexRow[]>(base, manifest.shards[i].index, manifest.sourceSha256, controller.signal);
     loading.catch(() => undefined);  // awaited in order below; avoid unhandled rejections after a cancel
