@@ -1,5 +1,6 @@
 #include "scene_style.h"
 
+#include <limits.h>
 #include <math.h>
 
 #include "../sim/orbit.h"
@@ -221,6 +222,40 @@ bool render_clip_segment_outside_sphere(Vec3d *a, Vec3d *b, Vec3d center, double
     s = s < 0 ? 0 : s > 1 ? 1 : s;
     *inside = vec3d_add(*outside, vec3d_scale(d, s));
     return true;
+}
+
+bool render_body_wants_label(BodyKind kind, bool selected, bool known_radius, double radius_pixels,
+    double parent_separation_pixels)
+{
+    if (selected || kind == BODY_KIND_STAR || kind == BODY_KIND_PLANET) return true;
+    return known_radius && radius_pixels >= RENDER_LABEL_MIN_RADIUS_PIXELS && parent_separation_pixels >= RENDER_LABEL_MIN_SEPARATION_PIXELS;
+}
+
+static bool boxes_overlap(const RenderLabelBox *a, const RenderLabelBox *b)
+{
+    const float margin = 4.0f; /* keep a little breathing room between labels */
+    return a->x < b->x + b->width + margin && b->x < a->x + a->width + margin &&
+        a->y < b->y + b->height + margin && b->y < a->y + a->height + margin;
+}
+
+void render_declutter_labels(RenderLabelBox *boxes, size_t count)
+{
+    /* Greedy placement: visit labels from most to least important (ties in
+     * their original order) and keep each one that overlaps nothing kept so
+     * far. n is at most the scene size, so the O(n^2) passes are cheap. */
+    for (size_t i = 0; i < count; ++i) boxes[i].visible = false;
+    for (size_t placed = 0; placed < count; ++placed) {
+        size_t best = count;
+        for (size_t i = 0; i < count; ++i) {
+            if (boxes[i].visible || boxes[i].priority == INT_MIN) continue;
+            if (best == count || boxes[i].priority > boxes[best].priority) best = i;
+        }
+        if (best == count) break;
+        bool clear = true;
+        for (size_t j = 0; j < count && clear; ++j) if (boxes[j].visible && boxes_overlap(&boxes[best], &boxes[j])) clear = false;
+        if (clear) boxes[best].visible = true;
+        else boxes[best].priority = INT_MIN; /* rejected: never revisit */
+    }
 }
 
 float render_glow_intensity(double r)

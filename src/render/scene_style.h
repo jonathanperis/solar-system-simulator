@@ -104,6 +104,28 @@ size_t render_trail_stride_for_extent(size_t point_count, size_t base_stride, do
  * at most one endpoint is inside, which holds for a body's own trail. */
 bool render_clip_segment_outside_sphere(Vec3d *a, Vec3d *b, Vec3d center, double radius);
 
+/* Name labels drawn in the canvas (presentation only). The Sun and planets
+ * are always named; the selected body always is; moons and small bodies are
+ * named once their family is zoomed in (at least
+ * RENDER_LABEL_MIN_SEPARATION_PIXELS from their parent on screen), when they
+ * are drawn at least RENDER_LABEL_MIN_RADIUS_PIXELS across and have a known
+ * size (unknown-radius wire markers stay unnamed unless selected). */
+#define RENDER_LABEL_MIN_SEPARATION_PIXELS 36.0
+#define RENDER_LABEL_MIN_RADIUS_PIXELS 2.0
+bool render_body_wants_label(BodyKind kind, bool selected, bool known_radius, double radius_pixels,
+    double parent_separation_pixels);
+
+/* A label's screen rectangle and importance. render_declutter_labels keeps
+ * the most important labels and hides any label that would overlap one
+ * already placed, so a crowded inner solar system stays readable. */
+typedef struct RenderLabelBox {
+    float x, y, width, height;
+    int priority;
+    bool visible;
+} RenderLabelBox;
+/* Sets `visible`; a rejected label's priority is overwritten with INT_MIN. */
+void render_declutter_labels(RenderLabelBox *boxes, size_t count);
+
 /* Julian date of the J2000.0 epoch (2000 January 1, 12:00 TDB). */
 #define RENDER_J2000_JD 2451545.0
 
