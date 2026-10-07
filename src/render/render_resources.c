@@ -3,6 +3,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <rlgl.h>
 #include <string.h>
 
 #include "../sim/constants.h"
@@ -23,7 +25,10 @@
  * differently. The bodies of the two programs are otherwise identical. */
 #if defined(PLATFORM_WEB)
 #define SHADER_HEADER_VS "#version 100\n#define IN attribute\n#define OUT varying\n"
-#define SHADER_HEADER_FS "#version 100\nprecision mediump float;\n#define IN varying\n#define TEX texture2D\n#define FRAG_COLOR gl_FragColor\n"
+/* WebGL 1 fragment shaders default to no float precision; use highp where the
+ * GPU offers it (shadow and glint maths in small real-scale units needs it)
+ * and fall back to mediump elsewhere. */
+#define SHADER_HEADER_FS "#version 100\n#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n#define IN varying\n#define TEX texture2D\n#define FRAG_COLOR gl_FragColor\n"
 #define SHADER_OUTPUT ""
 #else
 #define SHADER_HEADER_VS "#version 330\n#define IN in\n#define OUT out\n"
@@ -130,17 +135,17 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     /* The rings' shadow on Saturn: follow the ray toward the Sun to the ring
      * plane (t from the plane equation) and read the ring strip's opacity at
      * that radius. Dense rings cast dark bands, the Cassini gap lets light by. */
-    "    if (ringShadow > 0.5) {\n"
-    "        float facing = dot(lightDir, ringNormal);\n"
-    "        if (abs(facing) > 0.0001) {\n"
-    "            float t = -dot(fragPosition - bodyCenter, ringNormal) / facing;\n"
-    "            if (t > 0.0) {\n"
-    "                float r = length(fragPosition + lightDir * t - bodyCenter) / bodyRadius;\n"
-    "                float u = (r - ringRadii.x) / (ringRadii.y - ringRadii.x);\n"
-    "                if (u > 0.0 && u < 1.0) lit *= 1.0 - 0.85 * TEX(texture2, vec2(u, 0.5)).a;\n"
-    "            }\n"
-    "        }\n"
-    "    }\n"
+    /* The ray is followed unconditionally (with guarded divisions) and the
+     * strip sampled once: mipmapped lookups need screen-space derivatives,
+     * which are undefined inside a per-pixel branch. Only applying the
+     * shadow is conditional. Other bodies sample a white map harmlessly. */
+    "    float facing = dot(lightDir, ringNormal);\n"
+    "    float safeFacing = abs(facing) > 0.0001 ? facing : 0.0001;\n"
+    "    float t = -dot(fragPosition - bodyCenter, ringNormal) / safeFacing;\n"
+    "    float hitRadius = length(fragPosition + lightDir * t - bodyCenter) / max(bodyRadius, 0.000001);\n"
+    "    float u = (hitRadius - ringRadii.x) / max(ringRadii.y - ringRadii.x, 0.000001);\n"
+    "    float ringAlpha = TEX(texture2, vec2(clamp(u, 0.0, 1.0), 0.5)).a;\n"
+    "    if (ringShadow > 0.5 && abs(facing) > 0.0001 && t > 0.0 && u > 0.0 && u < 1.0) lit *= 1.0 - 0.85 * ringAlpha;\n"
     "    vec3 color = albedo * (0.004 + lit);\n"
     "    if (nightLights > 0.5) {\n"
     /* City lights fade in across the terminator. */
@@ -240,7 +245,10 @@ bool renderer_resources_init(RenderResources *resources)
 {
     *resources = (RenderResources){0};
     resources->shader = LoadShaderFromMemory(vertex_shader, fragment_shader);
-    if (!IsShaderValid(resources->shader)) return false;
+    /* A compile failure yields id 0, but a link failure makes raylib quietly
+     * substitute its default shader. Treat both as unavailable so the flat
+     * colour fallback is used instead of an unlit, white-haloed scene. */
+    if (!IsShaderValid(resources->shader) || resources->shader.id == rlGetShaderIdDefault()) return false;
     resources->loc_mode = GetShaderLocation(resources->shader, "mode");
     resources->loc_light_dir = GetShaderLocation(resources->shader, "lightDir");
     resources->loc_view_pos = GetShaderLocation(resources->shader, "viewPos");
@@ -251,6 +259,11 @@ bool renderer_resources_init(RenderResources *resources)
     resources->loc_body_radius = GetShaderLocation(resources->shader, "bodyRadius");
     resources->loc_ring_normal = GetShaderLocation(resources->shader, "ringNormal");
     resources->loc_ring_radii = GetShaderLocation(resources->shader, "ringRadii");
+    if (resources->loc_mode < 0 || resources->loc_light_dir < 0) {
+        UnloadShader(resources->shader);
+        resources->shader = (Shader){0};
+        return false;
+    }
     /* Planets get a smooth 96 x 48 sphere; dozens of small moons share a
      * cheaper 32 x 16 one so the 128-body scene stays light on phones. */
     resources->sphere_detailed = build_sphere(96, 48);
