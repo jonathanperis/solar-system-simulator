@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #include "app/body_trails.h"
+#include "sim/physics.h"
 #include "render/renderer.h"
 #include "sim/constants.h"
 #include "sim/lessons.h"
@@ -365,8 +366,37 @@ static void test_moving_sun_history_preserves_parent_relative_frames(void)
     body_trails_destroy(&trails);
 }
 
+static void test_cached_trail_points_match_uncached_exactly(void)
+{
+    /* The renderer resolves parents and body positions once per frame
+     * (RenderFrameCache) instead of once per trail sample. The cache is a pure
+     * speed-up: every point must be bit-identical to the uncached path. */
+    SolarSystem system = solar_system_create_current();
+    BodyTrails trails = body_trails_create();
+    for (int step = 0; step < 6; ++step) {
+        body_trails_record_system(&trails, &system);
+        for (int k = 0; k < 20; ++k) physics_step(system.bodies, system.body_count, 15.0);
+        system.elapsed_seconds += 300.0;
+    }
+    for (int mode = 0; mode < 2; ++mode) {
+        RenderFrameCache cache;
+        renderer_frame_cache_build(&cache, &system, (RenderScaleMode)mode);
+        for (int frame = 0; frame < 2; ++frame) {
+            for (size_t i = 0; i < system.body_count; ++i) {
+                for (size_t j = 0; j < body_trails_point_count(&trails, i); ++j) {
+                    Vec3d slow = renderer_trail_point_in_frame(&system, &trails, i, j, (RenderScaleMode)mode, (RenderTrailFrame)frame);
+                    Vec3d fast = renderer_trail_point_cached(&cache, &system, &trails, i, j, (RenderScaleMode)mode, (RenderTrailFrame)frame);
+                    assert(slow.x == fast.x && slow.y == fast.y && slow.z == fast.z);
+                }
+            }
+        }
+    }
+    body_trails_destroy(&trails);
+}
+
 int main(void)
 {
+    test_cached_trail_points_match_uncached_exactly();
     test_moving_sun_history_preserves_parent_relative_frames();
     test_encounter_probe_is_visible_and_frames_its_parent();
     test_parent_relative_history_vectors_and_magnification();

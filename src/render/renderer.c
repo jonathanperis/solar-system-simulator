@@ -109,7 +109,9 @@ Vec3d renderer_body_position(const SolarSystem *system, size_t body_index, Rende
     return visible_satellite_position(body, parent, position, parent_position, mode);
 }
 
-Vec3d renderer_trail_point_position(const SolarSystem *system, const BodyTrails *trails, size_t body_index, size_t point_index, RenderScaleMode mode)
+/* Trail sample position with the parent already resolved (-1 = none). */
+static Vec3d trail_point_with_parent(const SolarSystem *system, const BodyTrails *trails, size_t body_index,
+    size_t point_index, RenderScaleMode mode, int parent_index)
 {
     if (system->body_count == 0 || body_index >= system->body_count || body_index >= SOLAR_SYSTEM_BODY_CAPACITY) {
         return vec3d_zero();
@@ -121,7 +123,6 @@ Vec3d renderer_trail_point_position(const SolarSystem *system, const BodyTrails 
         return position;
     }
 
-    int parent_index = solar_system_parent_index(system, body_index);
     if (parent_index < 0 || point_index >= body_trails_point_count(trails, (size_t)parent_index)) {
         return position;
     }
@@ -130,6 +131,32 @@ Vec3d renderer_trail_point_position(const SolarSystem *system, const BodyTrails 
     if (body->kind != BODY_KIND_MOON && parent->kind == BODY_KIND_STAR) return position;
     Vec3d parent_position = meters_vec_to_render_vec3d(body_trails_point_at(trails, (size_t)parent_index, point_index));
     return visible_satellite_position(body, parent, position, parent_position, mode);
+}
+
+Vec3d renderer_trail_point_position(const SolarSystem *system, const BodyTrails *trails, size_t body_index, size_t point_index, RenderScaleMode mode)
+{
+    int parent = body_index < system->body_count ? solar_system_parent_index(system, body_index) : -1;
+    return trail_point_with_parent(system, trails, body_index, point_index, mode, parent);
+}
+
+void renderer_frame_cache_build(RenderFrameCache *cache, const SolarSystem *system, RenderScaleMode mode)
+{
+    for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
+        cache->parent[i] = solar_system_parent_index(system, i);
+        cache->position[i] = renderer_body_position(system, i, mode);
+    }
+}
+
+Vec3d renderer_trail_point_cached(const RenderFrameCache *cache, const SolarSystem *system, const BodyTrails *trails,
+    size_t body_index, size_t point_index, RenderScaleMode mode, RenderTrailFrame frame)
+{
+    if (body_index >= system->body_count) return vec3d_zero();
+    int parent = cache->parent[body_index];
+    Vec3d position = trail_point_with_parent(system, trails, body_index, point_index, mode, parent);
+    if (frame == RENDER_TRAILS_ABSOLUTE || parent < 0 || system->bodies[parent].fixed) return position;
+    /* Same parent-relative translation as renderer_trail_point_in_frame. */
+    Vec3d then = trail_point_with_parent(system, trails, (size_t)parent, point_index, mode, cache->parent[parent]);
+    return vec3d_add(vec3d_sub(position, then), cache->position[parent]);
 }
 
 RenderSystemFrame renderer_system_frame(const SolarSystem *system, size_t selected, RenderScaleMode mode)
@@ -410,6 +437,9 @@ static void draw_reference_grid(Vec3d origin, double camera_distance)
 static void draw_trails(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode,
     RenderTrailFrame trail_frame, Vec3d origin)
 {
+    /* Up to ~130k samples per frame: resolve parents and positions once. */
+    static RenderFrameCache cache;
+    renderer_frame_cache_build(&cache, system, mode);
     rlBegin(RL_LINES);
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
@@ -421,15 +451,15 @@ static void draw_trails(const SolarSystem *system, const BodyTrails *trails, Ren
         size_t stride = renderer_trail_sample_stride(point_count);
         /* The live endpoint is the body's centre: stop the trail at its drawn
          * surface so it never pokes out through the near side. */
-        Vec3d center = renderer_body_position(system, i, mode);
+        Vec3d center = cache.position[i];
         double surface = body->radius_quality == PHYSICAL_UNKNOWN ? 0 : renderer_body_radius(body, mode);
         /* Adjacent segments share an endpoint. Reuse its render transform;
          * the simulation and synchronized history are immutable while drawing.
          * Opacity follows the sample's age so recent motion reads first. */
         size_t previous = 0;
-        Vec3d start = renderer_trail_point_in_frame(system, trails, i, 0, mode, trail_frame);
+        Vec3d start = renderer_trail_point_cached(&cache, system, trails, i, 0, mode, trail_frame);
         for (size_t j = stride; j < point_count; j += stride) {
-            Vec3d end = renderer_trail_point_in_frame(system, trails, i, j, mode, trail_frame);
+            Vec3d end = renderer_trail_point_cached(&cache, system, trails, i, j, mode, trail_frame);
             Vec3d a = start, b = end;
             if (render_clip_segment_outside_sphere(&a, &b, center, surface)) {
                 line_vertex(renderer_relative_vector(a, origin), color, render_trail_alpha(previous, point_count));
@@ -439,7 +469,7 @@ static void draw_trails(const SolarSystem *system, const BodyTrails *trails, Ren
             previous = j;
         }
         if (previous + 1 < point_count) {
-            Vec3d end = renderer_trail_point_in_frame(system, trails, i, point_count - 1, mode, trail_frame);
+            Vec3d end = renderer_trail_point_cached(&cache, system, trails, i, point_count - 1, mode, trail_frame);
             Vec3d a = start, b = end;
             if (render_clip_segment_outside_sphere(&a, &b, center, surface)) {
                 line_vertex(renderer_relative_vector(a, origin), color, render_trail_alpha(previous, point_count));
