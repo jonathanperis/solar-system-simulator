@@ -295,7 +295,7 @@ typedef enum ShadeMode { SHADE_LIT = 0, SHADE_STAR = 1, SHADE_CLOUDS = 2, SHADE_
 
 /* Set this draw's uniforms and maps, then issue it. DrawMesh draws at once
  * (it is not batched), so per-body uniforms take effect immediately. */
-static void draw_shaded(const RenderResources *resources, Mesh mesh, Matrix transform, ShadeMode mode,
+static void draw_shaded(const RenderResources *resources, const Mesh *mesh, const Matrix *transform, ShadeMode mode,
     Texture2D surface, Color tint, Vector3 light_direction, RenderAtmosphere atmosphere, const Texture2D *night)
 {
     float mode_value = (float)mode, night_value = night ? 1.0f : 0.0f;
@@ -309,7 +309,7 @@ static void draw_shaded(const RenderResources *resources, Mesh mesh, Matrix tran
     material.maps[MATERIAL_MAP_ALBEDO].texture = surface;
     material.maps[MATERIAL_MAP_ALBEDO].color = tint;
     material.maps[MATERIAL_MAP_METALNESS].texture = night ? *night : resources->white;
-    DrawMesh(mesh, material, transform);
+    DrawMesh(*mesh, material, *transform);
 }
 
 static Texture2D texture_or_white(const RenderResources *resources, RenderTextureSlot slot)
@@ -423,7 +423,7 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
         rlDisableDepthMask();
         rlDisableBackfaceCulling();
         Matrix sky = body_matrix((RenderOrientation){{0, 1, 0}, {1, 0, 0}, 0, false}, camera.position, view->far_plane * 0.5f);
-        draw_shaded(resources, resources->sphere_detailed, sky, SHADE_SKY, resources->textures[RENDER_TEXTURE_STARS],
+        draw_shaded(resources, &resources->sphere_detailed, &sky, SHADE_SKY, resources->textures[RENDER_TEXTURE_STARS],
             WHITE, (Vector3){0, 1, 0}, (RenderAtmosphere){0}, NULL);
         rlEnableBackfaceCulling();
         rlEnableDepthMask();
@@ -475,17 +475,17 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
         bool textured = slot >= 0 && resources->texture_loaded[slot];
         RenderOrientation orientation = render_body_orientation(body->id, view->orientation_days);
         Matrix transform = body_matrix(orientation, position, radius);
-        Mesh mesh = textured || body->kind != BODY_KIND_MOON ? resources->sphere_detailed : resources->sphere_simple;
+        const Mesh *mesh = textured || body->kind != BODY_KIND_MOON ? &resources->sphere_detailed : &resources->sphere_simple;
         Color tint = textured ? WHITE : renderer_body_color(body);
         if ((int)i == star) {
-            draw_shaded(resources, mesh, transform, SHADE_STAR, texture_or_white(resources, slot), tint,
+            draw_shaded(resources, mesh, &transform, SHADE_STAR, texture_or_white(resources, slot), tint,
                 (Vector3){0, 1, 0}, (RenderAtmosphere){0}, NULL);
             continue;
         }
         Vector3 light = unit_vector((Vector3){star_position.x - position.x, star_position.y - position.y,
             star_position.z - position.z}, (Vector3){0, 1, 0});
         bool city_lights = body->id == BODY_ID_EARTH && resources->texture_loaded[RENDER_TEXTURE_EARTH_NIGHT];
-        draw_shaded(resources, mesh, transform, SHADE_LIT, texture_or_white(resources, slot), tint, light,
+        draw_shaded(resources, mesh, &transform, SHADE_LIT, texture_or_white(resources, slot), tint, light,
             render_atmosphere_for_body(body->id), city_lights ? &resources->textures[RENDER_TEXTURE_EARTH_NIGHT] : NULL);
     }
     rlDrawRenderBatchActive();
@@ -515,13 +515,15 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
              * outer extent matches renderer_body_visual_radius (framing). */
             bool ring_map = resources->texture_loaded[RENDER_TEXTURE_SATURN_RING];
             rlDisableBackfaceCulling();
-            draw_shaded(resources, resources->ring, body_matrix(orientation, position, radius), SHADE_RING,
+            Matrix ring_transform = body_matrix(orientation, position, radius);
+            draw_shaded(resources, &resources->ring, &ring_transform, SHADE_RING,
                 texture_or_white(resources, RENDER_TEXTURE_SATURN_RING), ring_map ? WHITE : (Color){205, 184, 145, 150},
                 light, (RenderAtmosphere){0}, NULL);
             rlEnableBackfaceCulling();
         }
         if (clouds) {
-            draw_shaded(resources, resources->sphere_detailed, body_matrix(orientation, position, radius * 1.012f),
+            Matrix cloud_transform = body_matrix(orientation, position, radius * 1.012f);
+            draw_shaded(resources, &resources->sphere_detailed, &cloud_transform,
                 SHADE_CLOUDS, resources->textures[RENDER_TEXTURE_EARTH_CLOUDS], WHITE, light, (RenderAtmosphere){0}, NULL);
         }
     }

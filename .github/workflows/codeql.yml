@@ -40,6 +40,13 @@ jobs:
         uses: ./.github/actions/raylib
         with:
           platform: native
+      # Vendored third-party code (src/render/third_party/stb_image.h) is not
+      # ours to triage. For C/C++ built in manual mode, paths-ignore has no
+      # effect, so compile the one object that includes it before CodeQL
+      # starts tracing; the traced make below reuses it and never sees stb.
+      - name: Pre-build vendored third-party object outside analysis
+        if: matrix.language == 'c-cpp'
+        run: make build/src/render/image_decode.o
       - uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           languages: ${{ matrix.language }}
