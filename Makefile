@@ -61,7 +61,7 @@ SIM_SRCS := \
     src/sim/satellite.c \
     src/sim/orbit.c \
     src/sim/experiment.c \
-    src/sim/jovian_catalog.c \
+    src/sim/satellite_catalog.c \
     src/sim/solar_system.c
 
 SESSION_SRCS := src/app/body_trails.c src/app/simulation_step.c src/app/simulation_session.c
@@ -123,10 +123,10 @@ test: test-core $(TEST_RENDERER)
 
 # Pure C/application contracts need no raylib headers, graphics libraries or window.
 test-core: build/catalog-orbits.dylib $(HEADLESS_TEST_BINS)
-	python3 tools/jovian_catalog.py --check
+	python3 tools/satellite_catalog.py --check
 	python3 tools/planet_epoch.py --check
 	python3 tests/test_small_body_catalog.py
-	python3 tests/test_jovian_catalog.py
+	python3 tests/test_satellite_catalog.py
 	python3 tests/test_planet_epoch.py
 	$(MAKE) test-binaries TEST_BINS="$(HEADLESS_TEST_BINS)"
 

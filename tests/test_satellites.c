@@ -7,7 +7,7 @@
 
 #include "sim/constants.h"
 #include "sim/experiment.h"
-#include "sim/jovian_catalog.h"
+#include "sim/satellite_catalog.h"
 #include "sim/lessons.h"
 #include "sim/orbit.h"
 #include "sim/solar_system.h"
@@ -195,11 +195,154 @@ static void test_ecliptic_frame_is_a_proper_rotation_with_prograde_plus_y(void)
     assert_orbit_directions(&experiment, directions);
 }
 
+static Body parent_planet(BodyId planet)
+{
+    switch (planet) {
+    case BODY_ID_JUPITER: return solar_system_create_jupiter_at_perihelion();
+    case BODY_ID_SATURN: return solar_system_create_saturn_at_perihelion();
+    case BODY_ID_URANUS: return solar_system_create_uranus_at_perihelion();
+    default: return solar_system_create_neptune_at_perihelion();
+    }
+}
+
+/* Parent-relative orbit normal r x v of a catalog moon, as a unit vector. */
+static Vec3d orbit_normal(const SatelliteDefinition *d, const Body *parent)
+{
+    Body moon = satellite_create(d, parent);
+    Vec3d h = vec3d_cross(vec3d_sub(moon.position_m, parent->position_m), vec3d_sub(moon.velocity_mps, parent->velocity_mps));
+    return vec3d_scale(h, 1 / vec3d_length(h));
+}
+
+static const SatelliteDefinition *find_moon(const SatelliteCatalog *catalog, int code)
+{
+    for (size_t i = 0; i < catalog->count; ++i)
+        if (catalog->moons[i].code == code) return &catalog->moons[i];
+    assert(!"moon code missing from its catalog");
+    return NULL;
+}
+
+static double angle_degrees(Vec3d a, Vec3d b)
+{
+    /* atan2 stays precise for nearly parallel vectors, where acos does not. */
+    return atan2(vec3d_length(vec3d_cross(a, b)), vec3d_dot(a, b)) * 180 / acos(-1.0);
+}
+
+/* Unit vector toward ICRF (RA, Dec), in simulation axes. */
+static Vec3d icrf_direction(double ra_deg, double dec_deg)
+{
+    double ra = ra_deg * acos(-1.0) / 180, dec = dec_deg * acos(-1.0) / 180;
+    Vec3d equatorial = {cos(dec) * cos(ra), cos(dec) * sin(ra), sin(dec)};
+    return orbit_ecliptic_to_simulation(orbit_rotate_to_reference(equatorial, -23.439291111, 0, 0));
+}
+
+static void test_giant_planet_catalogs_inventory_and_major_moons(void)
+{
+    const struct { BodyId planet; size_t count; int majors[8]; size_t major_count; } expected[] = {
+        {BODY_ID_JUPITER, 115, {501, 502, 503, 504}, 4},
+        {BODY_ID_SATURN, 291, {601, 602, 603, 604, 605, 606, 608}, 7},
+        {BODY_ID_URANUS, 29, {701, 702, 703, 704, 705}, 5},
+        {BODY_ID_NEPTUNE, 16, {801}, 1},
+    };
+    assert(satellite_catalog_for(BODY_ID_EARTH) == NULL);
+    for (size_t k = 0; k < sizeof(expected) / sizeof(expected[0]); ++k) {
+        const SatelliteCatalog *catalog = satellite_catalog_for(expected[k].planet);
+        assert(catalog && catalog->count == expected[k].count);
+        size_t majors = 0;
+        for (size_t i = 0; i < catalog->count; ++i) {
+            const SatelliteDefinition *d = &catalog->moons[i];
+            assert(d->code != (int)expected[k].planet);
+            for (size_t j = 0; j < i; ++j) assert(catalog->moons[j].code != d->code);
+            if (!d->major) continue;
+            ++majors;
+            bool listed = false;
+            for (size_t j = 0; j < expected[k].major_count; ++j) listed |= expected[k].majors[j] == d->code;
+            /* Major moons are massive: they pull on the rest of the scene. */
+            assert(listed && d->mass_quality == PHYSICAL_MEASURED && d->gm_km3_s2 > 0);
+        }
+        assert(majors == expected[k].major_count);
+    }
+}
+
+/* A80: point-mass periods from JPL mean a and planet-only GM stay within 1%
+ * of the JPL mean period. The gap is the omitted oblateness (J2), resonances
+ * and solar perturbation: model error, not integrator error. */
+static void test_point_mass_periods_stay_within_one_percent_of_jpl(void)
+{
+    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE};
+    double worst = 0;
+    for (size_t k = 0; k < 4; ++k) {
+        const SatelliteCatalog *catalog = satellite_catalog_for(planets[k]);
+        Body planet = parent_planet(planets[k]);
+        for (size_t i = 0; i < catalog->count; ++i) {
+            const SatelliteDefinition *d = &catalog->moons[i];
+            double a = d->a_km * 1000, mu = SOLAR_G * planet.mass_kg + d->gm_km3_s2 * 1e9;
+            double period_days = 2 * acos(-1.0) * sqrt(a * a * a / mu) / SOLAR_DAY_SECONDS;
+            assert(d->period_days > 0);
+            worst = fmax(worst, fabs(period_days / d->period_days - 1));
+        }
+    }
+    assert(worst < 0.01 && worst > 0.005);
+}
+
+/* A79: every reference plane converts into the right orientation. */
+static void test_reference_planes_orient_regular_moons(void)
+{
+    /* JPL's pole-less Uranian "equatorial" rows use the spin pole, which is
+     * the antipode of the IAU north pole kept in constants.h. */
+    const SatelliteCatalog *uranian = satellite_catalog_for(BODY_ID_URANUS);
+    size_t equatorial = 0;
+    for (size_t i = 0; i < uranian->count; ++i) {
+        const SatelliteDefinition *d = &uranian->moons[i];
+        if (d->frame != SATELLITE_FRAME_EQUATORIAL) continue;
+        ++equatorial;
+        assert(d->major);
+        assert(fabs(d->pole_ra_deg - (SOLAR_URANUS_IAU_POLE_RA_DEG + 180 - 360)) < 1e-9);
+        assert(fabs(d->pole_dec_deg + SOLAR_URANUS_IAU_POLE_DEC_DEG) < 1e-9);
+    }
+    assert(equatorial == 5);
+
+    /* Each converted orbit normal sits exactly its source inclination away
+     * from its source plane's pole, whatever the frame. */
+    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE};
+    for (size_t k = 0; k < 4; ++k) {
+        const SatelliteCatalog *catalog = satellite_catalog_for(planets[k]);
+        Body planet = parent_planet(planets[k]);
+        for (size_t i = 0; i < catalog->count; ++i) {
+            const SatelliteDefinition *d = &catalog->moons[i];
+            Vec3d pole = d->frame == SATELLITE_FRAME_ECLIPTIC ? (Vec3d){0, 1, 0} : icrf_direction(d->pole_ra_deg, d->pole_dec_deg);
+            assert(fabs(angle_degrees(orbit_normal(d, &planet), pole) - d->inclination_deg) < 1e-6);
+        }
+    }
+
+    /* Different ephemeris solutions of one planet describe one equatorial
+     * system: Uranus's major moons (URA182, equatorial frame) and inner moons
+     * (URA184, Laplace frame) share a plane, Saturn's inner and major moons
+     * do too, and Uranus's regular moons orbit about the IAU pole's antipode
+     * because the planet spins retrograde. */
+    Body uranus = parent_planet(BODY_ID_URANUS), saturn = parent_planet(BODY_ID_SATURN);
+    Vec3d spin = icrf_direction(SOLAR_URANUS_IAU_POLE_RA_DEG + 180, -SOLAR_URANUS_IAU_POLE_DEC_DEG);
+    assert(angle_degrees(orbit_normal(find_moon(uranian, 701), &uranus), spin) < 0.5);
+    assert(angle_degrees(orbit_normal(find_moon(uranian, 701), &uranus), orbit_normal(find_moon(uranian, 706), &uranus)) < 1);
+    assert(angle_degrees(orbit_normal(find_moon(uranian, 715), &uranus), spin) < 1.5);
+    const SatelliteCatalog *saturnian = satellite_catalog_for(BODY_ID_SATURN);
+    assert(angle_degrees(orbit_normal(find_moon(saturnian, 606), &saturn), orbit_normal(find_moon(saturnian, 602), &saturn)) < 1);
+    assert(angle_degrees(orbit_normal(find_moon(saturnian, 618), &saturn), orbit_normal(find_moon(saturnian, 602), &saturn)) < 1);
+
+    /* Triton is the one large retrograde moon: its orbit opposes Neptune's
+     * regular inner moons (Proteus here) by more than 150 degrees. */
+    const SatelliteCatalog *neptunian = satellite_catalog_for(BODY_ID_NEPTUNE);
+    Body neptune = parent_planet(BODY_ID_NEPTUNE);
+    assert(angle_degrees(orbit_normal(find_moon(neptunian, 801), &neptune), orbit_normal(find_moon(neptunian, 808), &neptune)) > 150);
+}
+
 int main(void)
 {
     test_ecliptic_frame_is_a_proper_rotation_with_prograde_plus_y();
     test_orbital_elements_preserve_geometry_and_parent_motion();
     test_shared_conic_solver_reproduces_former_jovian_states();
     test_complete_jovian_catalog_and_initial_orbits();
+    test_giant_planet_catalogs_inventory_and_major_moons();
+    test_point_mass_periods_stay_within_one_percent_of_jpl();
+    test_reference_planes_orient_regular_moons();
     puts("test_satellites passed");
 }
