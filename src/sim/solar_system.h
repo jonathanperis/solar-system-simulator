@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 #include "body.h"
-#include "jovian_catalog.h"
+#include "satellite_catalog.h"
 
 /* Core scene inventory (V5): Sun; Mercury, Venus, Earth, Moon, Mars, Phobos,
  * Deimos, Vesta, Jupiter; Jupiter's catalogued moons; Saturn, Uranus, Neptune. */

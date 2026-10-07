@@ -1,4 +1,33 @@
-# Jovian satellite snapshot
+# Giant-planet satellite snapshots
+
+`tools/satellite_catalog.py` maintains one snapshot per giant planet:
+`jovian_moons.json` (115 moons, checked 2026-09-10), `saturnian_moons.json` (291),
+`uranian_moons.json` (29) and `neptunian_moons.json` (16), all checked 2026-10-07.
+The Jovian description below applies to all four. System-specific rules:
+
+- Saturn: 24 regular moons use SAT441/SAT415 Laplace planes; 267 irregular moons
+  use the ecliptic. NASA's Saturn page states both 274 and 293 recognized moons;
+  the simulated set is JPL's 291 orbit-bearing rows.
+- Uranus: three ephemeris solutions with epochs 2000-01-01.5 (URA182, major
+  moons, "equatorial" frame), 2025-01-01.0 (URA184, inner moons, Laplace) and
+  2020-01-01.0 (URA117, irregulars, ecliptic). JPL gives no pole for the
+  equatorial frame; it is Uranus's spin pole, the antipode of the IAU north pole
+  (RA 257.311°, Dec −15.175°), since Uranus spins retrograde. Puck appears in
+  URA182 and URA184; the tool keeps URA184.
+- Neptune: NEP097 Laplace-frame regular moons (Triton is retrograde) and
+  NEP104/NEP105 ecliptic irregulars at epoch 2020-01-01.0. Nereid's GM is listed
+  as zero (not determined), so its mass is unknown.
+- New systems label a GM "measured" when its 1σ uncertainty is at most 10 % of
+  the value and "estimated" otherwise; the Jovian rules are unchanged.
+- `major` marks moons with a measured GM of at least 2 km³/s² (about 3×10¹⁹ kg):
+  the Galilean moons, Saturn's seven rounded moons (Mimas, the smallest, has
+  2.5), Uranus's five and Triton. The Jovian file implies it for the Galilean
+  group. The tool re-derives the set from the data and rejects any change.
+
+Phases are mutually consistent only within one ephemeris solution; the mixed
+epochs are never presented as a dated snapshot.
+
+## Jovian satellite snapshot
 
 `jovian_moons.json` is the versioned input for both C initialization and the
 Astro catalog. It records all 115 Jupiter moons in JPL's 2026-09-10 mean-element
@@ -27,12 +56,12 @@ absolute position and velocity are added only after the relative conversion.
 Normal builds require no network. After an explicitly reviewed source update:
 
 ```sh
-python3 tools/jovian_catalog.py --refresh
-python3 tools/jovian_catalog.py --check
+python3 tools/satellite_catalog.py --refresh --system jupiter
+python3 tools/satellite_catalog.py --check
 ```
 
 The importer deliberately rejects inventory count/epoch/frame changes until
-reviewed. Generated `src/sim/jovian_moons.inc` is committed and checked in CI.
+reviewed. Generated `src/sim/*_moons.inc` files are committed and checked in CI.
 
 ## Provenance and precision policy
 
@@ -42,6 +71,7 @@ reviewed. Generated `src/sim/jovian_moons.inc` is committed and checked in CI.
 | Vesta demonstration | Constants and tests pin selected values attributed to JPL SBDB solution 36 | Original retrieval date and solution epoch not recorded; the live API can change | GM-to-mass and diameter-to-radius conversions are explicit; original uncertainty is unavailable in this legacy subset |
 | Jupiter through Neptune | JPL [physical parameters](https://ssd.jpl.nasa.gov/planets/phys_par.html) and [approximate elements](https://ssd.jpl.nasa.gov/planets/approx_pos.html), pinned in constants/tests | J2000 approximate elements; demonstration phase is deliberately synthetic | Preserve published significant digits; derived speeds do not add measured precision |
 | Jovian moons | `jovian_moons.json` | Checked 2026-09-10; individual frame/epoch fields retained | GM/radius uncertainties and references retained when available; missing values remain unknown |
+| Saturnian, Uranian and Neptunian moons | `saturnian_moons.json`, `uranian_moons.json`, `neptunian_moons.json` | Checked 2026-10-07; per-moon ephemeris, frame and epoch retained (2000, 2020 and 2025 epochs) | Same policy; GM quality from the published 1σ |
 | Selected small-body experiments | `planet_epoch.json`, `small_body_physical.json`, compressed catalog manifest/shards | See [SMALL_BODIES.md](SMALL_BODIES.md); source records retain epochs, and experiments align to JD 2461200.5 TDB | Quality and snapshot hashes remain explicit; no invented density/albedo estimates |
 
 The versioned constants make legacy runs reproducible, but do not reconstruct an original source response whose epoch or retrieval date was never saved. Refresh such data only with a reviewed source snapshot and uncertainty record. Guided lessons reuse physical masses/radii while explicitly changing orbital initial conditions; they are not additional astronomical measurements.
@@ -50,7 +80,7 @@ The versioned constants make legacy runs reproducible, but do not reconstruct an
 
 The MIT [`LICENSE`](../LICENSE) covers this repository's code and original
 writing. It does not relicense third-party data. The files in `data/`,
-`src/sim/jovian_moons.inc`, `src/sim/planet_epoch.inc` and the small-body
+`src/sim/*_moons.inc`, `src/sim/planet_epoch.inc` and the small-body
 shards in `docs/public/catalog/` are transformed extracts of NASA and
 JPL/Caltech Solar System Dynamics products (SBDB, satellite mean elements and
 physical parameters, planetary constants) and NASA Science pages.

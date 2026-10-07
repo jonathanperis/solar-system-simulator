@@ -13,10 +13,10 @@ export const sourceSections: SourceSection[] = [
     verification: 'Offline tools/small_body_catalog.py --check and tools/planet_epoch.py --check; conic/experiment C tests and catalog-worker tests.'
   },
   {
-    label: 'Jovian satellite catalog',
+    label: 'Giant-planet satellite catalogs',
     path: 'data/jovian_moons.json',
-    responsibility: 'Versioned source elements, stable JPL codes, physical-data quality and references for all 115 Jupiter moons; shared with C and Astro.',
-    verification: 'Offline tools/jovian_catalog.py --check, C satellite/geometry tests, and full-scene convergence.'
+    responsibility: 'Versioned source elements, stable JPL codes, physical-data quality and references for the Jovian (115), Saturnian (291), Uranian (29) and Neptunian (16) moons; shared with C and Astro.',
+    verification: 'Offline tools/satellite_catalog.py --check, C satellite/frame/period tests, and full-scene convergence.'
   },
   {
     label: 'Project spec',
