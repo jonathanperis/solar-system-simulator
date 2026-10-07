@@ -8,6 +8,9 @@
 #include "../sim/constants.h"
 #include "image_decode.h"
 #include "render_scale.h"
+/* JetBrains Mono Medium, ASCII subset (assets/fonts/, SIL OFL 1.1), embedded
+ * by the build so labels never wait for a download. */
+#include "label_font.inc"
 
 /* One shader pair serves every body (SPEC A64, C10). `mode` selects the
  * lighting model: 0 lit surface, 1 emissive star, 2 cloud layer, 3 ring,
@@ -257,6 +260,11 @@ bool renderer_resources_init(RenderResources *resources)
     resources->white = LoadTextureFromImage(white);
     UnloadImage(white);
     resources->glow = build_glow();
+    /* Rasterize at 32 px once and draw scaled down with bilinear filtering,
+     * which stays crisp at label sizes; raylib's built-in font is pixel art. */
+    resources->label_font = LoadFontFromMemory(".ttf", label_font, label_font_size, 32, NULL, 95);
+    resources->label_font_ready = resources->label_font.texture.id != 0;
+    if (resources->label_font_ready) SetTextureFilter(resources->label_font.texture, TEXTURE_FILTER_BILINEAR);
     resources->material = LoadMaterialDefault();
     resources->material.shader = resources->shader;
     resources->ready = resources->sphere_detailed.vertexCount > 0 && resources->sphere_simple.vertexCount > 0 &&
@@ -272,6 +280,7 @@ void renderer_resources_unload(RenderResources *resources)
     if (resources->ring.vertexCount) UnloadMesh(resources->ring);
     if (resources->white.id) UnloadTexture(resources->white);
     if (resources->glow.id) UnloadTexture(resources->glow);
+    if (resources->label_font_ready) UnloadFont(resources->label_font);
     /* UnloadMaterial would also unload the shared shader and default texture;
      * release only the map array this material allocated. */
     RL_FREE(resources->material.maps);
