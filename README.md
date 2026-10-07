@@ -148,10 +148,10 @@ Baseline planet values follow NASA/JPL references. Sun, Mercury, Venus, Earth, M
 | Phobos | `1.061834199841182e16 kg` | `11080 m` | Mars-relative periareion offset and tangential relative speed |
 | Deimos | `1.441349654645431e15 kg` | `6200 m` | Mars-relative periareion offset and tangential relative speed |
 | Vesta | `2.590276793071933e20 kg` | `261385 m` | heliocentric perihelion position and tangential speed |
-| Jupiter | `1.898125e27 kg` | `69911000 m` | Jovian-system barycenter (Jupiter plus known-mass moons) at heliocentric perihelion with vis-viva speed |
-| Saturn | `5.68317e26 kg` | `58232000 m` | heliocentric perihelion position and tangential speed |
-| Uranus | `8.68099e25 kg` | `25362000 m` | heliocentric perihelion, `a=19.18916464 AU`, `e=0.04725744` |
-| Neptune | `1.024092e26 kg` | `24622000 m` | heliocentric perihelion, `a=30.06992276 AU`, `e=0.00859048` |
+| Jupiter | `1.8981246e27 kg` | `69911000 m` | Jovian-system barycenter (Jupiter plus known-mass moons) at heliocentric perihelion with vis-viva speed |
+| Saturn | `5.6831737e26 kg` | `58232000 m` | heliocentric perihelion position and tangential speed |
+| Uranus | `8.6809862e25 kg` | `25362000 m` | heliocentric perihelion, `a=19.18916464 AU`, `e=0.04725744` |
+| Neptune | `1.0240924e26 kg` | `24622000 m` | heliocentric perihelion, `a=30.06992276 AU`, `e=0.00859048` |
 
 ### Jovian satellite data and approximations
 
@@ -236,7 +236,7 @@ Vesta orbital values used for initialization:
 
 Jupiter orbital values used for initialization:
 
-- mass: `1.898125e27 kg`; spherical radius from the JPL mean radius: `69911000 m`
+- mass: `1.8981246e27 kg`; spherical radius from the JPL mean radius: `69911000 m`
 - semi-major axis: `778340816692.7108 m`
 - eccentricity: `0.04838624`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `740679831134.4213 m`
@@ -245,7 +245,7 @@ Jupiter orbital values used for initialization:
 
 Saturn orbital values used for initialization:
 
-- mass: `5.68317e26 kg`; spherical radius from the JPL mean radius: `58232000 m`
+- mass: `5.6831737e26 kg`; spherical radius from the JPL mean radius: `58232000 m`
 - semi-major axis: `1426666414179.921 m`
 - eccentricity: `0.05386179`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `1349823607379.3088 m`
@@ -335,7 +335,7 @@ make run   # launch the simulator
 make clean # remove build outputs
 ```
 
-Additional verification: `make test-build test-cli test-validators`, `make test-sanitize`, and `node tools/check_catalog.mjs` after `make headless`. The catalog check compares C and TypeScript names, kinds, parents and order. Native and web exporters use physical coordinates; changing view scale never changes a CSV observation.
+Additional verification: `make test-build test-cli test-validators`, `make test-sanitize`, `make test-native-shaders` (macOS: renders Earth offscreen with the real GLSL 330 shaders and maps; CI runs it on a macOS runner), and `node tools/check_catalog.mjs` after `make headless`. The catalog check compares C and TypeScript names, kinds, parents and order. Native and web exporters use physical coordinates; changing view scale never changes a CSV observation.
 
 Automated browser coverage uses pinned `@playwright/test` 1.63.0 against the built site:
 

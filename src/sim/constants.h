@@ -12,7 +12,10 @@
  * precisely than G itself, so M = GM / G keeps every acceleration G*M/r^2
  * equal to the measured GM. GM values are DE440 numbers from
  * https://ssd.jpl.nasa.gov/astro_par.html and
- * https://ssd.jpl.nasa.gov/planets/phys_par.html (checked 2026-10-06). */
+ * https://ssd.jpl.nasa.gov/planets/phys_par.html (checked 2026-10-06).
+ * Jupiter-Neptune use planet-only GMs from JPL Horizons physical data
+ * (bodies 599/699/799/899, checked 2026-10-07): astro_par lists *system* GMs
+ * that include the moons, and the scene carries Jupiter's moons explicitly. */
 
 #define SOLAR_G 6.67430e-11 /* CODATA 2018, m^3 kg^-1 s^-2 */
 #define SOLAR_AU_METERS 149597870700.0
@@ -117,10 +120,11 @@
     (sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * \
         ((2.0 / SOLAR_VESTA_PERIHELION_M) - (1.0 / SOLAR_VESTA_SEMI_MAJOR_AXIS_M))))
 
-/* JPL planetary tables supply Jupiter's total mass, mean radius, and J2000
+/* JPL supplies Jupiter's planet-only GM, mean radius, and J2000
  * orbit. Inclination is deferred, so this milestone uses the same planar
  * perihelion model as the existing planets. */
-#define SOLAR_JUPITER_MASS_KG 1.898125e27
+#define SOLAR_JUPITER_GM_M3PS2 1.266865319e17
+#define SOLAR_JUPITER_MASS_KG (SOLAR_JUPITER_GM_M3PS2 / SOLAR_G)
 #define SOLAR_JUPITER_RADIUS_M 69911000.0
 #define SOLAR_JUPITER_SEMI_MAJOR_AXIS_M (5.20288700 * SOLAR_AU_METERS)
 #define SOLAR_JUPITER_ECCENTRICITY 0.04838624
@@ -133,7 +137,8 @@
 /* Saturn uses the same JPL planetary tables and planar perihelion policy as
  * Jupiter. Ring dimensions and tilt below are NASA values used only by the renderer;
  * Saturn's physical radius and gravity never include the rings. */
-#define SOLAR_SATURN_MASS_KG 5.68317e26
+#define SOLAR_SATURN_GM_M3PS2 3.7931206234e16
+#define SOLAR_SATURN_MASS_KG (SOLAR_SATURN_GM_M3PS2 / SOLAR_G)
 #define SOLAR_SATURN_RADIUS_M 58232000.0
 #define SOLAR_SATURN_SEMI_MAJOR_AXIS_M (9.53667594 * SOLAR_AU_METERS)
 #define SOLAR_SATURN_ECCENTRICITY 0.05386179
@@ -149,11 +154,13 @@
 /* JPL physical parameters and approximate-position Table 1, checked 2026-09-14.
  * Like the earlier demo planets these start at perihelion in the ecliptic
  * (simulation X/Z) plane. */
-#define SOLAR_URANUS_MASS_KG 86.8099e24
+#define SOLAR_URANUS_GM_M3PS2 5.7939506103e15
+#define SOLAR_URANUS_MASS_KG (SOLAR_URANUS_GM_M3PS2 / SOLAR_G)
 #define SOLAR_URANUS_RADIUS_M 25362000.0
 #define SOLAR_URANUS_SEMI_MAJOR_AXIS_M (19.18916464 * SOLAR_AU_METERS)
 #define SOLAR_URANUS_ECCENTRICITY .04725744
-#define SOLAR_NEPTUNE_MASS_KG 102.4092e24
+#define SOLAR_NEPTUNE_GM_M3PS2 6.83509997e15
+#define SOLAR_NEPTUNE_MASS_KG (SOLAR_NEPTUNE_GM_M3PS2 / SOLAR_G)
 #define SOLAR_NEPTUNE_RADIUS_M 24622000.0
 #define SOLAR_NEPTUNE_SEMI_MAJOR_AXIS_M (30.06992276 * SOLAR_AU_METERS)
 #define SOLAR_NEPTUNE_ECCENTRICITY .00859048
