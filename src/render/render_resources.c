@@ -76,6 +76,18 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "    vec4 surface = TEX(texture0, fragTexCoord) * colDiffuse;\n"
     "    vec3 n = normalize(fragNormal);\n"
     "    vec3 v = normalize(viewPos - fragPosition);\n"
+    /* Atmospheric halo (additive shell 3.5% above the surface). mu is the
+     * cosine between the shell normal and the eye. At the shell's own edge
+     * (mu = 0) there is no air left, so the glow is zero; the planet's limb
+     * sits at mu = sqrt(1 - (1/1.035)^2) ~ 0.26, where sight lines graze the
+     * thickest air, so the glow peaks there and fades across the disc. */
+    "    if (mode > 4.5) {\n"
+    "        float mu = max(dot(n, v), 0.0);\n"
+    "        float graze = smoothstep(0.0, 0.26, mu) * (1.0 - smoothstep(0.24, 0.75, mu));\n"
+    "        float day = smoothstep(-0.25, 0.45, dot(n, lightDir));\n"
+    "        FRAG_COLOR = vec4(atmosphere.rgb * atmosphere.a * graze * day * 1.6, 1.0);\n"
+    "        return;\n"
+    "    }\n"
     "    if (mode > 3.5) { FRAG_COLOR = vec4(surface.rgb * 1.7, 1.0); return; }\n"
     /* Star: emissive, darker toward the limb where we look through more of
      * the cooler outer photosphere (limb darkening). */
@@ -106,7 +118,10 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "        return;\n"
     "    }\n"
     "    if (mode > 1.5) {\n" /* clouds: the map's brightness is its opacity */
-    "        FRAG_COLOR = vec4(toDisplay(vec3(0.004 + lit)), surface.r * (0.12 + 0.78 * smoothstep(-0.1, 0.3, ndl)));\n"
+    /* Fade at grazing angles: the shell sits 1.2% above the ground, and seen
+     * edge-on at the limb it would otherwise draw a thin grey outline. */
+    "        float edge = smoothstep(0.0, 0.3, dot(n, v));\n"
+    "        FRAG_COLOR = vec4(toDisplay(vec3(0.004 + lit)), surface.r * (0.12 + 0.78 * smoothstep(-0.1, 0.3, ndl)) * edge);\n"
     "        return;\n"
     "    }\n"
     /* The rings' shadow on Saturn: follow the ray toward the Sun to the ring
@@ -133,7 +148,9 @@ static const char fragment_shader[] = SHADER_HEADER_FS
      * red or green. Land and ice stay matte. */
     "        float water = smoothstep(0.04, 0.16, surface.b - max(surface.r, surface.g));\n"
     "        vec3 h = normalize(lightDir + v);\n"
-    "        color += vec3(1.0, 0.93, 0.8) * pow(max(dot(n, h), 0.0), 70.0) * water * max(ndl, 0.0) * 0.9;\n"
+    "        float nh = max(dot(n, h), 0.0);\n"
+    /* A sharp core plus a faint wide sheen, like sunlight on a rippled sea. */
+    "        color += vec3(1.0, 0.93, 0.8) * (pow(nh, 300.0) * 1.2 + pow(nh, 24.0) * 0.05) * water * max(ndl, 0.0);\n"
     "    }\n"
     /* Atmosphere rim: grazing sight lines cross more air (Fresnel-like
      * falloff), lit mostly on the day side. */
