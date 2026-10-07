@@ -93,7 +93,7 @@ TEST_BINS += $(TEST_DIR)/test_csv_export
 TEST_BINS += $(TEST_DIR)/test_scene_style
 TEST_BINS += $(TEST_DIR)/test_image_decode
 HEADLESS_TEST_BINS = $(filter-out $(TEST_RENDERER),$(TEST_BINS))
-SOURCE_HEADERS := $(wildcard src/app/*.h src/sim/*.h src/render/*.h src/sim/*.inc)
+SOURCE_HEADERS := $(wildcard src/app/*.h src/sim/*.h src/render/*.h src/render/third_party/*.h src/sim/*.inc)
 
 .PHONY: all run headless test test-binaries test-core test-sanitize test-build test-cli test-validators web raylib-web dist-wasm docs-assets docs-textures docs-check analysis-web-boundary clean FORCE
 

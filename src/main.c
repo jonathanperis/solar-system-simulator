@@ -171,20 +171,24 @@ static void face_sunlit_side(SolarApp *state, size_t body_index)
     }
 }
 
-static void frame_selected_system(SolarApp *state)
+/* `face_sun` turns the camera to the sunlit side: true for deliberate framing
+ * (F/B, lessons, experiments), false when an existing framing is only re-fitted
+ * after a reset, a scale change or a canvas resize, so the user's chosen
+ * viewing angle is kept. */
+static void frame_selected_system(SolarApp *state, bool face_sun)
 {
     RenderSystemFrame frame = renderer_system_frame(&state->session.system, state->session.selected_body_index, state->render_mode);
-    face_sunlit_side(state, frame.root_index);
+    if (face_sun) face_sunlit_side(state, frame.root_index);
     orbit_camera_frame_sphere(&state->orbit_camera, (float)frame.radius, state->camera.fovy,
         (float)GetScreenWidth() / (float)GetScreenHeight());
     state->system_framed = true;
     state->body_framed = false;
 }
 
-static void frame_selected_body(SolarApp *state)
+static void frame_selected_body(SolarApp *state, bool face_sun)
 {
     RenderSystemFrame frame = renderer_body_frame(&state->session.system, state->session.selected_body_index, state->render_mode);
-    face_sunlit_side(state, frame.root_index);
+    if (face_sun) face_sunlit_side(state, frame.root_index);
     orbit_camera_frame_sphere(&state->orbit_camera, (float)frame.radius, state->camera.fovy,
         (float)GetScreenWidth() / (float)GetScreenHeight());
     state->system_framed = false;
@@ -198,12 +202,12 @@ static bool start_app_lesson(SolarApp *state, LessonPreset lesson, double factor
     state->system_framed = state->body_framed = false;
     if (lesson == LESSON_COLLISION) {
         state->render_mode = RENDER_SCALE_REAL;
-        frame_selected_system(state);
+        frame_selected_system(state, true);
     }
-    if (lesson == LESSON_ENCOUNTER) frame_selected_system(state);
+    if (lesson == LESSON_ENCOUNTER) frame_selected_system(state, true);
     if (lesson == LESSON_RESONANCE) {
         state->session.selected_body_index = 0;
-        frame_selected_system(state);
+        frame_selected_system(state, true);
     }
     snprintf(state->feedback, sizeof(state->feedback), "Lesson: %s | Initial speed factor %.2f", lesson_name(lesson), factor);
     return true;
@@ -259,8 +263,8 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
         case SOLAR_COMMAND_STEP: simulation_session_single_step(session); break;
         case SOLAR_COMMAND_RESET:
             simulation_session_reset(session);
-            if (state->system_framed) frame_selected_system(state);
-            else if (state->body_framed) frame_selected_body(state);
+            if (state->system_framed) frame_selected_system(state, false);
+            else if (state->body_framed) frame_selected_body(state, false);
             break;
         case SOLAR_COMMAND_SPEED: simulation_session_set_speed(session, value); break;
         case SOLAR_COMMAND_SELECT:
@@ -271,13 +275,13 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
             break;
         case SOLAR_COMMAND_VIEW:
             state->render_mode = next_render_scale_mode(state->render_mode);
-            if (state->system_framed) frame_selected_system(state);
-            else if (state->body_framed) frame_selected_body(state);
+            if (state->system_framed) frame_selected_system(state, false);
+            else if (state->body_framed) frame_selected_body(state, false);
             break;
         case SOLAR_COMMAND_ZOOM: orbit_camera_apply_zoom(&state->orbit_camera, (float)value); break;
         case SOLAR_COMMAND_ROTATE: state->auto_rotate = !state->auto_rotate; break;
-        case SOLAR_COMMAND_FRAME: frame_selected_system(state); break;
-        case SOLAR_COMMAND_FRAME_BODY: frame_selected_body(state); break;
+        case SOLAR_COMMAND_FRAME: frame_selected_system(state, true); break;
+        case SOLAR_COMMAND_FRAME_BODY: frame_selected_body(state, true); break;
         case SOLAR_COMMAND_TRAILS: state->trail_frame = state->trail_frame == RENDER_TRAILS_ABSOLUTE ? RENDER_TRAILS_PARENT : RENDER_TRAILS_ABSOLUTE; break;
         case SOLAR_COMMAND_VECTORS: state->vectors = !state->vectors; break;
         case SOLAR_COMMAND_GRID: state->grid = !state->grid; break;
@@ -289,7 +293,7 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
                 /* On rejection the session is unchanged, so keep the current framing. */
                 if (simulation_session_start_configured_lesson(session, session->lesson, session->velocity_factor,
                     session->clock.integrator, simulation_clock_step_seconds(&session->clock), mode))
-                    frame_selected_system(state);
+                    frame_selected_system(state, true);
             }
             break;
     }
@@ -375,7 +379,7 @@ EMSCRIPTEN_KEEPALIVE int solar_web_experiment(const char *text)
     app.orbit_camera = orbit_camera_default_state();
     app.system_framed = app.body_framed = false;
     populate_web_bodies();
-    frame_selected_body(&app);
+    frame_selected_body(&app, true);
     report_web_state(&app);
     return 1;
 }
@@ -470,8 +474,8 @@ static void solar_app_update_draw(void *user_data)
     int height = solar_web_initial_canvas_height();
     if (width != GetScreenWidth() || height != GetScreenHeight()) {
         SetWindowSize(width, height);
-        if (state->system_framed) frame_selected_system(state);
-        else if (state->body_framed) frame_selected_body(state);
+        if (state->system_framed) frame_selected_system(state, false);
+        else if (state->body_framed) frame_selected_body(state, false);
     }
 #endif
 
@@ -709,7 +713,7 @@ int main(int argc, char **argv)
             fprintf(stderr,"Invalid or unreadable catalog experiment: %s\n",argv[2]);
             simulation_session_destroy(&app.session); CloseWindow(); return 1;
         }
-        frame_selected_body(&app);
+        frame_selected_body(&app, true);
     }
 #else
     (void)argc; (void)argv;
