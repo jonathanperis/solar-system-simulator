@@ -52,11 +52,11 @@ EM_JS(void, solar_web_report_lab, (int lesson, int method, double dt, double tic
     double acceleration, double specific_energy, double energy, double energy_change, int isolated,
     double momentum, double angular_momentum, double magnification, int trail_frame, int vectors,
     double px, double py, double pz, double vx, double vy, double vz, int contact_mode,
-    double min_factor, double contact_seconds, int grid), {
+    double min_factor, double contact_seconds, int grid, int labels), {
     Module.reportLabState({lesson, method, dt, ticks, factor, acceleration, specificEnergy: specific_energy,
         energy, energyChange: energy_change, isolated: !!isolated, momentum, angularMomentum: angular_momentum,
         magnification, trailFrame: trail_frame, vectors: !!vectors, position: [px, py, pz], velocity: [vx, vy, vz], contactMode: contact_mode,
-        minFactor: min_factor, contactSeconds: contact_seconds, grid: !!grid});
+        minFactor: min_factor, contactSeconds: contact_seconds, grid: !!grid, labels: !!labels});
 })
 
 EM_JS(void, solar_web_download_csv, (const char *data, int length), {
@@ -102,6 +102,7 @@ typedef struct SolarApp {
     RenderTrailFrame trail_frame;
     bool vectors;
     bool grid; /* reference grid visibility (presentation only) */
+    bool labels; /* in-canvas body names (presentation only) */
     RenderResources render;
     char feedback[160];
 #if defined(PLATFORM_WEB)
@@ -120,7 +121,7 @@ typedef enum SolarCommand {
     SOLAR_COMMAND_PAUSE, SOLAR_COMMAND_STEP, SOLAR_COMMAND_RESET,
     SOLAR_COMMAND_SPEED, SOLAR_COMMAND_SELECT, SOLAR_COMMAND_VIEW,
     SOLAR_COMMAND_ZOOM, SOLAR_COMMAND_ROTATE, SOLAR_COMMAND_FRAME, SOLAR_COMMAND_FRAME_BODY,
-    SOLAR_COMMAND_TRAILS, SOLAR_COMMAND_VECTORS, SOLAR_COMMAND_BACKGROUND, SOLAR_COMMAND_CONTACT, SOLAR_COMMAND_GRID
+    SOLAR_COMMAND_TRAILS, SOLAR_COMMAND_VECTORS, SOLAR_COMMAND_BACKGROUND, SOLAR_COMMAND_CONTACT, SOLAR_COMMAND_GRID, SOLAR_COMMAND_LABELS
 } SolarCommand;
 
 static SolarApp app;
@@ -280,6 +281,7 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
         case SOLAR_COMMAND_TRAILS: state->trail_frame = state->trail_frame == RENDER_TRAILS_ABSOLUTE ? RENDER_TRAILS_PARENT : RENDER_TRAILS_ABSOLUTE; break;
         case SOLAR_COMMAND_VECTORS: state->vectors = !state->vectors; break;
         case SOLAR_COMMAND_GRID: state->grid = !state->grid; break;
+        case SOLAR_COMMAND_LABELS: state->labels = !state->labels; break;
         case SOLAR_COMMAND_BACKGROUND: simulation_session_set_background(session, value != 0); break;
         case SOLAR_COMMAND_CONTACT:
             if (session->lesson == LESSON_COLLISION) {
@@ -328,7 +330,7 @@ static void report_web_state(const SolarApp *state)
         selected->position_m.x, selected->position_m.y, selected->position_m.z,
         selected->velocity_mps.x, selected->velocity_mps.y, selected->velocity_mps.z, session->clock.collision_mode,
         lesson_minimum_velocity_factor(session->lesson),
-        (double)session->clock.contact_tick * simulation_clock_step_seconds(&session->clock), state->grid);
+        (double)session->clock.contact_tick * simulation_clock_step_seconds(&session->clock), state->grid, state->labels);
     ForceContribution forces[SOLAR_SYSTEM_BODY_CAPACITY];
     size_t count = physics_force_breakdown(&session->system, session->selected_body_index, forces, SOLAR_SYSTEM_BODY_CAPACITY);
     solar_web_begin_forces(session->system.elapsed_seconds);
@@ -501,6 +503,7 @@ static void solar_app_update_draw(void *user_data)
         if (IsKeyPressed(KEY_T)) solar_app_command(state, SOLAR_COMMAND_TRAILS, 0);
         if (IsKeyPressed(KEY_X)) solar_app_command(state, SOLAR_COMMAND_VECTORS, 0);
         if (IsKeyPressed(KEY_G)) solar_app_command(state, SOLAR_COMMAND_GRID, 0);
+        if (IsKeyPressed(KEY_H)) solar_app_command(state, SOLAR_COMMAND_LABELS, 0);
         if (IsKeyPressed(KEY_M)) solar_app_command(state, SOLAR_COMMAND_CONTACT, 0);
         if (IsKeyPressed(KEY_E)) {
             char name[64];
@@ -567,6 +570,8 @@ static void solar_app_update_draw(void *user_data)
         origin, &state->render, &view);
     if (state->vectors) renderer_draw_vectors(&state->session.system, state->session.selected_body_index, state->render_mode, origin);
     EndMode3D();
+    if (state->labels) renderer_draw_labels(&state->session.system, state->render_mode, origin, &state->render,
+        state->camera, state->session.selected_body_index);
 
 #if !defined(PLATFORM_WEB)
     /* Astro presents these readouts outside the web canvas for accessibility
@@ -607,7 +612,7 @@ static void solar_app_update_draw(void *user_data)
         simulation_session_energy_change(&state->session, &diagnostics),
         magnification), 20, 335, 16, RAYWHITE);
     DrawText("L: lesson | I: integrator | D: dt | - / =: initial speed | M: contact model (changes reset)", 20, 360, 16, RAYWHITE);
-    DrawText(TextFormat("T: trails (%s) | X: vector directions | G: grid | E: export SI snapshot",
+    DrawText(TextFormat("T: trails (%s) | X: vector directions | G: grid | H: labels | E: export SI snapshot",
         state->trail_frame == RENDER_TRAILS_PARENT ? "parent-relative" : "absolute"), 20, 385, 16, RAYWHITE);
     DrawText("Vectors: green velocity / orange acceleration; lengths are illustrative", 20, 410, 16, RAYWHITE);
     DrawText(state->feedback, 20, 435, 16, RAYWHITE);
@@ -684,6 +689,7 @@ int main(int argc, char **argv)
     app.session = simulation_session_create();
     app.auto_rotate = true;
     app.grid = true;
+    app.labels = true;
     app.render_mode = RENDER_SCALE_ILLUSTRATIVE;
 
 #if !defined(PLATFORM_WEB)

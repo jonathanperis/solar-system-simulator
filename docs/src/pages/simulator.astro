@@ -34,7 +34,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         aria-label="Live solar system simulation" aria-describedby="canvas-keys runtime-control-state scale-note">
         Your browser needs canvas and WebGL to display the simulation.
       </canvas>
-      <p id="canvas-keys" class="sr-only">Keyboard shortcuts while this view has focus: Space pauses or resumes, N steps once while paused, R restarts, V switches illustrative and real scale, F frames the selected system, B frames the selected body, A toggles camera rotation, G shows or hides the reference grid, C cycles bodies, and the bracket keys change speed. Tab leaves the view. The selected body and its physical measurements are reported as text below.</p>
+      <p id="canvas-keys" class="sr-only">Keyboard shortcuts while this view has focus: Space pauses or resumes, N steps once while paused, R restarts, V switches illustrative and real scale, F frames the selected system, B frames the selected body, A toggles camera rotation, G shows or hides the reference grid, H shows or hides body labels, C cycles bodies, and the bracket keys change speed. Tab leaves the view. The selected body and its physical measurements are reported as text below.</p>
     </div>
     <fieldset class="runtime-panel" data-runtime-panel disabled>
       <legend class="sr-only">Simulation controls</legend>
@@ -93,8 +93,9 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         <button type="button" data-command="trails">Trails: Absolute</button>
         <button type="button" data-command="vectors" aria-pressed="false">Vector directions: Off</button>
         <button type="button" data-command="grid" aria-pressed="true">Grid: On</button>
+        <button type="button" data-command="labels" aria-pressed="true">Labels: On</button>
       </div>
-      <p>Illustrative scale makes small worlds easier to see. Real scale uses physical sizes and distances. Absolute trails show motion relative to the scene origin; parent-relative trails reveal motion around a parent. Vectors show velocity and acceleration directions, with illustrative lengths. The grid is a distance reference on the orbital plane; hide it for an unobstructed view.</p>
+      <p>Illustrative scale makes small worlds easier to see. Real scale uses physical sizes and distances. Absolute trails show motion relative to the scene origin; parent-relative trails reveal motion around a parent. Vectors show velocity and acceleration directions, with illustrative lengths. The grid is a distance reference on the orbital plane and labels name the Sun, planets and the selected body; hide either for an unobstructed view.</p>
       <p>These choices change the view, never the physical measurements.</p>
       </fieldset>
     </dialog>
@@ -147,7 +148,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
     </dialog>
 
     <details class="reference-disclosure"><summary>Keyboard shortcuts and playback help</summary>
-    <p id="simulator-keys" class="simulator-keys"><kbd>Space</kbd> pause · <kbd>N</kbd> step · <kbd>R</kbd> reset · <kbd>C</kbd> cycle all bodies · <kbd>1–9</kbd> / <kbd>0</kbd> select first ten · <kbd>V</kbd> view · <kbd>F</kbd> frame system · <kbd>B</kbd> frame body · <kbd>A</kbd> camera rotation · <kbd>T</kbd> trail frame · <kbd>X</kbd> vectors · <kbd>G</kbd> grid · <kbd>E</kbd> export · Mouse wheel to zoom. Shortcuts require canvas focus; <kbd>Tab</kbd> continues through the page.</p>
+    <p id="simulator-keys" class="simulator-keys"><kbd>Space</kbd> pause · <kbd>N</kbd> step · <kbd>R</kbd> reset · <kbd>C</kbd> cycle all bodies · <kbd>1–9</kbd> / <kbd>0</kbd> select first ten · <kbd>V</kbd> view · <kbd>F</kbd> frame system · <kbd>B</kbd> frame body · <kbd>A</kbd> camera rotation · <kbd>T</kbd> trail frame · <kbd>X</kbd> vectors · <kbd>G</kbd> grid · <kbd>H</kbd> labels · <kbd>E</kbd> export · Mouse wheel to zoom. Shortcuts require canvas focus; <kbd>Tab</kbd> continues through the page.</p>
     <p>Restart restores time zero and fresh trails while keeping selection, speed, pause state, and view settings. Hidden-tab time is excluded. Touch users can use the buttons above; no keyboard is needed.</p>
     <a href={`${base}docs/controls/`}>All controls and camera help →</a>
     </details>

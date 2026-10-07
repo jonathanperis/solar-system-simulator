@@ -504,6 +504,71 @@ static void draw_trails(const SolarSystem *system, const BodyTrails *trails, Ren
     rlEnd();
 }
 
+void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d origin,
+    const RenderResources *resources, Camera3D camera, size_t selected)
+{
+    static RenderLabelBox boxes[SOLAR_SYSTEM_BODY_CAPACITY];
+    static size_t body_of[SOLAR_SYSTEM_BODY_CAPACITY];
+    static Vector2 screen[SOLAR_SYSTEM_BODY_CAPACITY];
+    static bool on_screen[SOLAR_SYSTEM_BODY_CAPACITY];
+    static double occluder_distance[SOLAR_SYSTEM_BODY_CAPACITY], occluder_radius[SOLAR_SYSTEM_BODY_CAPACITY];
+    const float size = 15.0f, spacing = 0.5f;
+    Font font = resources->label_font_ready ? resources->label_font : GetFontDefault();
+    Vector3 forward = unit_vector((Vector3){camera.target.x - camera.position.x, camera.target.y - camera.position.y,
+        camera.target.z - camera.position.z}, (Vector3){0, 0, -1});
+    float width = (float)GetScreenWidth(), height = (float)GetScreenHeight();
+    double viewport_height = (double)height;
+
+    /* Project every body once; labels then only read the cached results. */
+    for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
+        Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
+        Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
+        on_screen[i] = offset.x * forward.x + offset.y * forward.y + offset.z * forward.z > 0;
+        screen[i] = on_screen[i] ? GetWorldToScreen(position, camera) : (Vector2){-1e6f, -1e6f};
+        on_screen[i] = on_screen[i] && screen[i].x >= 0 && screen[i].x <= width && screen[i].y >= 0 && screen[i].y <= height;
+        occluder_distance[i] = sqrt(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z);
+        occluder_radius[i] = system->bodies[i].radius_quality == PHYSICAL_UNKNOWN ? 0 : render_projected_radius_pixels(
+            renderer_body_radius(&system->bodies[i], mode), occluder_distance[i], camera.fovy, viewport_height);
+    }
+
+    size_t count = 0;
+    for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
+        if (!on_screen[i]) continue;
+        const Body *body = &system->bodies[i];
+        Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
+        Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
+        double distance = sqrt(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z);
+        double radius_px = render_projected_radius_pixels(renderer_body_radius(body, mode), distance, camera.fovy, viewport_height);
+        int parent = solar_system_parent_index(system, i);
+        double separation = 1e9;
+        if (parent >= 0 && system->bodies[parent].kind != BODY_KIND_STAR)
+            separation = hypot(screen[i].x - screen[parent].x, screen[i].y - screen[parent].y);
+        if (!render_body_wants_label(body->kind, i == selected, body->radius_quality != PHYSICAL_UNKNOWN, radius_px, separation))
+            continue;
+        /* Hidden behind a nearer body that is large on screen: no label. */
+        bool hidden = false;
+        for (size_t j = 0; j < system->body_count && !hidden; ++j) {
+            if (j == i || !on_screen[j] || occluder_radius[j] < 8.0 || occluder_distance[j] >= distance) continue;
+            hidden = hypot(screen[i].x - screen[j].x, screen[i].y - screen[j].y) < occluder_radius[j];
+        }
+        if (hidden) continue;
+        Vector2 text = MeasureTextEx(font, body->name, size, spacing);
+        int priority = i == selected ? 1000 : body->kind == BODY_KIND_STAR ? 900
+            : body->kind == BODY_KIND_PLANET ? 800 - (int)i : 400 - (int)i;
+        boxes[count] = (RenderLabelBox){screen[i].x - text.x / 2, screen[i].y - (float)radius_px - 6 - text.y, text.x, text.y, priority, false};
+        body_of[count++] = i;
+    }
+    render_declutter_labels(boxes, count);
+    for (size_t k = 0; k < count; ++k) {
+        if (!boxes[k].visible) continue;
+        const Body *body = &system->bodies[body_of[k]];
+        Color color = body_of[k] == selected ? (Color){240, 200, 120, 255} : (Color){228, 222, 206, 225};
+        /* A soft drop shadow keeps pale text readable over bright planets. */
+        DrawTextEx(font, body->name, (Vector2){boxes[k].x + 1, boxes[k].y + 1}, size, spacing, (Color){0, 0, 0, 170});
+        DrawTextEx(font, body->name, (Vector2){boxes[k].x, boxes[k].y}, size, spacing, color);
+    }
+}
+
 void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode,
     RenderTrailFrame trail_frame, Vec3d origin, const RenderResources *resources, const RenderView *view)
 {

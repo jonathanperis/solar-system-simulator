@@ -149,6 +149,14 @@ web: $(WEB_MANIFEST)
 $(WEB_MANIFEST): $(WEB_APP) $(WEB_WASM) $(WEB_DIR)/catalog-orbits.wasm $(LAB_WEB_JS) $(LAB_WEB_WASM) build/revision.h tools/write_wasm_manifest.py
 	python3 tools/write_wasm_manifest.py $(WEB_DIR) build/revision.h
 
+# The label font is embedded at build time (tools/embed_binary.py), so both the
+# native and browser builds draw labels without loading a file.
+build/label_font.inc: assets/fonts/jetbrains-mono-medium-ascii.ttf tools/embed_binary.py
+	@mkdir -p $(@D)
+	python3 tools/embed_binary.py $< $@ label_font
+
+build/src/render/render_resources.o: build/label_font.inc
+
 docs-assets: web docs-textures
 	python3 tools/prepare_wasm.py $(WEB_DIR) docs/public/wasm
 
@@ -174,7 +182,7 @@ analysis-web-boundary: build/revision.h
 docs-check:
 	python3 tools/check_docs_routes.py docs/dist
 
-$(WEB_APP): $(APP_SRCS) $(SOURCE_HEADERS) build/revision.h $(RAYLIB_WEB_LIB)
+$(WEB_APP): $(APP_SRCS) $(SOURCE_HEADERS) build/revision.h build/label_font.inc $(RAYLIB_WEB_LIB)
 	@mkdir -p $(@D)
 	emcc $(ALL_CPPFLAGS) $(WEB_ALL_CFLAGS) $(RAYLIB_WEB_CFLAGS) $(APP_SRCS) $(RAYLIB_WEB_LIB) $(RAYLIB_WEB_LDFLAGS) -o $@
 

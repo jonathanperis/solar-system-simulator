@@ -42,4 +42,9 @@ test('the reference grid can be hidden and shown again through C', async ({ page
   await expect(grid).toHaveAttribute('aria-pressed', 'false');
   await grid.click();
   await expect(grid).toHaveText('Grid: On');
+  const labels = page.getByRole('button', { name: /^Labels: (On|Off)$/ });
+  await expect(labels).toHaveText('Labels: On');
+  await labels.click();
+  await expect(labels).toHaveText('Labels: Off');
+  await expect(labels).toHaveAttribute('aria-pressed', 'false');
 });

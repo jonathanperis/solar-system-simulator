@@ -187,6 +187,36 @@ static void test_projected_radius_follows_pinhole_camera(void)
     assert(render_projected_radius_pixels(-1, 1, 45, 1000) == 0);
 }
 
+static void test_labels_name_planets_and_zoomed_in_moons(void)
+{
+    assert(render_body_wants_label(BODY_KIND_STAR, false, true, 0.3, 0));
+    assert(render_body_wants_label(BODY_KIND_PLANET, false, true, 0.3, 0));
+    assert(render_body_wants_label(BODY_KIND_MOON, true, false, 0.1, 0)); /* selected */
+    /* A moon tucked against its parent in the overview stays unnamed... */
+    assert(!render_body_wants_label(BODY_KIND_MOON, false, true, 5, 10));
+    /* ...as does a sub-pixel one, but a visible moon of a framed family is named. */
+    assert(!render_body_wants_label(BODY_KIND_MOON, false, true, 1, 200));
+    assert(render_body_wants_label(BODY_KIND_MOON, false, true, 4, 200));
+    assert(render_body_wants_label(BODY_KIND_ASTEROID, false, true, 3, 80));
+    /* Unknown-size tracer moons (wire markers) stay unnamed unless selected. */
+    assert(!render_body_wants_label(BODY_KIND_MOON, false, false, 4, 200));
+}
+
+static void test_declutter_keeps_the_most_important_labels(void)
+{
+    RenderLabelBox boxes[4] = {
+        {100, 100, 60, 16, 10, false},  /* low priority, overlaps the Sun's label */
+        {110, 104, 40, 16, 90, false},  /* Sun */
+        {300, 100, 50, 16, 80, false},  /* a planet far away */
+        {305, 110, 50, 16, 80, false},  /* equal priority overlap: first one wins */
+    };
+    render_declutter_labels(boxes, 4);
+    assert(!boxes[0].visible && boxes[1].visible && boxes[2].visible && !boxes[3].visible);
+    RenderLabelBox apart[2] = {{0, 0, 10, 10, 1, false}, {30, 0, 10, 10, 1, false}};
+    render_declutter_labels(apart, 2);
+    assert(apart[0].visible && apart[1].visible);
+}
+
 static void test_trail_detail_follows_screen_extent(void)
 {
     /* A full 1025-point trail across 4000 px keeps every sample; across
@@ -290,6 +320,8 @@ int main(void)
     test_trail_and_grid_fades();
     test_grid_levels_cross_fade_by_decade();
     test_projected_radius_follows_pinhole_camera();
+    test_labels_name_planets_and_zoomed_in_moons();
+    test_declutter_keeps_the_most_important_labels();
     test_trail_detail_follows_screen_extent();
     test_trail_segments_stop_at_the_body_surface();
     test_sphere_matches_simulation_handedness_and_map_layout();

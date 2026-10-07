@@ -35,6 +35,8 @@ typedef struct RenderResources {
     Texture2D textures[RENDER_TEXTURE_COUNT];
     bool texture_loaded[RENDER_TEXTURE_COUNT];
     Texture2D white, glow;
+    Font label_font;
+    bool label_font_ready;
     bool ready;
 } RenderResources;
 
@@ -85,6 +87,10 @@ size_t renderer_trail_draw_segment_count(size_t point_count);
 float renderer_body_radius(const Body *body, RenderScaleMode mode);
 float renderer_body_visual_radius(const Body *body, RenderScaleMode mode);
 Vector3 renderer_relative_vector(Vec3d position, Vec3d origin);
+/* Name labels in screen space (call after EndMode3D): the Sun, planets, the
+ * selected body, and moons of a zoomed-in family, decluttered by priority. */
+void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d origin,
+    const RenderResources *resources, Camera3D camera, size_t selected);
 void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode,
     RenderTrailFrame trail_frame, Vec3d origin, const RenderResources *resources, const RenderView *view);
 
