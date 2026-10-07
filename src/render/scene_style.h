@@ -88,6 +88,16 @@ RenderGridLevels render_grid_levels(double camera_distance);
 double render_projected_radius_pixels(double radius, double distance, double fovy_degrees, double viewport_height);
 #define RENDER_MESH_MIN_RADIUS_PIXELS 0.75
 
+/* Sample stride for drawing a trail of `point_count` samples whose on-screen
+ * extent is about `extent_pixels`: roughly one drawn point every
+ * RENDER_TRAIL_PIXELS_PER_POINT pixels (never fewer than
+ * RENDER_TRAIL_MIN_POINTS), and never finer than `base_stride`, the renderer's
+ * fixed segment budget. A Jovian moon's trail seen from Saturn spans a few
+ * pixels and needs a handful of points, not a thousand. */
+#define RENDER_TRAIL_PIXELS_PER_POINT 2.0
+#define RENDER_TRAIL_MIN_POINTS 24
+size_t render_trail_stride_for_extent(size_t point_count, size_t base_stride, double extent_pixels);
+
 /* Trim a trail segment a->b to the part outside a body's drawn sphere, so a
  * trail meets the planet's surface instead of running to its centre and
  * poking out of it. Returns false when the whole segment lies inside. Assumes
