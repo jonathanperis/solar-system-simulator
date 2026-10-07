@@ -184,11 +184,30 @@ double render_projected_radius_pixels(double radius, double distance, double fov
     return radius * (viewport_height / 2) / half_height_units;
 }
 
+size_t render_trail_stride_for_extent(size_t point_count, size_t base_stride, double extent_pixels)
+{
+    if (base_stride == 0) base_stride = 1;
+    if (point_count < 2 || !(extent_pixels > 0)) return base_stride;
+    double wanted = extent_pixels / RENDER_TRAIL_PIXELS_PER_POINT;
+    if (wanted < RENDER_TRAIL_MIN_POINTS) wanted = RENDER_TRAIL_MIN_POINTS;
+    if (wanted >= (double)point_count) return base_stride;
+    size_t stride = (size_t)ceil((double)(point_count - 1) / wanted);
+    return stride > base_stride ? stride : base_stride;
+}
+
+static double distance_squared(Vec3d a, Vec3d b)
+{
+    double x = a.x - b.x, y = a.y - b.y, z = a.z - b.z;
+    return x * x + y * y + z * z;
+}
+
 bool render_clip_segment_outside_sphere(Vec3d *a, Vec3d *b, Vec3d center, double radius)
 {
+    /* Runs for every drawn trail segment, so the common "both outside" case
+     * uses plain arithmetic (no calls across translation units). */
     double r2 = radius * radius;
-    bool a_inside = vec3d_length_squared(vec3d_sub(*a, center)) < r2;
-    bool b_inside = vec3d_length_squared(vec3d_sub(*b, center)) < r2;
+    bool a_inside = distance_squared(*a, center) < r2;
+    bool b_inside = distance_squared(*b, center) < r2;
     if (a_inside && b_inside) return false;
     if (!a_inside && !b_inside) return true;
     /* Walk from the outside point toward the inside one: P(s) = out + s*(in - out).
