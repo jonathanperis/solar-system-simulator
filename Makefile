@@ -19,7 +19,10 @@ ALL_CPPFLAGS = -Isrc -Ibuild $(CPPFLAGS)
 # the JS glue unminified (about 4x the download). Override WEB_CFLAGS='-O2 -g'
 # locally to debug the browser build.
 WEB_CFLAGS ?= -O2
-WEB_ALL_CFLAGS = $(REQUIRED_CFLAGS) $(WEB_CFLAGS)
+# -msimd128 lets the vectorized gravity kernel (src/sim/physics.c) use
+# WebAssembly f64x2 lanes. Lane arithmetic is the same IEEE double arithmetic,
+# so native and browser results stay identical (tools/test_learning_wasm.mjs).
+WEB_ALL_CFLAGS = $(REQUIRED_CFLAGS) -msimd128 $(WEB_CFLAGS)
 LDFLAGS ?=
 LDLIBS ?= -lm
 
@@ -48,7 +51,10 @@ RAYLIB_WEB_CFLAGS ?= -I$(RAYLIB_WEB_SRC) -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES
 # API on the web would abort at runtime; restore the flag if one is needed.
 # _malloc/_free and HEAPU8 let the page copy fetched texture bytes into WASM
 # memory for solar_web_load_texture; KEEPALIVE functions export themselves.
-RAYLIB_WEB_LDFLAGS ?= -s USE_GLFW=3 -s ALLOW_MEMORY_GROWTH=1 -s STACK_SIZE=262144 -s EXPORTED_RUNTIME_METHODS=ccall,HEAPU8 -s EXPORTED_FUNCTIONS=_main,_malloc,_free
+# A scene is ~41 KB (300 bodies x 136 B) and loading one keeps a few copies
+# alive at once (session trial/initial, lesson builder, return values), so the
+# simulator gets the same 1 MB stack as the learning-lab module.
+RAYLIB_WEB_LDFLAGS ?= -s USE_GLFW=3 -s ALLOW_MEMORY_GROWTH=1 -s STACK_SIZE=1048576 -s EXPORTED_RUNTIME_METHODS=ccall,HEAPU8 -s EXPORTED_FUNCTIONS=_main,_malloc,_free
 
 SIM_SRCS := \
     src/sim/vec3d.c \
