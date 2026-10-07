@@ -29,3 +29,17 @@ test('missing textures fall back to lit colours and the simulation keeps running
   await expect.poll(async () => elapsed.textContent(), { timeout: 10000 }).not.toBe(before);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
 });
+
+test('the reference grid can be hidden and shown again through C', async ({ page }) => {
+  await page.goto(`${base}simulator/`);
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
+  await page.getByRole('button', { name: 'View options', exact: true }).click();
+  const grid = page.getByRole('button', { name: /^Grid: (On|Off)$/ });
+  await expect(grid).toHaveText('Grid: On');
+  await expect(grid).toHaveAttribute('aria-pressed', 'true');
+  await grid.click();
+  await expect(grid).toHaveText('Grid: Off');
+  await expect(grid).toHaveAttribute('aria-pressed', 'false');
+  await grid.click();
+  await expect(grid).toHaveText('Grid: On');
+});
