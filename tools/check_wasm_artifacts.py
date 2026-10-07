@@ -43,6 +43,10 @@ def custom_section_names(data: bytes) -> list[str]:
             raise SystemExit("truncated WebAssembly section")
         if section_id == 0:
             length, start = read_leb128(data, payload)
+            # The name (and its length prefix) must fit inside this section;
+            # otherwise the slice would read into the next section or stop short.
+            if start > end or start + length > end:
+                raise SystemExit("custom section name runs past its section")
             names.append(data[start:start + length].decode("utf-8", errors="replace"))
         offset = end
     return names

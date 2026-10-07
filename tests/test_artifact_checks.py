@@ -184,6 +184,13 @@ class ArtifactChecks(unittest.TestCase):
                 (root / "build-info.json").write_text(json.dumps(manifest))
                 with self.assertRaisesRegex(SystemExit, "truncated"):
                     check_wasm()
+                # A custom-section name may not run past its own section, even
+                # when later bytes in the file would make the slice succeed.
+                (root / names[1]).write_bytes(b"\x00asm\x01\x00\x00\x00" + b"\x00\x02\x03x" + b"\x01\x00")
+                manifest["files"][names[1]] = hashlib.sha256((root / names[1]).read_bytes()).hexdigest()
+                (root / "build-info.json").write_text(json.dumps(manifest))
+                with self.assertRaisesRegex(SystemExit, "name runs past"):
+                    check_wasm()
                 (root / names[1]).write_bytes(b"not wasm")
                 with self.assertRaisesRegex(SystemExit, "checksum mismatch"):
                     check_wasm()

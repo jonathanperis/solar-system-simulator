@@ -122,6 +122,7 @@ test-core: build/catalog-orbits.dylib $(HEADLESS_TEST_BINS)
 	python3 tools/planet_epoch.py --check
 	python3 tests/test_small_body_catalog.py
 	python3 tests/test_jovian_catalog.py
+	python3 tests/test_planet_epoch.py
 	$(MAKE) test-binaries TEST_BINS="$(HEADLESS_TEST_BINS)"
 
 test-binaries: $(TEST_BINS)
