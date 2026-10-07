@@ -250,7 +250,7 @@ Saturn orbital values used for initialization:
 - eccentricity: `0.05386179`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `1349823607379.3088 m`
 - perihelion speed: `10179.094275183943 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
-- Saturn remains in the default ecliptic (simulation x/z) plane. Its visible ring system uses [NASA's roughly `282000 km` overall extent and `26.73` degree tilt](https://science.nasa.gov/saturn/facts/) only at the rendering boundary.
+- Saturn's orbit stays in the default ecliptic (simulation x/z) plane. Its visible ring system uses [NASA's roughly `282000 km` overall extent](https://science.nasa.gov/saturn/facts/) and lies in Saturn's equatorial plane from its IAU pole (about 27° from ecliptic north), only at the rendering boundary.
 
 ## Rendering model
 
@@ -260,11 +260,14 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 - Physics units are isolated from rendering units.
 - Position scale: `1 AU = 10 render units`.
 - Physical radii remain real in simulation data.
-- Saturn's ring lines are renderer-only. Their source-backed outer extent affects camera framing, while the physical body radius and all simulation state remain unchanged.
+- Saturn's textured rings are renderer-only. Their source-backed outer extent affects camera framing, while the physical body radius and all simulation state remain unchanged.
+- **Cinematic look (presentation only).** Bodies are lit by the rendered Sun (Lambert shading, soft terminator, small ambient fill); Earth shows night-side city lights and a cloud layer, atmospheric bodies get a rim glow, and the Sun is emissive with limb darkening and an additive halo over a Milky Way backdrop. One shader pair serves desktop (GLSL 330) and WebGL (GLSL 100); 4× multisampling smooths edges.
+- **Textures.** The Sun, the eight planets, the Moon, Saturn's rings and the backdrop use [Solar System Scope](https://www.solarsystemscope.com/textures/) maps (CC BY 4.0; see `assets/textures/README.md`). Other moons and Vesta stay lit colours rather than borrowed art. A vendored, pinned `stb_image.h` decodes them because raylib ships with JPEG disabled. The native app reads `assets/textures/` (or `SOLAR_TEXTURE_DIR`); the browser fetches the same files after the first frame. A missing map only means a lit-colour fallback.
+- **Spin orientation.** Textured bodies turn about their real axes using the IAU WGCCRE 2015 pole and prime-meridian models, converted from the ICRF through the J2000 ecliptic: Uranus lies on its side, Venus spins backwards. Spin time counts TDB days from J2000 (catalog experiments from their JD 2461200.5 epoch).
 - Illustrative mode is the default: planets keep the previous large visible radius, asteroids use a distinct `0.03` render-unit radius, and moons render smaller in proportion to Earth's physical radius with a small visible floor for tiny moons. Parent-relative moon offsets are expanded only in illustrative mode as needed so the large visual spheres remain readable without changing the underlying physics state.
 - Trails start with one historical sample per 300 simulated seconds, rounded up to whole configured ticks in lessons. At the 1,025-point budget, historical spacing and future sampling cadence both double. This preserves distributed coverage instead of repeatedly erasing early curvature. The current endpoint updates on every physics step; parent/child sample times stay synchronized, including the moving Sun in the barycentric lesson.
 - Resolution decreases uniformly during long runs. Fine satellite loops eventually become less resolved; trails are an approximation of recorded motion, not complete predicted orbital ellipses. The browser reports the current historical spacing.
-- The subdued ground grid sits below the orbital plane as a bounded camera-local patch of at most 512 slices. Its one-render-unit cells represent 0.1 AU. Solid body colors are not obscured by universal wireframe overlays.
+- The ground grid sits just below the orbital plane and adapts to zoom: power-of-ten minor and major lines (one render unit is 0.1 AU) cross-fade between decades and fade with distance, so they never crowd into moiré. It writes no depth, so bodies always draw over it. Trails fade with age. Bodies behind the camera are skipped and sub-pixel bodies drawn as points, which keeps the 128-body scene at a steady frame rate.
 - Real-scale mode uses the same physical render scale for both positions and radii with no radius clamp. Planets may be nearly invisible in this mode; that is physically expected at solar-system scale.
 
 ## Camera model
@@ -291,7 +294,7 @@ The app uses a small stable orbit camera instead of raylib's automatic orbital h
 - `B`: frame only the selected body or its unknown-radius marker.
 - `/` in the native app: search by name, provisional designation, or moon group. Down finds the next match, Enter selects, and Escape closes search. Web controls provide a search field and group filter.
 - `A`: toggle camera auto-rotation independently of playback.
-- `F`: frame the selected planet and its moons. A selected moon frames its parent and siblings; the Sun frames all implemented bodies. Framing fits the current rendered bounding sphere to the viewport. Reframe after motion or manual zoom when needed.
+- `F`: frame the selected planet and its moons. A selected moon frames its parent and siblings; the Sun frames all implemented bodies. Framing fits the current rendered bounding sphere to the viewport and turns the camera to the framed body's sunlit side (about 40° off the Sun line), so a newly selected planet is seen by day. Reframe after motion or manual zoom when needed.
 - `V`: toggle visualization mode.
   - Illustrative: physical planetary positions with large visible planet radii, smaller moon radii, and expanded parent-moon visual separation.
   - Real scale: physical orbital positions and physical radii under the same render scale; planets may be nearly invisible.
@@ -374,7 +377,8 @@ src/
 ├── headless.c          # raylib-free solar-lab CLI
 ├── lab_web.c           # C-only comparison WebAssembly entrypoint
 ├── main.c             # raylib app loop, camera, overlay, simulation stepping
-├── render/            # raylib drawing code and render-scale policy (render units, illustrative sizes)
+├── render/            # raylib drawing, lighting shaders, textures, render-scale and raylib-free style policy
+assets/textures/       # attributed planet/Sun/backdrop maps (CC BY 4.0), copied into the site by make docs-textures
 └── sim/               # raylib-independent physics/data model
 
 docs/src/pages/        # static Astro site, field guide, simulator and comparison pages
