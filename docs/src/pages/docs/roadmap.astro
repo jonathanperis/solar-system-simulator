@@ -2,7 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import DocsShell from '../../components/DocsShell.astro';
 import { mainSceneBodies, plannedBodies } from '../../lib/bodies';
-import { coreBodyCount, jovianMoonCount, neptunianMoonCount, saturnianMoonCount, uranianMoonCount } from '../../lib/siteCounts';
+import { coreBodyCount, jovianMoonCount, neptunianMoonCount, plutonianMoonCount, saturnianMoonCount, uranianMoonCount } from '../../lib/siteCounts';
 ---
 <BaseLayout title="Roadmap docs">
   <DocsShell
@@ -12,7 +12,7 @@ import { coreBodyCount, jovianMoonCount, neptunianMoonCount, saturnianMoonCount,
   >
     <section class="doc-panel">
       <h2>Implemented now</h2>
-      <p>The main scene holds the {coreBodyCount} large bodies: the Sun, all eight planets, Vesta, the Earth and Mars systems and the major moons of the giant planets. Every known moon of Jupiter ({jovianMoonCount}), Saturn ({saturnianMoonCount}), Uranus ({uranianMoonCount}) and Neptune ({neptunianMoonCount}) runs in its planet's system scene, which keeps the main scene fast and uncluttered. The small-body atlas maps the complete pinned asteroid and trans-Neptunian inventory, including Kuiper belt bodies and dwarf planets. Explicit catalog experiments load selected bodies alongside epoch-aligned planetary states.</p>
+      <p>The main scene holds the {coreBodyCount} large bodies: the Sun, all eight planets, Vesta, the dwarf planet Pluto, the Earth and Mars systems and the major moons of the giant planets and Pluto. Every known moon of Jupiter ({jovianMoonCount}), Saturn ({saturnianMoonCount}), Uranus ({uranianMoonCount}), Neptune ({neptunianMoonCount}) and Pluto ({plutonianMoonCount}) runs in its system scene, which keeps the main scene fast and uncluttered; a Didymos system scene adds the DART binary asteroid. The small-body atlas maps the complete pinned asteroid and trans-Neptunian inventory, including Kuiper belt bodies and dwarf planets. Explicit catalog experiments load selected bodies alongside epoch-aligned planetary states.</p>
       <p>The learning laboratory also provides a raylib-free CSV runner, ten guided presets beyond the core, matched A/B comparisons, shareable lesson configurations, force diagnostics, and the explicitly scoped head-on contact model. These capabilities complement the body-catalog roadmap below.</p>
       <div class="body-chip-row">
         {mainSceneBodies.map((body) => <span>{body.name}</span>)}
@@ -21,9 +21,9 @@ import { coreBodyCount, jovianMoonCount, neptunianMoonCount, saturnianMoonCount,
 
     <section class="doc-panel">
       <h2>Planned sequence</h2>
-      <ol class="roadmap-list">
+      {plannedBodies.length ? <ol class="roadmap-list">
         {plannedBodies.map((body) => <li>{body}</li>)}
-      </ol>
+      </ol> : <p>Every source-backed system now has a scene. Other asteroid satellites, such as Ida's Dactyl or Kalliope's Linus, have no JPL ephemeris this project can pin, so they stay out of scope until one exists. New bodies still follow the template below.</p>}
     </section>
 
     <section class="doc-panel">

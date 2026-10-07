@@ -11,9 +11,11 @@ const plates = [
   { id: 'jupiter', label: 'Jupiter system', detail: 'Jupiter-relative moon index' },
   { id: 'saturn', label: 'Saturn system', detail: 'Saturn-relative moon index' },
   { id: 'uranus', label: 'Uranus system', detail: 'Uranus-relative moon index' },
-  { id: 'neptune', label: 'Neptune system', detail: 'Neptune-relative moon index' }
+  { id: 'neptune', label: 'Neptune system', detail: 'Neptune-relative moon index' },
+  { id: 'pluto', label: 'Pluto system', detail: 'Pluto-relative moon index' },
+  { id: 'didymos', label: 'Didymos system', detail: 'Binary asteroid index' }
 ] as const;
-const moonPlates: readonly string[] = ['jupiter', 'saturn', 'uranus', 'neptune'];
+const moonPlates: readonly string[] = ['jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'didymos'];
 // Each moon plate opens on its first group (the major moons); the rest are
 // reached through the group picker and pages.
 const firstGroup = (plate: string) => implementedBodies.find(body => body.chart.plate === plate)?.group;
@@ -204,7 +206,7 @@ const firstGroup = (plate: string) => implementedBodies.find(body => body.chart.
     let dragging = false;
     let moonPage = 0;
     const moonsPerPage = 6;
-    const moonPlates: readonly Plate[] = ['jupiter', 'saturn', 'uranus', 'neptune'];
+    const moonPlates: readonly Plate[] = ['jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'didymos'];
     const isMoonPlate = (plate: Plate): boolean => moonPlates.includes(plate);
     // The group picker lists the active moon plate's groups, major moons first.
     const syncMoonGroups = (plate: Plate): void => {

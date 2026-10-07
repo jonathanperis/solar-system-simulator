@@ -109,8 +109,8 @@ size_t render_trail_stride_for_extent(size_t point_count, size_t base_stride, do
  * at most one endpoint is inside, which holds for a body's own trail. */
 bool render_clip_segment_outside_sphere(Vec3d *a, Vec3d *b, Vec3d center, double radius);
 
-/* Name labels drawn in the canvas (presentation only). The Sun and planets
- * are always named; the selected body always is; moons and small bodies are
+/* Name labels drawn in the canvas (presentation only). The Sun, planets and
+ * dwarf planets are always named; the selected body always is; moons and small bodies are
  * named once their family is zoomed in (at least
  * RENDER_LABEL_MIN_SEPARATION_PIXELS from their parent on screen), when they
  * are drawn at least RENDER_LABEL_MIN_RADIUS_PIXELS across and have a known

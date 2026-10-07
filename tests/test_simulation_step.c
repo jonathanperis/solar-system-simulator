@@ -160,13 +160,14 @@ static void test_full_scene_converges_over_100_days(void)
 }
 
 /* Family scenes hold up to 300 bodies; 20 days still spans dozens of orbits
- * of the fast inner moons (Pan, Cordelia, Naiad: 7-8 hours) and keeps the
+ * of the fast inner moons (Pan, Cordelia, Naiad: 7-8 hours; Dimorphos: 11.8
+ * hours around Didymos) and keeps the
  * sanitizer run affordable. Saturn's Janus/Epimetheus co-orbitals and the
  * Tethys/Dione trojans are included. */
 static void test_family_scenes_converge_over_20_days(void)
 {
-    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE};
-    for (size_t k = 0; k < 4; ++k) {
+    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE, BODY_ID_PLUTO, BODY_ID_DIDYMOS};
+    for (size_t k = 0; k < sizeof(planets) / sizeof(planets[0]); ++k) {
         SolarSystem family;
         assert(solar_system_create_family(planets[k], &family));
         assert_scene_converges(family, 20, false);

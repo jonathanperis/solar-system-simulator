@@ -11,5 +11,6 @@ export const jovianMoonCount = moonsOf('Jupiter');
 export const saturnianMoonCount = moonsOf('Saturn');
 export const uranianMoonCount = moonsOf('Uranus');
 export const neptunianMoonCount = moonsOf('Neptune');
+export const plutonianMoonCount = moonsOf('Pluto');
 export const smallBodyCatalogCount = manifest.count;
 export const formatCount = (value: number): string => value.toLocaleString('en-US');

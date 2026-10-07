@@ -2,7 +2,8 @@
 
 `tools/satellite_catalog.py` maintains one snapshot per giant planet:
 `jovian_moons.json` (115 moons, checked 2026-09-10), `saturnian_moons.json` (291),
-`uranian_moons.json` (29) and `neptunian_moons.json` (16), all checked 2026-10-07.
+`uranian_moons.json` (29), `neptunian_moons.json` (16), `plutonian_moons.json` (5)
+and `didymos_moons.json` (1), all checked 2026-10-07.
 The Jovian description below applies to all four. System-specific rules:
 
 - Saturn: 24 regular moons use SAT441/SAT415 Laplace planes; 267 irregular moons
@@ -19,6 +20,16 @@ The Jovian description below applies to all four. System-specific rules:
   as zero (not determined), so its mass is unknown.
 - New systems label a GM "measured" when its 1σ uncertainty is at most 10 % of
   the value and "estimated" otherwise; the Jovian rules are unchanged.
+- Pluto: `plutonian_moons.json` (5 moons, PLU060, epoch 2000-01-01.5) uses an
+  equatorial frame without pole columns. It is Charon's orbit plane, around the
+  IAU 2015 positive pole (RA 132.993°, Dec −6.163°); for dwarf planets that
+  pole already follows the right-hand rule, so no antipode is taken. Kerberos
+  and Styx have only GM upper limits, so their masses are unknown.
+- Didymos: `didymos_moons.json` holds Dimorphos from the JPL Horizons DART s547
+  post-impact reconstruction: osculating ecliptic J2000 elements about the
+  Didymos primary at 2024-01-01 TDB, the approximate GM (estimate) and the
+  volume-equivalent radius of its triaxial shape. The primary's GM, radius and
+  SBDB orbit are pinned in `src/sim/constants.h`.
 - `major` marks moons with a measured GM of at least 2 km³/s² (about 3×10¹⁹ kg):
   the Galilean moons, Saturn's seven rounded moons (Mimas, the smallest, has
   2.5), Uranus's five and Triton. The Jovian file implies it for the Galilean

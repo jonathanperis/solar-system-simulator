@@ -4,7 +4,7 @@
 #include "orbit.h"
 #include "physics.h"
 
-_Static_assert(SOLAR_CORE_SCENE_BODY_COUNT == 30, "V5: the main scene has 30 bodies");
+_Static_assert(SOLAR_CORE_SCENE_BODY_COUNT == 32, "V5: the main scene has 32 bodies");
 _Static_assert(SOLAR_CORE_SCENE_BODY_COUNT <= SOLAR_SYSTEM_BODY_CAPACITY, "main scene must fit the body array");
 _Static_assert(SOLAR_FAMILY_SCENE_PLANET_COUNT + SOLAR_JOVIAN_MOON_COUNT <= SOLAR_SYSTEM_BODY_CAPACITY &&
     SOLAR_FAMILY_SCENE_PLANET_COUNT + SOLAR_URANIAN_MOON_COUNT <= SOLAR_SYSTEM_BODY_CAPACITY &&
@@ -420,16 +420,34 @@ SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_
     return system;
 }
 
-/* Appends a planet's moons: its major moons only (main scene) or the whole
+/* A companion above this fraction of its primary's mass makes the pair a
+ * binary (Charon is 12% of Pluto; Titan is 0.02% of Saturn). */
+#define SOLAR_BINARY_MASS_RATIO 0.01
+
+/* Appends a primary's moons: its major moons only (main scene) or the whole
  * catalog with the major moons first (family scene). */
 static void append_moons(SolarSystem *system, size_t planet_index, bool major_only)
 {
     const SatelliteCatalog *catalog = satellite_catalog_for(system->bodies[planet_index].id);
+    /* Moons outside a binary companion's orbit circle the pair, not the
+     * primary: they start around the pair's barycenter with its total mass.
+     * The parent ID stays the primary's. Major moons come first, so the
+     * companion is already in place when the small moons are created. */
+    Body center = system->bodies[planet_index];
     for (int pass = 0; pass < 2; ++pass) {
         for (size_t i = 0; i < catalog->count; ++i) {
             if (catalog->moons[i].major != (pass == 0)) continue;
-            Body moon = satellite_create(&catalog->moons[i], &system->bodies[planet_index]);
+            Body moon = satellite_create(&catalog->moons[i], pass == 0 ? &system->bodies[planet_index] : &center);
             (void)solar_system_append(system, &moon);
+            const Body *primary = &system->bodies[planet_index];
+            if (pass == 0 && moon.mass_kg > SOLAR_BINARY_MASS_RATIO * primary->mass_kg) {
+                double total = center.mass_kg + moon.mass_kg;
+                center.position_m = vec3d_scale(vec3d_add(vec3d_scale(center.position_m, center.mass_kg),
+                    vec3d_scale(moon.position_m, moon.mass_kg)), 1 / total);
+                center.velocity_mps = vec3d_scale(vec3d_add(vec3d_scale(center.velocity_mps, center.mass_kg),
+                    vec3d_scale(moon.velocity_mps, moon.mass_kg)), 1 / total);
+                center.mass_kg = total;
+            }
         }
         if (major_only) break;
     }
@@ -453,23 +471,58 @@ SolarSystem solar_system_create_current(void)
         append_moons(&system, index, true);
         place_family_barycenter(&system, index);
     }
+    /* Charon carries 12% of Pluto's mass, so their barycenter lies outside
+     * Pluto: in this scene Pluto visibly circles a point in empty space. */
+    Body pluto = solar_system_create_pluto_at_perihelion();
+    size_t pluto_index = system.body_count;
+    (void)solar_system_append(&system, &pluto);
+    append_moons(&system, pluto_index, true);
+    place_family_barycenter(&system, pluto_index);
     return system;
 }
 
-int solar_system_family_planet_index(BodyId planet)
+Body solar_system_create_pluto_at_perihelion(void)
 {
-    switch (planet) {
+    /* Pluto's perihelion (29.6 AU) is inside Neptune's orbit. It starts on
+     * the ecliptic +Y axis, opposite Neptune's start on -Y, so the synthetic
+     * phases begin about 59 AU apart; the real 3:2 resonance is not modeled. */
+    double q = SOLAR_PLUTO_SEMI_MAJOR_AXIS_M * (1 - SOLAR_PLUTO_ECCENTRICITY);
+    double v = sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * (2 / q - 1 / SOLAR_PLUTO_SEMI_MAJOR_AXIS_M));
+    Body pluto = body_create_identified("Pluto", BODY_KIND_DWARF_PLANET, BODY_ID_PLUTO, BODY_ID_SUN,
+        SOLAR_PLUTO_MASS_KG, SOLAR_PLUTO_RADIUS_M, ecliptic_plane(0, q), ecliptic_plane(-v, 0), false);
+    pluto.group = "Dwarf planets";
+    return pluto;
+}
+
+Body solar_system_create_didymos_at_perihelion(void)
+{
+    /* Didymos's perihelion (1.01 AU) is near Earth's orbit. It starts on the
+     * ecliptic +X axis, 1.4 AU from Earth's start on +Y. */
+    double q = SOLAR_DIDYMOS_SEMI_MAJOR_AXIS_M * (1 - SOLAR_DIDYMOS_ECCENTRICITY);
+    double v = sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * (2 / q - 1 / SOLAR_DIDYMOS_SEMI_MAJOR_AXIS_M));
+    Body didymos = body_create_identified("Didymos", BODY_KIND_ASTEROID, BODY_ID_DIDYMOS, BODY_ID_SUN,
+        SOLAR_DIDYMOS_MASS_KG, SOLAR_DIDYMOS_RADIUS_M, ecliptic_plane(q, 0), ecliptic_plane(0, v), false);
+    didymos.mass_quality = didymos.radius_quality = PHYSICAL_ESTIMATED;
+    didymos.group = "Near-Earth asteroids";
+    return didymos;
+}
+
+int solar_system_family_planet_index(BodyId primary)
+{
+    switch (primary) {
         case BODY_ID_JUPITER: return 5;
         case BODY_ID_SATURN: return 6;
         case BODY_ID_URANUS: return 7;
         case BODY_ID_NEPTUNE: return 8;
+        case BODY_ID_PLUTO:
+        case BODY_ID_DIDYMOS: return 9;
         default: return -1;
     }
 }
 
-bool solar_system_create_family(BodyId planet, SolarSystem *result)
+bool solar_system_create_family(BodyId primary, SolarSystem *result)
 {
-    int planet_index = solar_system_family_planet_index(planet);
+    int planet_index = solar_system_family_planet_index(primary);
     if (planet_index < 0) return false;
     /* The same synthetic perihelion states as the main scene, without the
      * other planets' moons: their pull on a distant family is negligible and
@@ -481,6 +534,10 @@ bool solar_system_create_family(BodyId planet, SolarSystem *result)
         solar_system_create_uranus_at_perihelion, solar_system_create_neptune_at_perihelion};
     for (size_t i = 0; i < sizeof(planets) / sizeof(planets[0]); ++i) {
         Body body = planets[i]();
+        (void)solar_system_append(&system, &body);
+    }
+    if (planet_index == 9) {
+        Body body = primary == BODY_ID_PLUTO ? solar_system_create_pluto_at_perihelion() : solar_system_create_didymos_at_perihelion();
         (void)solar_system_append(&system, &body);
     }
     append_moons(&system, (size_t)planet_index, false);
