@@ -46,7 +46,9 @@ RAYLIB_WEB_CFLAGS ?= -I$(RAYLIB_WEB_SRC) -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES
 # calls (src/main.c uses that loop natively only). Dropping it removes the
 # stack-unwinding instrumentation (~30 KB of WASM). Calling a blocking raylib
 # API on the web would abort at runtime; restore the flag if one is needed.
-RAYLIB_WEB_LDFLAGS ?= -s USE_GLFW=3 -s ALLOW_MEMORY_GROWTH=1 -s STACK_SIZE=262144 -s EXPORTED_RUNTIME_METHODS=ccall
+# _malloc/_free and HEAPU8 let the page copy fetched texture bytes into WASM
+# memory for solar_web_load_texture; KEEPALIVE functions export themselves.
+RAYLIB_WEB_LDFLAGS ?= -s USE_GLFW=3 -s ALLOW_MEMORY_GROWTH=1 -s STACK_SIZE=262144 -s EXPORTED_RUNTIME_METHODS=ccall,HEAPU8 -s EXPORTED_FUNCTIONS=_main,_malloc,_free
 
 SIM_SRCS := \
     src/sim/vec3d.c \
@@ -64,7 +66,8 @@ SIM_SRCS := \
 
 SESSION_SRCS := src/app/body_trails.c src/app/simulation_step.c src/app/simulation_session.c
 LAB_SRCS := src/app/csv_export.c src/app/input_file.c src/app/lab_config.c src/app/comparison.c $(SESSION_SRCS) $(SIM_SRCS)
-APP_SRCS := src/main.c src/app/orbit_camera.c src/render/renderer.c src/render/render_scale.c $(LAB_SRCS)
+RENDER_SRCS := src/render/renderer.c src/render/render_scale.c src/render/scene_style.c src/render/image_decode.c src/render/render_resources.c
+APP_SRCS := src/main.c src/app/orbit_camera.c $(RENDER_SRCS) $(LAB_SRCS)
 APP_OBJS := $(APP_SRCS:%.c=build/%.o)
 
 # Shared session/clock layouts must rebuild every native consumer after a header edit.
@@ -87,10 +90,12 @@ TEST_BINS += $(TEST_DIR)/test_advanced_lessons
 TEST_BINS += $(TEST_DIR)/test_comparison
 TEST_BINS += $(TEST_DIR)/test_input_file
 TEST_BINS += $(TEST_DIR)/test_csv_export
+TEST_BINS += $(TEST_DIR)/test_scene_style
+TEST_BINS += $(TEST_DIR)/test_image_decode
 HEADLESS_TEST_BINS = $(filter-out $(TEST_RENDERER),$(TEST_BINS))
 SOURCE_HEADERS := $(wildcard src/app/*.h src/sim/*.h src/render/*.h src/sim/*.inc)
 
-.PHONY: all run headless test test-binaries test-core test-sanitize test-build test-cli test-validators web raylib-web dist-wasm docs-assets docs-check analysis-web-boundary clean FORCE
+.PHONY: all run headless test test-binaries test-core test-sanitize test-build test-cli test-validators web raylib-web dist-wasm docs-assets docs-textures docs-check analysis-web-boundary clean FORCE
 
 all: $(APP)
 
@@ -144,8 +149,13 @@ web: $(WEB_MANIFEST)
 $(WEB_MANIFEST): $(WEB_APP) $(WEB_WASM) $(WEB_DIR)/catalog-orbits.wasm $(LAB_WEB_JS) $(LAB_WEB_WASM) build/revision.h tools/write_wasm_manifest.py
 	python3 tools/write_wasm_manifest.py $(WEB_DIR) build/revision.h
 
-docs-assets: web
+docs-assets: web docs-textures
 	python3 tools/prepare_wasm.py $(WEB_DIR) docs/public/wasm
+
+# assets/textures/ is the single source; the site copy is an ignored build output.
+docs-textures:
+	@mkdir -p docs/public/textures
+	cp assets/textures/*.jpg assets/textures/*.png docs/public/textures/
 
 raylib-web:
 	$(MAKE) PLATFORM=PLATFORM_WEB -C $(RAYLIB_WEB_SRC)
@@ -216,9 +226,9 @@ $(TEST_SIMULATION_STEP): tests/test_simulation_step.c src/app/simulation_step.c 
 	@mkdir -p $(@D)
 	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) tests/test_simulation_step.c src/app/simulation_step.c src/app/body_trails.c $(SIM_SRCS) $(LDLIBS) -o $@
 
-$(TEST_RENDERER): tests/test_renderer.c src/render/renderer.c src/render/renderer.h src/render/render_scale.c src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
+$(TEST_RENDERER): tests/test_renderer.c src/render/renderer.c src/render/renderer.h src/render/render_scale.c src/render/scene_style.c src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
 	@mkdir -p $(@D)
-	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(RAYLIB_CFLAGS) tests/test_renderer.c src/render/renderer.c src/render/render_scale.c src/app/body_trails.c $(SIM_SRCS) $(RAYLIB_LIBS) $(LDLIBS) -o $@
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(RAYLIB_CFLAGS) tests/test_renderer.c src/render/renderer.c src/render/render_scale.c src/render/scene_style.c src/app/body_trails.c $(SIM_SRCS) $(RAYLIB_LIBS) $(LDLIBS) -o $@
 
 $(TEST_SIMULATION_SESSION): tests/test_simulation_session.c src/app/simulation_session.c src/app/simulation_session.h src/app/simulation_step.c src/app/simulation_step.h src/app/body_trails.c src/app/body_trails.h $(SIM_SRCS)
 	@mkdir -p $(@D)
@@ -277,3 +287,12 @@ $(LAB_WEB_JS): src/lab_web.c $(LAB_SRCS) $(SOURCE_HEADERS) build/revision.h
 
 $(LAB_WEB_WASM): $(LAB_WEB_JS)
 	@test -f $@ || { rm -f $(LAB_WEB_JS); $(MAKE) $(LAB_WEB_JS); }
+
+# Cinematic renderer style math is raylib-free, so it runs with the headless suite.
+$(TEST_DIR)/test_scene_style: tests/test_scene_style.c src/render/scene_style.c src/sim/orbit.c src/sim/vec3d.c src/render/scene_style.h
+	@mkdir -p $(@D)
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
+
+$(TEST_DIR)/test_image_decode: tests/test_image_decode.c src/render/image_decode.c src/render/image_decode.h src/render/third_party/stb_image.h
+	@mkdir -p $(@D)
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@

@@ -1,12 +1,13 @@
 #include "renderer.h"
 
 #include <math.h>
+#include <stdlib.h>
+
+#include <rlgl.h>
 
 #include "../sim/constants.h"
 #include "render_scale.h"
 
-#define SOLAR_MIN_GRID_SLICES 20
-#define SOLAR_GRID_PADDING_UNITS 2.0
 #define SOLAR_ILLUSTRATIVE_SATELLITE_GAP_UNITS 0.03
 #define SOLAR_ILLUSTRATIVE_SMALL_MOON_RADIUS 0.012f
 
@@ -250,29 +251,6 @@ const char *renderer_scale_mode_label(RenderScaleMode mode)
     }
 }
 
-int renderer_grid_slices_for_system(const SolarSystem *system, RenderScaleMode mode)
-{
-    double max_horizontal_extent = 0.0;
-
-    for (size_t i = 0; i < system->body_count; ++i) {
-        Vec3d position = renderer_body_position(system, i, mode);
-        double x_extent = fabs(position.x);
-        double z_extent = fabs(position.z);
-        max_horizontal_extent = fmax(max_horizontal_extent, fmax(x_extent, z_extent));
-    }
-
-    int slices = (int)fmin(512.0, ceil((max_horizontal_extent + SOLAR_GRID_PADDING_UNITS) * 2.0));
-    if (slices < SOLAR_MIN_GRID_SLICES) {
-        slices = SOLAR_MIN_GRID_SLICES;
-    }
-
-    if ((slices % 2) != 0) {
-        ++slices;
-    }
-
-    return slices;
-}
-
 size_t renderer_trail_sample_stride(size_t point_count)
 {
     if (point_count <= SOLAR_RENDER_MAX_TRAIL_SEGMENTS + 1) {
@@ -298,91 +276,266 @@ size_t renderer_trail_draw_segment_count(size_t point_count)
     return drawn_segments;
 }
 
-static Vector3 saturn_ring_point(Vector3 center, float radius, float radians)
+/* Body-fixed frame -> world: column 0 is the prime meridian (longitude 0),
+ * column 1 the north pole, column 2 their cross product, each scaled by the
+ * drawn radius, then translated. raylib matrices are column-major: m0-m2 hold
+ * column 0, m12-m14 the translation. */
+static Matrix body_matrix(RenderOrientation orientation, Vector3 position, float radius)
 {
-    float tilt = (float)(SOLAR_SATURN_AXIAL_TILT_DEGREES * acos(-1.0) / 180.0);
-    float x = cosf(radians) * radius;
-    return (Vector3){center.x + x * cosf(tilt), center.y + x * sinf(tilt), center.z + sinf(radians) * radius};
+    Vec3d x = orientation.prime_meridian, y = orientation.pole, z = vec3d_cross(x, y);
+    Matrix m = {0};
+    m.m0 = (float)x.x * radius; m.m1 = (float)x.y * radius; m.m2 = (float)x.z * radius;
+    m.m4 = (float)y.x * radius; m.m5 = (float)y.y * radius; m.m6 = (float)y.z * radius;
+    m.m8 = (float)z.x * radius; m.m9 = (float)z.y * radius; m.m10 = (float)z.z * radius;
+    m.m12 = position.x; m.m13 = position.y; m.m14 = position.z; m.m15 = 1.0f;
+    return m;
 }
 
-static void draw_saturn_rings(Vector3 center, float body_radius, float outer_radius)
-{
-    const int ring_count = 13;
-    const int segments = 96;
-    float inner_radius = body_radius * SOLAR_SATURN_RING_VISUAL_INNER_RATIO;
-    Color ring_color = {205, 184, 145, 180};
+typedef enum ShadeMode { SHADE_LIT = 0, SHADE_STAR = 1, SHADE_CLOUDS = 2, SHADE_RING = 3, SHADE_SKY = 4 } ShadeMode;
 
-    /* Thin concentric lines keep the rings legible without creating physical
-     * geometry. The skipped lines suggest the Cassini Division. */
-    for (int ring = 0; ring < ring_count; ++ring) {
-        if (ring == 9 || ring == 10) continue;
-        float radius = inner_radius + (outer_radius - inner_radius) * (float)ring / (float)(ring_count - 1);
-        Vector3 start = saturn_ring_point(center, radius, 0.0f);
-        for (int segment = 1; segment <= segments; ++segment) {
-            float angle = (float)(2.0 * acos(-1.0) * (double)segment / (double)segments);
-            Vector3 end = saturn_ring_point(center, radius, angle);
-            DrawLine3D(start, end, ring_color);
-            start = end;
+/* Set this draw's uniforms and maps, then issue it. DrawMesh draws at once
+ * (it is not batched), so per-body uniforms take effect immediately. */
+static void draw_shaded(const RenderResources *resources, Mesh mesh, Matrix transform, ShadeMode mode,
+    Texture2D surface, Color tint, Vector3 light_direction, RenderAtmosphere atmosphere, const Texture2D *night)
+{
+    float mode_value = (float)mode, night_value = night ? 1.0f : 0.0f;
+    float light[3] = {light_direction.x, light_direction.y, light_direction.z};
+    float air[4] = {atmosphere.r, atmosphere.g, atmosphere.b, atmosphere.strength};
+    SetShaderValue(resources->shader, resources->loc_mode, &mode_value, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(resources->shader, resources->loc_light_dir, light, SHADER_UNIFORM_VEC3);
+    SetShaderValue(resources->shader, resources->loc_atmosphere, air, SHADER_UNIFORM_VEC4);
+    SetShaderValue(resources->shader, resources->loc_night_lights, &night_value, SHADER_UNIFORM_FLOAT);
+    Material material = resources->material;
+    material.maps[MATERIAL_MAP_ALBEDO].texture = surface;
+    material.maps[MATERIAL_MAP_ALBEDO].color = tint;
+    material.maps[MATERIAL_MAP_METALNESS].texture = night ? *night : resources->white;
+    DrawMesh(mesh, material, transform);
+}
+
+static Texture2D texture_or_white(const RenderResources *resources, RenderTextureSlot slot)
+{
+    return slot >= 0 && resources->texture_loaded[slot] ? resources->textures[slot] : resources->white;
+}
+
+static Vector3 unit_vector(Vector3 v, Vector3 fallback)
+{
+    float length = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+    return length > 1e-20f ? (Vector3){v.x / length, v.y / length, v.z / length} : fallback;
+}
+
+static void line_vertex(Vector3 position, Color color, float alpha)
+{
+    rlColor4ub(color.r, color.g, color.b, (unsigned char)(color.a * (alpha < 0 ? 0 : alpha > 1 ? 1 : alpha)));
+    rlVertex3f(position.x, position.y, position.z);
+}
+
+/* Adaptive ecliptic-plane reference grid (A67): power-of-ten minor and major
+ * lines that cross-fade with zoom, each line split into short pieces so its
+ * opacity can fall off with distance from the camera target. */
+static void draw_reference_grid(Vec3d origin, double camera_distance)
+{
+    RenderGridLevels grid = render_grid_levels(camera_distance);
+    const int pieces = 6;
+    const Color minor_color = {70, 92, 118, 70}, major_color = {92, 120, 150, 120};
+    rlBegin(RL_LINES);
+    for (int level = 0; level < 2; ++level) {
+        double spacing = level ? grid.major_spacing : grid.minor_spacing;
+        double strength = level ? 1.0 : grid.minor_alpha;
+        if (strength < 0.03) continue;
+        Color color = level ? major_color : minor_color;
+        long count = (long)ceil(grid.radius / spacing);
+        double center_x = floor(origin.x / spacing) * spacing, center_z = floor(origin.z / spacing) * spacing;
+        /* Slightly below the orbital plane so trails never share its depth. */
+        double plane_y = -0.002 * grid.minor_spacing;
+        for (long k = -count; k <= count; ++k) {
+            /* Minor lines that coincide with a major line are drawn once. */
+            if (!level && (llabs((long long)floor(center_x / spacing + 0.5) + k) % 10) == 0) continue;
+            for (int axis = 0; axis < 2; ++axis) {
+                for (int piece = 0; piece < pieces; ++piece) {
+                    double t0 = -grid.radius + 2 * grid.radius * piece / pieces;
+                    double t1 = -grid.radius + 2 * grid.radius * (piece + 1) / pieces;
+                    Vec3d a, b;
+                    if (axis == 0) {
+                        double x = center_x + k * spacing;
+                        a = (Vec3d){x, plane_y, origin.z + t0}; b = (Vec3d){x, plane_y, origin.z + t1};
+                    } else {
+                        double z = center_z + k * spacing;
+                        a = (Vec3d){origin.x + t0, plane_y, z}; b = (Vec3d){origin.x + t1, plane_y, z};
+                    }
+                    double da = hypot(a.x - origin.x, a.z - origin.z), db = hypot(b.x - origin.x, b.z - origin.z);
+                    line_vertex(renderer_relative_vector(a, origin), color, (float)(strength * render_grid_alpha(da, grid.radius) * 2.0));
+                    line_vertex(renderer_relative_vector(b, origin), color, (float)(strength * render_grid_alpha(db, grid.radius) * 2.0));
+                }
+            }
         }
     }
+    rlEnd();
 }
 
-void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode,
+static void draw_trails(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode,
     RenderTrailFrame trail_frame, Vec3d origin)
 {
-    int slices = renderer_grid_slices_for_system(system, mode);
-    float half_width = (float)slices * 0.5f;
-    /* A subdued reference plane sits below the orbital plane so its lines do
-     * not compete with trails or share their depth at grid intersections. */
-    for (int i = 0; i <= slices; ++i) {
-        float offset = (float)i - half_width;
-        Color grid_color = {45, 57, 69, 255};
-        double x = floor(origin.x), z = floor(origin.z);
-        DrawLine3D(renderer_relative_vector((Vec3d){x+offset,-.02,z-half_width},origin),
-            renderer_relative_vector((Vec3d){x+offset,-.02,z+half_width},origin),grid_color);
-        DrawLine3D(renderer_relative_vector((Vec3d){x-half_width,-.02,z+offset},origin),
-            renderer_relative_vector((Vec3d){x+half_width,-.02,z+offset},origin),grid_color);
-    }
-
+    rlBegin(RL_LINES);
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
-        if (body->kind == BODY_KIND_STAR && body->fixed) {
-            continue;
-        }
-
+        if (body->kind == BODY_KIND_STAR && body->fixed) continue;
         size_t point_count = body_trails_point_count(trails, i);
-        if (point_count < 2) {
-            continue;
-        }
-
-        Color trail_color = Fade(renderer_body_color(body), 0.85f);
+        if (point_count < 2) continue;
+        Color color = renderer_body_color(body);
+        color.a = 235;
         size_t stride = renderer_trail_sample_stride(point_count);
-        size_t previous_point = 0;
         /* Adjacent segments share an endpoint. Reuse its render transform;
-         * the simulation and synchronized history are immutable while drawing. */
+         * the simulation and synchronized history are immutable while drawing.
+         * Opacity follows the sample's age so recent motion reads first. */
+        size_t previous = 0;
         Vec3d start = renderer_trail_point_in_frame(system, trails, i, 0, mode, trail_frame);
         for (size_t j = stride; j < point_count; j += stride) {
             Vec3d end = renderer_trail_point_in_frame(system, trails, i, j, mode, trail_frame);
-            DrawLine3D(renderer_relative_vector(start, origin), renderer_relative_vector(end, origin), trail_color);
+            line_vertex(renderer_relative_vector(start, origin), color, render_trail_alpha(previous, point_count));
+            line_vertex(renderer_relative_vector(end, origin), color, render_trail_alpha(j, point_count));
             start = end;
-            previous_point = j;
+            previous = j;
         }
-        if (previous_point + 1 < point_count) {
+        if (previous + 1 < point_count) {
             Vec3d end = renderer_trail_point_in_frame(system, trails, i, point_count - 1, mode, trail_frame);
-            DrawLine3D(renderer_relative_vector(start, origin), renderer_relative_vector(end, origin), trail_color);
+            line_vertex(renderer_relative_vector(start, origin), color, render_trail_alpha(previous, point_count));
+            line_vertex(renderer_relative_vector(end, origin), color, 1.0f);
         }
     }
+    rlEnd();
+}
 
+void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode,
+    RenderTrailFrame trail_frame, Vec3d origin, const RenderResources *resources, const RenderView *view)
+{
+    Camera3D camera = view->camera;
+    Vector3 to_camera = {camera.position.x - camera.target.x, camera.position.y - camera.target.y, camera.position.z - camera.target.z};
+    double camera_distance = sqrt(to_camera.x * to_camera.x + to_camera.y * to_camera.y + to_camera.z * to_camera.z);
+    float view_position[3] = {camera.position.x, camera.position.y, camera.position.z};
+    if (resources->ready) SetShaderValue(resources->shader, resources->loc_view_pos, view_position, SHADER_UNIFORM_VEC3);
+
+    /* 1. Milky Way backdrop: a huge inside-out sphere centred on the camera,
+     * drawn first without writing depth, so everything else draws over it and
+     * it never moves as the camera translates (stars are effectively at
+     * infinity). Illustrative, not a sky ephemeris. */
+    if (resources->ready && resources->texture_loaded[RENDER_TEXTURE_STARS]) {
+        rlDrawRenderBatchActive();
+        rlDisableDepthMask();
+        rlDisableBackfaceCulling();
+        Matrix sky = body_matrix((RenderOrientation){{0, 1, 0}, {1, 0, 0}, 0, false}, camera.position, view->far_plane * 0.5f);
+        draw_shaded(resources, resources->sphere_detailed, sky, SHADE_SKY, resources->textures[RENDER_TEXTURE_STARS],
+            WHITE, (Vector3){0, 1, 0}, (RenderAtmosphere){0}, NULL);
+        rlEnableBackfaceCulling();
+        rlEnableDepthMask();
+    }
+
+    /* 2. Reference grid: it writes no depth, so every body drawn later covers
+     * it even where the plane passes through the body's centre. The grid
+     * reads as a background reference rather than slicing planets in half. */
+    rlDrawRenderBatchActive();
+    rlDisableDepthMask();
+    draw_reference_grid(origin, camera_distance);
+    rlDrawRenderBatchActive();
+    rlEnableDepthMask();
+    /* Trails do write depth, so a body in front still hides them. */
+    draw_trails(system, trails, mode, trail_frame, origin);
+    rlDrawRenderBatchActive();
+
+    /* The light source is the first star; lessons without one (the two-sphere
+     * contact demo) light each body from the camera instead. */
+    int star = -1;
+    for (size_t i = 0; i < system->body_count && star < 0; ++i) if (system->bodies[i].kind == BODY_KIND_STAR) star = (int)i;
+    Vector3 star_position = star >= 0 ? renderer_relative_vector(renderer_body_position(system, (size_t)star, mode), origin) : camera.position;
+
+    /* 3. Opaque bodies. Each mesh draw costs dozens of WebGL calls, so bodies
+     * behind the camera are skipped and sub-pixel bodies become one batched
+     * point (presentation only: their SI state is untouched). */
+    Vector3 forward = unit_vector((Vector3){-to_camera.x, -to_camera.y, -to_camera.z}, (Vector3){0, 0, -1});
+    double viewport_height = (double)GetRenderHeight();
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
-        Color color = renderer_body_color(body);
         Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
         float radius = renderer_body_radius(body, mode);
-
-        if (body->id == BODY_ID_SATURN) {
-            draw_saturn_rings(position, radius, renderer_body_visual_radius(body, mode));
+        Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
+        double depth = offset.x * forward.x + offset.y * forward.y + offset.z * forward.z;
+        if (depth < -(double)renderer_body_visual_radius(body, mode)) continue;
+        double pixels = render_projected_radius_pixels(radius,
+            sqrt(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z), camera.fovy, viewport_height);
+        if (resources->ready && body->kind != BODY_KIND_STAR && pixels < RENDER_MESH_MIN_RADIUS_PIXELS) {
+            DrawPoint3D(position, renderer_body_color(body));
+            continue;
         }
-        if (body->radius_quality == PHYSICAL_UNKNOWN) DrawSphereWires(position, radius, 4, 4, color);
-        else DrawSphere(position, radius, color);
+        if (body->radius_quality == PHYSICAL_UNKNOWN || !resources->ready) {
+            /* Unknown radius: an explicitly nonphysical wire marker (V25). */
+            if (body->radius_quality == PHYSICAL_UNKNOWN) DrawSphereWires(position, radius, 4, 4, renderer_body_color(body));
+            else DrawSphere(position, radius, renderer_body_color(body));
+            continue;
+        }
+        RenderTextureSlot slot = render_texture_for_body(body->id);
+        bool textured = slot >= 0 && resources->texture_loaded[slot];
+        RenderOrientation orientation = render_body_orientation(body->id, view->orientation_days);
+        Matrix transform = body_matrix(orientation, position, radius);
+        Mesh mesh = textured || body->kind != BODY_KIND_MOON ? resources->sphere_detailed : resources->sphere_simple;
+        Color tint = textured ? WHITE : renderer_body_color(body);
+        if ((int)i == star) {
+            draw_shaded(resources, mesh, transform, SHADE_STAR, texture_or_white(resources, slot), tint,
+                (Vector3){0, 1, 0}, (RenderAtmosphere){0}, NULL);
+            continue;
+        }
+        Vector3 light = unit_vector((Vector3){star_position.x - position.x, star_position.y - position.y,
+            star_position.z - position.z}, (Vector3){0, 1, 0});
+        bool city_lights = body->id == BODY_ID_EARTH && resources->texture_loaded[RENDER_TEXTURE_EARTH_NIGHT];
+        draw_shaded(resources, mesh, transform, SHADE_LIT, texture_or_white(resources, slot), tint, light,
+            render_atmosphere_for_body(body->id), city_lights ? &resources->textures[RENDER_TEXTURE_EARTH_NIGHT] : NULL);
     }
+    rlDrawRenderBatchActive();
+    if (!resources->ready) return;
+
+    /* 4. Translucent layers after every opaque surface, testing depth but not
+     * writing it, so they blend over bodies without hiding each other. */
+    rlDisableDepthMask();
+    for (size_t i = 0; i < system->body_count; ++i) {
+        const Body *body = &system->bodies[i];
+        if (body->radius_quality == PHYSICAL_UNKNOWN) continue;
+        bool saturn = body->id == BODY_ID_SATURN;
+        bool clouds = body->id == BODY_ID_EARTH && resources->texture_loaded[RENDER_TEXTURE_EARTH_CLOUDS];
+        if (!saturn && !clouds) continue;
+        Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
+        float radius = renderer_body_radius(body, mode);
+        Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
+        double distance = sqrt(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z);
+        if (render_projected_radius_pixels(renderer_body_visual_radius(body, mode), distance, camera.fovy, viewport_height)
+            < RENDER_MESH_MIN_RADIUS_PIXELS * 2) continue;
+        Vector3 light = unit_vector((Vector3){star_position.x - position.x, star_position.y - position.y,
+            star_position.z - position.z}, (Vector3){0, 1, 0});
+        RenderOrientation orientation = render_body_orientation(body->id, view->orientation_days);
+        if (saturn) {
+            /* Rings lie in Saturn's equatorial plane; seen edge-on or from
+             * below they must stay visible, so both faces are drawn. Their
+             * outer extent matches renderer_body_visual_radius (framing). */
+            bool ring_map = resources->texture_loaded[RENDER_TEXTURE_SATURN_RING];
+            rlDisableBackfaceCulling();
+            draw_shaded(resources, resources->ring, body_matrix(orientation, position, radius), SHADE_RING,
+                texture_or_white(resources, RENDER_TEXTURE_SATURN_RING), ring_map ? WHITE : (Color){205, 184, 145, 150},
+                light, (RenderAtmosphere){0}, NULL);
+            rlEnableBackfaceCulling();
+        }
+        if (clouds) {
+            draw_shaded(resources, resources->sphere_detailed, body_matrix(orientation, position, radius * 1.012f),
+                SHADE_CLOUDS, resources->textures[RENDER_TEXTURE_EARTH_CLOUDS], WHITE, light, (RenderAtmosphere){0}, NULL);
+        }
+    }
+
+    /* 5. The Sun's halo, added on top of everything (additive blending). Far
+     * away it keeps a small minimum apparent size so the Sun still reads as a
+     * bright star; this is presentation only. */
+    if (star >= 0) {
+        float sun_radius = renderer_body_radius(&system->bodies[star], mode);
+        float size = fmaxf(sun_radius * 7.0f, (float)camera_distance * 0.05f);
+        BeginBlendMode(BLEND_ADDITIVE);
+        DrawBillboard(camera, resources->glow, star_position, size, WHITE);
+        EndBlendMode();
+    }
+    rlDrawRenderBatchActive();
+    rlEnableDepthMask();
 }

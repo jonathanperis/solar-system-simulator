@@ -142,8 +142,27 @@ static void test_auto_rotation_yaw_stays_bounded_and_keeps_moving(void)
     assert(state.yaw_radians >= 0.0f && state.yaw_radians < two_pi);
 }
 
+static void test_sunlit_yaw_places_camera_on_the_day_side(void)
+{
+    /* Camera offset is (sin yaw, cos yaw) in x/z. With the Sun along +X from
+     * the body, a zero offset puts the camera on that same line (full phase);
+     * a 40-degree offset keeps it on the day side with a visible terminator. */
+    const float pi = 3.14159265f;
+    float yaw = orbit_camera_sunlit_yaw(1.0, 0.0, 0.0f);
+    assert(fabsf(sinf(yaw) - 1.0f) < 1e-5f && fabsf(cosf(yaw)) < 1e-5f);
+    yaw = orbit_camera_sunlit_yaw(0.0, -3.0, 40.0f * pi / 180.0f);
+    float camera_x = sinf(yaw), camera_z = cosf(yaw);
+    float lit = camera_x * 0.0f + camera_z * -1.0f; /* cosine to the sunward direction */
+    assert(fabsf(lit - cosf(40.0f * pi / 180.0f)) < 1e-5f);
+    assert(yaw >= 0.0f && yaw < 2.0f * pi);
+    /* A degenerate (Sun straight above or below) direction keeps a valid yaw. */
+    yaw = orbit_camera_sunlit_yaw(0.0, 0.0, 0.5f);
+    assert(yaw >= 0.0f && yaw < 2.0f * pi);
+}
+
 int main(void)
 {
+    test_sunlit_yaw_places_camera_on_the_day_side();
     test_auto_rotation_yaw_stays_bounded_and_keeps_moving();
     test_frame_fits_bounding_sphere_at_solar_and_moon_scales();
     test_default_orbit_camera_matches_initial_view_angle();
