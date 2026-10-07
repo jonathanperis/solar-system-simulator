@@ -281,7 +281,8 @@ static void test_point_mass_periods_stay_within_one_percent_of_jpl(void)
             worst = fmax(worst, fabs(period_days / d->period_days - 1));
         }
     }
-    assert(worst < 0.01 && worst > 0.005);
+    /* Today's worst case is Europa at 0.75%; better data may only shrink it. */
+    assert(worst < 0.01);
 }
 
 /* A79: every reference plane converts into the right orientation. */
