@@ -7,6 +7,7 @@
 
 #include "../app/body_trails.h"
 #include "../sim/solar_system.h"
+#include "scene_style.h"
 
 #define SOLAR_RENDER_MAX_TRAIL_SEGMENTS 1024
 
@@ -21,6 +22,37 @@ typedef struct RenderSystemFrame {
     size_t root_index;
     double radius;
 } RenderSystemFrame;
+
+/* GPU resources for the cinematic renderer (SPEC A64-A67). Create them after
+ * InitWindow (they need a GL context) and unload them before CloseWindow.
+ * Every texture is optional: a missing map falls back to a lit body colour. */
+typedef struct RenderResources {
+    Shader shader;
+    int loc_mode, loc_light_dir, loc_view_pos, loc_atmosphere, loc_night_lights;
+    Mesh sphere_detailed, sphere_simple, ring;
+    Material material;
+    Texture2D textures[RENDER_TEXTURE_COUNT];
+    bool texture_loaded[RENDER_TEXTURE_COUNT];
+    Texture2D white, glow;
+    bool ready;
+} RenderResources;
+
+/* Per-frame view: the raylib camera (in origin-relative render units), the
+ * spin-model clock in TDB days since J2000, and the far clip distance. */
+typedef struct RenderView {
+    Camera3D camera;
+    double orientation_days;
+    float far_plane;
+} RenderView;
+
+bool renderer_resources_init(RenderResources *resources);
+void renderer_resources_unload(RenderResources *resources);
+/* Decode bundled JPEG/PNG bytes into a texture slot; false keeps the fallback. */
+bool renderer_load_texture_memory(RenderResources *resources, RenderTextureSlot slot,
+    const unsigned char *bytes, size_t length);
+/* Load every slot from `directory`; returns how many textures loaded. */
+int renderer_load_textures_from_directory(RenderResources *resources, const char *directory);
+int renderer_loaded_texture_count(const RenderResources *resources);
 
 RenderSystemFrame renderer_system_frame(const SolarSystem *system, size_t selected, RenderScaleMode mode);
 RenderSystemFrame renderer_body_frame(const SolarSystem *system, size_t selected, RenderScaleMode mode);
@@ -38,9 +70,8 @@ size_t renderer_trail_sample_stride(size_t point_count);
 size_t renderer_trail_draw_segment_count(size_t point_count);
 float renderer_body_radius(const Body *body, RenderScaleMode mode);
 float renderer_body_visual_radius(const Body *body, RenderScaleMode mode);
-int renderer_grid_slices_for_system(const SolarSystem *system, RenderScaleMode mode);
 Vector3 renderer_relative_vector(Vec3d position, Vec3d origin);
 void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode,
-    RenderTrailFrame trail_frame, Vec3d origin);
+    RenderTrailFrame trail_frame, Vec3d origin, const RenderResources *resources, const RenderView *view);
 
 #endif
