@@ -345,6 +345,16 @@ A68|Physics, CSV, inspector, camera framing and the canvas/viewport contract are
 
 Decision: Jonathan asked for "better graphics overall", then chose "Cinematic realism" and approved adding real planet textures (~3 MB, public-domain/CC-BY). This explicitly lifts C9 for this task; delivery follows the PR-only workflow.
 
+## §A — Renderer polish and performance, 2026-10-07
+
+id|criterion|verify
+A69|Lighting happens in linear light (sRGB decode → Lambert → encode); Earth adds an ocean sun glint masked to water; bodies with air show a limb halo (additive shell peaking at the planet's limb); clouds fade at grazing angles; Saturn and its rings shadow each other analytically|screenshots, offscreen GLSL 330 compile/link, browser rendering journeys
+A70|Trails draw after opaque bodies without depth writes and with additive blending, stop at each body's drawn surface, and are drawn only as finely as their on-screen extent needs; a per-frame cache resolves parents and positions once and is bit-identical to the uncached path|`test_renderer` equivalence test, `test_scene_style` clip/stride tests, profile + frame-rate measurements
+A71|Framing turns the camera to the framed body's sunlit side; the reference grid can be hidden through a C command (native G, web View options)|`test_orbit_camera`, command-ID check, browser journey
+A72|The full scene holds 60 fps on desktop and on a 4×-CPU-throttled phone emulation at default speed, and does not regress the 15 days/s stress case|recorded measurements against the live site
+
+Decision: Jonathan set the goal "keep working and iterating on our simulation to have a beautiful and optimized and good result". Each step is screenshot-verified and frame-rate measured against the live site before it is kept.
+
 ## §T
 
 id|status|task|cites
@@ -418,6 +428,7 @@ T66|x|replace Dependabot with an equivalent-or-stricter Renovate configuration a
 T67|x|add raylib-free scene style math (texture inventory, atmospheres, IAU orientation, sphere/ring meshes, grid/trail fades) with RED tests|A64,A66,A67,A68
 T68|x|implement lighting shaders, textures, glow, backdrop, rings, clouds and fades in the raylib renderer with native texture loading|A64,A65,A66,A67
 T69|x|lazy-load textures in the browser, document attribution and controls, verify screenshots and the full suite, deliver by PR|A65,A67,A68
+T70|x|polish lighting (linear light, glint, halos, ring shadows), trail ordering/clipping/adaptive detail, sunlit framing, grid toggle, and verify 60 fps on throttled phones|A69,A70,A71,A72
 
 Audit remediation verification, 2026-10-06: delivered through PRs #20, #21, #22, #24, #25 (round 1), #26 (main CI/analytics blocker found by round 2) and #27 (round 2), each rebase-merged after the required Build/CodeQL checks passed and every review thread was resolved. Production Pages served 81eb308 after #26 with CSP, Astro generator marker, generated sitemap and no robots.txt verified on the live site. Locally, round 2 passed `make clean && make test-sanitize`, `make && make test test-build test-cli test-validators`, catalog/command/epoch/Jovian/small-body checks, a fresh raylib WASM build with native/WASM replay of every example, `npm ci`/`npm audit`/37 Node tests/`astro check`/build, route checks, and 17/17 sandboxed Chrome journeys for both analytics-free and `PUBLIC_GA_ID` builds. The second audit's Medium findings (main CI red, experiment Earth-centre start, debug-info WASM, duplicate SPEC IDs, PR-only workflow docs, invisible catalog download) are closed. Remaining Low/Info items are recorded rather than changed: Jonathan later chose Renovate over Dependabot (A63) and asked for every non-main branch to be deleted; CI stays Linux-only and the browser lane stays on Ubuntu 22.04 per R13; browser specs are type-checked by Playwright, not `astro check` (adding `@types/node` was deferred); GA consent policy remains V17; the pre-existing desktop atlas Vesta/Uranus label overlap, Saturn's illustrative ring tilt and literal Jupiter–Neptune masses (V6 scopes GM-derived masses to Sun–Mars) are unchanged.
 
@@ -479,3 +490,4 @@ B44|2026-10-06|`test_input_file` hardcoded build/tests fixtures, so a clean `mak
 B45|2026-10-06|the atomic replace silently overwrote read-only destinations, an interrupted run left its temporary, empty or '/'-terminated `--output` reached the filesystem, and non-finite headless runs exited 0|write-access refusal, async-signal-safe cleanup with re-raise, early usage errors, shared finite-state check, physical bounds on experiment rows (A57, V36, V40)
 B46|2026-10-06|`lab_advance` reported work remaining when nothing was configured, and native snapshot failures gave no reason|return 0 when unconfigured (the comparison loop stops on it); testable numbered snapshot creation with strerror and exhaustion messages (A57)
 B47|2026-10-06|`src/lab_web.c` compiled only under emcc, so CodeQL never analyzed the browser descriptor boundary|native analysis build with an Emscripten stub in the CodeQL C/C++ job (A52)
+B48|2026-10-07|trails wrote depth before planets were drawn, so faint old segments in front of a planet blocked it and showed as dark scratches; trails also ran through bodies to their centres|draw trails after opaque bodies without depth writes (additive) and clip them at each drawn surface (A70)

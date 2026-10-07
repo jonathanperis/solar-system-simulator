@@ -119,7 +119,7 @@ test('lesson diagnostics distinguish physical units, normalized energy, and edit
     'integration', 'magnification', 'position', 'velocity'];
   const readouts = Object.fromEntries(keys.map(key => [key, { textContent: '' }]));
   const controls = { lesson: { value: '' }, method: { value: '' }, dt: { value: '' }, factor: { value: '' },
-    step: { textContent: '' }, trails: { textContent: '' }, vectors: { textContent: '', setAttribute() {} }, contact: { textContent: '', hidden: true }, panel: { disabled: false } };
+    step: { textContent: '' }, trails: { textContent: '' }, vectors: { textContent: '', setAttribute() {} }, grid: { textContent: '', pressed: '', setAttribute(name, value) { this.pressed = value; } }, contact: { textContent: '', hidden: true }, panel: { disabled: false } };
   const runtime = createSimulatorModule({}, readouts, new URL('https://example.test/runtime.js'), controls);
   const state = { lesson: 4, method: 1, dt: 30, ticks: 2, factor: 1.1, acceleration: .002,
     specificEnergy: -1000, energy: -2e28, energyChange: .001, isolated: true, momentum: 0, angularMomentum: 4e34,
@@ -130,6 +130,10 @@ test('lesson diagnostics distinguish physical units, normalized energy, and edit
   assert.match(readouts.momentum.textContent, /isolated/);
   assert.equal(controls.lesson.value, '4');
   assert.equal(controls.step.textContent, 'Step +30 s');
+  assert.equal(controls.grid.textContent, 'Grid: On');
+  runtime.reportLabState({ ...state, grid: false });
+  assert.equal(controls.grid.textContent, 'Grid: Off');
+  assert.equal(controls.grid.pressed, 'false');
   controls.factor.value = '1.2';
   runtime.reportLabState(state);
   assert.equal(controls.factor.value, '1.2');
