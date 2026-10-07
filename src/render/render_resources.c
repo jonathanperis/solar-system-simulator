@@ -63,6 +63,12 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "uniform vec3 viewPos;\n"
     "uniform vec4 atmosphere;\n"      /* rim tint (rgb) and strength (a) */
     "uniform float nightLights;\n"    /* 1 = Earth: city lights and ocean glint */
+    "uniform sampler2D texture2;\n"   /* Saturn's ring opacity strip, for ring shadows */
+    "uniform float ringShadow;\n"     /* 1 = Saturn or its rings: cast/receive shadows */
+    "uniform vec3 bodyCenter;\n"      /* Saturn's centre and drawn radius (world units) */
+    "uniform float bodyRadius;\n"
+    "uniform vec3 ringNormal;\n"      /* Saturn's pole: the ring plane's normal */
+    "uniform vec2 ringRadii;\n"       /* ring inner/outer edge in Saturn radii */
     SHADER_OUTPUT
     "vec3 toLinear(vec3 c) { return pow(c, vec3(2.2)); }\n"
     "vec3 toDisplay(vec3 c) { return pow(clamp(c, 0.0, 1.0), vec3(1.0 / 2.2)); }\n"
@@ -84,12 +90,38 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "    float ndl = dot(n, lightDir);\n"
     "    float lit = clamp((ndl + 0.05) / 1.05, 0.0, 1.0);\n"
     "    if (mode > 2.5) {\n" /* rings: thin ice and dust, lit from either face */
-    "        FRAG_COLOR = vec4(toDisplay(albedo * (0.02 + 0.98 * abs(ndl))), surface.a);\n"
+    /* Saturn's shadow on its rings: a ring point is dark when the ray toward
+     * the Sun (P + t L, t > 0) passes closer to Saturn's centre than its
+     * radius. b < 0 means the planet lies sunward of the point; b*b removed
+     * from |d|^2 leaves the squared miss distance (Pythagoras). */
+    "        float shade = 1.0;\n"
+    "        if (ringShadow > 0.5) {\n"
+    "            vec3 d = fragPosition - bodyCenter;\n"
+    "            float b = dot(d, lightDir);\n"
+    "            float miss = dot(d, d) - b * b;\n"
+    "            float r2 = bodyRadius * bodyRadius;\n"
+    "            if (b < 0.0) shade = smoothstep(r2 * 0.94, r2 * 1.02, miss);\n"
+    "        }\n"
+    "        FRAG_COLOR = vec4(toDisplay(albedo * (0.02 + 0.98 * abs(ndl)) * shade), surface.a);\n"
     "        return;\n"
     "    }\n"
     "    if (mode > 1.5) {\n" /* clouds: the map's brightness is its opacity */
     "        FRAG_COLOR = vec4(toDisplay(vec3(0.004 + lit)), surface.r * (0.12 + 0.78 * smoothstep(-0.1, 0.3, ndl)));\n"
     "        return;\n"
+    "    }\n"
+    /* The rings' shadow on Saturn: follow the ray toward the Sun to the ring
+     * plane (t from the plane equation) and read the ring strip's opacity at
+     * that radius. Dense rings cast dark bands, the Cassini gap lets light by. */
+    "    if (ringShadow > 0.5) {\n"
+    "        float facing = dot(lightDir, ringNormal);\n"
+    "        if (abs(facing) > 0.0001) {\n"
+    "            float t = -dot(fragPosition - bodyCenter, ringNormal) / facing;\n"
+    "            if (t > 0.0) {\n"
+    "                float r = length(fragPosition + lightDir * t - bodyCenter) / bodyRadius;\n"
+    "                float u = (r - ringRadii.x) / (ringRadii.y - ringRadii.x);\n"
+    "                if (u > 0.0 && u < 1.0) lit *= 1.0 - 0.85 * TEX(texture2, vec2(u, 0.5)).a;\n"
+    "            }\n"
+    "        }\n"
     "    }\n"
     "    vec3 color = albedo * (0.004 + lit);\n"
     "    if (nightLights > 0.5) {\n"
@@ -194,6 +226,11 @@ bool renderer_resources_init(RenderResources *resources)
     resources->loc_view_pos = GetShaderLocation(resources->shader, "viewPos");
     resources->loc_atmosphere = GetShaderLocation(resources->shader, "atmosphere");
     resources->loc_night_lights = GetShaderLocation(resources->shader, "nightLights");
+    resources->loc_ring_shadow = GetShaderLocation(resources->shader, "ringShadow");
+    resources->loc_body_center = GetShaderLocation(resources->shader, "bodyCenter");
+    resources->loc_body_radius = GetShaderLocation(resources->shader, "bodyRadius");
+    resources->loc_ring_normal = GetShaderLocation(resources->shader, "ringNormal");
+    resources->loc_ring_radii = GetShaderLocation(resources->shader, "ringRadii");
     /* Planets get a smooth 96 x 48 sphere; dozens of small moons share a
      * cheaper 32 x 16 one so the 128-body scene stays light on phones. */
     resources->sphere_detailed = build_sphere(96, 48);
