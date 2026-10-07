@@ -348,9 +348,11 @@ static void draw_reference_grid(Vec3d origin, double camera_distance)
         /* Slightly below the orbital plane so trails never share its depth. */
         double plane_y = -0.002 * grid.minor_spacing;
         for (long k = -count; k <= count; ++k) {
-            /* Minor lines that coincide with a major line are drawn once. */
-            if (!level && (llabs((long long)floor(center_x / spacing + 0.5) + k) % 10) == 0) continue;
             for (int axis = 0; axis < 2; ++axis) {
+                /* Minor lines that coincide with a major line are drawn once;
+                 * x lines sit at center_x + k s, z lines at center_z + k s. */
+                double center = axis == 0 ? center_x : center_z;
+                if (!level && (llabs((long long)floor(center / spacing + 0.5) + k) % 10) == 0) continue;
                 for (int piece = 0; piece < pieces; ++piece) {
                     double t0 = -grid.radius + 2 * grid.radius * piece / pieces;
                     double t1 = -grid.radius + 2 * grid.radius * (piece + 1) / pieces;
