@@ -105,7 +105,7 @@ SYSTEMS = {
     "didymos": {
         "planet": "Didymos", "adjective": "Didymos", "count": 1, "source": "horizons",
         "epochs": {"2024-01-01.0"}, "frames": {"ecliptic"}, "max_e": 0.1,
-        "major": set(), "center": 920065803,
+        "major": set(), "center": 920065803, "solution": "JPL s547",
         "inventory_source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='120065803'&OBJ_DATA='YES'&MAKE_EPHEM='NO'",
     },
 }
@@ -246,13 +246,19 @@ def refresh_didymos():
     f = [field.strip() for field in first.split(",")]
     # JDTDB, date, EC, QR, IN, OM, W, Tp, N, MA, TA, A, AD, PR
     info = horizons_text(format="text", COMMAND="120065803", OBJ_DATA="YES", MAKE_EPHEM="NO")
+    # The label must name the solution Horizons actually served: a new
+    # reconstruction changes the elements and needs review before it is pinned.
+    solution = re.search(r"\((JPL s\d+) reconstruction\)", info)
+    require(solution is not None, "didymos: Horizons no longer names its Dimorphos solution; review the source")
+    require(solution.group(1) == SYSTEMS["didymos"]["solution"],
+            f"didymos: Horizons now serves {solution.group(1)}; review it and update SYSTEMS before pinning")
     gm = float(re.search(r"GM_Dimo ~ ([0-9.E+-]+)", info).group(1))
     radii = [float(v) for v in re.search(r"Radii\s+~ \(([0-9.]+) x ([0-9.]+) x ([0-9.]+)\) km", info).groups()]
     # Volume-equivalent radius of the published triaxial shape.
     radius = round((radii[0] * radii[1] * radii[2]) ** (1 / 3), 5)
     moon = {
         "code": 120065803, "name": "Dimorphos", "slug": "dimorphos", "group": "Didymos system",
-        "ephemeris": "JPL s547", "frame": "ecliptic", "epoch_tdb": "2024-01-01.0",
+        "ephemeris": solution.group(1), "frame": "ecliptic", "epoch_tdb": "2024-01-01.0",
         "a_km": round(float(f[11]), 7), "eccentricity": round(float(f[2]), 7),
         "periapsis_deg": round(float(f[6]), 5), "mean_anomaly_deg": round(float(f[9]), 5),
         "inclination_deg": round(float(f[4]), 5), "node_deg": round(float(f[5]), 5),
@@ -369,7 +375,10 @@ def main():
     args = parser.parse_args()
     systems = args.system or list(SYSTEMS)
     if args.refresh:
-        element_rows, physical_rows = fetch_rows(ELEMENTS), fetch_rows(PHYSICAL)
+        # Fetch the JPL satellite tables only when a table-backed system needs
+        # them, so a Didymos-only refresh does not depend on those requests.
+        tables = any(SYSTEMS[system].get("source") != "horizons" for system in systems)
+        element_rows, physical_rows = (fetch_rows(ELEMENTS), fetch_rows(PHYSICAL)) if tables else ([], [])
         for system in systems:
             refresh(system, element_rows, physical_rows)
     for system in systems:

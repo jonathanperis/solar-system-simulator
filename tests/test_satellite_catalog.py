@@ -55,6 +55,18 @@ class SatelliteValidation(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'explicit ephemeris preference'):
             satellites.refresh('neptune', [row, row[:4] + ['NEP104'] + row[5:]], [])
 
+    def test_a_new_horizons_solution_needs_review(self):
+        # A refresh must not pin new Dimorphos elements under the old label.
+        elements = "$$SOE\n2460310.5, A.D. 2024-Jan-01, 0.02, 1.14, 170.7, 39.8, 217.0, 0, 0, 79.1, 82.3, 1.17, 1.21, 42421,\n$$EOE"
+        info = "Didymos primary body : 920065803 (JPL s548 reconstruction)\n GM_Dimo ~ 3.0E-10\n Radii   ~ (0.1 x 0.07 x 0.06) km"
+        original = satellites.horizons_text
+        satellites.horizons_text = lambda **params: elements if params.get('MAKE_EPHEM') == 'YES' else info
+        try:
+            with self.assertRaisesRegex(ValueError, 'now serves JPL s548'):
+                satellites.refresh_didymos()
+        finally:
+            satellites.horizons_text = original
+
     def test_provisional_designations_use_iau_form(self):
         self.assertEqual(satellites.iau_name('S2003_J_2'), 'S/2003 J 2')
         self.assertEqual(satellites.iau_name('S2023_U1'), 'S/2023 U 1')
