@@ -68,18 +68,19 @@ R1|4 Vesta class|numbered Main-belt Asteroid|https://ssd-api.jpl.nasa.gov/sbdb.a
 R2|4 Vesta orbit|a=`2.361365965127599 AU`; e=`0.09020374382834395`; i=`7.143925545058711 deg`|https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1
 R3|4 Vesta physical|GM=`17.2882844 km^3/s^2`; effective diameter=`522.77 km`|https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1
 R4|target rationale|Vesta second-most-massive main-belt body; Ceres dwarf planet|https://science.nasa.gov/solar-system/asteroids/4-vesta/
-R5|Jupiter physical|mass=`1898.125 × 10^24 kg`; mean radius=`69911 km`|https://ssd.jpl.nasa.gov/planets/phys_par.html
+R5|Jupiter physical|planet-only GM=`126686531.900 km^3/s^2` (mass = GM/G); mean radius=`69911 km`; checked 2026-10-07|https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='599'&OBJ_DATA='YES'&MAKE_EPHEM='NO' ; https://ssd.jpl.nasa.gov/planets/phys_par.html
 R6|Jupiter orbit|J2000 a=`5.20288700 AU`; e=`0.04838624`; i=`1.30439695 deg`|https://ssd.jpl.nasa.gov/planets/approx_pos.html
 R7|Jovian inventory|115 recognized satellites, including provisional designations; checked 2026-09-10|https://science.nasa.gov/jupiter/moons/
 R8|Jovian mean elements|115 entries, J2000 epoch, Laplace/ecliptic reference frames; shape/orientation baseline, not ephemerides; checked 2026-09-10|https://ssd.jpl.nasa.gov/sats/elem/
 R9|Satellite physical data|available GM and mean-radius values with source/quality metadata; absent values remain unknown; checked 2026-09-10|https://ssd.jpl.nasa.gov/sats/phys_par/
-R10|Saturn physical|mass=`568.317 × 10^24 kg`; mean radius=`58232 km`|https://ssd.jpl.nasa.gov/planets/phys_par.html
+R10|Saturn physical|planet-only GM=`37931206.234 km^3/s^2` (mass = GM/G); mean radius=`58232 km`; checked 2026-10-07|https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='699'&OBJ_DATA='YES'&MAKE_EPHEM='NO' ; https://ssd.jpl.nasa.gov/planets/phys_par.html
 R11|Saturn orbit|J2000 a=`9.53667594 AU`; e=`0.05386179`; i=`2.48599187 deg`|https://ssd.jpl.nasa.gov/planets/approx_pos.html
 R12|Saturn rings|ring system extent is roughly `282000 km`; axial tilt=`26.73 deg`; rings are modeled only as presentation geometry|https://science.nasa.gov/saturn/facts/
 R13|Sandboxed browser CI|Playwright supports Ubuntu 22.04; Ubuntu 23.10+ AppArmor restrictions can prevent downloaded Chromium from starting its user-namespace sandbox. Pin the docs/browser job to supported 22.04 while retaining sandbox/TLS checks; checked 2026-09-16|https://playwright.dev/docs/intro#system-requirements ; https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md
 R14|Simulator textures|Solar System Scope 2k maps (Sun, planets, Moon, Saturn ring alpha) and 8k Milky Way, CC BY 4.0, re-encoded 2026-10-07; attribution in site footer and assets/textures/README.md|https://www.solarsystemscope.com/textures/
 R15|Spin orientation|IAU WGCCRE 2015 rotation elements (pole alpha0/delta0, prime meridian W(d)); periodic terms omitted except Neptune's N|Archinal et al. 2018, Celest Mech Dyn Astr 130:22, https://doi.org/10.1007/s10569-017-9805-5
 R16|Image decoder|stb_image v2.30 (MIT / public domain) pinned at nothings/stb 2c980bb, SHA-256 594c2fe3…; raylib builds with JPEG disabled|https://github.com/nothings/stb
+R17|Uranus/Neptune physical|planet-only GM=`5793950.6103` and `6835099.97 km^3/s^2` (mass = GM/G); checked 2026-10-07|https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='799'&OBJ_DATA='YES'&MAKE_EPHEM='NO' ; https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='899'&OBJ_DATA='YES'&MAKE_EPHEM='NO'
 
 ## §V
 
@@ -93,7 +94,7 @@ V4: core/catalog stepping = velocity-Verlet kick-drift-kick; isolated learning p
 
 V5: core scene starts Sun through Jupiter, followed by the 115 Jovian moons, Saturn, Uranus and Neptune (128 bodies). Existing IDs/indices remain stable; outer planets use NAIF center IDs 699/799/899. The complete small-body catalog is separate from the active scene; selected experiments use Sun/eight planets plus at most 16 selected records at one source epoch.
 
-V6: planets, Vesta and Saturn–Neptune start at heliocentric perihelion; for Earth, Mars and Jupiter the family barycenter (parent plus known-mass direct moons; massless test particles weigh nothing) takes that state while each moon keeps its sourced parent-relative state (Moon at perigee, Phobos/Deimos at periareion, Jovian mean elements). Speeds use vis-viva. Masses of the Sun through Mars are DE440 GM / CODATA 2018 G.
+V6: planets, Vesta and Saturn–Neptune start at heliocentric perihelion; for Earth, Mars and Jupiter the family barycenter (parent plus known-mass direct moons; massless test particles weigh nothing) takes that state while each moon keeps its sourced parent-relative state (Moon at perigee, Phobos/Deimos at periareion, Jovian mean elements). Speeds use vis-viva. Every massive planet's mass is GM / CODATA 2018 G: DE440 values for the Sun through Mars, planet-only JPL Horizons values for Jupiter–Neptune (R5, R10, R17); system GMs, which include moons, are never used.
 
 V7: simulation axes are the proper rotation (x, y, z) = ecliptic (X, Z, −Y); +Y is ecliptic north and prograde angular momentum points to +Y, so prograde orbits draw counterclockwise from above. Legacy no-inclination states stay in the X/Z plane. Jovian moons keep sourced inclination, orbital direction, eccentricity and phase; source frames convert through `orbit.c`, the only conic solver, before Jupiter's absolute state is added.
 
@@ -356,6 +357,16 @@ A73|In-canvas labels name the Sun, planets, the selected body and known-size moo
 
 Decision: Jonathan set the goal "keep working and iterating on our simulation to have a beautiful and optimized and good result". Each step is screenshot-verified and frame-rate measured against the live site before it is kept.
 
+## §A — Open-item closure, 2026-10-07
+
+id|criterion|verify
+A74|Jupiter–Neptune masses are planet-only JPL GM / CODATA G like the inner planets (V6); G*M reproduces each sourced GM|`test_solar_system`, `test_outer_planets`
+A75|At every tested viewport (320×640 to 2560×1440) no homepage atlas marker or label overlaps another, the hero copy, the actions or a plate caption; the plate never grows past 900 px; captions that only repeated the plate tabs and bearing control are gone and the plate name sits above the disclaimer|Playwright overlap probe across 15 viewports and all four plates, screenshots, browser suite
+A76|A macOS CI job builds natively against the pinned raylib, runs `make test`, and renders Earth offscreen through the real GLSL 330 shaders and maps (`make test-native-shaders`): dark background, lit day side brighter than the night side, ocean glint, land at 30°E facing the camera (map not mirrored)|macOS job log, local CGL run
+A77|`npm run check` type-checks the Playwright specs and config (Node types are a docs devDependency); Renovate re-onboards from `renovate.json` and labels its PRs|`astro check` probe error, Renovate Dependency Dashboard issue
+
+Decision: Jonathan asked to "work on everything open" before any further body expansion. These items were the Low/Info residuals recorded after the second audit and the renderer rounds; the macOS job is informative (not a required check) so a hosted-runner image change cannot block delivery. Saturn's ring plane already follows the IAU pole (A66); `SOLAR_SATURN_AXIAL_TILT_DEGREES` remains only as the NASA obliquity the orientation tests compare against.
+
 ## §T
 
 id|status|task|cites
@@ -431,6 +442,7 @@ T68|x|implement lighting shaders, textures, glow, backdrop, rings, clouds and fa
 T69|x|lazy-load textures in the browser, document attribution and controls, verify screenshots and the full suite, deliver by PR|A65,A67,A68
 T70|x|polish lighting (linear light, glint, halos, ring shadows), trail ordering/clipping/adaptive detail, sunlit framing, grid toggle, and verify 60 fps on throttled phones|A69,A70,A71,A72
 T71|x|add decluttered, occlusion-aware body labels with an embedded OFL font and a toggle|A73
+T72|x|close the recorded audit residuals: GM-derived giant masses, homepage atlas collisions, macOS native CI with a shader render test, type-checked browser specs, Renovate re-onboarding|A74,A75,A76,A77
 
 Audit remediation verification, 2026-10-06: delivered through PRs #20, #21, #22, #24, #25 (round 1), #26 (main CI/analytics blocker found by round 2) and #27 (round 2), each rebase-merged after the required Build/CodeQL checks passed and every review thread was resolved. Production Pages served 81eb308 after #26 with CSP, Astro generator marker, generated sitemap and no robots.txt verified on the live site. Locally, round 2 passed `make clean && make test-sanitize`, `make && make test test-build test-cli test-validators`, catalog/command/epoch/Jovian/small-body checks, a fresh raylib WASM build with native/WASM replay of every example, `npm ci`/`npm audit`/37 Node tests/`astro check`/build, route checks, and 17/17 sandboxed Chrome journeys for both analytics-free and `PUBLIC_GA_ID` builds. The second audit's Medium findings (main CI red, experiment Earth-centre start, debug-info WASM, duplicate SPEC IDs, PR-only workflow docs, invisible catalog download) are closed. Remaining Low/Info items are recorded rather than changed: Jonathan later chose Renovate over Dependabot (A63) and asked for every non-main branch to be deleted; CI stays Linux-only and the browser lane stays on Ubuntu 22.04 per R13; browser specs are type-checked by Playwright, not `astro check` (adding `@types/node` was deferred); GA consent policy remains V17; the pre-existing desktop atlas Vesta/Uranus label overlap, Saturn's illustrative ring tilt and literal Jupiter–Neptune masses (V6 scopes GM-derived masses to Sun–Mars) are unchanged.
 
@@ -497,3 +509,4 @@ B49|2026-10-07|sub-pixel bodies used raylib's DrawPoint3D, which draws a 0.1-uni
 B50|2026-10-07|adaptive trail detail used on-screen extent, so a moon that had looped many times kept only ~3 points per orbit|budget detail by on-screen path length from up to 128 samples (renderer audit, A70)
 B51|2026-10-07|the browser texture loader wrote to address 0 when `_malloc` failed under memory growth, fetched maps one at a time, and could reject unhandled if the runtime aborted; a shader link failure silently fell back to raylib's default shader (unlit scene, white halos)|check the pointer, keep inventory calls inside try, fetch in parallel and decode in order; treat a default-shader id or missing uniforms as unavailable (renderer audit)
 B52|2026-10-07|rings and clouds could cover trails in front of them, the planet-on-ring shadow vanished without the ring map, the ring-shadow lookup sampled a mipmap inside a branch, WebGL used mediump for small real-scale shadow maths, labels ignored off-screen occluders and slid off the top, and canvas resizes reset the camera angle|trails after rings/clouds, geometry-only planet shadow, unconditional sample, highp when available, in-front occluders and clamped labels, re-fits keep the angle (renderer audit)
+B53|2026-10-07|homepage atlas: Uranus sat on Vesta's chart spot, Neptune and Vesta fell under the hero copy, and viewport-anchored captions collided with plate captions, actions and the bearing control at wide or mid widths|retune illustrative chart angles, drop duplicate captions, cap the plate size, move the bearing control and plate name (A75)
