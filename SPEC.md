@@ -327,9 +327,9 @@ Catalog storage decision (C-catalog): the pinned 135 MB shard set stays in histo
 ## §A — Renovate replaces Dependabot, 2026-10-07
 
 id|criterion|verify
-A63|Renovate is the only dependency updater: `.github/dependabot.yml` is removed and Dependabot alerts/security updates are disabled; `renovate.json` keeps the weekly schedule, 3-day minimum release age, grouped docs npm updates, grouped CodeQL action, SHA-pinned actions and no TypeScript major beyond the `@astrojs/check` peer range; Renovate also opens OSV vulnerability PRs immediately and tracks the raylib tag+commit, Emscripten and Node pins; runner images stay fixed per R13|`renovate-config-validator --strict`, local `--dry-run=extract` listing the raylib/emsdk/node pins, repository settings readback
+A63|Renovate is the only dependency updater: `.github/dependabot.yml` is removed and Dependabot security updates are disabled, while the dependency graph and passive Dependabot alerts stay enabled as the read-only feed Renovate's `vulnerabilityAlerts` consumes (OSV covers only direct dependencies); `renovate.json` keeps the weekly schedule, 3-day minimum release age, grouped docs npm updates, grouped CodeQL action, SHA-pinned actions and no TypeScript major beyond the `@astrojs/check` peer range; Renovate also opens OSV vulnerability PRs immediately and tracks the raylib tag+commit, Emscripten and Node pins; runner images stay fixed per R13|`renovate-config-validator --strict`, local `--dry-run=extract` listing the raylib/emsdk/node pins, repository settings readback
 
-Decision: Jonathan asked to keep only `main`, then "I want dependabot uninstalled and only renovate on". All non-main branches were deleted after confirming every feature branch was merged; Renovate's onboarding PR #23 had been closed, so committing `renovate.json` onboards the installed app directly.
+Decision: Jonathan asked to keep only `main`, then "I want dependabot uninstalled and only renovate on". When review showed that disabling alerts would hide transitive lockfile advisories from Renovate, he chose to keep passive alerts on; nothing but Renovate opens dependency PRs. All non-main branches were deleted after confirming every feature branch was merged; Renovate's onboarding PR #23 had been closed, so committing `renovate.json` onboards the installed app directly.
 
 ## §T
 
