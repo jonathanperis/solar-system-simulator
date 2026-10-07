@@ -84,5 +84,7 @@ runs:
       env:
         PREFIX: ${{ steps.pin.outputs.prefix }}
       run: |
+        sudo mkdir -p /usr/local
         sudo cp -R "$PREFIX"/. /usr/local/
-        sudo ldconfig
+        # Linux refreshes its shared-library cache; macOS has no ldconfig.
+        if command -v ldconfig >/dev/null; then sudo ldconfig; fi
