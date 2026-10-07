@@ -1,0 +1,66 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Renovate is the only dependency updater for this repository (Dependabot is disabled). Policy carried over from the former .github/dependabot.yml; see SPEC A63.",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    ":dependencyDashboard"
+  ],
+  "schedule": ["* 0-5 * * 1"],
+  "minimumReleaseAge": "3 days",
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "schedule": ["at any time"],
+    "minimumReleaseAge": null,
+    "labels": ["security"]
+  },
+  "packageRules": [
+    {
+      "description": "Group every docs/ npm update into one weekly PR, like the former docs-dependencies group.",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["docs/**"],
+      "groupName": "docs dependencies"
+    },
+    {
+      "description": "@astrojs/check 0.9.x declares a TypeScript ^5 || ^6 peer range, so TypeScript 7 cannot install yet.",
+      "matchPackageNames": ["typescript"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "CodeQL init and analyze must move together.",
+      "matchPackageNames": ["github/codeql-action"],
+      "groupName": "CodeQL action"
+    },
+    {
+      "description": "SPEC R13: the browser lane stays on Ubuntu 22.04 for Chromium's sandbox; runner images change only by explicit task.",
+      "matchDatasources": ["github-runners"],
+      "enabled": false
+    },
+    {
+      "description": "raylib and Emscripten must stay compatible: review them together.",
+      "matchPackageNames": ["raysan5/raylib", "emscripten-core/emsdk"],
+      "groupName": "raylib and Emscripten toolchain"
+    }
+  ],
+  "customManagers": [
+    {
+      "description": "Versions annotated with '# renovate: datasource=... depName=...' on the line above a 'NAME: value' entry.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/[^/]+\\.ya?ml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\s+[\\w-]+: (?<currentValue>[^\\s#]+)"
+      ]
+    },
+    {
+      "description": "The raylib tag and its immutable commit in the shared composite action.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/actions/raylib/action\\.yml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+) currentValue=(?<currentValue>\\S+)\\s+echo \"revision=(?<currentDigest>[0-9a-f]{40})\""
+      ],
+      "autoReplaceStringTemplate": "# renovate: datasource={{{datasource}}} depName={{{depName}}} currentValue={{{newValue}}}\n        echo \"revision={{{newDigest}}}\""
+    }
+  ]
+}
