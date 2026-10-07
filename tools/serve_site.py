@@ -51,4 +51,11 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 print(f"Serving {base} at http://127.0.0.1:{args.port}", flush=True)
-ThreadingHTTPServer(("127.0.0.1", args.port), Handler).serve_forever()
+class Server(ThreadingHTTPServer):
+    # The simulator fetches 14 texture maps at once. The default listen
+    # backlog of 5 makes a busy machine reset some of those connections, which
+    # surfaced as flaky texture-loading browser tests.
+    request_queue_size = 64
+
+
+Server(("127.0.0.1", args.port), Handler).serve_forever()
