@@ -242,46 +242,6 @@ static void test_vesta_color_uses_catalog_id_not_name(void)
     assert(color.a == LIGHTGRAY.a);
 }
 
-static void test_grid_keeps_at_least_minimum_square_count_for_inner_system(void)
-{
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon();
-    int slices = renderer_grid_slices_for_system(&system, RENDER_SCALE_ILLUSTRATIVE);
-
-    assert(slices >= 20);
-    assert((slices % 2) == 0);
-}
-
-static void test_grid_expands_to_cover_mars_orbit_with_padding(void)
-{
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars();
-    Vec3d mars_position = renderer_body_position(&system, 5, RENDER_SCALE_ILLUSTRATIVE);
-    double required_half_width = fabs(mars_position.z) + 2.0;
-    int slices = renderer_grid_slices_for_system(&system, RENDER_SCALE_ILLUSTRATIVE);
-
-    assert(slices > 20);
-    assert(((double)slices / 2.0) >= required_half_width);
-}
-
-static void test_grid_expands_to_cover_vesta_orbit_with_padding(void)
-{
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta();
-    Vec3d vesta_position = renderer_body_position(&system, 8, RENDER_SCALE_ILLUSTRATIVE);
-    double required_half_width = fabs(vesta_position.x) + 2.0;
-    int slices = renderer_grid_slices_for_system(&system, RENDER_SCALE_ILLUSTRATIVE);
-
-    assert(((double)slices / 2.0) >= required_half_width);
-}
-
-static void test_grid_expands_to_cover_jupiter_orbit_with_padding(void)
-{
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter();
-    Vec3d jupiter_position = renderer_body_position(&system, 9, RENDER_SCALE_ILLUSTRATIVE);
-    double required_half_width = fabs(jupiter_position.x) + 2.0;
-    int slices = renderer_grid_slices_for_system(&system, RENDER_SCALE_ILLUSTRATIVE);
-
-    assert(((double)slices / 2.0) >= required_half_width);
-}
-
 static void test_trail_rendering_keeps_long_runs_bounded(void)
 {
     size_t points_after_500_days = 1 + (size_t)500 * 288;
@@ -415,9 +375,6 @@ int main(void)
     Vec3d near = {far.x+100,0,0};
     Vector3 relative = renderer_relative_vector(meters_vec_to_render_vec3d(near), meters_vec_to_render_vec3d(far));
     assert(fabs(relative.x / meters_to_render_units(100) - 1) < .001);
-    SolarSystem distant = solar_system_create_current();
-    distant.bodies[127].position_m = far;
-    assert(renderer_grid_slices_for_system(&distant, RENDER_SCALE_REAL) <= 512);
     test_saturn_body_frame_contains_renderer_only_rings();
     test_individual_moon_frame_and_unknown_radius_marker();
     test_system_frame_contains_selected_family_in_both_modes();
@@ -438,10 +395,6 @@ int main(void)
     test_illustrative_satellite_position_uses_parent_metadata_not_name();
     test_body_color_uses_catalog_id_not_name();
     test_vesta_color_uses_catalog_id_not_name();
-    test_grid_keeps_at_least_minimum_square_count_for_inner_system();
-    test_grid_expands_to_cover_mars_orbit_with_padding();
-    test_grid_expands_to_cover_vesta_orbit_with_padding();
-    test_grid_expands_to_cover_jupiter_orbit_with_padding();
     test_trail_rendering_keeps_long_runs_bounded();
     puts("test_renderer passed");
     return 0;

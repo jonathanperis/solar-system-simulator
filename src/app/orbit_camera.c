@@ -49,6 +49,17 @@ void orbit_camera_apply_zoom(OrbitCameraState *state, float wheel_move)
     );
 }
 
+float orbit_camera_sunlit_yaw(double to_sun_x, double to_sun_z, float offset_radians)
+{
+    /* The camera's horizontal offset is (sin yaw, cos yaw), so the yaw that
+     * looks from the Sun's side is atan2(x, z). atan2(0, 0) is 0, which keeps
+     * a valid yaw when the Sun is straight above or below. */
+    const float full_turn = 2.0f * acosf(-1.0f);
+    float yaw = fmodf((float)atan2(to_sun_x, to_sun_z) + offset_radians, full_turn);
+    if (yaw < 0.0f) yaw += full_turn;
+    return yaw < full_turn ? yaw : 0.0f;
+}
+
 void orbit_camera_advance(OrbitCameraState *state, float dt_seconds)
 {
     /* Keep yaw in [0, 2*pi). A float has 24 significant bits, so an ever-growing

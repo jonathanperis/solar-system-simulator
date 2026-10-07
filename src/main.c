@@ -89,6 +89,7 @@ EM_JS(int, solar_web_canvas_has_focus, (void), {
 #include "sim/constants.h"
 #include "sim/solar_system.h"
 #include "render/renderer.h"
+#include "sim/experiment.h"
 
 typedef struct SolarApp {
     Camera3D camera;
@@ -100,6 +101,7 @@ typedef struct SolarApp {
     bool body_framed;
     RenderTrailFrame trail_frame;
     bool vectors;
+    RenderResources render;
     char feedback[160];
 #if defined(PLATFORM_WEB)
     size_t web_body_count;
@@ -152,9 +154,25 @@ static size_t camera_target_index(const SolarApp *state)
         : state->session.selected_body_index;
 }
 
+/* Framing turns the camera to the framed body's sunlit side (about 40 degrees
+ * off the Sun line) so a newly selected planet is seen by day, not as a dark
+ * night-side disc. Auto-rotation continues from there; physics is untouched. */
+static void face_sunlit_side(SolarApp *state, size_t body_index)
+{
+    const SolarSystem *system = &state->session.system;
+    for (size_t i = 0; i < system->body_count; ++i) {
+        if (system->bodies[i].kind != BODY_KIND_STAR || i == body_index) continue;
+        Vec3d to_sun = vec3d_sub(renderer_body_position(system, i, state->render_mode),
+            renderer_body_position(system, body_index, state->render_mode));
+        state->orbit_camera.yaw_radians = orbit_camera_sunlit_yaw(to_sun.x, to_sun.z, 40.0f * (float)(acos(-1.0) / 180.0));
+        return;
+    }
+}
+
 static void frame_selected_system(SolarApp *state)
 {
     RenderSystemFrame frame = renderer_system_frame(&state->session.system, state->session.selected_body_index, state->render_mode);
+    face_sunlit_side(state, frame.root_index);
     orbit_camera_frame_sphere(&state->orbit_camera, (float)frame.radius, state->camera.fovy,
         (float)GetScreenWidth() / (float)GetScreenHeight());
     state->system_framed = true;
@@ -164,6 +182,7 @@ static void frame_selected_system(SolarApp *state)
 static void frame_selected_body(SolarApp *state)
 {
     RenderSystemFrame frame = renderer_body_frame(&state->session.system, state->session.selected_body_index, state->render_mode);
+    face_sunlit_side(state, frame.root_index);
     orbit_camera_frame_sphere(&state->orbit_camera, (float)frame.radius, state->camera.fovy,
         (float)GetScreenWidth() / (float)GetScreenHeight());
     state->system_framed = false;
@@ -365,6 +384,22 @@ EMSCRIPTEN_KEEPALIVE void solar_web_demo(void)
     populate_web_bodies();
     report_web_state(&app);
 }
+
+/* The browser fetches the same texture files the native build reads from
+ * assets/textures/, after the first frame (SPEC A65). JavaScript asks C for the
+ * inventory so the two lists cannot drift, copies each file's bytes into WASM
+ * memory, and hands them over here; C decodes and uploads them. */
+EMSCRIPTEN_KEEPALIVE int solar_web_texture_count(void) { return RENDER_TEXTURE_COUNT; }
+EMSCRIPTEN_KEEPALIVE const char *solar_web_texture_file(int slot)
+{
+    const char *file = render_texture_file((RenderTextureSlot)slot);
+    return file ? file : "";
+}
+EMSCRIPTEN_KEEPALIVE int solar_web_load_texture(int slot, const unsigned char *bytes, int length)
+{
+    if (!app.render.ready || length <= 0) return 0;
+    return renderer_load_texture_memory(&app.render, (RenderTextureSlot)slot, bytes, (size_t)length);
+}
 #endif
 
 #if !defined(PLATFORM_WEB)
@@ -512,13 +547,20 @@ static void solar_app_update_draw(void *user_data)
 #endif
 
     BeginDrawing();
-    ClearBackground(BLACK);
+    /* Deep blue-black rather than pure black reads as space behind the backdrop. */
+    ClearBackground((Color){3, 5, 10, 255});
 
     /* Real-scale moon systems need a near plane smaller than raylib's default.
      * Clip distances follow the camera only; SI positions and radii stay intact. */
-    rlSetClipPlanes(fmax(1e-9, state->orbit_camera.distance * 0.001), fmax(1000.0, state->orbit_camera.distance * 4.0));
+    double far_plane = fmax(1000.0, state->orbit_camera.distance * 4.0);
+    rlSetClipPlanes(fmax(1e-9, state->orbit_camera.distance * 0.001), far_plane);
+    /* Spin models count TDB days from J2000. Catalog experiments start at their
+     * source epoch; the synthetic perihelion scene and lessons start at J2000. */
+    double epoch_days = state->session.catalog_experiment ? SOLAR_CATALOG_EPOCH_JD - RENDER_J2000_JD : 0.0;
+    RenderView view = {state->camera, epoch_days + state->session.system.elapsed_seconds / SOLAR_DAY_SECONDS, (float)far_plane};
     BeginMode3D(state->camera);
-    renderer_draw_solar_system(&state->session.system, &state->session.trails, state->render_mode, state->trail_frame, origin);
+    renderer_draw_solar_system(&state->session.system, &state->session.trails, state->render_mode, state->trail_frame,
+        origin, &state->render, &view);
     if (state->vectors) renderer_draw_vectors(&state->session.system, state->session.selected_body_index, state->render_mode, origin);
     EndMode3D();
 
@@ -582,6 +624,23 @@ static void solar_app_update_draw(void *user_data)
     EndDrawing();
 }
 
+#if !defined(PLATFORM_WEB)
+/* Native builds read assets/textures/ from SOLAR_TEXTURE_DIR, the working
+ * directory (make run) or next to build/ (a launched binary). A missing folder
+ * only means flat-colour fallbacks, never a failed start. */
+static void load_native_textures(RenderResources *render)
+{
+    const char *override = getenv("SOLAR_TEXTURE_DIR");
+    const char *candidates[3] = {override, "assets/textures", TextFormat("%s../assets/textures", GetApplicationDirectory())};
+    for (int i = 0; i < 3; ++i) {
+        if (!candidates[i] || !render->ready || !DirectoryExists(candidates[i])) continue;
+        int loaded = renderer_load_textures_from_directory(render, candidates[i]);
+        TraceLog(LOG_INFO, "Loaded %d of %d textures from %s", loaded, RENDER_TEXTURE_COUNT, candidates[i]);
+        if (loaded > 0) return;
+    }
+}
+#endif
+
 int main(int argc, char **argv)
 {
     int screen_width = 1280;
@@ -592,6 +651,9 @@ int main(int argc, char **argv)
     screen_height = solar_web_initial_canvas_height();
 #endif
 
+    /* 4x multisampling smooths sphere edges, trails and grid lines; browsers
+     * receive it as the WebGL context's antialias attribute. */
+    SetConfigFlags(FLAG_MSAA_4X_HINT);
 #if defined(PLATFORM_WEB)
     InitWindow(screen_width, screen_height, "Live simulator · Solar System Simulator");
     if (!IsWindowReady()) {
@@ -603,6 +665,11 @@ int main(int argc, char **argv)
     SetExitKey(KEY_NULL); /* Escape closes native search rather than the window. */
 #endif
     SetTargetFPS(60);
+    /* Without the shader the renderer still draws flat coloured spheres. */
+    if (!renderer_resources_init(&app.render)) TraceLog(LOG_WARNING, "Cinematic renderer unavailable; using flat colours");
+#if !defined(PLATFORM_WEB)
+    load_native_textures(&app.render);
+#endif
 
     app.camera.position = (Vector3){0.0f, 8.0f, 18.0f};
     app.camera.target = (Vector3){0.0f, 0.0f, 0.0f};
@@ -648,6 +715,7 @@ int main(int argc, char **argv)
     }
 
     simulation_session_destroy(&app.session);
+    renderer_resources_unload(&app.render);
     CloseWindow();
 #endif
     return 0;

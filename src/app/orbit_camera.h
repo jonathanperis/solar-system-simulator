@@ -20,6 +20,11 @@ typedef struct OrbitCameraState {
 OrbitCameraState orbit_camera_default_state(void);
 OrbitCameraVec3 orbit_camera_position(OrbitCameraVec3 target, const OrbitCameraState *state);
 void orbit_camera_apply_zoom(OrbitCameraState *state, float wheel_move);
+/* Yaw that places the camera on the sunlit side of a framed body. (to_sun_x,
+ * to_sun_z) is the horizontal direction from the body toward the Sun; the
+ * camera sits `offset_radians` around from that line so the view shows the
+ * day side with a sliver of terminator. Presentation only. Returns [0, 2*pi). */
+float orbit_camera_sunlit_yaw(double to_sun_x, double to_sun_z, float offset_radians);
 void orbit_camera_advance(OrbitCameraState *state, float dt_seconds);
 void orbit_camera_frame_sphere(OrbitCameraState *state, float radius, float vertical_fov_degrees, float aspect);
 
