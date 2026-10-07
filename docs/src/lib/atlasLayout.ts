@@ -10,7 +10,9 @@ const chartPosition = (angle: number, radius: number): [number, number] => {
 };
 
 // The compact chart is an index, not a scaled orbit plot. Even angular spacing
-// keeps all nine non-star heliocentric controls distinct at a 320px viewport.
+// on two alternating rings keeps all ten non-star heliocentric controls
+// distinct at a 320px viewport: neighbours are 36 degrees apart, too close for
+// their labels on one ring, so every other marker sits on the inner ring.
 const compactBodies = implementedBodies.filter(body => body.chart.plate === 'heliocentric' && body.slug !== 'sun');
 
 export function compactAngle(slug: string, angle: number): number {
@@ -25,7 +27,9 @@ export function atlasPositionCss(): string {
   return implementedBodies.map(body => {
     const [left, top] = chartPosition(body.chart.angle, body.chart.radius);
     const compact = compactBodies.some(item => item.slug === body.slug);
-    const [compactLeft, compactTop] = chartPosition(compactAngle(body.slug, body.chart.angle), compact ? 85 : body.chart.radius);
+    const compactIndex = compactBodies.findIndex(item => item.slug === body.slug);
+    const [compactLeft, compactTop] = chartPosition(compactAngle(body.slug, body.chart.angle),
+      compact ? (compactIndex % 2 ? 62 : 88) : body.chart.radius);
     // Slugs are generated identifiers ([a-z0-9-]); CSS.escape is unavailable at build time.
     if (!/^[a-z0-9-]+$/.test(body.slug)) throw new Error(`Unsafe atlas slug: ${body.slug}`);
     return `.atlas-body[data-slug="${body.slug}"]{--chart-left:${left}%;--chart-top:${top}%;--compact-left:${compactLeft}%;--compact-top:${compactTop}%}`;

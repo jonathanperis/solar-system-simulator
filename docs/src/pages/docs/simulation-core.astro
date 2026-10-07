@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import DocsShell from '../../components/DocsShell.astro';
-import { coreBodyCount, jovianMoonCount, neptunianMoonCount, saturnianMoonCount, uranianMoonCount } from '../../lib/siteCounts';
+import { coreBodyCount } from '../../lib/siteCounts';
 ---
 <BaseLayout title="Simulation core docs">
   <DocsShell
@@ -24,7 +24,7 @@ import { coreBodyCount, jovianMoonCount, neptunianMoonCount, saturnianMoonCount,
         <li><code>src/sim/solar_system.c</code> initializes the Sun, all eight planets, moons, and Vesta with parent-aware states.</li>
         <li><code>src/sim/orbit.c</code> propagates elliptic, parabolic and hyperbolic source orbits with a bracketed universal-variable solver. The atlas uses the same C kernel compiled to a small standalone WASM module.</li>
         <li><code>src/sim/experiment.c</code> reads bounded selected-body input. Planet states use a pinned Sun-centered Horizons snapshot at JD 2461200.5 TDB; selected source orbits are two-body propagated to that epoch before force integration.</li>
-        <li><code>src/sim/satellite.c</code> converts giant-planet mean elements and their ecliptic, Laplace-plane or Uranian spin-pole equatorial source frames into parent-relative SI states using the shared <code>orbit.c</code> conic solver, then rotates ecliptic (X, Y, Z) into right-handed simulation axes (X, Z, −Y) so +Y is ecliptic north and prograde orbits turn counterclockwise seen from above. Versioned catalogs in <code>data/</code> cover {jovianMoonCount} Jovian, {saturnianMoonCount} Saturnian, {uranianMoonCount} Uranian and {neptunianMoonCount} Neptunian moons; <code>solar_system.c</code> builds the {coreBodyCount}-body main scene from the major moons and one planet-system scene per giant planet from its complete catalog.</li>
+        <li><code>src/sim/satellite.c</code> converts giant-planet mean elements and their ecliptic, Laplace-plane or Uranian spin-pole equatorial source frames into parent-relative SI states using the shared <code>orbit.c</code> conic solver, then rotates ecliptic (X, Y, Z) into right-handed simulation axes (X, Z, −Y) so +Y is ecliptic north and prograde orbits turn counterclockwise seen from above. Versioned catalogs in <code>data/</code> cover the Jovian, Saturnian, Uranian, Neptunian and Plutonian moons and Dimorphos; <code>solar_system.c</code> builds the {coreBodyCount}-body main scene from the major moons and one system scene per primary from its complete catalog. Moons outside a binary companion (Charon) start around the pair's barycenter.</li>
         <li>The core/catalog integrator is velocity-Verlet / kick-drift-kick. Guided lessons also offer explicit Euler as a labeled numerical comparison.</li>
         <li><code>src/app/simulation_step.c</code> accumulates frame time and advances in fixed 15-second simulation steps for core/catalog runs, retaining the remainder for the next frame. Lessons can select a different fixed step; it never follows frame duration.</li>
         <li><code>src/sim/diagnostics.c</code> measures energy, momentum and center of mass. <code>src/sim/lessons.c</code> supplies isolated experiments with independently tested convergence and free-pair conservation.</li>

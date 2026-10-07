@@ -1,4 +1,4 @@
-// Order matches C's LessonPreset (tools/check_catalog.mjs). The last four are
+// Order matches C's LessonPreset (tools/check_catalog.mjs). The last six are
 // family scenes, chosen from the simulator's scene picker, not lessons.
 export const lessonOptions = [
   ['core', 'Main scene'], ['circular', 'Circular orbit'], ['eccentric', 'Eccentric orbit'],
@@ -6,12 +6,13 @@ export const lessonOptions = [
   ['phobos', 'Phobos resolution'], ['barycentric-core', 'Moving-Sun barycentric core'],
   ['resonance', '3:2 resonance experiment'], ['encounter', 'Close Earth encounter'], ['collision', 'Head-on collisions'],
   ['jupiter-system', 'Jupiter system'], ['saturn-system', 'Saturn system'], ['uranus-system', 'Uranus system'],
-  ['neptune-system', 'Neptune system']
+  ['neptune-system', 'Neptune system'], ['pluto-system', 'Pluto system'], ['didymos-system', 'Didymos system']
 ] as const;
 
 export type LessonName = (typeof lessonOptions)[number][0];
 /** Astronomy scenes (fixed 15 s Verlet): the main scene and the family scenes. */
-export const sceneNames: readonly LessonName[] = ['core', 'jupiter-system', 'saturn-system', 'uranus-system', 'neptune-system'];
+export const sceneNames: readonly LessonName[] = ['core', 'jupiter-system', 'saturn-system', 'uranus-system', 'neptune-system',
+  'pluto-system', 'didymos-system'];
 /** Guided lessons offered in the Learn panel and on the comparison page. */
 export const guidedLessons = lessonOptions.filter(([name]) => name === 'core' || !sceneNames.includes(name));
 

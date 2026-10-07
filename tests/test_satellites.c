@@ -14,6 +14,10 @@
 
 static Vec3d icrf_direction(double ra_deg, double dec_deg);
 
+/* Every primary with a satellite catalog: the giants, Pluto and Didymos. */
+static const BodyId primaries[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE, BODY_ID_PLUTO, BODY_ID_DIDYMOS};
+#define PRIMARY_COUNT (sizeof(primaries) / sizeof(primaries[0]))
+
 static void test_orbital_elements_preserve_geometry_and_parent_motion(void)
 {
     Body parent = solar_system_create_jupiter_at_perihelion();
@@ -143,9 +147,8 @@ static void test_complete_jovian_catalog_and_initial_orbits(void)
  * pole tilted past the ecliptic (obliquity ~98 degrees), count as retrograde. */
 static int expected_direction(const Body *body)
 {
-    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE};
-    for (size_t k = 0; k < 4; ++k) {
-        const SatelliteCatalog *catalog = satellite_catalog_for(planets[k]);
+    for (size_t k = 0; k < PRIMARY_COUNT; ++k) {
+        const SatelliteCatalog *catalog = satellite_catalog_for(primaries[k]);
         for (size_t i = 0; i < catalog->count; ++i) {
             const SatelliteDefinition *d = &catalog->moons[i];
             if ((int)body->id != d->code) continue;
@@ -188,10 +191,9 @@ static void test_ecliptic_frame_is_a_proper_rotation_with_prograde_plus_y(void)
 
     SolarSystem core = solar_system_create_current();
     assert_orbit_directions(&core, NULL);
-    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE};
-    for (size_t k = 0; k < 4; ++k) {
+    for (size_t k = 0; k < PRIMARY_COUNT; ++k) {
         SolarSystem family;
-        assert(solar_system_create_family(planets[k], &family));
+        assert(solar_system_create_family(primaries[k], &family));
         assert_orbit_directions(&family, NULL);
     }
     size_t retrograde = 0;
@@ -223,6 +225,8 @@ static Body parent_planet(BodyId planet)
     case BODY_ID_JUPITER: return solar_system_create_jupiter_at_perihelion();
     case BODY_ID_SATURN: return solar_system_create_saturn_at_perihelion();
     case BODY_ID_URANUS: return solar_system_create_uranus_at_perihelion();
+    case BODY_ID_PLUTO: return solar_system_create_pluto_at_perihelion();
+    case BODY_ID_DIDYMOS: return solar_system_create_didymos_at_perihelion();
     default: return solar_system_create_neptune_at_perihelion();
     }
 }
@@ -264,6 +268,8 @@ static void test_giant_planet_catalogs_inventory_and_major_moons(void)
         {BODY_ID_SATURN, 291, {601, 602, 603, 604, 605, 606, 608}, 7},
         {BODY_ID_URANUS, 29, {701, 702, 703, 704, 705}, 5},
         {BODY_ID_NEPTUNE, 16, {801}, 1},
+        {BODY_ID_PLUTO, 5, {901}, 1},
+        {BODY_ID_DIDYMOS, 1, {0}, 0},
     };
     assert(satellite_catalog_for(BODY_ID_EARTH) == NULL);
     for (size_t k = 0; k < sizeof(expected) / sizeof(expected[0]); ++k) {
@@ -287,24 +293,58 @@ static void test_giant_planet_catalogs_inventory_and_major_moons(void)
 
 /* A80: point-mass periods from JPL mean a and planet-only GM stay within 1%
  * of the JPL mean period. The gap is the omitted oblateness (J2), resonances
- * and solar perturbation: model error, not integrator error. */
+ * and solar perturbation: model error, not integrator error. Pluto's small
+ * moons circle the Pluto-Charon binary: around the pair's total mass their
+ * two-body period is 1.5-3.7% long, because JPL's mean a and P describe orbits
+ * in the binary's rotating field, which a two-body start cannot reproduce. */
 static void test_point_mass_periods_stay_within_one_percent_of_jpl(void)
 {
-    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE};
-    double worst = 0;
-    for (size_t k = 0; k < 4; ++k) {
-        const SatelliteCatalog *catalog = satellite_catalog_for(planets[k]);
-        Body planet = parent_planet(planets[k]);
+    double worst = 0, worst_circumbinary = 0;
+    for (size_t k = 0; k < PRIMARY_COUNT; ++k) {
+        const SatelliteCatalog *catalog = satellite_catalog_for(primaries[k]);
+        Body planet = parent_planet(primaries[k]);
+        double binary_gm = 0;
+        for (size_t i = 0; i < catalog->count; ++i)
+            if (catalog->moons[i].major && catalog->moons[i].gm_km3_s2 * 1e9 > 0.01 * SOLAR_G * planet.mass_kg)
+                binary_gm = catalog->moons[i].gm_km3_s2 * 1e9;
         for (size_t i = 0; i < catalog->count; ++i) {
             const SatelliteDefinition *d = &catalog->moons[i];
-            double a = d->a_km * 1000, mu = SOLAR_G * planet.mass_kg + d->gm_km3_s2 * 1e9;
+            bool circumbinary = binary_gm > 0 && !d->major;
+            double a = d->a_km * 1000, mu = SOLAR_G * planet.mass_kg + d->gm_km3_s2 * 1e9 + (circumbinary ? binary_gm : 0);
             double period_days = 2 * acos(-1.0) * sqrt(a * a * a / mu) / SOLAR_DAY_SECONDS;
             assert(d->period_days > 0);
-            worst = fmax(worst, fabs(period_days / d->period_days - 1));
+            double error = fabs(period_days / d->period_days - 1);
+            if (circumbinary) worst_circumbinary = fmax(worst_circumbinary, error);
+            else worst = fmax(worst, error);
         }
     }
-    /* Today's worst case is Europa at 0.75%; better data may only shrink it. */
+    /* Today's worst cases: Europa 0.75%, Styx 3.7%; better data may only shrink them. */
     assert(worst < 0.01);
+    assert(worst_circumbinary < 0.04);
+}
+
+/* Pluto's small moons start around the Pluto-Charon barycenter, so in the full
+ * N-body run they stay on near-circular orbits around the pair. */
+static void test_circumbinary_moons_stay_on_their_orbits(void)
+{
+    SolarSystem pluto;
+    assert(solar_system_create_family(BODY_ID_PLUTO, &pluto));
+    const size_t first = 11; /* Pluto at 9, Charon at 10, then Styx, Nix, Kerberos, Hydra */
+    const SatelliteCatalog *catalog = satellite_catalog_for(BODY_ID_PLUTO);
+    for (int day = 0; day <= 100; ++day) {
+        Vec3d barycenter = vec3d_scale(vec3d_add(vec3d_scale(pluto.bodies[9].position_m, pluto.bodies[9].mass_kg),
+            vec3d_scale(pluto.bodies[10].position_m, pluto.bodies[10].mass_kg)), 1 / (pluto.bodies[9].mass_kg + pluto.bodies[10].mass_kg));
+        for (size_t k = 0; k < 4; ++k) {
+            const SatelliteDefinition *d = &catalog->moons[1 + k];
+            assert((int)pluto.bodies[first + k].id == d->code);
+            double r = vec3d_length(vec3d_sub(pluto.bodies[first + k].position_m, barycenter));
+            /* The binary forces a few percent of extra eccentricity (Styx
+             * swings +-4.4%); an orbit around Pluto alone would not stay
+             * within its eccentricity plus 5% of the published radius. */
+            assert(fabs(r / (d->a_km * 1000) - 1) < d->eccentricity + 0.05);
+        }
+        for (int step = 0; step < 5760 && day < 100; ++step) solar_system_step(&pluto, 15);
+    }
 }
 
 /* A79: every reference plane converts into the right orientation. */
@@ -326,10 +366,9 @@ static void test_reference_planes_orient_regular_moons(void)
 
     /* Each converted orbit normal sits exactly its source inclination away
      * from its source plane's pole, whatever the frame. */
-    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE};
-    for (size_t k = 0; k < 4; ++k) {
-        const SatelliteCatalog *catalog = satellite_catalog_for(planets[k]);
-        Body planet = parent_planet(planets[k]);
+    for (size_t k = 0; k < PRIMARY_COUNT; ++k) {
+        const SatelliteCatalog *catalog = satellite_catalog_for(primaries[k]);
+        Body planet = parent_planet(primaries[k]);
         for (size_t i = 0; i < catalog->count; ++i) {
             const SatelliteDefinition *d = &catalog->moons[i];
             Vec3d pole = d->frame == SATELLITE_FRAME_ECLIPTIC ? (Vec3d){0, 1, 0} : icrf_direction(d->pole_ra_deg, d->pole_dec_deg);
@@ -356,6 +395,21 @@ static void test_reference_planes_orient_regular_moons(void)
     const SatelliteCatalog *neptunian = satellite_catalog_for(BODY_ID_NEPTUNE);
     Body neptune = parent_planet(BODY_ID_NEPTUNE);
     assert(angle_degrees(orbit_normal(find_moon(neptunian, 801), &neptune), orbit_normal(find_moon(neptunian, 808), &neptune)) > 150);
+
+    /* Pluto's equatorial frame is Charon's orbit plane, around the IAU 2015
+     * positive pole (RA 132.993, Dec -6.163): about 113 degrees from ecliptic
+     * north, so the Pluto-Charon pair turns retrograde seen from the ecliptic.
+     * Dimorphos's ecliptic inclination of ~171 degrees is retrograde too. */
+    const SatelliteCatalog *plutonian = satellite_catalog_for(BODY_ID_PLUTO);
+    Body pluto = parent_planet(BODY_ID_PLUTO);
+    Vec3d charon = orbit_normal(find_moon(plutonian, 901), &pluto);
+    assert(angle_degrees(charon, icrf_direction(132.993, -6.163)) < 1e-6);
+    assert(angle_degrees(charon, (Vec3d){0, 1, 0}) > 110 && angle_degrees(charon, (Vec3d){0, 1, 0}) < 116);
+    for (size_t i = 0; i < plutonian->count; ++i)
+        assert(angle_degrees(orbit_normal(&plutonian->moons[i], &pluto), charon) < 1);
+    Body didymos = parent_planet(BODY_ID_DIDYMOS);
+    Vec3d dimorphos = orbit_normal(&satellite_catalog_for(BODY_ID_DIDYMOS)->moons[0], &didymos);
+    assert(dimorphos.y < -0.9);
 }
 
 int main(void)
@@ -366,6 +420,7 @@ int main(void)
     test_complete_jovian_catalog_and_initial_orbits();
     test_giant_planet_catalogs_inventory_and_major_moons();
     test_point_mass_periods_stay_within_one_percent_of_jpl();
+    test_circumbinary_moons_stay_on_their_orbits();
     test_reference_planes_orient_regular_moons();
     puts("test_satellites passed");
 }

@@ -3,9 +3,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { implementedBodies, bodyIntroduction } from '../lib/bodies';
 import { normalizeBase } from '../lib/base';
 import { repoUrl } from '../lib/site';
-import { coreBodyCount, familyMoonCount, formatCount, jovianMoonCount, neptunianMoonCount, saturnianMoonCount, smallBodyCatalogCount, totalBodyCount, uranianMoonCount } from '../lib/siteCounts';
+import { coreBodyCount, familyMoonCount, formatCount, jovianMoonCount, neptunianMoonCount, plutonianMoonCount, saturnianMoonCount, smallBodyCatalogCount, totalBodyCount, uranianMoonCount } from '../lib/siteCounts';
 const base = normalizeBase(import.meta.env.BASE_URL);
-const groupFor = (body: typeof implementedBodies[number]) => body.kind === 'Moon' ? `${body.parent} moons` : body.kind === 'Planet' ? 'Planets' : 'Sun and asteroids';
+const groupFor = (body: typeof implementedBodies[number]) => body.kind === 'Moon' ? `${body.parent} moons`
+  : body.kind === 'Planet' ? 'Planets' : body.kind === 'Dwarf planet' ? 'Dwarf planets' : 'Sun and asteroids';
 const groups = [...new Set(implementedBodies.map(groupFor))];
 const sceneLabel = (body: typeof implementedBodies[number]) => body.scene === 'core' ? 'Main scene' : `${body.parent} system`;
 ---
@@ -14,7 +15,7 @@ const sceneLabel = (body: typeof implementedBodies[number]) => body.scene === 'c
     <div>
       <p class="eyebrow">Explore / body catalog</p>
       <h1>Find your next world.</h1>
-      <p class="lede">Explore the {totalBodyCount} bodies the simulator runs: {coreBodyCount} large bodies in the main scene and every known moon of the giant planets in its planet's system scene. Find a planet or moon, discover its family, and open it in the live scene.</p>
+      <p class="lede">Explore the {totalBodyCount} bodies the simulator runs: {coreBodyCount} large bodies in the main scene, and every known moon of the giant planets and Pluto, plus the Didymos binary asteroid, in their system scenes. Find a planet or moon, discover its family, and open it in the live scene.</p>
       <div class="actions"><a href={`${base}small-bodies/`}>Looking for an asteroid or distant object? Small-body atlas →</a></div>
     </div>
   </section>
@@ -54,8 +55,8 @@ const sceneLabel = (body: typeof implementedBodies[number]) => body.scene === 'c
   <section class="panel">
     <h2>Data provenance</h2>
     <p>Stable IDs keep selection and parent relationships consistent. See the <a href={`${base}docs/roadmap/`}>body-by-body roadmap</a> for future additions.</p>
-    <p>The table above lists the {coreBodyCount}-body main scene and the {familyMoonCount} smaller moons that run only in their planet's system scene; “Explore” opens the right scene. The <a href={`${base}small-bodies/`}>complete small-body atlas</a> separately exposes {formatCount(smallBodyCatalogCount)} JPL catalog entries through bounded search and orbital previews, with explicit selected-body experiments.</p>
-    <p>The {jovianMoonCount} Jovian, {saturnianMoonCount} Saturnian, {uranianMoonCount} Uranian and {neptunianMoonCount} Neptunian moons use <a href="https://ssd.jpl.nasa.gov/sats/elem/">JPL mean orbital elements</a> and versioned satellite snapshots (<a href={`${repoUrl}/blob/main/data/README.md`}>data provenance</a>). Mass is derived from published GM / G. Missing physical values remain Unknown; moons without a published GM are massless test particles with nonphysical wire markers. Published estimates are labeled. Each moon keeps its ephemeris solution's epoch and reference plane, so these are representative orbital shapes and orientations, not dated ephemeris states.</p>
+    <p>The table above lists the {coreBodyCount}-body main scene and the {familyMoonCount} smaller bodies that run only in their system scene; “Explore” opens the right scene. The <a href={`${base}small-bodies/`}>complete small-body atlas</a> separately exposes {formatCount(smallBodyCatalogCount)} JPL catalog entries through bounded search and orbital previews, with explicit selected-body experiments.</p>
+    <p>The {jovianMoonCount} Jovian, {saturnianMoonCount} Saturnian, {uranianMoonCount} Uranian, {neptunianMoonCount} Neptunian and {plutonianMoonCount} Plutonian moons use <a href="https://ssd.jpl.nasa.gov/sats/elem/">JPL mean orbital elements</a>; Dimorphos uses the JPL Horizons DART reconstruction and versioned satellite snapshots (<a href={`${repoUrl}/blob/main/data/README.md`}>data provenance</a>). Mass is derived from published GM / G. Missing physical values remain Unknown; moons without a published GM are massless test particles with nonphysical wire markers. Published estimates are labeled. Each moon keeps its ephemeris solution's epoch and reference plane, so these are representative orbital shapes and orientations, not dated ephemeris states.</p>
     <p>Current constants are educational baseline values, not epoch state vectors. Jupiter through Neptune use <a href="https://ssd.jpl.nasa.gov/planets/phys_par.html">JPL physical parameters</a> and <a href="https://ssd.jpl.nasa.gov/planets/approx_pos.html">JPL approximate orbital elements</a>. Saturn's visible ring extent and tilt follow <a href="https://science.nasa.gov/saturn/facts/">NASA's Saturn facts</a>, but the rings remain renderer-only. Satellite values use <a href="https://ssd.jpl.nasa.gov/sats/phys_par/">JPL Solar System Dynamics physical parameters</a>; Vesta's pinned values are attributed to JPL SBDB solution 36, while the <a href="https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1">live SBDB query</a> can change. Derived periapsis distances and vis-viva speeds remain in <a href={`${repoUrl}/blob/main/src/sim/constants.h`}>the source constants</a>. The <a href={`${repoUrl}/blob/main/data/README.md#provenance-and-precision-policy`}>provenance policy</a> records legacy retrieval-date and uncertainty gaps.</p>
   </section>
 </BaseLayout>

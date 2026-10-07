@@ -46,6 +46,13 @@ float renderer_body_radius(const Body *body, RenderScaleMode mode)
         return SOLAR_ILLUSTRATIVE_ASTEROID_RADIUS;
     }
 
+    if (body->kind == BODY_KIND_DWARF_PLANET) {
+        /* Between an asteroid marker and a planet: Pluto (0.19 Earth radii)
+         * reads as smaller than any planet but larger than Vesta. */
+        float dwarf_radius = SOLAR_ILLUSTRATIVE_PLANET_RADIUS * (float)(body->radius_m / SOLAR_EARTH_RADIUS_M);
+        return dwarf_radius < SOLAR_ILLUSTRATIVE_ASTEROID_RADIUS * 1.5f ? SOLAR_ILLUSTRATIVE_ASTEROID_RADIUS * 1.5f : dwarf_radius;
+    }
+
     return SOLAR_ILLUSTRATIVE_PLANET_RADIUS;
 }
 
@@ -261,6 +268,10 @@ Color renderer_body_color(const Body *body)
         case BODY_ID_TITAN: return (Color){214, 168, 92, 255};
         case BODY_ID_ENCELADUS: return (Color){236, 242, 248, 255};
         case BODY_ID_TRITON: return (Color){214, 196, 186, 255};
+        case BODY_ID_PLUTO: return (Color){214, 186, 150, 255};
+        case BODY_ID_CHARON: return (Color){168, 164, 160, 255};
+        case BODY_ID_DIDYMOS: return (Color){150, 138, 124, 255};
+        case BODY_ID_DIMORPHOS: return (Color){172, 160, 146, 255};
         case BODY_ID_UNKNOWN:
         case BODY_ID_NONE:
         default:
@@ -578,7 +589,7 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
         if (hidden) continue;
         Vector2 text = MeasureTextEx(font, body->name, size, spacing);
         int priority = i == selected ? 1000 : body->kind == BODY_KIND_STAR ? 900
-            : body->kind == BODY_KIND_PLANET ? 800 - (int)i : 400 - (int)i;
+            : body->kind == BODY_KIND_PLANET ? 800 - (int)i : body->kind == BODY_KIND_DWARF_PLANET ? 600 - (int)i : 400 - (int)i;
         /* Above the body, but kept on screen when the body fills the view. */
         float top = fmaxf(4.0f, screen[i].y - (float)radius_px - 6 - text.y);
         boxes[count] = (RenderLabelBox){screen[i].x - text.x / 2, top, text.x, text.y, priority, false};

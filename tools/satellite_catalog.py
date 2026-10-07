@@ -25,6 +25,7 @@ from urllib.request import urlopen
 ROOT = Path(__file__).resolve().parents[1]
 ELEMENTS = "https://ssd.jpl.nasa.gov/sats/elem/"
 PHYSICAL = "https://ssd.jpl.nasa.gov/sats/phys_par/"
+HORIZONS = "https://ssd.jpl.nasa.gov/api/horizons.api"
 
 # IAU WGCCRE 2015 north pole of Uranus (ICRF, J2000). Uranus spins retrograde
 # about it, so its regular moons orbit about the antipode; JPL's URA182
@@ -34,6 +35,11 @@ PHYSICAL = "https://ssd.jpl.nasa.gov/sats/phys_par/"
 URANUS_IAU_POLE_RA_DEG = 257.311
 URANUS_IAU_POLE_DEC_DEG = -15.175
 URANUS_SPIN_POLE = (round((URANUS_IAU_POLE_RA_DEG + 180.0) % 360.0, 6), -URANUS_IAU_POLE_DEC_DEG)
+# IAU WGCCRE 2015 pole of Pluto. For dwarf planets the report uses the
+# right-hand (positive) pole, which is the angular-momentum pole of Pluto's
+# spin and Charon's orbit, so JPL's PLU060 "equatorial" rows (Charon i = 0)
+# use it directly; no antipode as for Uranus.
+PLUTO_IAU_POLE = (132.993, -6.163)
 
 
 def jovian_group(code, frame):
@@ -88,11 +94,30 @@ SYSTEMS = {
         "major": {801},
         "inventory_source": "https://science.nasa.gov/neptune/moons/",
     },
+    # Small-body satellite systems (SPEC T78). Pluto's moons come from the same
+    # JPL tables; Didymos's companion from the Horizons DART reconstruction.
+    "pluto": {
+        "planet": "Pluto", "adjective": "Plutonian", "count": 5,
+        "epochs": {"2000-01-01.5"}, "frames": {"equatorial"}, "max_e": 0.1,
+        "major": {901}, "center": 999, "equatorial_pole": PLUTO_IAU_POLE,
+        "inventory_source": "https://science.nasa.gov/dwarf-planets/pluto/moons/",
+    },
+    "didymos": {
+        "planet": "Didymos", "adjective": "Didymos", "count": 1, "source": "horizons",
+        "epochs": {"2024-01-01.0"}, "frames": {"ecliptic"}, "max_e": 0.1,
+        "major": set(), "center": 920065803,
+        "inventory_source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='120065803'&OBJ_DATA='YES'&MAKE_EPHEM='NO'",
+    },
 }
+for _name, _center in (("jupiter", 599), ("saturn", 699), ("uranus", 799), ("neptune", 899)):
+    SYSTEMS[_name]["center"] = _center
+SYSTEMS["uranus"]["equatorial_pole"] = URANUS_SPIN_POLE
 GROUPS = {
     "saturn": regular_group("Major moons", "Small regular moons"),
     "uranus": regular_group("Major moons", "Inner moons"),
     "neptune": regular_group("Major moon", "Inner moons"),
+    "pluto": lambda code, frame, major: "Major moon" if major else "Small moons",
+    "didymos": lambda code, frame, major: "Didymos system",
 }
 
 
@@ -155,6 +180,9 @@ def qualities(system, code, physical):
         return mass, radius
     if not physical:
         return "unknown", "unknown"
+    if physical[3].startswith("<"):
+        # Kerberos and Styx: only an upper limit, so the mass is unknown.
+        return "unknown", "measured"
     gm, sigma = float(physical[3]), float(physical[4])
     # A zero GM (Nereid) means "not determined", never a massless body we know
     # of. A 1-sigma uncertainty above 10 % marks a model estimate.
@@ -177,10 +205,10 @@ def moon_record(system, r, physical):
     if r[5] == "Laplace":
         pole = (float(r[16]), float(r[17]))
     elif r[5] == "equatorial":
-        pole = URANUS_SPIN_POLE
+        pole = config["equatorial_pole"]
     else:
         pole = (None, None)
-    gm = float(p[3]) if p else None
+    gm = float(p[3]) if p and mass_quality != "unknown" else None
     record = {
         "code": code, "name": name, "slug": re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-"),
         "group": group, "ephemeris": r[4], "frame": r[5], "epoch_tdb": r[6],
@@ -201,8 +229,52 @@ def moon_record(system, r, physical):
     return record
 
 
+def horizons_text(**params):
+    query = "&".join(f"{key}='{value}'" if key != "format" else f"{key}={value}" for key, value in params.items())
+    with urlopen(f"{HORIZONS}?{query}", timeout=60) as response:
+        return response.read().decode("utf-8")
+
+
+def refresh_didymos():
+    """Dimorphos relative to the Didymos primary (Horizons body 920065803) from
+    the DART s547 post-impact reconstruction: osculating ecliptic J2000
+    elements at 2024-01-01 TDB, and the published approximate GMs."""
+    rows = horizons_text(format="text", COMMAND="120065803", CENTER="@920065803", MAKE_EPHEM="YES",
+        EPHEM_TYPE="ELEMENTS", START_TIME="2024-01-01", STOP_TIME="2024-01-02", STEP_SIZE="1d",
+        OUT_UNITS="KM-S", REF_PLANE="ECLIPTIC", REF_SYSTEM="ICRF", CSV_FORMAT="YES", OBJ_DATA="NO")
+    first = rows.split("$$SOE")[1].split("$$EOE")[0].strip().splitlines()[0]
+    f = [field.strip() for field in first.split(",")]
+    # JDTDB, date, EC, QR, IN, OM, W, Tp, N, MA, TA, A, AD, PR
+    info = horizons_text(format="text", COMMAND="120065803", OBJ_DATA="YES", MAKE_EPHEM="NO")
+    gm = float(re.search(r"GM_Dimo ~ ([0-9.E+-]+)", info).group(1))
+    radii = [float(v) for v in re.search(r"Radii\s+~ \(([0-9.]+) x ([0-9.]+) x ([0-9.]+)\) km", info).groups()]
+    # Volume-equivalent radius of the published triaxial shape.
+    radius = round((radii[0] * radii[1] * radii[2]) ** (1 / 3), 5)
+    moon = {
+        "code": 120065803, "name": "Dimorphos", "slug": "dimorphos", "group": "Didymos system",
+        "ephemeris": "JPL s547", "frame": "ecliptic", "epoch_tdb": "2024-01-01.0",
+        "a_km": round(float(f[11]), 7), "eccentricity": round(float(f[2]), 7),
+        "periapsis_deg": round(float(f[6]), 5), "mean_anomaly_deg": round(float(f[9]), 5),
+        "inclination_deg": round(float(f[4]), 5), "node_deg": round(float(f[5]), 5),
+        "period_days": round(float(f[13]) / 86400, 7),
+        "pole_ra_deg": None, "pole_dec_deg": None, "element_reference": "Horizons 120065803 @920065803",
+        "gm_km3_s2": gm, "radius_km": radius, "gm_sigma_km3_s2": None, "radius_sigma_km": None,
+        "mass_quality": "estimated", "radius_quality": "estimated",
+        "gm_reference": "Horizons GM_Dimo (approximate)", "radius_reference": "Horizons triaxial radii, volume-equivalent",
+        "major": False,
+    }
+    snapshot = {"schema": 1, "checked": date.today().isoformat(), "inventory_source": SYSTEMS["didymos"]["inventory_source"],
+        "names_source": "https://ssd.jpl.nasa.gov/api/horizons.api", "elements_source": HORIZONS, "physical_source": HORIZONS,
+        "moons": [moon]}
+    validate("didymos", snapshot)
+    paths("didymos")[0].write_text(json.dumps(snapshot, indent=2, ensure_ascii=False) + "\n")
+
+
 def refresh(system, element_rows, physical_rows):
     config = SYSTEMS[system]
+    if config.get("source") == "horizons":
+        refresh_didymos()
+        return
     planet = config["planet"]
     physical = {int(r[2]): r for r in physical_rows if len(r) == 12 and r[0] == planet}
     rows = [r for r in element_rows if len(r) >= 19 and r[1] == planet]
@@ -254,7 +326,7 @@ def validate(system, snapshot):
     require(derived == config["major"], f"{system}: the measured-GM rule no longer yields the reviewed major moons")
     if system == "jupiter":
         require([m["code"] for m in moons[:4]] == [501, 502, 503, 504], "Galilean moons must lead the catalog")
-    planet_center = {"jupiter": 599, "saturn": 699, "uranus": 799, "neptune": 899}[system]
+    planet_center = config["center"]
     for m in moons:
         name = m.get("name", m.get("code"))
         require(m["code"] != planet_center, f"{name}: code collides with the planet center")

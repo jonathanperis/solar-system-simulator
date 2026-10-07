@@ -11,7 +11,8 @@ const catalog = (scene) => execFileSync(lab, scene ? ['--catalog', scene] : ['--
   .trim().split('\n').slice(1).map(line => line.split('\t'));
 const scenes = [[undefined, mainSceneBodies], ['jupiter-system', familySceneBodies('Jupiter')],
   ['saturn-system', familySceneBodies('Saturn')], ['uranus-system', familySceneBodies('Uranus')],
-  ['neptune-system', familySceneBodies('Neptune')]];
+  ['neptune-system', familySceneBodies('Neptune')], ['pluto-system', familySceneBodies('Pluto')],
+  ['didymos-system', familySceneBodies('Didymos')]];
 for (const [scene, bodies] of scenes) {
   const rows = catalog(scene);
   assert.equal(new Set(rows.map(row => row[0])).size, rows.length, 'C IDs must be unique');

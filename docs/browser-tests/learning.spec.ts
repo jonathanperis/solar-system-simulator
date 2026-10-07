@@ -79,7 +79,7 @@ test('mobile atlas controls remain distinct and keyboard bearing stays continuou
     await page.setViewportSize({ width, height: 844 });
     await page.goto(base);
     const controls = page.locator('[data-atlas-plate="heliocentric"] [data-atlas-body]');
-    await expect(controls).toHaveCount(10);
+    await expect(controls).toHaveCount(11);
     const boxes = await Promise.all((await controls.all()).map(control => control.boundingBox()));
     for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
       const a = boxes[i]!, b = boxes[j]!;
@@ -161,7 +161,7 @@ test('3D controls export the same SI snapshot across render scales', async ({ pa
   await expect(page.locator('[data-active-scene]')).toContainText('Head-on collisions');
   await factor.fill('1');
   await page.getByRole('button', { name: 'Load lesson', exact: true }).click();
-  await expect(page.locator('[data-active-scene]')).toContainText('30 active bodies');
+  await expect(page.locator('[data-active-scene]')).toContainText('32 active bodies');
   await expect(page.getByLabel('Time per calculation (seconds)')).toHaveValue('15');
   await page.getByRole('button', { name: 'Close learning activities' }).click();
   await page.getByRole('button', { name: 'Advanced', exact: true }).click();

@@ -6,7 +6,7 @@ A hands-on orbital mechanics and engineering laboratory written in C11 with [ray
 
 ## Start here
 
-- **Explore:** a 30-body main scene — the Sun, all eight planets, Vesta, Earth's Moon, Phobos, Deimos and the 17 major moons of the giant planets — plus four planet-system scenes with every catalogued moon of Jupiter (115), Saturn (291), Uranus (29) and Neptune (16). The separate [small-body atlas](https://jonathanperis.github.io/solar-system-simulator/small-bodies/) contains 1,564,244 pinned records; it does not load them all into the physics scene.
+- **Explore:** a 32-body main scene — the Sun, all eight planets, Vesta, Pluto, Earth's Moon, Phobos, Deimos and the 18 major moons of the giant planets and Pluto — plus system scenes with every catalogued moon of Jupiter (115), Saturn (291), Uranus (29), Neptune (16) and Pluto (5), and the Didymos–Dimorphos binary asteroid from NASA's DART mission. The separate [small-body atlas](https://jonathanperis.github.io/solar-system-simulator/small-bodies/) contains 1,564,244 pinned records; it does not load them all into the physics scene.
 - **Learn:** use [guided experiments](https://jonathanperis.github.io/solar-system-simulator/docs/experiments/) and matched A/B comparisons, then export SI measurements as CSV.
 - **Run locally:** start with the [raylib-free CLI](#learning-laboratory), or check [prerequisites](#build-prerequisites) before `make && make run` for the 3D app.
 - **Contribute:** read [architecture](https://jonathanperis.github.io/solar-system-simulator/docs/architecture/), [build and web](https://jonathanperis.github.io/solar-system-simulator/docs/build-and-web/), and the [project layout](#project-layout). [Data provenance](data/README.md) distinguishes pinned measurements, estimates, and unknowns.
@@ -53,7 +53,7 @@ Methods are `verlet`/`euler`; contact policies are `none`/`bounce`/`merge`. Samp
 
 Four additional presets explore specific model choices:
 
-- `barycentric-core`: releases the Sun and translates all 30 main-scene states into a mass-weighted center-of-mass frame, preserving relative initial states. Moving stars record synchronized history so parent-relative trails use the historical Sun position.
+- `barycentric-core`: releases the Sun and translates all 32 main-scene states into a mass-weighted center-of-mass frame, preserving relative initial states. Moving stars record synchronized history so parent-relative trails use the historical Sun position.
 - `resonance`: a massless particle starts at an interior 3:2 period ratio with a circular Jupiter perturber. Inspect `3λ_J − 2λ_particle − ϖ_particle` over long runs; a starting period ratio alone does not establish resonance.
 - `encounter`: a test particle passes Earth with controlled initial impact geometry. Compare timestep-dependent deflection and minimum integrated distance.
 - `collision`: two chosen classroom spheres (10 kg, 10 m radius) approach head-on. Bounce conserves contact kinetic energy/momentum; merge combines mass/volume and explicitly loses kinetic energy. Its 0.01–0.25 s steps prevent tunneling for the allowed initial speeds; contact timing still has finite-step error. Other presets retain point-mass gravity without contact handling.
@@ -62,7 +62,7 @@ The 3D collision preset defaults to real scale and slower 1/5/10/25/50 simulated
 
 ## Complete small-body atlas and all eight planets
 
-The main scene contains the 30 large bodies through Neptune; the planet-system scenes add every catalogued giant-planet moon. The separate [small-body atlas](https://jonathanperis.github.io/solar-system-simulator/small-bodies/) exposes all 1,564,244 qualifying entries in the pinned JPL snapshot, including main-belt asteroids, near-Earth asteroids, Trojans, Centaurs and trans-Neptunian bodies. Select up to 16 objects for a C-owned experiment with the Sun and all eight planets.
+The main scene contains the 32 large bodies through Pluto; the system scenes add every catalogued moon of the giant planets and Pluto, and the Didymos binary. The separate [small-body atlas](https://jonathanperis.github.io/solar-system-simulator/small-bodies/) exposes all 1,564,244 qualifying entries in the pinned JPL snapshot, including main-belt asteroids, near-Earth asteroids, Trojans, Centaurs and trans-Neptunian bodies. Select up to 16 objects for a C-owned experiment with the Sun and all eight planets.
 
 ### Small-body catalog and experiments
 
@@ -95,7 +95,7 @@ Review source counts, quality and generated changes before publishing a refreshe
 Current milestone behavior:
 
 - Opens a raylib 3D scene titled `Solar System Simulator`.
-- Models a 30-body main scene (the original ten bodies, Saturn, Uranus, Neptune and the 17 major moons: Io, Europa, Ganymede, Callisto; Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Iapetus; Ariel, Umbriel, Titania, Oberon, Miranda; Triton) and four planet-system scenes (`jupiter-system` 124 bodies, `saturn-system` 300, `uranus-system` 38, `neptune-system` 25: the Sun, eight planets and one planet's complete moon catalog). Load a system from the simulator's scene picker, native `K`, or `solar-lab --scene NAME`; links to a small moon open its system. Known radii render as spheres; unknown radii use explicitly nonphysical wire markers.
+- Models a 32-body main scene (the original ten bodies, Saturn, Uranus, Neptune, the dwarf planet Pluto and the 18 major moons: Io, Europa, Ganymede, Callisto; Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Iapetus; Ariel, Umbriel, Titania, Oberon, Miranda; Triton; Charon) and six system scenes (`jupiter-system` 124 bodies, `saturn-system` 300, `uranus-system` 38, `neptune-system` 25, `pluto-system` 15, `didymos-system` 11: the Sun, eight planets, the primary and its complete moon catalog). Load a system from the simulator's scene picker, native `K`, or `solar-lab --scene NAME`; links to a small moon open its system. Known radii render as spheres; unknown radii use explicitly nonphysical wire markers.
 - Keeps the Sun fixed at the origin for a stable heliocentric baseline.
 - Uses right-handed simulation axes: `(x, y, z) = (X, Z, -Y)` of the J2000 ecliptic, so `+y` is ecliptic north and the ecliptic plane is the x/z plane. Prograde orbits have angular momentum along `+y` and appear counterclockwise when viewed from above (north).
 - Initializes Mercury at perihelion on the +X axis with prograde tangential velocity (toward -Z, ecliptic +Y) from the vis-viva equation.
@@ -171,6 +171,17 @@ main scene makes it about three times faster than the former 128-body scene
 Native throughput by scene: Jupiter system 40, Saturn system 13 (its 300 bodies
 fall below the 15 days/s preset, so the achieved rate is reported), Uranus
 system 163 and Neptune system 229 days/second.
+
+Two small-body systems follow the same rules. Pluto (Horizons GM, SBDB orbit)
+and Charon belong to the main scene: Charon is 12% of Pluto's mass, so Pluto
+circles a barycenter about 2,100 km outside its own surface, and the pair turns
+retrograde seen from the ecliptic. Nix, Hydra, Kerberos and Styx circle the
+Pluto–Charon pair, so they start around its barycenter with its total mass; their
+two-body periods are still 1.5–3.7% longer than JPL's, because JPL's mean orbits
+include the binary's rotating field. The `didymos-system` scene holds the DART
+target: Dimorphos on its retrograde 11.8-hour orbit about Didymos, from the
+Horizons s547 post-impact reconstruction, with estimated masses. Other asteroid
+moons have no JPL ephemeris and are not modeled.
 
 Moons without a JPL physical-table GM have unknown mass: they feel known-source
 gravity with no gravitational backreaction, and moons without a radius draw
@@ -413,6 +424,4 @@ When updating documentation, check shared claims in the README, `docs/src/lib/si
 
 ## Next planned iterations
 
-Each future body or moon system is added one iteration at a time, with physical constants, initial conditions, tests, and rendering checks scoped to it. Every catalogued giant-planet moon now has a scene (SPEC A78–A86). What remains (T78):
-
-1. small-body satellite systems (asteroid binaries, Pluto–Charon), once a plan names their source, frames and active-scene policy
+Each future body or moon system is added one iteration at a time, with physical constants, initial conditions, tests, and rendering checks scoped to it. Every source-backed system now has a scene (SPEC A78–A91): all giant-planet moons, Pluto's five moons and the Didymos binary. Other asteroid moons (Ida's Dactyl, Kalliope's Linus, …) have no JPL ephemeris this project can pin (SPEC R23); they wait for one.

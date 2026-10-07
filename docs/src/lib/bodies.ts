@@ -2,21 +2,26 @@ import jovianCatalog from '../../../data/jovian_moons.json' with { type: 'json' 
 import saturnianCatalog from '../../../data/saturnian_moons.json' with { type: 'json' };
 import uranianCatalog from '../../../data/uranian_moons.json' with { type: 'json' };
 import neptunianCatalog from '../../../data/neptunian_moons.json' with { type: 'json' };
+import plutonianCatalog from '../../../data/plutonian_moons.json' with { type: 'json' };
+import didymosCatalog from '../../../data/didymos_moons.json' with { type: 'json' };
 
 /** Scenes mirror the C presets: `core` is the main scene of large bodies;
  * each family scene holds one giant planet's complete moon catalog. */
-export type SceneName = 'core' | 'jupiter-system' | 'saturn-system' | 'uranus-system' | 'neptune-system';
-export type MoonPlate = 'jupiter' | 'saturn' | 'uranus' | 'neptune';
+export type SceneName = 'core' | 'jupiter-system' | 'saturn-system' | 'uranus-system' | 'neptune-system'
+  | 'pluto-system' | 'didymos-system';
+export type MoonPlate = 'jupiter' | 'saturn' | 'uranus' | 'neptune' | 'pluto' | 'didymos';
+export type FamilyPrimary = 'Jupiter' | 'Saturn' | 'Uranus' | 'Neptune' | 'Pluto' | 'Didymos';
 
 export type ImplementedBody = {
   slug: string;
   name: string;
-  kind: 'Star' | 'Planet' | 'Moon' | 'Asteroid';
+  kind: 'Star' | 'Planet' | 'Dwarf planet' | 'Moon' | 'Asteroid';
   parent: string;
   milestone: string;
   initialization: string;
   source: string;
-  accent: 'solar' | 'cyan' | 'earth' | 'moon' | 'mars' | 'asteroid' | 'jupiter' | 'saturn' | 'uranus' | 'neptune';
+  accent: 'solar' | 'cyan' | 'earth' | 'moon' | 'mars' | 'asteroid' | 'jupiter' | 'saturn' | 'uranus' | 'neptune'
+    | 'pluto' | 'didymos';
   chart: {
     plate: 'heliocentric' | 'earth' | 'mars' | MoonPlate;
     angle: number;
@@ -51,7 +56,11 @@ const moonFamilies: MoonFamily[] = [
   { parent: 'Uranus', plate: 'uranus', scene: 'uranus-system', adjective: 'Uranian', milestone: 'Uranus system scene',
     source: 'data/uranian_moons.json', moons: uranianCatalog.moons as CatalogMoon[] },
   { parent: 'Neptune', plate: 'neptune', scene: 'neptune-system', adjective: 'Neptunian', milestone: 'Neptune system scene',
-    source: 'data/neptunian_moons.json', moons: neptunianCatalog.moons as CatalogMoon[] }
+    source: 'data/neptunian_moons.json', moons: neptunianCatalog.moons as CatalogMoon[] },
+  { parent: 'Pluto', plate: 'pluto', scene: 'pluto-system', adjective: 'Plutonian', milestone: 'Pluto system scene',
+    source: 'data/plutonian_moons.json', moons: plutonianCatalog.moons as CatalogMoon[] },
+  { parent: 'Didymos', plate: 'didymos', scene: 'didymos-system', adjective: 'Didymos', milestone: 'Didymos system scene',
+    source: 'data/didymos_moons.json', moons: didymosCatalog.moons as unknown as CatalogMoon[] }
 ];
 
 /** A family's moons in C scene order: major moons first, each group in
@@ -230,23 +239,40 @@ const [saturn, uranus, neptune] = named([
     initialization:'Neptune-system barycenter (Neptune plus known-mass moons) at planar heliocentric perihelion with vis-viva speed.',source:'src/sim/solar_system.c',accent:'neptune',
     chart:{plate:'heliocentric',angle:150,radius:91},summary:'Outer giant included in every selected small-body experiment.'}
 ]);
+const [pluto] = named([
+  { slug: 'pluto', name: 'Pluto', kind: 'Dwarf planet', parent: 'Sun', milestone: 'Small-body satellite systems',
+    initialization: 'Pluto–Charon barycenter at planar heliocentric perihelion with vis-viva speed; Pluto itself circles a point outside its own surface.',
+    source: 'src/sim/solar_system.c', accent: 'pluto', chart: { plate: 'heliocentric', angle: 90, radius: 99 },
+    summary: 'Dwarf planet with JPL Horizons GM; its 17° orbital inclination is not modeled.' }
+]);
+/** Didymos lives only in its family scene, at the centre of its own plate. */
+const didymos: ImplementedBody = {
+  slug: 'didymos', name: 'Didymos', kind: 'Asteroid', parent: 'Sun', milestone: 'Small-body satellite systems',
+  group: 'Didymos system',
+  initialization: 'Didymos–Dimorphos barycenter at planar heliocentric perihelion with vis-viva speed; masses are Horizons estimates.',
+  source: 'src/sim/solar_system.c', accent: 'didymos', chart: { plate: 'didymos', angle: 0, radius: 0 },
+  summary: 'Near-Earth binary asteroid, the DART mission target, in the Didymos system scene.', scene: 'didymos-system'
+};
 
 /** The main scene, in the C order of solar_system_create_current(). */
 export const mainSceneBodies: ImplementedBody[] = [sun, mercury, venus, earth, moon, mars, phobos, deimos, vesta, jupiter,
   ...majorMoonsOf('Jupiter'), saturn, ...majorMoonsOf('Saturn'), uranus, ...majorMoonsOf('Uranus'), neptune,
-  ...majorMoonsOf('Neptune')];
+  ...majorMoonsOf('Neptune'), pluto, ...majorMoonsOf('Pluto')];
 
-/** A family scene, in the C order of solar_system_create_family(). */
-export const familySceneBodies = (parent: 'Jupiter' | 'Saturn' | 'Uranus' | 'Neptune'): ImplementedBody[] =>
-  [sun, mercury, venus, earth, mars, jupiter, saturn, uranus, neptune, ...familyMoons[parent]];
+/** A family scene, in the C order of solar_system_create_family(): Pluto and
+ * Didymos, which are not planets, follow the eight planets at index 9. */
+export const familySceneBodies = (parent: FamilyPrimary): ImplementedBody[] =>
+  [sun, mercury, venus, earth, mars, jupiter, saturn, uranus, neptune,
+    ...(parent === 'Pluto' ? [pluto] : parent === 'Didymos' ? [didymos] : []), ...familyMoons[parent]];
 
-/** Every simulated body once: the main scene, then each family's small moons. */
+/** Every simulated body once: the main scene, then each family's small
+ * moons (and Didymos, the one primary outside the main scene). */
 export const implementedBodies: ImplementedBody[] = [...mainSceneBodies,
-  ...moonFamilies.flatMap(family => familyMoons[family.parent].filter(body => body.scene !== 'core'))];
+  ...moonFamilies.flatMap(family => [...(family.parent === 'Didymos' ? [didymos] : []),
+    ...familyMoons[family.parent].filter(body => body.scene !== 'core')])];
 
-// Remaining roadmap (SPEC T78): every giant-planet moon now has a scene.
-export const plannedBodies = [
-  'small-body satellite systems, once scoped'
-];
+// Every planned system now has a scene (SPEC T78). Other asteroid satellites
+// have no JPL source this project can pin (SPEC A91).
+export const plannedBodies: string[] = [];
 
 export const bodyFocusOrder = mainSceneBodies.map((body) => body.name);
