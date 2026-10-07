@@ -73,6 +73,7 @@ jobs:
     timeout-minutes: 30
     env:
       # One Emscripten version for both the SDK and the cached raylib build.
+      # renovate: datasource=github-tags depName=emscripten-core/emsdk
       EMSDK_VERSION: 6.0.9
 
     steps:
@@ -144,6 +145,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
+          # renovate: datasource=node-version depName=node versioning=node
           node-version: 26
           cache: npm
           cache-dependency-path: docs/package-lock.json
@@ -155,7 +157,7 @@ jobs:
       - name: Audit docs dependencies
         working-directory: docs
         # Block on moderate or worse advisories; low-severity notices are
-        # handled by the weekly grouped Dependabot update instead.
+        # handled by the weekly grouped Renovate update instead.
         run: npm audit --audit-level=moderate
 
       - name: Run atlas and runtime integration tests
