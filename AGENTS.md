@@ -113,7 +113,7 @@ solar-system-simulator/
 - `src/app/simulation_session.*` owns playback, selection, reset, and physical inspection. Paused wall time is excluded; manual steps are one configured tick; reset preserves observer settings. Lesson trail cadence rounds the initial 300 seconds up to whole configured ticks.
 - Web controls call the C command boundary in `src/main.c`. Keep numeric command IDs aligned with `runtimeCommands` in `docs/src/lib/simulator.ts` (`tools/check_catalog.mjs` fails on any mismatch); the C scene populates the body selector.
 - Parent-relative trail and vector controls are renderer-only. Use synchronized parent samples and subtract in double precision. Vector glyph lengths are illustrative, even when their directions come from SI state.
-- Build, CLI, sanitizer and validator entrypoints are `make test-build test-cli test-sanitize test-validators`. Cross-check the C/TypeScript core catalog with `node tools/check_catalog.mjs` after `make headless`.
+- Build, CLI, sanitizer and validator entrypoints are `make test-build test-cli test-sanitize test-validators`. On macOS, `make test-native-shaders` renders Earth offscreen through the real GLSL 330 shaders and maps (the CI macOS job runs it with `make test`); use it after shader edits because a native window cannot always be opened from an agent sandbox. Cross-check the C/TypeScript core catalog with `node tools/check_catalog.mjs` after `make headless`.
 - Frame-system uses renderer-only family bounds and aspect-aware camera fitting. Inspector distances/speeds always use parent-relative SI state, independent of render mode.
 
 ---

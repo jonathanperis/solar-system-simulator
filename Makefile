@@ -95,7 +95,7 @@ TEST_BINS += $(TEST_DIR)/test_image_decode
 HEADLESS_TEST_BINS = $(filter-out $(TEST_RENDERER),$(TEST_BINS))
 SOURCE_HEADERS := $(wildcard src/app/*.h src/sim/*.h src/render/*.h src/render/third_party/*.h src/sim/*.inc)
 
-.PHONY: all run headless test test-binaries test-core test-sanitize test-build test-cli test-validators web raylib-web dist-wasm docs-assets docs-textures docs-check analysis-web-boundary clean FORCE
+.PHONY: all run headless test test-binaries test-core test-sanitize test-build test-cli test-validators web raylib-web dist-wasm docs-assets docs-textures docs-check analysis-web-boundary test-native-shaders clean FORCE
 
 all: $(APP)
 
@@ -178,6 +178,17 @@ dist-wasm: web
 analysis-web-boundary: build/revision.h
 	@mkdir -p build/analysis
 	$(CC) $(ALL_CPPFLAGS) -Itools/analysis-stubs $(ALL_CFLAGS) -DPLATFORM_WEB -c src/lab_web.c -o build/analysis/lab_web.o
+
+# macOS only: render Earth offscreen with the real GLSL 330 shader through a
+# CGL OpenGL context (no window) and check the pixels. Other platforms skip.
+test-native-shaders: build/label_font.inc
+ifeq ($(shell uname -s),Darwin)
+	@mkdir -p $(TEST_DIR)
+	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) -Wno-deprecated-declarations $(RAYLIB_CFLAGS) tests/native_shader_check.c src/render/scene_style.c src/render/image_decode.c src/render/render_scale.c src/sim/orbit.c src/sim/vec3d.c $(RAYLIB_LIBS) $(LDLIBS) -framework OpenGL -o $(TEST_DIR)/native_shader_check
+	$(TEST_DIR)/native_shader_check
+else
+	@echo "test-native-shaders: macOS only (CGL); skipped"
+endif
 
 docs-check:
 	python3 tools/check_docs_routes.py docs/dist
