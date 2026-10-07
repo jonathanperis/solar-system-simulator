@@ -167,10 +167,18 @@ and their wire markers in either view never claim a physical size. Measured,
 estimated, and unknown values remain distinct. Mean orbital elements describe
 shape/orientation, not a dated ephemeris or an exact resonant configuration.
 
-Normal builds are offline. `python3 tools/jovian_catalog.py --check` detects
+Normal builds are offline. `python3 tools/satellite_catalog.py --check` detects
 stale generated C data; `--refresh` explicitly updates the source snapshot for
 review. `make build/benchmark_simulation && build/benchmark_simulation` measures
 headless full-scene fixed-step/trail throughput, independently of rendering.
+
+The same tool also pins the [Saturnian](data/saturnian_moons.json) (291),
+[Uranian](data/uranian_moons.json) (29) and [Neptunian](data/neptunian_moons.json)
+(16) catalogs and generates their C tables. Each moon keeps its own ephemeris
+epoch and reference plane, including Uranus's spin-pole "equatorial" frame;
+tests check the frame conversions, Triton's retrograde orbit and that
+point-mass periods stay within 1% of JPL's. These moons are not yet part of a
+scene (SPEC T74–T77).
 
 Mercury orbital values used for initialization:
 

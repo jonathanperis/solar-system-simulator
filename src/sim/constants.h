@@ -159,6 +159,12 @@
 #define SOLAR_URANUS_RADIUS_M 25362000.0
 #define SOLAR_URANUS_SEMI_MAJOR_AXIS_M (19.18916464 * SOLAR_AU_METERS)
 #define SOLAR_URANUS_ECCENTRICITY .04725744
+/* IAU WGCCRE 2015 north pole of Uranus (ICRF, J2000; Archinal et al. 2018).
+ * Uranus spins retrograde about it, so its regular moons orbit about the
+ * antipode; tools/satellite_catalog.py fills JPL's pole-less "equatorial"
+ * frame with that antipode, and tests check the two copies agree. */
+#define SOLAR_URANUS_IAU_POLE_RA_DEG 257.311
+#define SOLAR_URANUS_IAU_POLE_DEC_DEG -15.175
 #define SOLAR_NEPTUNE_GM_M3PS2 6.83509997e15
 #define SOLAR_NEPTUNE_MASS_KG (SOLAR_NEPTUNE_GM_M3PS2 / SOLAR_G)
 #define SOLAR_NEPTUNE_RADIUS_M 24622000.0

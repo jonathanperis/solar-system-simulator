@@ -1,0 +1,317 @@
+#!/usr/bin/env python3
+"""Refresh reviewed JPL satellite snapshots explicitly; normal builds use offline data.
+
+One tool serves every giant planet (SPEC A78):
+
+  --refresh            fetch the two public JPL tables and rewrite the JSON
+                       snapshot of each selected system
+  --check              verify the committed C includes against the snapshots
+                       without network access
+  --system NAME        jupiter, saturn, uranus or neptune (repeatable;
+                       default: all four)
+
+No masses or radii are inferred from assumed densities or albedos. Each moon
+keeps the epoch and reference frame of its own ephemeris solution; phases are
+mutually consistent only inside one solution (A79).
+"""
+import argparse
+from datetime import date
+from html.parser import HTMLParser
+import json
+from pathlib import Path
+import re
+from urllib.request import urlopen
+
+ROOT = Path(__file__).resolve().parents[1]
+ELEMENTS = "https://ssd.jpl.nasa.gov/sats/elem/"
+PHYSICAL = "https://ssd.jpl.nasa.gov/sats/phys_par/"
+
+# IAU WGCCRE 2015 north pole of Uranus (ICRF, J2000). Uranus spins retrograde
+# about it, so its regular moons orbit about the antipode; JPL's URA182
+# "equatorial" rows carry no pole columns and are measured from that spin
+# pole (their Ariel has i = 0). src/sim/constants.h holds the same constant
+# and tests/test_satellites.c checks the two agree.
+URANUS_IAU_POLE_RA_DEG = 257.311
+URANUS_IAU_POLE_DEC_DEG = -15.175
+URANUS_SPIN_POLE = (round((URANUS_IAU_POLE_RA_DEG + 180.0) % 360.0, 6), -URANUS_IAU_POLE_DEC_DEG)
+
+
+def jovian_group(code, frame):
+    if 501 <= code <= 504:
+        return "Galilean moons"
+    return "Inner small moons" if code in (505, 514, 515, 516) else "Irregular moons"
+
+
+def regular_group(major_label, small_label):
+    """Groups for systems whose regular moons share a Laplace/equatorial frame."""
+    def group(code, frame, major):
+        if major:
+            return major_label
+        return small_label if frame in ("Laplace", "equatorial") else "Irregular moons"
+    return group
+
+
+# Per-system policy. "major" lists the moons with a measured GM of at least
+# MAJOR_GM_KM3_S2: the Galilean moons, Saturn's seven rounded moons (Mimas,
+# the smallest, has 2.5 km^3/s^2; Hyperion 0.37 and Phoebe 0.55 fall below),
+# Uranus's five and Triton (Proteus's 2.6 is an estimate with a larger
+# uncertainty). Major moons belong to the main scene; every other moon only to
+# its family scene. validate() re-derives the set from the data.
+MAJOR_GM_KM3_S2 = 2.0
+SYSTEMS = {
+    "jupiter": {
+        "planet": "Jupiter", "adjective": "Jovian", "count": 115,
+        "epochs": {"2000-01-01.5"}, "frames": {"Laplace", "ecliptic"}, "max_e": 0.5,
+        "major": {501, 502, 503, 504},
+        "inventory_source": "https://science.nasa.gov/jupiter/moons/",
+    },
+    "saturn": {
+        "planet": "Saturn", "adjective": "Saturnian", "count": 291,
+        "epochs": {"2000-01-01.5"}, "frames": {"Laplace", "ecliptic"}, "max_e": 0.95,
+        "major": {601, 602, 603, 604, 605, 606, 608},
+        "inventory_source": "https://science.nasa.gov/saturn/moons/",
+    },
+    "uranus": {
+        "planet": "Uranus", "adjective": "Uranian", "count": 29,
+        "epochs": {"2000-01-01.5", "2020-01-01.0", "2025-01-01.0"},
+        "frames": {"equatorial", "Laplace", "ecliptic"}, "max_e": 0.7,
+        "major": {701, 702, 703, 704, 705},
+        # Puck appears in the major-moon solution (URA182) and the inner-moon
+        # solution (URA184). Keep the newer inner-moon solution, whose phases
+        # are consistent with Puck's neighbours.
+        "prefer": {715: "URA184"},
+        "inventory_source": "https://science.nasa.gov/uranus/moons/",
+    },
+    "neptune": {
+        "planet": "Neptune", "adjective": "Neptunian", "count": 16,
+        "epochs": {"2000-01-01.5", "2020-01-01.0"}, "frames": {"Laplace", "ecliptic"}, "max_e": 0.8,
+        "major": {801},
+        "inventory_source": "https://science.nasa.gov/neptune/moons/",
+    },
+}
+GROUPS = {
+    "saturn": regular_group("Major moons", "Small regular moons"),
+    "uranus": regular_group("Major moons", "Inner moons"),
+    "neptune": regular_group("Major moon", "Inner moons"),
+}
+
+
+def paths(system):
+    adjective = SYSTEMS[system]["adjective"].lower()
+    return ROOT / f"data/{adjective}_moons.json", ROOT / f"src/sim/{adjective}_moons.inc"
+
+
+class TableRows(HTMLParser):
+    """JPL omits some </td> tags; a new cell must flush its predecessor."""
+    def __init__(self):
+        super().__init__()
+        self.rows = []
+        self.row = []
+        self.cell = None
+
+    def flush(self):
+        if self.cell is not None:
+            self.row.append(" ".join("".join(self.cell).split()))
+            self.cell = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "tr":
+            self.flush()
+            self.row = []
+        elif tag in ("td", "th"):
+            self.flush()
+            self.cell = []
+
+    def handle_data(self, text):
+        if self.cell is not None:
+            self.cell.append(text)
+
+    def handle_endtag(self, tag):
+        if tag in ("td", "th", "tr"):
+            self.flush()
+        if tag == "tr":
+            self.rows.append(self.row)
+            self.row = []
+
+
+def fetch_rows(url):
+    parser = TableRows()
+    with urlopen(url, timeout=60) as response:
+        parser.feed(response.read().decode("utf-8"))
+    return parser.rows
+
+
+def iau_name(raw):
+    """JPL writes provisional designations as S2003_J_2, S2023_U1 or S2002_N5."""
+    return re.sub(r"^S(\d{4})_([A-Z])_?(\d+)$", r"S/\1 \2 \3", raw)
+
+
+def qualities(system, code, physical):
+    if system == "jupiter":
+        # The small inner moons' dynamical masses are model estimates. Himalia's
+        # ground-based size is likewise an estimate; do not imply spacecraft data.
+        mass = "measured" if code in (501, 502, 503, 504, 505) else "estimated" if physical else "unknown"
+        radius = "estimated" if code == 506 else "measured" if physical else "unknown"
+        return mass, radius
+    if not physical:
+        return "unknown", "unknown"
+    gm, sigma = float(physical[3]), float(physical[4])
+    # A zero GM (Nereid) means "not determined", never a massless body we know
+    # of. A 1-sigma uncertainty above 10 % marks a model estimate.
+    mass = "unknown" if gm <= 0 else "measured" if sigma <= 0.1 * gm else "estimated"
+    return mass, "measured"
+
+
+def moon_record(system, r, physical):
+    config = SYSTEMS[system]
+    code = int(r[3])
+    name = iau_name(r[2])
+    if system == "jupiter":
+        # JPL's discovery table has the full IAU spellings; the elements table
+        # misspells Megaclite and truncates Philophrosyne. Identity stays by code.
+        name = {519: "Megaclite", 558: "Philophrosyne"}.get(code, name)
+    p = physical.get(code)
+    mass_quality, radius_quality = qualities(system, code, p)
+    major = code in config["major"]
+    group = jovian_group(code, r[5]) if system == "jupiter" else GROUPS[system](code, r[5], major)
+    if r[5] == "Laplace":
+        pole = (float(r[16]), float(r[17]))
+    elif r[5] == "equatorial":
+        pole = URANUS_SPIN_POLE
+    else:
+        pole = (None, None)
+    gm = float(p[3]) if p else None
+    record = {
+        "code": code, "name": name, "slug": re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-"),
+        "group": group, "ephemeris": r[4], "frame": r[5], "epoch_tdb": r[6],
+        "a_km": float(r[7]), "eccentricity": float(r[8]),
+        "periapsis_deg": float(r[9]), "mean_anomaly_deg": float(r[10]),
+        "inclination_deg": float(r[11]), "node_deg": float(r[12]),
+        "period_days": float(r[13]),
+        "pole_ra_deg": pole[0], "pole_dec_deg": pole[1],
+        "element_reference": r[19] if len(r) > 19 else r[-1],
+        "gm_km3_s2": gm if mass_quality != "unknown" else None, "radius_km": float(p[6]) if p else None,
+        "gm_sigma_km3_s2": float(p[4]) if p and mass_quality != "unknown" else None,
+        "radius_sigma_km": float(p[7]) if p else None,
+        "mass_quality": mass_quality, "radius_quality": radius_quality,
+        "gm_reference": p[5] if p and mass_quality != "unknown" else None, "radius_reference": p[8] if p else None,
+    }
+    if system != "jupiter" or major:
+        record["major"] = major
+    return record
+
+
+def refresh(system, element_rows, physical_rows):
+    config = SYSTEMS[system]
+    planet = config["planet"]
+    physical = {int(r[2]): r for r in physical_rows if len(r) == 12 and r[0] == planet}
+    rows = [r for r in element_rows if len(r) >= 19 and r[1] == planet]
+    by_code = {}
+    for r in rows:
+        by_code.setdefault(int(r[3]), []).append(r)
+    chosen = {}
+    for code, candidates in by_code.items():
+        preferred = config.get("prefer", {}).get(code)
+        matches = [r for r in candidates if r[4] == preferred]
+        require(len(candidates) == 1 or len(matches) == 1,
+                f"{planet} {code}: duplicate rows need an explicit ephemeris preference")
+        chosen[code] = matches[0] if matches else candidates[0]
+    # Keep JPL's table order, which lists each solution's moons together.
+    moons = [moon_record(system, r, physical) for r in rows if chosen[int(r[3])] is r]
+    data_path, _ = paths(system)
+    if system == "jupiter":
+        # The Jovian snapshot predates this tool; preserve its reviewed date.
+        checked = json.loads(data_path.read_text())["checked"] if data_path.exists() else date.today().isoformat()
+    else:
+        checked = date.today().isoformat()
+    snapshot = {"schema": 1, "checked": checked,
+        "inventory_source": config["inventory_source"],
+        "names_source": "https://ssd.jpl.nasa.gov/sats/discovery.html",
+        "elements_source": ELEMENTS, "physical_source": PHYSICAL, "moons": moons}
+    validate(system, snapshot)
+    data_path.write_text(json.dumps(snapshot, indent=2, ensure_ascii=False) + "\n")
+
+
+def require(condition, message):
+    """Fail validation explicitly; `assert` disappears under `python3 -O`."""
+    if not condition:
+        raise ValueError(message)
+
+
+def is_major(m):
+    return m.get("major", m["group"] == "Galilean moons")
+
+
+def validate(system, snapshot):
+    config = SYSTEMS[system]
+    moons = snapshot["moons"]
+    count = config["count"]
+    require(snapshot["schema"] == 1 and len(moons) == count, f"{system}: review inventory changes explicitly")
+    require(len({m["code"] for m in moons}) == len({m["slug"] for m in moons}) == count,
+            f"{system}: moon codes and slugs must be unique")
+    require({m["code"] for m in moons if is_major(m)} == config["major"], f"{system}: major moons changed")
+    derived = {m["code"] for m in moons if m["mass_quality"] == "measured" and m["gm_km3_s2"] >= MAJOR_GM_KM3_S2}
+    require(derived == config["major"], f"{system}: the measured-GM rule no longer yields the reviewed major moons")
+    if system == "jupiter":
+        require([m["code"] for m in moons[:4]] == [501, 502, 503, 504], "Galilean moons must lead the catalog")
+    planet_center = {"jupiter": 599, "saturn": 699, "uranus": 799, "neptune": 899}[system]
+    for m in moons:
+        name = m.get("name", m.get("code"))
+        require(m["code"] != planet_center, f"{name}: code collides with the planet center")
+        require(m["frame"] in config["frames"] and m["epoch_tdb"] in config["epochs"],
+                f"{name}: unexpected frame or epoch")
+        require(m["a_km"] > 0 and 0 <= m["eccentricity"] < config["max_e"] and 0 <= m["inclination_deg"] <= 180,
+                f"{name}: orbital elements out of range")
+        if m["frame"] in ("Laplace", "equatorial"):
+            require(0 <= m["pole_ra_deg"] < 360 and -90 <= m["pole_dec_deg"] <= 90,
+                    f"{name}: reference-plane pole out of range")
+        else:
+            require(m["pole_ra_deg"] is None and m["pole_dec_deg"] is None,
+                    f"{name}: ecliptic elements must not carry a pole")
+        for value, quality in (("gm_km3_s2", "mass_quality"), ("radius_km", "radius_quality")):
+            require(m[quality] in ("measured", "estimated", "unknown"), f"{name}: unknown {quality}")
+            require((m[value] is None) == (m[quality] == "unknown"),
+                    f"{name}: {value} presence must match {quality}")
+            if m[value] is not None:
+                require(m[value] > 0, f"{name}: {value} must be positive")
+        require(m["mass_quality"] != "unknown" or not is_major(m), f"{name}: a major moon needs a mass")
+
+
+def generate(system, snapshot):
+    data_path, _ = paths(system)
+    lines = [f"/* Generated by tools/satellite_catalog.py from data/{data_path.name}. */"]
+    for m in snapshot["moons"]:
+        fields = [str(m["code"]), json.dumps(m["name"]), json.dumps(m["group"])]
+        fields += [str(m[key] or 0) for key in ("a_km", "eccentricity", "periapsis_deg", "mean_anomaly_deg", "inclination_deg", "node_deg", "pole_ra_deg", "pole_dec_deg", "gm_km3_s2", "radius_km", "period_days")]
+        fields += ["SATELLITE_FRAME_" + m["frame"].upper(), "PHYSICAL_" + m["mass_quality"].upper(), "PHYSICAL_" + m["radius_quality"].upper()]
+        fields += ["true" if is_major(m) else "false"]
+        lines.append("    {" + ", ".join(fields) + "},")
+    return "\n".join(lines) + "\n"
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--refresh", action="store_true")
+    parser.add_argument("--check", action="store_true")
+    parser.add_argument("--system", action="append", choices=sorted(SYSTEMS))
+    args = parser.parse_args()
+    systems = args.system or list(SYSTEMS)
+    if args.refresh:
+        element_rows, physical_rows = fetch_rows(ELEMENTS), fetch_rows(PHYSICAL)
+        for system in systems:
+            refresh(system, element_rows, physical_rows)
+    for system in systems:
+        data_path, generated = paths(system)
+        snapshot = json.loads(data_path.read_text())
+        validate(system, snapshot)
+        output = generate(system, snapshot)
+        if args.check:
+            if not generated.exists() or generated.read_text() != output:
+                raise SystemExit(f"stale {system} C data; run python3 tools/satellite_catalog.py --system {system}")
+        else:
+            generated.write_text(output)
+        print(f"{SYSTEMS[system]['adjective']} catalog OK: {len(snapshot['moons'])} moons, snapshot {snapshot['checked']}")
+
+
+if __name__ == "__main__":
+    main()

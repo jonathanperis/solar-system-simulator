@@ -11,10 +11,13 @@
 static Vec3d orbital_to_simulation(Vec3d perifocal, const SatelliteDefinition *d)
 {
     /* Angles are measured in the satellite's reference frame: the J2000
-     * ecliptic, or Jupiter's Laplace plane for the inner moons. */
+     * ecliptic, or a plane given by its pole: a planet's Laplace plane for
+     * regular moons, or Uranus's equator for its major moons. Uranus spins
+     * retrograde, so that equatorial pole is the antipode of its IAU north
+     * pole; its regular moons then have small, prograde inclinations. */
     Vec3d v = orbit_rotate_to_reference(perifocal, d->inclination_deg, d->node_deg, d->periapsis_deg);
-    if (d->frame == SATELLITE_FRAME_LAPLACE) {
-        /* JPL measures node from the Laplace plane's ascending node on the
+    if (d->frame != SATELLITE_FRAME_ECLIPTIC) {
+        /* JPL measures node from the plane's ascending node on the
          * ICRF equator. A plane with pole (RA, Dec) is inclined 90 - Dec to
          * the equator with ascending node at RA + 90 degrees, so the same 3-1-3
          * rotation takes Laplace coordinates to ICRF. Rotating about the shared
