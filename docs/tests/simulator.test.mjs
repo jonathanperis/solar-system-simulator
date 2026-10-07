@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { createSimulatorModule, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes } from '../src/lib/simulator.ts';
+import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes } from '../src/lib/simulator.ts';
 import { errorMessage, downloadText } from '../src/lib/browser.ts';
 
 test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolling', () => {
@@ -212,4 +212,37 @@ test('user-facing messages omit raw error prefixes and downloads revoke their UR
   assert.ok(scheduled[0][1] >= 1000);
   scheduled[0][0]();
   assert.deepEqual(revoked, ['blob:fixture']);
+});
+
+test('texture loader keeps fallbacks for failed downloads, bad names and exhausted memory', async () => {
+  const files = ['sun.jpg', 'mars.jpg', '../evil.jpg', 'moon.jpg'];
+  const writes = [], loads = [];
+  let nextPointer = 1024, mallocs = 0;
+  const runtime = {
+    _solar_web_texture_count: () => files.length,
+    ccall: (name, result, types, [slot]) => files[slot],
+    // moon.jpg makes the second allocation: simulate exhaustion (malloc returns 0).
+    _malloc: bytes => (++mallocs === 2 ? 0 : (nextPointer += bytes)),
+    _free: () => {},
+    HEAPU8: { set: (bytes, pointer) => writes.push(pointer) },
+    _solar_web_load_texture: (slot, pointer, length) => { loads.push([slot, length]); return 1; }
+  };
+  const realFetch = globalThis.fetch, realWarn = console.warn;
+  const warnings = [];
+  globalThis.fetch = async url => String(url).endsWith('mars.jpg')
+    ? new Response('', { status: 404 }) : new Response(new Uint8Array([1, 2, 3]));
+  console.warn = message => warnings.push(message);
+  try {
+    const canvas = { dataset: {} };
+    await loadRuntimeTextures(runtime, canvas, new URL('https://example.test/solar/wasm/runtime.js'));
+    assert.equal(canvas.dataset.textures, '1/4');
+    assert.deepEqual(loads.map(([slot]) => slot), [0]);
+    assert.ok(!writes.includes(0), 'never writes texture bytes at address 0');
+    assert.ok(warnings.some(w => w.includes('mars.jpg') && w.includes('404')));
+    assert.ok(warnings.some(w => w.includes('unexpected texture name')));
+    assert.ok(warnings.some(w => w.includes('moon.jpg') && w.includes('out of WebAssembly memory')));
+  } finally {
+    globalThis.fetch = realFetch;
+    console.warn = realWarn;
+  }
 });
