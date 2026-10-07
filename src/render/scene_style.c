@@ -228,7 +228,7 @@ bool render_clip_segment_outside_sphere(Vec3d *a, Vec3d *b, Vec3d center, double
 bool render_body_wants_label(BodyKind kind, bool selected, bool known_radius, double radius_pixels,
     double parent_separation_pixels)
 {
-    if (selected || kind == BODY_KIND_STAR || kind == BODY_KIND_PLANET) return true;
+    if (selected || kind == BODY_KIND_STAR || kind == BODY_KIND_PLANET || kind == BODY_KIND_DWARF_PLANET) return true;
     return known_radius && radius_pixels >= RENDER_LABEL_MIN_RADIUS_PIXELS && parent_separation_pixels >= RENDER_LABEL_MIN_SEPARATION_PIXELS;
 }
 

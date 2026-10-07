@@ -11,7 +11,7 @@ int main(void)
     const double gms[] = {5.7939506103e15, 6.83509997e15}, radii[] = {25362000, 24622000};
     const double axes[] = {19.18916464, 30.06992276}, eccentricities[] = {.04725744, .00859048};
     SolarSystem current = solar_system_create_current();
-    assert(current.body_count == 30 && current.bodies[14].id == BODY_ID_SATURN);
+    assert(current.body_count == 32 && current.bodies[14].id == BODY_ID_SATURN);
     for (size_t i = 0; i < 2; ++i) {
         Body b = bodies[i];
         assert(current.bodies[i ? 28 : 22].id == b.id);

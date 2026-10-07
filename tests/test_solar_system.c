@@ -333,7 +333,7 @@ static void test_main_scene_holds_the_large_bodies_in_a_stable_order(void)
      * Mars systems and the 17 major moons. Small moons live in family scenes. */
     const char *names[] = {"Sun", "Mercury", "Venus", "Earth", "Moon", "Mars", "Phobos", "Deimos", "Vesta", "Jupiter",
         "Io", "Europa", "Ganymede", "Callisto", "Saturn", "Mimas", "Enceladus", "Tethys", "Dione", "Rhea", "Titan",
-        "Iapetus", "Uranus", "Ariel", "Umbriel", "Titania", "Oberon", "Miranda", "Neptune", "Triton"};
+        "Iapetus", "Uranus", "Ariel", "Umbriel", "Titania", "Oberon", "Miranda", "Neptune", "Triton", "Pluto", "Charon"};
     SolarSystem system = solar_system_create_current();
     assert(SOLAR_SYSTEM_BODY_CAPACITY == 300);
     assert(system.body_count == sizeof(names) / sizeof(names[0]));
@@ -347,25 +347,55 @@ static void test_main_scene_holds_the_large_bodies_in_a_stable_order(void)
     assert(system.bodies[22].id == BODY_ID_URANUS && system.bodies[28].id == BODY_ID_NEPTUNE);
     assert(solar_system_parent_index(&system, 20) == 14 && solar_system_parent_index(&system, 29) == 28);
     assert(system.bodies[14].parent_id == BODY_ID_SUN);
+    assert(system.bodies[30].id == BODY_ID_PLUTO && system.bodies[30].kind == BODY_KIND_DWARF_PLANET);
+    assert(solar_system_parent_index(&system, 31) == 30);
+}
+
+static void test_pluto_and_didymos_start_at_planar_perihelion(void)
+{
+    const struct { Body body; double a, e; } cases[] = {
+        {solar_system_create_pluto_at_perihelion(), SOLAR_PLUTO_SEMI_MAJOR_AXIS_M, SOLAR_PLUTO_ECCENTRICITY},
+        {solar_system_create_didymos_at_perihelion(), SOLAR_DIDYMOS_SEMI_MAJOR_AXIS_M, SOLAR_DIDYMOS_ECCENTRICITY},
+    };
+    assert_close(SOLAR_G * SOLAR_PLUTO_MASS_KG / 1e9, 869.326, 1e-9);
+    assert_close(SOLAR_G * SOLAR_DIDYMOS_MASS_KG / 1e9, 3.51278e-8, 1e-20);
+    for (size_t i = 0; i < 2; ++i) {
+        Body b = cases[i].body;
+        double q = cases[i].a * (1 - cases[i].e);
+        double r = vec3d_length(b.position_m), v = vec3d_length(b.velocity_mps);
+        assert(fabs(r / q - 1) < 1e-14 && fabs(b.position_m.y) < 1e-6);
+        assert(fabs(v / sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * (2 / q - 1 / cases[i].a)) - 1) < 1e-14);
+        assert(vec3d_dot(b.position_m, b.velocity_mps) == 0 && vec3d_cross(b.position_m, b.velocity_mps).y > 0);
+        assert(b.parent_id == BODY_ID_SUN && !b.fixed);
+    }
+    /* Pluto starts opposite Neptune, far from it despite the overlapping orbits. */
+    Body neptune = solar_system_create_neptune_at_perihelion();
+    assert(vec3d_length(vec3d_sub(cases[0].body.position_m, neptune.position_m)) > 50 * SOLAR_AU_METERS);
+    /* Didymos starts well clear of Earth although its perihelion is 1.01 AU. */
+    Body earth = solar_system_create_earth_at_perihelion();
+    assert(vec3d_length(vec3d_sub(cases[1].body.position_m, earth.position_m)) > 1.3 * SOLAR_AU_METERS);
+    assert(cases[1].body.mass_quality == PHYSICAL_ESTIMATED);
 }
 
 static void test_family_scenes_hold_a_planet_and_its_complete_catalog(void)
 {
-    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE};
-    const size_t majors[] = {4, 7, 5, 1};
+    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE, BODY_ID_PLUTO, BODY_ID_DIDYMOS};
+    const size_t majors[] = {4, 7, 5, 1, 1, 0};
     SolarSystem scene;
     assert(!solar_system_create_family(BODY_ID_EARTH, &scene));
-    for (size_t k = 0; k < 4; ++k) {
+    for (size_t k = 0; k < 6; ++k) {
         const SatelliteCatalog *catalog = satellite_catalog_for(planets[k]);
         assert(solar_system_create_family(planets[k], &scene));
-        assert(scene.body_count == SOLAR_FAMILY_SCENE_PLANET_COUNT + catalog->count);
+        /* Pluto and Didymos are not planets: they occupy index 9. */
+        size_t first_moon = SOLAR_FAMILY_SCENE_PLANET_COUNT + (k >= 4);
+        assert(scene.body_count == first_moon + catalog->count);
         const BodyId order[] = {BODY_ID_SUN, BODY_ID_MERCURY, BODY_ID_VENUS, BODY_ID_EARTH, BODY_ID_MARS,
             BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE};
         for (size_t i = 0; i < SOLAR_FAMILY_SCENE_PLANET_COUNT; ++i) assert(scene.bodies[i].id == order[i]);
         int planet = solar_system_family_planet_index(planets[k]);
-        assert(planet == (int)(5 + k));
+        assert(planet == (int)(k < 4 ? 5 + k : 9) && scene.bodies[planet].id == planets[k]);
         /* Major moons first, then the rest, each in catalog order. */
-        size_t index = SOLAR_FAMILY_SCENE_PLANET_COUNT;
+        size_t index = first_moon;
         for (int pass = 0; pass < 2; ++pass)
             for (size_t i = 0; i < catalog->count; ++i)
                 if (catalog->moons[i].major == (pass == 0)) {
@@ -373,7 +403,7 @@ static void test_family_scenes_hold_a_planet_and_its_complete_catalog(void)
                     assert(solar_system_parent_index(&scene, index) == planet);
                     ++index;
                 }
-        for (size_t i = 0; i < majors[k]; ++i) assert(scene.bodies[SOLAR_FAMILY_SCENE_PLANET_COUNT + i].mass_kg > 0);
+        for (size_t i = 0; i < majors[k]; ++i) assert(scene.bodies[first_moon + i].mass_kg > 0);
         for (size_t i = 0; i < scene.body_count; ++i)
             for (size_t j = 0; j < i; ++j) assert(scene.bodies[i].id != scene.bodies[j].id);
     }
@@ -384,7 +414,7 @@ static void test_family_scenes_hold_a_planet_and_its_complete_catalog(void)
 static void test_scene_capacity_is_named_and_appends_are_bounded(void)
 {
     SolarSystem system = solar_system_create_current();
-    assert(SOLAR_CORE_SCENE_BODY_COUNT == 30);
+    assert(SOLAR_CORE_SCENE_BODY_COUNT == 32);
     assert(system.body_count == SOLAR_CORE_SCENE_BODY_COUNT);
     assert(SOLAR_SYSTEM_BODY_CAPACITY >= SOLAR_CORE_SCENE_BODY_COUNT);
 
@@ -439,6 +469,10 @@ static void test_moon_families_place_their_barycenter_on_the_intended_orbit(void
     assert_family_follows(&core, 14, solar_system_create_saturn_at_perihelion(), 1.0e5);
     assert_family_follows(&core, 22, solar_system_create_uranus_at_perihelion(), 1.0e3);
     assert_family_follows(&core, 28, solar_system_create_neptune_at_perihelion(), 1.0e4);
+    /* Charon pulls Pluto ~2,100 km off the barycenter, outside Pluto itself. */
+    assert_family_follows(&core, 30, solar_system_create_pluto_at_perihelion(), 1.0e6);
+    Vec3d pluto_shift = vec3d_sub(core.bodies[30].position_m, solar_system_create_pluto_at_perihelion().position_m);
+    assert(vec3d_length(pluto_shift) > SOLAR_PLUTO_RADIUS_M);
     for (BodyId planet = BODY_ID_JUPITER; planet != BODY_ID_NONE;
          planet = planet == BODY_ID_JUPITER ? BODY_ID_SATURN : planet == BODY_ID_SATURN ? BODY_ID_URANUS
              : planet == BODY_ID_URANUS ? BODY_ID_NEPTUNE : BODY_ID_NONE) {
@@ -1150,6 +1184,7 @@ int main(void)
     test_saturn_constants_and_derived_perihelion_state();
     test_main_scene_holds_the_large_bodies_in_a_stable_order();
     test_family_scenes_hold_a_planet_and_its_complete_catalog();
+    test_pluto_and_didymos_start_at_planar_perihelion();
     test_mercury_body_starts_at_perihelion_with_tangential_velocity();
     test_venus_body_starts_at_perihelion_with_tangential_velocity();
     test_earth_body_starts_at_perihelion_with_tangential_velocity();

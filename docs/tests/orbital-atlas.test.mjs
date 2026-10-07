@@ -44,8 +44,9 @@ test('V18/V21 atlas announcements are immediate for discrete actions and settle 
 });
 
 test('A10 publishes Jupiter as the tenth implemented atlas body', () => {
-  assert.equal(mainSceneBodies.length, 30);
-  assert.equal(implementedBodies.length, 30 + 111 + 284 + 24 + 15);
+  assert.equal(mainSceneBodies.length, 32);
+  // Main scene, then each system's small moons, plus Didymos and Dimorphos.
+  assert.equal(implementedBodies.length, 32 + 111 + 284 + 24 + 15 + 4 + 2);
   assert.deepEqual(implementedBodies[9], {
     slug: 'jupiter',
     name: 'Jupiter',
@@ -77,19 +78,23 @@ test('the main scene keeps the large bodies and family scenes hold every moon', 
   });
   assert.deepEqual(mainSceneBodies.filter(body => body.kind === 'Moon' && !['Earth', 'Mars'].includes(body.parent)).map(body => body.name),
     ['Io', 'Europa', 'Ganymede', 'Callisto', 'Mimas', 'Enceladus', 'Tethys', 'Dione', 'Rhea', 'Titan', 'Iapetus',
-      'Ariel', 'Umbriel', 'Titania', 'Oberon', 'Miranda', 'Triton']);
+      'Ariel', 'Umbriel', 'Titania', 'Oberon', 'Miranda', 'Triton', 'Charon']);
+  assert.equal(mainSceneBodies[30].kind, 'Dwarf planet');
   assert.ok(mainSceneBodies.every(body => body.scene === 'core'));
-  const counts = { Jupiter: 115, Saturn: 291, Uranus: 29, Neptune: 16 };
+  const counts = { Jupiter: 115, Saturn: 291, Uranus: 29, Neptune: 16, Pluto: 5, Didymos: 1 };
   for (const [planet, count] of Object.entries(counts)) {
     const scene = familySceneBodies(planet);
-    assert.equal(scene.length, 9 + count);
+    // Pluto and Didymos are not planets: they sit at index 9 before their moons.
+    const first = ['Pluto', 'Didymos'].includes(planet) ? 10 : 9;
+    assert.equal(scene.length, first + count);
     assert.deepEqual(scene.slice(0, 9).map(body => body.name),
       ['Sun', 'Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune']);
+    if (first === 10) assert.equal(scene[9].name, planet);
     // Every small moon is reachable: it lives only in its family scene.
-    assert.ok(scene.slice(9).every(body => body.parent === planet && (body.scene === 'core' || body.scene === `${planet.toLowerCase()}-system`)));
+    assert.ok(scene.slice(first).every(body => body.parent === planet && (body.scene === 'core' || body.scene === `${planet.toLowerCase()}-system`)));
   }
   assert.equal(new Set(implementedBodies.map(body => body.slug)).size, implementedBodies.length);
-  assert.deepEqual(plannedBodies, ['small-body satellite systems, once scoped']);
+  assert.deepEqual(plannedBodies, []);
 });
 
 test('the Jovian atlas exposes every sourced moon with unique anchors and explicit data quality', () => {

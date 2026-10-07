@@ -148,8 +148,8 @@ kbd { border: 1px solid var(--rule); padding: 0.08em 0.35em; background: var(--p
 .atlas-copy > p:not(.eyebrow) { font-size: clamp(1.12rem, 1.6vw, 1.45rem); line-height: 1.38; }
 .atlas-hint { color: var(--ink-soft); font-size: 0.88rem; font-style: italic; }
 .atlas-tools { position: absolute; z-index: 3; display: flex; gap: 0.6rem; top: clamp(7.2rem, 12vh, 8.5rem); right: max(2rem, calc((100vw - 1160px) / 2)); }
-.atlas-plate-tabs { position: absolute; z-index: 3; display: grid; grid-template-rows: repeat(4, auto); grid-auto-flow: column; gap: 0.25rem 1.6rem; left: max(2rem, calc((100vw - 1160px) / 2)); bottom: 3.8rem; }
-.atlas-plate-tab { display: flex; gap: 0.7rem; align-items: center; border: 0; border-left: 2px solid transparent; padding: 0.35rem 0 0.35rem 0.7rem; background: none; color: var(--ink-soft); cursor: pointer; font-family: "JetBrains Mono", monospace; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-align: left; text-transform: uppercase; }
+.atlas-plate-tabs { position: absolute; z-index: 3; display: grid; grid-template-rows: repeat(5, auto); grid-auto-flow: column; gap: 0.25rem 1.6rem; left: max(2rem, calc((100vw - 1160px) / 2)); bottom: 2.4rem; }
+.atlas-plate-tab { display: flex; gap: 0.7rem; align-items: center; min-height: 24px; border: 0; border-left: 2px solid transparent; padding: 0.15rem 0 0.15rem 0.7rem; background: none; color: var(--ink-soft); cursor: pointer; font-family: "JetBrains Mono", monospace; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-align: left; text-transform: uppercase; }
 .atlas-plate-tab span { color: var(--brass); }
 .atlas-plate-tab[aria-pressed="true"] { border-left-color: var(--brass); color: var(--navy); }
 .atlas-stage { position: absolute; inset: 0; cursor: crosshair; outline: 0; }
@@ -195,6 +195,8 @@ kbd { border: 1px solid var(--rule); padding: 0.08em 0.35em; background: var(--p
 .atlas-body-saturn { --body-color: var(--saturn); }
 .atlas-body-uranus { --body-color: oklch(77% 0.075 210); }
 .atlas-body-neptune { --body-color: oklch(61% 0.13 265); }
+.atlas-body-pluto { --body-color: oklch(76% 0.05 70); }
+.atlas-body-didymos { --body-color: oklch(62% 0.03 60); }
 .atlas-body-saturn .atlas-body-orb { outline: 0.12rem solid var(--saturn); outline-offset: 0.15rem; }
 .atlas-body-cyan { --body-color: oklch(55% 0.045 235); }
 .atlas-bearing-control { position: absolute; z-index: 3; display: grid; grid-template-columns: auto minmax(7rem, 9rem) auto; align-items: center; gap: 0.6rem; right: max(2rem, calc((100vw - 1160px) / 2)); bottom: 1.25rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; font-size: 0.75rem; letter-spacing: 0.02em; text-transform: uppercase; }

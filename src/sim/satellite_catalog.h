@@ -12,10 +12,14 @@
 #define SOLAR_SATURNIAN_MOON_COUNT 291
 #define SOLAR_URANIAN_MOON_COUNT 29
 #define SOLAR_NEPTUNIAN_MOON_COUNT 16
+#define SOLAR_PLUTONIAN_MOON_COUNT 5
+#define SOLAR_DIDYMOS_MOON_COUNT 1
 extern const SatelliteDefinition solar_jovian_moons[SOLAR_JOVIAN_MOON_COUNT];
 extern const SatelliteDefinition solar_saturnian_moons[SOLAR_SATURNIAN_MOON_COUNT];
 extern const SatelliteDefinition solar_uranian_moons[SOLAR_URANIAN_MOON_COUNT];
 extern const SatelliteDefinition solar_neptunian_moons[SOLAR_NEPTUNIAN_MOON_COUNT];
+extern const SatelliteDefinition solar_plutonian_moons[SOLAR_PLUTONIAN_MOON_COUNT];
+extern const SatelliteDefinition solar_didymos_moons[SOLAR_DIDYMOS_MOON_COUNT];
 
 typedef struct SatelliteCatalog {
     BodyId planet;
@@ -23,7 +27,7 @@ typedef struct SatelliteCatalog {
     size_t count;
 } SatelliteCatalog;
 
-/* Catalog of a giant planet's moons, or NULL for any other body. */
+/* Catalog of a giant planet's, Pluto's or Didymos's moons, or NULL. */
 const SatelliteCatalog *satellite_catalog_for(BodyId planet);
 
 #endif

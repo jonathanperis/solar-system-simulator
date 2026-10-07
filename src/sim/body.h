@@ -35,10 +35,15 @@ typedef enum BodyId {
     BODY_ID_ENCELADUS = 602,
     BODY_ID_TITAN = 606,
     BODY_ID_TRITON = 801,
+    BODY_ID_CHARON = 901,
     /* NAIF's planet-center code cannot collide with 6xx Saturnian moons. */
     BODY_ID_SATURN = 699,
     BODY_ID_URANUS = 799,
-    BODY_ID_NEPTUNE = 899
+    BODY_ID_NEPTUNE = 899,
+    BODY_ID_PLUTO = 999,
+    /* Horizons IDs of the Didymos binary (primary centre and Dimorphos). */
+    BODY_ID_DIMORPHOS = 120065803,
+    BODY_ID_DIDYMOS = 920065803
 } BodyId;
 
 typedef enum PhysicalQuality {

@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "checked": "2026-10-07",
+  "inventory_source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='120065803'&OBJ_DATA='YES'&MAKE_EPHEM='NO'",
+  "names_source": "https://ssd.jpl.nasa.gov/api/horizons.api",
+  "elements_source": "https://ssd.jpl.nasa.gov/api/horizons.api",
+  "physical_source": "https://ssd.jpl.nasa.gov/api/horizons.api",
+  "moons": [
+    {
+      "code": 120065803,
+      "name": "Dimorphos",
+      "slug": "dimorphos",
+      "group": "Didymos system",
+      "ephemeris": "JPL s547",
+      "frame": "ecliptic",
+      "epoch_tdb": "2024-01-01.0",
+      "a_km": 1.1733693,
+      "eccentricity": 0.0278754,
+      "periapsis_deg": 217.03287,
+      "mean_anomaly_deg": 79.10403,
+      "inclination_deg": 170.72455,
+      "node_deg": 39.81034,
+      "period_days": 0.4909851,
+      "pole_ra_deg": null,
+      "pole_dec_deg": null,
+      "element_reference": "Horizons 120065803 @920065803",
+      "gm_km3_s2": 3.0268e-10,
+      "radius_km": 0.0746,
+      "gm_sigma_km3_s2": null,
+      "radius_sigma_km": null,
+      "mass_quality": "estimated",
+      "radius_quality": "estimated",
+      "gm_reference": "Horizons GM_Dimo (approximate)",
+      "radius_reference": "Horizons triaxial radii, volume-equivalent",
+      "major": false
+    }
+  ]
+}

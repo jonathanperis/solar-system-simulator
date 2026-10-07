@@ -171,4 +171,25 @@
 #define SOLAR_NEPTUNE_SEMI_MAJOR_AXIS_M (30.06992276 * SOLAR_AU_METERS)
 #define SOLAR_NEPTUNE_ECCENTRICITY .00859048
 
+/* Small-body satellite systems (SPEC T78). Like the planets, both primaries
+ * start at a planar heliocentric perihelion with vis-viva speed; their real
+ * inclinations (Pluto 17.1 deg, Didymos 3.4 deg) are not modeled here.
+ * Pluto: planet-only GM from JPL Horizons body 999 (Brozovic & Jacobson 2024,
+ * checked 2026-10-07), IAU volume mean radius, and the JPL SBDB 134340
+ * osculating orbit (solution 1, epoch JD 2457588.5). */
+#define SOLAR_PLUTO_GM_M3PS2 8.69326e11
+#define SOLAR_PLUTO_MASS_KG (SOLAR_PLUTO_GM_M3PS2 / SOLAR_G)
+#define SOLAR_PLUTO_RADIUS_M 1188300.0
+#define SOLAR_PLUTO_SEMI_MAJOR_AXIS_M (39.58862938517124 * SOLAR_AU_METERS)
+#define SOLAR_PLUTO_ECCENTRICITY 0.2518378778576892
+/* Didymos primary: approximate GM and triaxial radii from the Horizons DART
+ * s547 reconstruction (body 920065803; volume-equivalent diameter 710.3 m)
+ * and the JPL SBDB 65803 orbit of the system (solution 240, epoch
+ * JD 2461200.5). The GM has no published uncertainty: an estimate (V25). */
+#define SOLAR_DIDYMOS_GM_M3PS2 35.1278
+#define SOLAR_DIDYMOS_MASS_KG (SOLAR_DIDYMOS_GM_M3PS2 / SOLAR_G)
+#define SOLAR_DIDYMOS_RADIUS_M 355.15
+#define SOLAR_DIDYMOS_SEMI_MAJOR_AXIS_M (1.642709608529702 * SOLAR_AU_METERS)
+#define SOLAR_DIDYMOS_ECCENTRICITY 0.3831233242624545
+
 #endif
