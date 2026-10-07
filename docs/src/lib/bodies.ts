@@ -131,7 +131,7 @@ export const implementedBodies: ImplementedBody[] = [
     initialization: 'Planar heliocentric perihelion position with vis-viva tangential speed.',
     source: 'src/sim/solar_system.c',
     accent: 'asteroid',
-    chart: { plate: 'heliocentric', angle: 274, radius: 80 },
+    chart: { plate: 'heliocentric', angle: 196, radius: 80 },
     summary: 'Main-belt asteroid, represented as a single sourced body.'
   },
   {
@@ -168,15 +168,15 @@ export const implementedBodies: ImplementedBody[] = [
     initialization: 'Planar heliocentric perihelion position with vis-viva tangential speed.',
     source: 'src/sim/solar_system.c',
     accent: 'saturn',
-    chart: { plate: 'heliocentric', angle: 196, radius: 97 },
+    chart: { plate: 'heliocentric', angle: 214, radius: 97 },
     summary: 'Ringed gas giant initialized at heliocentric perihelion; rings are renderer-only.'
   },
   {slug:'uranus',name:'Uranus',kind:'Planet',parent:'Sun',milestone:'Uranus foundation',
     initialization:'Planar heliocentric perihelion with vis-viva speed.',source:'src/sim/solar_system.c',accent:'uranus',
-    chart:{plate:'heliocentric',angle:270,radius:83},summary:'Ice giant with JPL-sourced mass, mean radius, and orbital elements.'},
+    chart:{plate:'heliocentric',angle:62,radius:83},summary:'Ice giant with JPL-sourced mass, mean radius, and orbital elements.'},
   {slug:'neptune',name:'Neptune',kind:'Planet',parent:'Sun',milestone:'Neptune foundation',
     initialization:'Planar heliocentric perihelion with vis-viva speed.',source:'src/sim/solar_system.c',accent:'neptune',
-    chart:{plate:'heliocentric',angle:330,radius:91},summary:'Outer giant included in every selected small-body experiment.'}
+    chart:{plate:'heliocentric',angle:150,radius:91},summary:'Outer giant included in every selected small-body experiment.'}
 ];
 
 export const plannedBodies = [

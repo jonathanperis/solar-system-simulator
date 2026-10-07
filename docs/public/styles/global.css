@@ -157,18 +157,14 @@ kbd { border: 1px solid var(--rule); padding: 0.08em 0.35em; background: var(--p
 .atlas-engraving, .atlas-plate { position: absolute; inset: 0; }
 .atlas-engraving { pointer-events: none; }
 .atlas-engraving::before, .atlas-engraving::after { content: ""; position: absolute; border: 1px solid var(--rule); border-radius: 50%; }
-.atlas-engraving::before { width: min(94vh, 61vw); aspect-ratio: 1; right: max(3vw, calc((100vw - 1150px) / 2)); top: 52%; transform: translateY(-50%); }
-.atlas-engraving::after { width: min(112vh, 72vw); aspect-ratio: 1; right: calc(max(3vw, (100vw - 1150px) / 2) - 6vw); top: 52%; transform: translateY(-50%); border-style: dashed; }
-.atlas-coordinate, .atlas-figure { position: absolute; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; font-size: 0.75rem; letter-spacing: 0.09em; text-transform: uppercase; }
-.atlas-coordinate-x { right: 5vw; bottom: 17%; }
-.atlas-coordinate-y { right: 46%; top: 20%; transform: rotate(-90deg); }
-.atlas-figure { right: 5vw; top: 21%; }
+.atlas-engraving::before { width: min(94vh, 61vw, 900px); aspect-ratio: 1; right: max(3vw, calc((100vw - 1150px) / 2)); top: 52%; transform: translateY(-50%); }
+.atlas-engraving::after { width: min(112vh, 72vw, 1072px); aspect-ratio: 1; right: calc(max(3vw, (100vw - 1150px) / 2) - 6vw); top: 52%; transform: translateY(-50%); border-style: dashed; }
 .atlas-scale-note { display: none; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; font-size: 0.75rem; letter-spacing: 0.02em; text-transform: uppercase; }
-.atlas-plate { left: auto; width: min(94vh, 61vw); height: min(94vh, 61vw); right: max(3vw, calc((100vw - 1150px) / 2)); top: 52%; transform: translateY(-50%); }
+.atlas-plate { left: auto; width: min(94vh, 61vw, 900px); height: min(94vh, 61vw, 900px); right: max(3vw, calc((100vw - 1150px) / 2)); top: 52%; transform: translateY(-50%); }
 .atlas-orbits { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .atlas-grid-lines path { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 2 10; }
 .atlas-orbit-lines ellipse, .atlas-orbit-lines circle { fill: none; stroke: var(--ink); stroke-opacity: 0.42; stroke-width: 1.2; }
-.atlas-plate-labels text { fill: var(--ink-soft); font-family: "JetBrains Mono", monospace; font-size: 20px; letter-spacing: 2px; text-transform: uppercase; }
+.atlas-plate-labels text { fill: var(--ink-soft); font-family: "JetBrains Mono", monospace; font-size: 15px; letter-spacing: 1.2px; text-transform: uppercase; }
 .atlas-arm { position: absolute; inset: 0; pointer-events: none; transform: rotate(var(--atlas-bearing, 0deg)); transform-origin: 50% 50%; }
 .atlas-arm span { position: absolute; left: 50%; top: 11%; bottom: 50%; width: 1px; background: var(--brass); transform: translateX(-50%); }
 .atlas-arm i { position: absolute; left: calc(50% - 0.36rem); top: calc(11% - 0.36rem); width: 0.72rem; height: 0.72rem; border: 1px solid var(--brass); border-radius: 50%; background: var(--paper-light); }
@@ -201,7 +197,7 @@ kbd { border: 1px solid var(--rule); padding: 0.08em 0.35em; background: var(--p
 .atlas-body-neptune { --body-color: oklch(61% 0.13 265); }
 .atlas-body-saturn .atlas-body-orb { outline: 0.12rem solid var(--saturn); outline-offset: 0.15rem; }
 .atlas-body-cyan { --body-color: oklch(55% 0.045 235); }
-.atlas-bearing-control { position: absolute; z-index: 3; display: grid; grid-template-columns: auto minmax(7rem, 9rem) auto; align-items: center; gap: 0.6rem; right: max(2rem, calc((100vw - 1160px) / 2)); bottom: 3.9rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; font-size: 0.75rem; letter-spacing: 0.02em; text-transform: uppercase; }
+.atlas-bearing-control { position: absolute; z-index: 3; display: grid; grid-template-columns: auto minmax(7rem, 9rem) auto; align-items: center; gap: 0.6rem; right: max(2rem, calc((100vw - 1160px) / 2)); bottom: 1.25rem; color: var(--ink-soft); font-family: "JetBrains Mono", monospace; font-size: 0.75rem; letter-spacing: 0.02em; text-transform: uppercase; }
 .atlas-bearing-control input { accent-color: var(--brass); }
 .atlas-note { position: absolute; z-index: 5; top: 50%; right: max(2rem, calc((100vw - 1160px) / 2)); width: min(23rem, calc(100vw - 3rem)); padding: 1.4rem; border: 1px solid var(--navy); background: var(--paper-light); box-shadow: 0.5rem 0.5rem 0 var(--paper-deep); transform: translateY(-50%); }
 .atlas-note[hidden] { display: none; }
@@ -336,7 +332,6 @@ th { color: var(--brass); }
   .atlas-plate-tab { padding-left: 0.45rem; letter-spacing: 0.02em; }
   .atlas-plate, .atlas-engraving::before { top: 59%; width: 110vw; height: 110vw; right: -26vw; }
   .atlas-engraving::after { top: 59%; width: 130vw; height: 130vw; right: -36vw; }
-  .atlas-figure, .atlas-coordinate { display: none; }
   .atlas-body-label { letter-spacing: 0; }
   .atlas-body-solar .atlas-body-orb { width: 3rem; height: 3rem; }
   .atlas-bearing-control { display: none; }
@@ -371,7 +366,6 @@ th { color: var(--brass); }
   .atlas-plate[data-atlas-plate="heliocentric"] .atlas-body { left: var(--compact-left); top: var(--compact-top); }
   .atlas-body-solar .atlas-body-orb { width: 1.5rem; height: 1.5rem; }
   .atlas-engraving::after { top: 50%; right: -8%; width: 116%; height: 116%; }
-  .atlas-figure, .atlas-coordinate { display: none; }
   /* Scaled SVG captions fall below a readable size here; a 12 px HTML note
      below the stage keeps the illustrative-scale disclaimer legible. */
   .atlas-plate-labels { display: none; }
