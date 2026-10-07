@@ -69,7 +69,8 @@ static int usage(FILE *stream)
         "At most 1e9 ticks (duration/dt) per run.\n"
         "--output must name a new file or an existing regular file you can write, in a directory\n"
         "you can write: the series goes to a temporary beside it and replaces it only after a\n"
-        "complete run (symlinks, FIFOs and devices are refused).\n", stream);
+        "complete run (symlinks, FIFOs and devices are refused). On Windows the file is\n"
+        "written in place, so a failed or interrupted run may leave it partially overwritten.\n", stream);
     return stream == stdout ? 0 : 2;
 }
 
