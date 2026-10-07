@@ -88,6 +88,12 @@ RenderGridLevels render_grid_levels(double camera_distance);
 double render_projected_radius_pixels(double radius, double distance, double fovy_degrees, double viewport_height);
 #define RENDER_MESH_MIN_RADIUS_PIXELS 0.75
 
+/* Trim a trail segment a->b to the part outside a body's drawn sphere, so a
+ * trail meets the planet's surface instead of running to its centre and
+ * poking out of it. Returns false when the whole segment lies inside. Assumes
+ * at most one endpoint is inside, which holds for a body's own trail. */
+bool render_clip_segment_outside_sphere(Vec3d *a, Vec3d *b, Vec3d center, double radius);
+
 /* Julian date of the J2000.0 epoch (2000 January 1, 12:00 TDB). */
 #define RENDER_J2000_JD 2451545.0
 

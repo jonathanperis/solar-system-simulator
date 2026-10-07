@@ -184,6 +184,26 @@ double render_projected_radius_pixels(double radius, double distance, double fov
     return radius * (viewport_height / 2) / half_height_units;
 }
 
+bool render_clip_segment_outside_sphere(Vec3d *a, Vec3d *b, Vec3d center, double radius)
+{
+    double r2 = radius * radius;
+    bool a_inside = vec3d_length_squared(vec3d_sub(*a, center)) < r2;
+    bool b_inside = vec3d_length_squared(vec3d_sub(*b, center)) < r2;
+    if (a_inside && b_inside) return false;
+    if (!a_inside && !b_inside) return true;
+    /* Walk from the outside point toward the inside one: P(s) = out + s*(in - out).
+     * |P(s) - c|^2 = r^2 is a quadratic in s; its smaller root is where the
+     * segment first meets the sphere. */
+    Vec3d *outside = a_inside ? b : a, *inside = a_inside ? a : b;
+    Vec3d d = vec3d_sub(*inside, *outside), f = vec3d_sub(*outside, center);
+    double qa = vec3d_dot(d, d), qb = 2 * vec3d_dot(f, d), qc = vec3d_dot(f, f) - r2;
+    double disc = qb * qb - 4 * qa * qc;
+    double s = qa > 0 && disc >= 0 ? (-qb - sqrt(disc)) / (2 * qa) : 1.0;
+    s = s < 0 ? 0 : s > 1 ? 1 : s;
+    *inside = vec3d_add(*outside, vec3d_scale(d, s));
+    return true;
+}
+
 float render_glow_intensity(double r)
 {
     if (r <= 0) return 1.0f;

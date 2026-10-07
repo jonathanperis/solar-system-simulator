@@ -419,6 +419,10 @@ static void draw_trails(const SolarSystem *system, const BodyTrails *trails, Ren
         Color color = renderer_body_color(body);
         color.a = 235;
         size_t stride = renderer_trail_sample_stride(point_count);
+        /* The live endpoint is the body's centre: stop the trail at its drawn
+         * surface so it never pokes out through the near side. */
+        Vec3d center = renderer_body_position(system, i, mode);
+        double surface = body->radius_quality == PHYSICAL_UNKNOWN ? 0 : renderer_body_radius(body, mode);
         /* Adjacent segments share an endpoint. Reuse its render transform;
          * the simulation and synchronized history are immutable while drawing.
          * Opacity follows the sample's age so recent motion reads first. */
@@ -426,15 +430,21 @@ static void draw_trails(const SolarSystem *system, const BodyTrails *trails, Ren
         Vec3d start = renderer_trail_point_in_frame(system, trails, i, 0, mode, trail_frame);
         for (size_t j = stride; j < point_count; j += stride) {
             Vec3d end = renderer_trail_point_in_frame(system, trails, i, j, mode, trail_frame);
-            line_vertex(renderer_relative_vector(start, origin), color, render_trail_alpha(previous, point_count));
-            line_vertex(renderer_relative_vector(end, origin), color, render_trail_alpha(j, point_count));
+            Vec3d a = start, b = end;
+            if (render_clip_segment_outside_sphere(&a, &b, center, surface)) {
+                line_vertex(renderer_relative_vector(a, origin), color, render_trail_alpha(previous, point_count));
+                line_vertex(renderer_relative_vector(b, origin), color, render_trail_alpha(j, point_count));
+            }
             start = end;
             previous = j;
         }
         if (previous + 1 < point_count) {
             Vec3d end = renderer_trail_point_in_frame(system, trails, i, point_count - 1, mode, trail_frame);
-            line_vertex(renderer_relative_vector(start, origin), color, render_trail_alpha(previous, point_count));
-            line_vertex(renderer_relative_vector(end, origin), color, 1.0f);
+            Vec3d a = start, b = end;
+            if (render_clip_segment_outside_sphere(&a, &b, center, surface)) {
+                line_vertex(renderer_relative_vector(a, origin), color, render_trail_alpha(previous, point_count));
+                line_vertex(renderer_relative_vector(b, origin), color, 1.0f);
+            }
         }
     }
     rlEnd();
