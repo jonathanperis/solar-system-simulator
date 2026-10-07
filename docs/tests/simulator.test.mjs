@@ -118,7 +118,7 @@ test('lesson diagnostics distinguish physical units, normalized energy, and edit
   const keys = ['status', 'scene', 'acceleration', 'specificEnergy', 'energy', 'energyChange', 'momentum', 'angularMomentum',
     'integration', 'magnification', 'position', 'velocity'];
   const readouts = Object.fromEntries(keys.map(key => [key, { textContent: '' }]));
-  const controls = { lesson: { value: '' }, method: { value: '' }, dt: { value: '' }, factor: { value: '' },
+  const controls = { lesson: { value: '' }, scene: { value: '' }, method: { value: '' }, dt: { value: '' }, factor: { value: '' },
     step: { textContent: '' }, trails: { textContent: '' }, vectors: { textContent: '', setAttribute() {} }, grid: { textContent: '', pressed: '', setAttribute(name, value) { this.pressed = value; } }, labels: { textContent: '', setAttribute() {} }, contact: { textContent: '', hidden: true }, panel: { disabled: false } };
   const runtime = createSimulatorModule({}, readouts, new URL('https://example.test/runtime.js'), controls);
   const state = { lesson: 4, method: 1, dt: 30, ticks: 2, factor: 1.1, acceleration: .002,

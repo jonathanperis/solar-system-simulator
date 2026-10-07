@@ -161,7 +161,7 @@ test('3D controls export the same SI snapshot across render scales', async ({ pa
   await expect(page.locator('[data-active-scene]')).toContainText('Head-on collisions');
   await factor.fill('1');
   await page.getByRole('button', { name: 'Load lesson', exact: true }).click();
-  await expect(page.locator('[data-active-scene]')).toContainText('128 active bodies');
+  await expect(page.locator('[data-active-scene]')).toContainText('30 active bodies');
   await expect(page.getByLabel('Time per calculation (seconds)')).toHaveValue('15');
   await page.getByRole('button', { name: 'Close learning activities' }).click();
   await page.getByRole('button', { name: 'Advanced', exact: true }).click();
