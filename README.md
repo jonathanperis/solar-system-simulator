@@ -284,7 +284,7 @@ The app uses a small stable orbit camera instead of raylib's automatic orbital h
 
 - Native `L`: cycle lesson presets; `I`: compare integrators; `D`: cycle lesson step size; `-` / `=`: change initial speed. Configuration changes restart the lesson. Browser controls expose the same C-owned configuration explicitly.
 - `M`: switch bounce/merge and restart the collision lesson; the browser also provides a Contact button.
-- `T`: absolute or parent-relative trail history. `X`: vector directions (green velocity, orange acceleration; illustrative lengths).
+- `T`: absolute or parent-relative trail history. `X`: vector directions (green velocity, orange acceleration; illustrative lengths). `G`: show or hide the reference grid (web: View → Grid).
 - `E`: export an SI snapshot. The browser downloads `solar-snapshot.csv`; native writes the next free `solar-snapshot-001.csv`, `-002.csv`, … in the working directory and never overwrites an earlier snapshot. Headless series and snapshots share the C writer.
 - `Space`: pause/resume. Paused time does not accumulate for later catch-up.
 - `N`: advance one configured physics tick while paused (15 seconds in core/catalog scenes).

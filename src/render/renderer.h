@@ -39,11 +39,13 @@ typedef struct RenderResources {
 } RenderResources;
 
 /* Per-frame view: the raylib camera (in origin-relative render units), the
- * spin-model clock in TDB days since J2000, and the far clip distance. */
+ * spin-model clock in TDB days since J2000, the far clip distance, and whether
+ * the reference grid is shown. */
 typedef struct RenderView {
     Camera3D camera;
     double orientation_days;
     float far_plane;
+    bool show_grid;
 } RenderView;
 
 bool renderer_resources_init(RenderResources *resources);

@@ -479,7 +479,7 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
      * reads as a background reference rather than slicing planets in half. */
     rlDrawRenderBatchActive();
     rlDisableDepthMask();
-    draw_reference_grid(origin, camera_distance);
+    if (view->show_grid) draw_reference_grid(origin, camera_distance);
     rlDrawRenderBatchActive();
     rlEnableDepthMask();
 

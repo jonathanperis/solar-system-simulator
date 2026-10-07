@@ -45,6 +45,7 @@ interface RuntimeControls {
   factor: HTMLInputElement;
   trails: HTMLButtonElement;
   vectors: HTMLButtonElement;
+  grid: HTMLButtonElement;
   contact: HTMLButtonElement;
 }
 
@@ -56,6 +57,8 @@ interface LabState {
   contactMode: number;
   /* C's per-lesson lower speed bound and first contact time (0 = none). */
   minFactor?: number; contactSeconds?: number;
+  /* Reference grid visibility (presentation only). */
+  grid?: boolean;
 }
 
 export const lessonNames = lessonOptions.map(([, label]) => label);
@@ -73,7 +76,7 @@ interface RuntimeState {
 
 // Matches SolarCommand in src/main.c. All actions execute in the C runtime.
 export const runtimeCommands = { pause: 0, step: 1, reset: 2, speed: 3, select: 4, view: 5, zoom: 6, rotate: 7, frame: 8, frameBody: 9,
-  trails: 10, vectors: 11, background: 12, contact: 13 } as const;
+  trails: 10, vectors: 11, background: 12, contact: 13, grid: 14 } as const;
 
 interface RuntimeBody { index: number; name: string; group: string }
 
@@ -302,6 +305,8 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       setText(controls.trails, `Trails: ${state.trailFrame ? 'Parent-relative' : 'Absolute'}`);
       setText(controls.vectors, `Vector directions: ${state.vectors ? 'On' : 'Off'}`);
       controls.vectors.setAttribute('aria-pressed', String(state.vectors));
+      setText(controls.grid, `Grid: ${state.grid === false ? 'Off' : 'On'}`);
+      controls.grid.setAttribute('aria-pressed', String(state.grid !== false));
       controls.contact.hidden = state.lesson !== collisionLesson;
       setText(controls.contact, `Contact: ${state.contactMode === 2 ? 'Inelastic merge' : 'Elastic bounce'} (restart)`);
       setText(readouts.acceleration, hasParent ? `${state.acceleration.toExponential(6)} m/s²` : 'N/A — no parent');
@@ -396,6 +401,7 @@ export function mountSimulator(root: HTMLElement): void {
     factor: root.querySelector<HTMLInputElement>('[data-velocity-factor]')!,
     trails: root.querySelector<HTMLButtonElement>('[data-command="trails"]')!,
     vectors: root.querySelector<HTMLButtonElement>('[data-command="vectors"]')!,
+    grid: root.querySelector<HTMLButtonElement>('[data-command="grid"]')!,
     contact: root.querySelector<HTMLButtonElement>('[data-command="contact"]')!
   };
   const runtime = createSimulatorModule(canvas, {
