@@ -168,19 +168,36 @@ type TextureRuntime = {
  * the site's textures/ folder beside wasm/, so the URL is base-path safe.
  */
 export async function loadRuntimeTextures(runtime: TextureRuntime, canvas: HTMLCanvasElement, artifactUrl: URL): Promise<void> {
-  const count = runtime._solar_web_texture_count?.() ?? 0;
+  let count = 0;
+  const files: string[] = [];
+  try {
+    count = runtime._solar_web_texture_count?.() ?? 0;
+    for (let slot = 0; slot < count; slot++) files.push(String(runtime.ccall?.('solar_web_texture_file', 'string', ['number'], [slot]) ?? ''));
+  } catch (error) {
+    console.warn(`Texture inventory unavailable (${errorMessage(error)}); keeping lit-colour fallbacks.`);
+    return;
+  }
   if (!count || !runtime._malloc || !runtime._free || !runtime._solar_web_load_texture) return;
   const folder = new URL('../textures/', artifactUrl);
   let loaded = 0;
   canvas.dataset.textures = `0/${count}`;
+  // Download every map at once (the network overlaps), then hand them to C
+  // one at a time in inventory order so decoded pixels never pile up in WASM.
+  const downloads = files.map(async file => {
+    if (!/^[a-z_]+\.(jpg|png)$/.test(file)) throw new Error(`unexpected texture name ${JSON.stringify(file)}`);
+    const response = await fetch(new URL(file, folder));
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return new Uint8Array(await response.arrayBuffer());
+  });
+  downloads.forEach(download => download.catch(() => undefined)); // reported below, in order
   for (let slot = 0; slot < count; slot++) {
-    const file = String(runtime.ccall?.('solar_web_texture_file', 'string', ['number'], [slot]) ?? '');
+    const file = files[slot];
     try {
-      if (!/^[a-z_]+\.(jpg|png)$/.test(file)) throw new Error(`unexpected texture name ${JSON.stringify(file)}`);
-      const response = await fetch(new URL(file, folder));
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const bytes = new Uint8Array(await response.arrayBuffer());
+      const bytes = await downloads[slot];
       const pointer = runtime._malloc(bytes.length);
+      // With memory growth enabled, malloc reports exhaustion by returning 0
+      // instead of aborting; writing there would overwrite static data.
+      if (!pointer) throw new Error('out of WebAssembly memory');
       try {
         // Read HEAPU8 after malloc: memory growth replaces the heap view.
         runtime.HEAPU8!.set(bytes, pointer);
