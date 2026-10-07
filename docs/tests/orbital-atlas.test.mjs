@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { cycleIndex, nearestBodyIndex, normalizeDegrees, createSettledAnnouncer } from '../src/lib/orbitalAtlas.ts';
 import { implementedBodies, plannedBodies } from '../src/lib/bodies.ts';
+import { atlasPositionCss } from '../src/lib/atlasLayout.ts';
 
 test('V21 normalizes any bearing into one chart revolution', () => {
   assert.equal(normalizeDegrees(-20), 340);
@@ -68,7 +69,7 @@ test('Saturn is the appended heliocentric milestone', () => {
     initialization: 'Planar heliocentric perihelion position with vis-viva tangential speed.',
     source: 'src/sim/solar_system.c',
     accent: 'saturn',
-    chart: { plate: 'heliocentric', angle: 196, radius: 97 },
+    chart: { plate: 'heliocentric', angle: 214, radius: 97 },
     summary: 'Ringed gas giant initialized at heliocentric perihelion; rings are renderer-only.'
   });
   assert.equal(plannedBodies[0], 'complete Saturnian moons');
@@ -83,4 +84,20 @@ test('the Jovian atlas exposes every sourced moon with unique anchors and explic
   assert.equal(moons.filter(body => body.group === 'Irregular moons').length, 107);
   assert.ok(moons.every(body => body.chart.plate === 'jupiter' && body.summary.includes('Mass:')));
   assert.equal(moons.at(-1).name, 'S/2021 J 8');
+});
+
+test('A75 keeps heliocentric chart markers apart on desktop and compact plates', () => {
+  // Positions are percentages of the plate. A label is ~7% wide on a 900 px
+  // plate, so markers closer than 9% read as one (Uranus once sat on Vesta).
+  const rule = /data-slug="([a-z0-9-]+)"\]\{--chart-left:([\d.]+)%;--chart-top:([\d.]+)%;--compact-left:([\d.]+)%;--compact-top:([\d.]+)%/;
+  const helio = new Set(implementedBodies.filter(body => body.chart.plate === 'heliocentric').map(body => body.slug));
+  const points = atlasPositionCss().trim().split('\n').map(line => line.match(rule)).filter(m => m && helio.has(m[1]))
+    .map(m => ({ slug: m[1], desktop: [Number(m[2]), Number(m[3])], compact: [Number(m[4]), Number(m[5])] }));
+  assert.equal(points.length, helio.size);
+  for (const layout of ['desktop', 'compact']) {
+    for (let i = 0; i < points.length; i++) for (let j = i + 1; j < points.length; j++) {
+      const [a, b] = [points[i][layout], points[j][layout]];
+      assert.ok(Math.hypot(a[0] - b[0], a[1] - b[1]) >= 9, `${layout}: ${points[i].slug} and ${points[j].slug} overlap`);
+    }
+  }
 });
