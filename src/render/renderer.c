@@ -653,6 +653,9 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
         const Body *body = &system->bodies[i];
         RenderAtmosphere air = render_atmosphere_for_body(body->id);
         if (air.strength <= 0 || body->radius_quality == PHYSICAL_UNKNOWN) continue;
+        /* Giant planets have no surface to frame their air against; a softer
+         * halo keeps them from looking blurred. */
+        if (body->id != BODY_ID_EARTH && body->id != BODY_ID_VENUS && body->id != BODY_ID_MARS) air.strength *= 0.55f;
         Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
         float radius = renderer_body_radius(body, mode);
         Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
