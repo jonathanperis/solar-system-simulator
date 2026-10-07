@@ -39,7 +39,7 @@ export const sourceSections: SourceSection[] = [
   {
     label: 'Rendering boundary',
     path: 'src/render/',
-    responsibility: 'raylib conversion from SI-unit simulation state into readable 3D drawing policies; render_scale.* owns render units, illustrative sizes and ring ratios so presentation never enters src/sim.',
+    responsibility: 'raylib conversion from SI-unit simulation state into readable 3D drawing policies; render_scale.* owns render units, illustrative sizes and ring ratios, scene_style.* owns raylib-free lighting/texture/IAU-spin/grid policy, render_resources.c owns the shader pair, meshes and texture upload, so presentation never enters src/sim.',
     verification: 'Renderer helper tests guard scale conversion, visual radius policy, family framing, and grid sizing.'
   },
   {

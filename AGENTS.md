@@ -50,7 +50,7 @@ solar-system-simulator/
 │   │   ├── orbit_camera.* # stable orbit camera and family framing math
 │   │   ├── simulation_session.* # playback, selection, reset, physical inspector
 │   │   └── simulation_step.* # fixed-step clock accumulator
-│   ├── render/            # raylib presentation boundary and render-scale policy
+│   ├── render/            # raylib presentation boundary, lighting shaders, textures and render-scale/style policy
 │   └── sim/               # raylib-independent physics/data model in SI units
 └── tests/                 # C test binaries for math, physics, scenes, app helpers, renderer helpers
 ```
@@ -105,7 +105,8 @@ solar-system-simulator/
 - Trails are bounded app-owned histories. They start at a 300-second sample cadence, double both historical and future spacing at compaction, and keep a live endpoint. Do not reintroduce repeated early-history erosion or claim unlimited trail resolution.
 - Moving stars must record synchronized history too: parent-relative trails in the barycentric lesson subtract the Sun's historical position. Only fixed stars omit history.
 - Illustrative render mode enlarges bodies and separates close moons visually without changing simulation data.
-- Saturn's rings are renderer-only lines. Their outer extent affects camera framing, but Saturn's SI radius and gravity remain unchanged.
+- Saturn's rings are renderer-only textured geometry in Saturn's IAU equatorial plane. Their outer extent affects camera framing, but Saturn's SI radius and gravity remain unchanged.
+- The cinematic renderer (SPEC A64–A68) is presentation only: one lighting shader pair (GLSL 330 native / GLSL 100 WebGL) in `src/render/render_resources.c`, raylib-free style math with tests in `src/render/scene_style.*` (texture inventory, atmospheres, IAU WGCCRE 2015 spin orientation, meshes, grid/trail/glow fades), and attributed CC BY 4.0 maps in `assets/textures/` decoded by the vendored, pinned `src/render/third_party/stb_image.h`. Never let lighting, textures or spin feed SI state, CSV or the inspector. Change rendering in screenshot-verified steps (the June beauty pass was rolled back, B5) and measure frame rate against the live site before shipping; per-vertex work in WebAssembly is expensive (avoid `pow` in hot loops) and every mesh draw costs dozens of WebGL calls.
 - `src/sim/orbit.c` owns all conic propagation, including standalone WASM previews. Catalog experiments use epoch-aligned Sun/eight planets plus at most 16 selected objects; reset retains their owned names and initial states. Never mix these source-epoch experiments with the perihelion demonstration.
 - Preserve double precision until camera-relative subtraction. Grid and trail drawing remain bounded for distant objects.
 - `python3 tools/small_body_catalog.py --check` audits every pinned catalog shard offline. Full source refresh is explicit and serialized; keep the source cache in task-owned `build/`, not Git. Browser requests use the pinned Pages assets, not JPL APIs.

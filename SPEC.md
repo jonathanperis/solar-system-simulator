@@ -22,9 +22,9 @@ C7: GitHub Pages static output under `/solar-system-simulator/`; no SSR-only sur
 
 C8: public site follows archival solar-chart direction in `DESIGN.md`.
 
-C9: current renderer baseline stays simple after beauty-pass rollback; no resurrection without explicit task.
+C9: the renderer follows the explicit 2026-10-07 cinematic task (A64–A68); further visual overhauls need their own explicit task. The June beauty-pass rollback (B5) stays the cautionary baseline: change rendering in verified, screenshot-checked increments and never alter the viewport/canvas contract (V12).
 
-C10: ⊥ ECS, scene format, asset manager, shader stack, ephemeris loader before concrete need.
+C10: ⊥ ECS, scene format, asset manager, general shader stack, ephemeris loader before concrete need. Exception (A64–A66): one lighting shader pair (GLSL 330 native / GLSL 100 WebGL) and a fixed, attributed texture set.
 
 C-catalog: regenerated small-body shards ⊥ committed to `main` history; next refresh moves shard delivery to hash-pinned release assets first. `small_body_catalog.py --generate` refuses to replace the tracked catalog without `--replace-tracked-catalog`.
 
@@ -52,7 +52,7 @@ I.sim: `SolarSystem`, `Body`, `solar_system_create_*`, `solar_system_step`
 
 I.app: body trails, stable orbit camera, bounded simulation stepping
 
-I.render: illustrative | real-scale transforms + raylib drawing; Saturn rings are presentation-only geometry
+I.render: illustrative | real-scale transforms + raylib drawing; lighting shader pair, attributed textures (lazy-loaded on the web), IAU spin orientation, adaptive grid and faded trails are presentation only; Saturn rings are presentation-only geometry
 
 I.controls: native `Tab` | `C` focus; web `C` focus and browser-native `Tab`; `V` scale; wheel zoom
 
@@ -77,6 +77,9 @@ R10|Saturn physical|mass=`568.317 × 10^24 kg`; mean radius=`58232 km`|https://s
 R11|Saturn orbit|J2000 a=`9.53667594 AU`; e=`0.05386179`; i=`2.48599187 deg`|https://ssd.jpl.nasa.gov/planets/approx_pos.html
 R12|Saturn rings|ring system extent is roughly `282000 km`; axial tilt=`26.73 deg`; rings are modeled only as presentation geometry|https://science.nasa.gov/saturn/facts/
 R13|Sandboxed browser CI|Playwright supports Ubuntu 22.04; Ubuntu 23.10+ AppArmor restrictions can prevent downloaded Chromium from starting its user-namespace sandbox. Pin the docs/browser job to supported 22.04 while retaining sandbox/TLS checks; checked 2026-09-16|https://playwright.dev/docs/intro#system-requirements ; https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md
+R14|Simulator textures|Solar System Scope 2k maps (Sun, planets, Moon, Saturn ring alpha) and 8k Milky Way, CC BY 4.0, re-encoded 2026-10-07; attribution in site footer and assets/textures/README.md|https://www.solarsystemscope.com/textures/
+R15|Spin orientation|IAU WGCCRE 2015 rotation elements (pole alpha0/delta0, prime meridian W(d)); periodic terms omitted except Neptune's N|Archinal et al. 2018, Celest Mech Dyn Astr 130:22, https://doi.org/10.1007/s10569-017-9805-5
+R16|Image decoder|stb_image v2.30 (MIT / public domain) pinned at nothings/stb 2c980bb, SHA-256 594c2fe3…; raylib builds with JPEG disabled|https://github.com/nothings/stb
 
 ## §V
 
@@ -98,7 +101,7 @@ V8: app accumulates frame-scaled time and advances only in fixed physics steps (
 
 V9: trails retain full-run temporal coverage and the current endpoint within 1025 visible points/body. History starts at a 300-second simulation-time cadence, rounded up to whole configured lesson ticks; each compaction doubles both historical spacing and future sampling cadence. All bodies share sample times for parent-relative rendering. Resolution coarsens uniformly during long runs; this is a history approximation, not a stored ephemeris or complete precomputed orbit.
 
-V10: illustrative transforms affect render output only; asteroid radius=`0.03` render units; real-scale uses same physical scale for positions + known radii with no radius clamp. Unknown-radius wire markers are the explicitly labeled render-only exception described by V25. Saturn's ring lines and their framing extent are renderer-only and never replace its physical mean radius.
+V10: illustrative transforms affect render output only; asteroid radius=`0.03` render units; real-scale uses same physical scale for positions + known radii with no radius clamp. Unknown-radius wire markers are the explicitly labeled render-only exception described by V25. Saturn's ring lines and their framing extent are renderer-only and never replace its physical mean radius. Lighting, textures, atmosphere, clouds, glow, backdrop, faded grid/trails and IAU spin orientation are presentation only (A64–A68): they read SI state and never write it, and CSV/inspector values are identical with or without textures.
 
 V11: camera focus covers ∀ bodies; wheel changes clamped distance only; pitch preserved.
 
@@ -331,6 +334,17 @@ A63|Renovate is the only dependency updater: `.github/dependabot.yml` is removed
 
 Decision: Jonathan asked to keep only `main`, then "I want dependabot uninstalled and only renovate on". When review showed that disabling alerts would hide transitive lockfile advisories from Renovate, he chose to keep passive alerts on; nothing but Renovate opens dependency PRs. All non-main branches were deleted after confirming every feature branch was merged; Renovate's onboarding PR #23 had been closed, so committing `renovate.json` onboards the installed app directly.
 
+## §A — Cinematic renderer, 2026-10-07
+
+id|criterion|verify
+A64|Bodies are lit by the rendered Sun (framing turns the camera to the framed body's sunlit side, ~40° off the Sun line): soft day/night terminator, faint ambient, Earth city lights on the night side and a cloud layer, atmosphere rim glow for bodies with atmospheres; the Sun is emissive with limb darkening and an additive glow; scenes without a star light bodies from the camera|pure style/table tests, desktop/mobile screenshots
+A65|Real maps (Solar System Scope, CC BY 4.0, attributed) texture the Sun, eight planets, the Moon, Saturn's rings and a Milky Way backdrop; a vendored, pinned `stb_image.h` (public domain/MIT) decodes JPEG/PNG for both builds because raylib ships with JPEG disabled; native loads `assets/textures/`, the browser fetches the same files lazily after the first frame; a missing or failed texture falls back to a lit body colour without stopping the simulation; untextured bodies (minor moons, Vesta) stay honest lit colours|decode tests, texture-inventory test, browser journey asserting every texture loads, fallback check
+A66|Textured bodies are oriented by the IAU WGCCRE 2015 rotation models (pole α0/δ0 and prime meridian W(d), Archinal et al. 2018), converted from ICRF through the J2000 ecliptic into simulation axes; d counts TDB days since J2000 (catalog experiments start at their source epoch, synthetic scenes at J2000); Saturn's rings lie in its equatorial plane|orientation tests: obliquities, retrograde spin of Venus/Uranus, Earth prime meridian at J2000
+A67|The reference grid fades with distance instead of aliasing into moiré, trails fade with age, edges use 4× multisampling, and the Milky Way backdrop is drawn behind everything without affecting depth; the scene stays interactive on desktop and mobile web|grid/trail alpha tests, screenshots, browser suite timing
+A68|Physics, CSV, inspector, camera framing and the canvas/viewport contract are unchanged; render style math lives in raylib-free `src/render/scene_style.*` with tests|full C/WASM/browser suites, V12/V24 checks
+
+Decision: Jonathan asked for "better graphics overall", then chose "Cinematic realism" and approved adding real planet textures (~3 MB, public-domain/CC-BY). This explicitly lifts C9 for this task; delivery follows the PR-only workflow.
+
 ## §T
 
 id|status|task|cites
@@ -401,6 +415,9 @@ T63|x|prune local packs, move screenshots, harden data tools and document data u
 T64|x|integrate all rounds, run complete verification, update docs, commit/push main and observe CI/Pages|A51–A61
 T65|x|run the second audit round and resolve or record its findings|A62
 T66|x|replace Dependabot with an equivalent-or-stricter Renovate configuration and disable Dependabot|A63
+T67|x|add raylib-free scene style math (texture inventory, atmospheres, IAU orientation, sphere/ring meshes, grid/trail fades) with RED tests|A64,A66,A67,A68
+T68|x|implement lighting shaders, textures, glow, backdrop, rings, clouds and fades in the raylib renderer with native texture loading|A64,A65,A66,A67
+T69|x|lazy-load textures in the browser, document attribution and controls, verify screenshots and the full suite, deliver by PR|A65,A67,A68
 
 Audit remediation verification, 2026-10-06: delivered through PRs #20, #21, #22, #24, #25 (round 1), #26 (main CI/analytics blocker found by round 2) and #27 (round 2), each rebase-merged after the required Build/CodeQL checks passed and every review thread was resolved. Production Pages served 81eb308 after #26 with CSP, Astro generator marker, generated sitemap and no robots.txt verified on the live site. Locally, round 2 passed `make clean && make test-sanitize`, `make && make test test-build test-cli test-validators`, catalog/command/epoch/Jovian/small-body checks, a fresh raylib WASM build with native/WASM replay of every example, `npm ci`/`npm audit`/37 Node tests/`astro check`/build, route checks, and 17/17 sandboxed Chrome journeys for both analytics-free and `PUBLIC_GA_ID` builds. The second audit's Medium findings (main CI red, experiment Earth-centre start, debug-info WASM, duplicate SPEC IDs, PR-only workflow docs, invisible catalog download) are closed. Remaining Low/Info items are recorded rather than changed: Jonathan later chose Renovate over Dependabot (A63) and asked for every non-main branch to be deleted; CI stays Linux-only and the browser lane stays on Ubuntu 22.04 per R13; browser specs are type-checked by Playwright, not `astro check` (adding `@types/node` was deferred); GA consent policy remains V17; the pre-existing desktop atlas Vesta/Uranus label overlap, Saturn's illustrative ring tilt and literal Jupiter–Neptune masses (V6 scopes GM-derived masses to Sun–Mars) are unchanged.
 
