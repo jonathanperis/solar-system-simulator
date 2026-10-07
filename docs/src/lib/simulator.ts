@@ -145,6 +145,51 @@ export function moveSelectByKey(select: Pick<HTMLSelectElement, 'selectedIndex' 
 }
 
 /** Emscripten calls this boundary; all physics remains inside the C runtime. */
+type TextureRuntime = {
+  ccall?: (name: string, result: string | null, types: string[], args: unknown[]) => unknown;
+  _malloc?: (bytes: number) => number;
+  _free?: (pointer: number) => void;
+  _solar_web_texture_count?: () => number;
+  _solar_web_load_texture?: (slot: number, pointer: number, length: number) => number;
+  HEAPU8?: Uint8Array;
+};
+
+/**
+ * Fetch the planet/backdrop maps after the first frame so the scene starts at
+ * once with lit colours and sharpens as each texture arrives (SPEC A65). C owns
+ * the inventory (file names and order); this only moves bytes. A failed file is
+ * logged and skipped: the body keeps its lit-colour fallback. Textures live in
+ * the site's textures/ folder beside wasm/, so the URL is base-path safe.
+ */
+export async function loadRuntimeTextures(runtime: TextureRuntime, canvas: HTMLCanvasElement, artifactUrl: URL): Promise<void> {
+  const count = runtime._solar_web_texture_count?.() ?? 0;
+  if (!count || !runtime._malloc || !runtime._free || !runtime._solar_web_load_texture) return;
+  const folder = new URL('../textures/', artifactUrl);
+  let loaded = 0;
+  canvas.dataset.textures = `0/${count}`;
+  for (let slot = 0; slot < count; slot++) {
+    const file = String(runtime.ccall?.('solar_web_texture_file', 'string', ['number'], [slot]) ?? '');
+    try {
+      if (!/^[a-z_]+\.(jpg|png)$/.test(file)) throw new Error(`unexpected texture name ${JSON.stringify(file)}`);
+      const response = await fetch(new URL(file, folder));
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const pointer = runtime._malloc(bytes.length);
+      try {
+        // Read HEAPU8 after malloc: memory growth replaces the heap view.
+        runtime.HEAPU8!.set(bytes, pointer);
+        if (runtime._solar_web_load_texture(slot, pointer, bytes.length)) loaded++;
+        else console.warn(`Texture ${file} could not be decoded; keeping the lit-colour fallback.`);
+      } finally {
+        runtime._free(pointer);
+      }
+    } catch (error) {
+      console.warn(`Texture ${file || slot} unavailable (${errorMessage(error)}); keeping the lit-colour fallback.`);
+    }
+    canvas.dataset.textures = `${loaded}/${count}`;
+  }
+}
+
 export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: RuntimeReadouts, artifactUrl: URL, controls: RuntimeControls, requestedBody?: string) {
   let failed = false;
   let reportedBody = -1;
@@ -182,6 +227,11 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       if(scene) scene.textContent=experiment?`${count} active bodies · catalog epoch JD 2461200.5 TDB`:`${count} active bodies · perihelion demonstration`;
     },
     _solar_web_command: undefined as ((command: number, value: number) => void) | undefined,
+    _malloc: undefined as ((bytes: number) => number) | undefined,
+    _free: undefined as ((pointer: number) => void) | undefined,
+    _solar_web_texture_count: undefined as (() => number) | undefined,
+    _solar_web_load_texture: undefined as ((slot: number, pointer: number, length: number) => number) | undefined,
+    HEAPU8: undefined as Uint8Array | undefined,
     addBody(index: number, name: string, group: string) {
       bodies.push({ index, name, group });
       if (!groups.has(group)) {
@@ -309,6 +359,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       // Later lesson changes and resets keep the runtime's own selection policy.
       if (!initialSelectionApplied) {
         initialSelectionApplied = true;
+        void loadRuntimeTextures(this, canvas, artifactUrl);
         const target = bodies.find(body => body.name === requestedBody);
         if (target) {
           this._solar_web_command!(runtimeCommands.select, target.index);
