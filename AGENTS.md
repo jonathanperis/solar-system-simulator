@@ -11,7 +11,7 @@ A physics-first 3D solar system simulator written in C11 with raylib. This repos
 - **Architecture:** deterministic SI-unit simulation isolated from rendering.
 - **Current scenes:** a 32-body main scene of large bodies (Sun, eight planets, Vesta, Pluto, the Earth and Mars systems and the 18 major moons including Charon) and six system scenes holding every catalogued moon of Jupiter (115), Saturn (291), Uranus (29), Neptune (16) and Pluto (5), plus the Didymos–Dimorphos binary asteroid; 472 bodies in all. The separate small-body atlas contains 1,564,244 pinned records in compressed shards, not in the active scene or HTML body list.
 - **Primary goal:** teach and verify orbital mechanics foundations before visual polish.
-- **Current public-site direction:** archival solar chart, source-backed and playful, with an accessible illustrative orrery wrapped around SI-unit physics. The docs hub and Astro-owned `/simulator/` runtime share the atlas layout.
+- **Current public-site direction:** simulator-first (DESIGN.md, SPEC A99–A105): the live simulation is the homepage instrument; Learn, Catalog and About are lean notebook pages.
 
 ---
 
@@ -35,7 +35,7 @@ solar-system-simulator/
 ├── AGENTS.md              # maintainer/agent guide
 ├── SPEC.md                # current goals, constraints, invariants, tasks, bug history
 ├── PRODUCT.md             # product and learning context for Impeccable/design work
-├── DESIGN.md              # archival solar-chart visual direction for current GitHub Pages work
+├── DESIGN.md              # simulator-first instrument + notebook visual direction for the Pages site
 ├── Makefile               # native build/test entrypoint
 ├── README.md              # user-facing project status and physics notes
 ├── src/
@@ -134,13 +134,13 @@ Do **not** comment obvious C syntax such as `++i`, simple assignments, or includ
 
 ## Current GitHub Pages direction
 
-The Pages site is live and should preserve archival solar-chart direction unless Jonathan asks for another pivot:
+The Pages site is live and follows DESIGN.md (decided 2026-10-07): the simulator is the homepage, and Learn, Catalog and About are the only other pages. Keep copy lean; avoid generic AI-site patterns listed in DESIGN.md.
 
-- `docs/` Astro static site with cream paper, ink-navy chart surfaces, brass markers, accessible atlas interaction, and source-backed physics copy.
+- `docs/` Astro static site: dark instrument at `/`, warm-paper notebook pages for `/learn/`, `/catalog/` and `/about/`.
 - WebAssembly build artifacts copied into the Pages output.
 - Astro owns the runtime document and loader integration; Emscripten emits JS/WASM only. The old HTML URL is an Astro-prerendered redirect.
 - Base-path-safe loader for `https://jonathanperis.github.io/solar-system-simulator/`.
-- Docs section that explains the source modules, physics, tests, build pipeline, and future body roadmap.
+- One About page explains the model, data sources, build and tests; old documentation URLs redirect to it.
 - CI split between native/test/WASM artifacts and Pages deployment.
 
 ---

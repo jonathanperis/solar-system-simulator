@@ -1,66 +1,83 @@
 # Solar System Simulator Design Context
 
-## Visual direction
+Decided 2026-10-07 (SPEC A99–A105). Replaces the archival solar-chart atlas.
 
-Public site is an **archival solar chart**: cream paper, ink navy, brass rules, engraved orbit geometry, editorial serif type. It feels like a maintained astronomical atlas, not a cockpit, dashboard, or space screensaver.
+## Idea
 
-Homepage is a full-screen interactive orrery. It indexes real core-body metadata with illustrative position and scale. Physical integration belongs to the C WebAssembly simulator and comparison lab; the separate small-body atlas uses C-computed approximate two-body previews.
+The simulator is the product, so it is the homepage. The site has two
+surfaces with different jobs:
 
-## Palette
+- **Instrument** (`/`): the live C simulation, full viewport. People came to
+  watch and steer orbits; nothing stands between them and the canvas.
+- **Notebook** (`/learn/`, `/catalog/`, `/about/`): short, well-typeset pages
+  that explain, list and source what the instrument does.
 
-- Paper: warm cream with faint grain and chart grid.
-- Ink: near-black navy for text, rules, and orbit lines.
-- Brass: selected body, controls, measurement marks, and action emphasis.
-- Planet color: restrained mineral pigments; no neon or generic galaxy fog.
-- Use OKLCH tokens in CSS.
+## What this site is not
 
-## Typography
+The overhaul exists because the old site said too much. Avoid the patterns
+that make a page read as generated:
 
-- Headings/body: editorial serif, Cormorant Garamond fallback Georgia.
-- Measurements/code: JetBrains Mono fallback monospace.
-- Labels: small caps or spaced mono only when information-dense.
+- no hero banner, tagline or "features" section;
+- no grids of cards, icons in circles, emoji, gradients, glass or glow;
+- no marketing adjectives ("powerful", "seamless", "immersive");
+- no paragraph of copy where a label, number or link does the job;
+- no duplicated explanations: each fact lives on one page, others link to it.
 
-## Components
+Copy is plain and specific. Prefer "15 s fixed step, velocity-Verlet" to a
+sentence about accuracy. Numbers carry units.
 
-1. **Orbital atlas**
-   - Full-screen SVG/DOM chart with heliocentric, Earth-relative, Mars-relative, and grouped/paginated Jupiter-relative plates.
-   - Each body is a semantic button and supports pointer, keyboard, touch, and no-JS catalog fallback.
-   - Brass observation arm may select nearest body. It never claims physical orbital state.
+## Instrument (`/`)
 
-2. **Liner-note drawer**
-   - Lead with selected-body identity, a readable parent/orbit explanation, and a direct simulator link; disclose initialization, milestone and source under Model and sources.
-   - Desktop side drawer; mobile bottom sheet with a persistent Close control.
+- The canvas fills the viewport under a thin top bar: wordmark (links home),
+  Learn, Catalog, About, Source.
+- One bottom dock, left to right: play/pause, speed (1 h, 1 d, 5 d, 10 d,
+  15 d per second), scene date, scene picker (Solar system, Jupiter, Saturn,
+  Uranus, Neptune, Pluto, Didymos), body search.
+- Selecting a body opens a compact inspector on the right (bottom sheet on
+  phones): name, parent, distance, speed, period, mass, radius, data quality,
+  and two actions (Frame system, Frame body).
+- View settings (scale, trails, vectors, grid, labels) and keyboard help are
+  small popovers from the dock. Lessons add a one-line strip over the canvas.
+- Under 150 words of visible copy. Loading, errors and status changes are
+  always visible and announced.
 
-3. **Field-guide routes**
-   - Existing routes stay static and scrollable.
-   - Docs are readable field sheets. Physics, source, bodies, and pipeline retain source-backed claims.
-   - Primary navigation follows Explore, Learn, Experiments and Reference. The reference hub keeps all existing atlases and developer routes discoverable.
-   - First-orbit and web/touch guidance precede numerical and developer reference. Page search includes task keywords and a useful no-results state.
+Look: near-black surround, hairline borders, one amber accent for the active
+control and selection, mono labels in small caps, tabular numbers. Panels are
+opaque, not translucent.
 
-4. **WASM runtime**
-   - Archival frame and real loading/error state around unchanged raylib canvas.
-   - Canvas remains dark renderer output; no page CSS mutates physics or renderer behavior.
-   - Put the scene and playback/recovery controls first. Find an object, View options, Learn and Advanced open named native dialogs; mobile uses bottom sheets with visible dismissal and restored focus.
-   - Core body links use `simulator/?body=<slug>` and resolve against C's ready body list once. Runtime controls and physical readouts remain C-owned.
+## Notebook pages
 
-5. **Learning and catalog surfaces**
-   - Comparison plots and accessible tables present matched C measurements, with units, source revision, and explicit unavailable values.
-   - The small-body atlas distinguishes catalog, density, result, and active-physics counts. Its logarithmic map and two-body previews are labeled approximations.
-   - Small-body selection opens visible details immediately, including source-loading/error feedback. The basket is separate from selection; preparing it does not start the simulator automatically.
-   - Comparison questions and valid defaults precede optional parameters; field-specific diagnostics explain C rejection without replacing its validation.
+- Warm paper background, one column, about 65 characters per line.
+- Serif headings, readable body text, mono for data, code and units.
+- Data goes in tables with units in the header. Sources are footnote-style
+  links next to the claim they support.
+- In-page index at the top of long pages (About). No sidebars.
+- Every body name links to the simulator at that body (`/?body=slug`).
 
-## Interaction principles
+## Palette and type
 
-- Body selection: click/tap, `Left`/`Right`, previous/next controls.
-- Plate selection: visible buttons; wheel changes plate only while atlas focused.
-- `Escape` closes detail drawer and restores focus to invoking body.
-- `prefers-reduced-motion` removes ornamental transitions/rotation.
-- Empty canvas/loading state never unexplained.
-- Decorative SVG is `aria-hidden`; interaction uses valid buttons and linked fallbacks.
+- Instrument: background `oklch(14% 0.01 260)`, panel `oklch(19% 0.012 260)`,
+  hairline `oklch(32% 0.012 260)`, text `oklch(92% 0.01 90)`, accent amber
+  `oklch(78% 0.13 75)`.
+- Notebook: paper `oklch(96% 0.015 85)`, ink `oklch(24% 0.02 260)`, rule
+  `oklch(84% 0.02 85)`, the same amber for links and focus.
+- Type: Cormorant Garamond for notebook headings, the system UI font for
+  notebook body text and instrument labels, JetBrains Mono for numbers, code
+  and data tables. All fonts self-hosted.
+
+## Interaction
+
+- Keyboard first: every dock control is reachable by Tab; canvas shortcuts
+  (Space, N, R, F, B, V, [ ]) work when the canvas has focus; `?` opens help.
+- Visible focus rings in amber. Minimum target 24 px (44 px on touch).
+- `prefers-reduced-motion` stops camera auto-rotation and UI transitions.
+- Popovers and sheets close with Escape and return focus to their opener.
 
 ## Boundaries
 
-- Chart scale, positions, orbit geometry, and body pigments are illustrative; label this in UI.
-- Core names, kinds, parents, initialization, milestone, and source derive from `docs/src/lib/bodies.ts` and its versioned Jovian input. Small-body metadata derives from the pinned catalog manifest/shards.
-- SI state, integrator, renderer transforms, and runtime controls remain source-backed.
-- Do not add Three.js, p5.js, GSAP, shaders, textures, or asset system for site atlas.
+- Runtime controls and physical readouts stay C-owned; the page never
+  computes physics.
+- Old URLs keep working through Astro redirect pages that preserve
+  `?body=` and fragments.
+- Static Astro output under `/solar-system-simulator/`, CSP without inline
+  code, base-path-safe links.
