@@ -65,7 +65,7 @@ test('instrument panels never cover each other, from short phones to desktops, d
 test('the instrument stays lean and every page keeps readable text', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(base);
-  await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   // DESIGN.md: the simulator shows controls and readouts, not prose.
   const words = await page.evaluate(() => document.body.innerText.split(/\s+/).filter(Boolean).length);
   expect(words).toBeLessThan(150);

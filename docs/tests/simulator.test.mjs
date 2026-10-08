@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes } from '../src/lib/simulator.ts';
+import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, clockNote } from '../src/lib/simulator.ts';
 import { errorMessage, downloadText } from '../src/lib/browser.ts';
 
 test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolling', () => {
@@ -57,7 +57,7 @@ test('C state drives playback, precise SI readouts, asset pairing, and permanent
     trailsFailed: false, hasParent: true, distanceM: 9233000, speedMps: 2138, massKg: 1.061834e16,
     radiusM: 11266.7, zoom: 0.5, massQuality: 0, radiusQuality: 0, achievedTimeScale: 864000, pendingSeconds: 43200, shortTimescale: false };
   runtime.reportState(state);
-  assert.equal(readouts.status.textContent, 'Simulation paused');
+  assert.equal(readouts.status.textContent, 'Paused');
   assert.equal(readouts.elapsed.textContent, '0.0002 d (15 s)');
   assert.equal(readouts.parent.textContent, 'Mars');
   assert.equal(readouts.distance.textContent, '9233.000 km');
@@ -170,7 +170,7 @@ test('recoverable Emscripten stderr is logged without disabling the runtime; fat
   runtime.reportState({ body: 'Sun', parent: 'None', view: 'Illustrative', cameraTarget: 'Sun', selected: 0, paused: false, speedPreset: 1,
     autoRotate: false, elapsedSeconds: 0, intervalSeconds: 300, trailsFailed: false, hasParent: false, distanceM: 0, speedMps: 0,
     massKg: 1.989e30, radiusM: 6.957e8, zoom: 1, massQuality: 0, radiusQuality: 0, achievedTimeScale: 0, pendingSeconds: 0, shortTimescale: false });
-  assert.equal(readouts.status.textContent, 'Running physics simulation');
+  assert.equal(readouts.status.textContent, 'Running');
   assert.equal(panels[0].disabled, false);
   runtime.onExit(0);
   assert.equal(panels[0].disabled, false);
@@ -245,4 +245,13 @@ test('texture loader keeps fallbacks for failed downloads, bad names and exhaust
     globalThis.fetch = realFetch;
     console.warn = realWarn;
   }
+});
+
+test('the sky clock reads the scene date and how far the run has come', () => {
+  assert.equal(sceneDate(0), '2026-06-09 00:00 TDB');
+  assert.equal(sceneDate(38.84 * 86400), '2026-07-17 20:09 TDB');
+  assert.equal(clockNote(38.84 * 86400, true), '+38.84 days since 2026-06-09');
+  assert.equal(clockNote(0, true), '+0.00 days since 2026-06-09');
+  // Lessons are not dated: their clock counts from the lesson start.
+  assert.equal(clockNote(140970, false), 'since the lesson started');
 });

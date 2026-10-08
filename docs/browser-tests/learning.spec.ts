@@ -76,7 +76,7 @@ test('Phobos challenge uses analytical measurements rather than visual plausibil
 
 test('3D controls export the same SI snapshot across render scales', async ({ page }) => {
   await page.goto(`${base}?lesson=circular`);
-  await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   await expect(page.locator('[data-active-scene]')).toContainText('Circular orbit');
   await page.getByRole('button', { name: 'Pause', exact: true }).click();
   await page.getByRole('button', { name: 'Restart', exact: true }).click();
