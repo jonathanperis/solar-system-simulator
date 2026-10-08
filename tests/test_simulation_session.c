@@ -71,10 +71,13 @@ static void test_inspector_uses_parent_ids_and_relative_si_motion(void)
     simulation_session_select_body(&session, 6);
     BodyInspection inspection = simulation_session_inspect(&session);
     assert(inspection.has_parent && strcmp(inspection.parent_name, "Mars") == 0);
-    /* Phobos starts at its Horizons 2026-06-09 state relative to Mars. */
+    /* Phobos starts at its Horizons 2026-06-09 state relative to Mars, which
+     * must lie on its own orbit: between periareion and apoareion. */
     Vec3d phobos_r, phobos_v;
     assert(scene_epoch_state(BODY_ID_PHOBOS, &phobos_r, &phobos_v));
     assert(fabs(inspection.distance_m - vec3d_length(phobos_r)) < 0.0001);
+    assert(inspection.distance_m > SOLAR_PHOBOS_PERIAREION_M * 0.99);
+    assert(inspection.distance_m < SOLAR_PHOBOS_SEMI_MAJOR_AXIS_M * (1.0 + SOLAR_PHOBOS_ECCENTRICITY) * 1.01);
     assert(inspection.mass_kg == session.system.bodies[6].mass_kg);
     assert(inspection.radius_m == session.system.bodies[6].radius_m);
     double speed = inspection.speed_mps;
@@ -237,8 +240,24 @@ static void test_non_finite_state_is_detected(void)
     simulation_session_destroy(&session);
 }
 
+/* Presets built from the dated main scene run on the 2026-06-09 calendar;
+ * the analytic lessons count seconds from zero. */
+static void test_dated_sessions_are_the_epoch_presets(void)
+{
+    SimulationSession session = simulation_session_create();
+    assert(simulation_session_is_dated(&session));
+    assert(simulation_session_start_lesson(&session, LESSON_BARYCENTRIC_CORE, 1, PHYSICS_VERLET, 15));
+    assert(simulation_session_is_dated(&session));
+    assert(simulation_session_start_lesson(&session, LESSON_CIRCULAR, 1, PHYSICS_VERLET, 15));
+    assert(!simulation_session_is_dated(&session));
+    assert(simulation_session_start_lesson(&session, LESSON_PLUTO_SYSTEM, 1, PHYSICS_VERLET, 15));
+    assert(simulation_session_is_dated(&session));
+    simulation_session_destroy(&session);
+}
+
 int main(void)
 {
+    test_dated_sessions_are_the_epoch_presets();
     test_non_finite_state_is_detected();
     test_stalled_frame_is_discarded_but_slow_frames_keep_pending_time();
     test_lessons_reset_configuration_and_exclude_background_time();

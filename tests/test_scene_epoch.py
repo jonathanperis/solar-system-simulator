@@ -42,6 +42,19 @@ class SceneEpochSnapshot(unittest.TestCase):
         distance = sum(x * x for x in io['position_km']) ** 0.5
         self.assertTrue(400_000 < distance < 440_000)
 
+    def test_a_moon_measured_from_the_wrong_centre_is_rejected(self):
+        # A bare "499" centre once returned Phobos ~3e8 km away (PR #40 review).
+        broken = copy.deepcopy(self.snapshot)
+        phobos = next(b for b in broken['bodies'] if b['code'] == 6)
+        phobos['position_km'] = [227883539.9, 230269982.1, -3101923.3]
+        with self.assertRaisesRegex(ValueError, 'Phobos: .* check the Horizons centre'):
+            scene_epoch.validate(broken)
+
+    def test_inner_moons_are_measured_from_their_planet_centre(self):
+        for code, center in ((4, '@399'), (6, '@499'), (7, '@499')):
+            body = next(b for b in self.snapshot['bodies'] if b['code'] == code)
+            self.assertEqual(body['center'], center)
+
 
 if __name__ == '__main__':
     unittest.main()

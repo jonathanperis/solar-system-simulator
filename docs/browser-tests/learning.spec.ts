@@ -166,7 +166,9 @@ test('3D controls export the same SI snapshot across render scales', async ({ pa
   await page.getByRole('button', { name: 'Close learning activities' }).click();
   await page.getByRole('button', { name: 'Advanced', exact: true }).click();
   await page.getByRole('button', { name: 'Step +15 s', exact: true }).click();
-  await expect(page.locator('[data-runtime-elapsed]')).toContainText('15 s');
+  // The barycentric core starts from the dated sky, so its clock is a date.
+  await expect(page.locator('[data-runtime-elapsed]')).toContainText('2026-06-09 00:00 TDB');
+  await expect(page.locator('[data-forces-time]')).toHaveText('15 simulated seconds');
 });
 
 test('real missing/invalid local assets fail visibly and disable runtime controls', async ({ page }) => {

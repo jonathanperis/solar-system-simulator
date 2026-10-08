@@ -332,7 +332,7 @@ static void report_web_state(const SolarApp *state)
         body.distance_m, body.speed_mps, body.mass_kg, body.radius_m, state->orbit_camera.distance,
         body.mass_quality, body.radius_quality, session->achieved_time_scale, session->clock.pending_seconds,
         session->lesson == LESSON_COLLISION, body.orbital_period_s,
-        session->catalog_experiment || lesson_is_scene(session->lesson));
+        simulation_session_is_dated(session));
     PhysicsDiagnostics diagnostics = physics_diagnostics(&session->system);
     const Body *selected = &session->system.bodies[session->selected_body_index];
     solar_web_report_lab(session->lesson, session->clock.integrator, simulation_clock_step_seconds(&session->clock),
@@ -582,7 +582,7 @@ static void solar_app_update_draw(void *user_data)
     rlSetClipPlanes(fmax(1e-9, state->orbit_camera.distance * 0.001), far_plane);
     /* Spin models count TDB days from J2000. Scenes and catalog experiments
      * start at the scene epoch (2026-06-09); synthetic lessons at J2000. */
-    bool dated = state->session.catalog_experiment || lesson_is_scene(state->session.lesson);
+    bool dated = simulation_session_is_dated(&state->session);
     double epoch_days = dated ? SOLAR_SCENE_EPOCH_JD - RENDER_J2000_JD : 0.0;
     RenderView view = {state->camera, epoch_days + state->session.system.elapsed_seconds / SOLAR_DAY_SECONDS,
         (float)far_plane, state->grid};
@@ -600,7 +600,7 @@ static void solar_app_update_draw(void *user_data)
     DrawText("Solar System Simulator", 20, 20, 20, RAYWHITE);
     BodyInspection body = simulation_session_inspect(&state->session);
     char date[32] = "";
-    if (state->session.catalog_experiment || lesson_is_scene(state->session.lesson))
+    if (simulation_session_is_dated(&state->session))
         scene_epoch_format_date(state->session.system.elapsed_seconds, date, sizeof(date));
     DrawText(TextFormat("%s | %s%s%.0f simulated seconds | %.0f sim s/real s", state->session.paused ? "Paused" : "Running",
         date, date[0] ? " | " : "", state->session.system.elapsed_seconds, simulation_session_time_scale(&state->session)),
