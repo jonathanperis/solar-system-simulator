@@ -256,7 +256,7 @@ Vesta orbital values used for initialization:
 - eccentricity: `0.09020374382834395`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `321390367905.8045 m`
 - perihelion speed: `21217.451749827014 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
-- Vesta remains in the default ecliptic (simulation x/z) plane. Its measured inclination is deliberately deferred until a dedicated orbital-geometry milestone.
+- These values set the planar perihelion state that guided lessons and tests use. The astronomy scenes start Vesta from its Horizons state on 2026-06-09 instead, so there it carries its real 7.1° inclination.
 
 Jupiter orbital values used for initialization:
 
@@ -265,7 +265,7 @@ Jupiter orbital values used for initialization:
 - eccentricity: `0.04838624`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `740679831134.4213 m`
 - perihelion speed: `13705.69975716819 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
-- Jupiter remains in the default ecliptic (simulation x/z) plane. JPL's listed inclination is deliberately deferred until a dedicated orbital-geometry milestone.
+- These values set the planar perihelion state that guided lessons and tests use. The astronomy scenes start the Jovian-system barycenter from its Horizons state on 2026-06-09 instead, with Jupiter's real 1.3° inclination.
 
 Saturn orbital values used for initialization:
 
@@ -274,7 +274,7 @@ Saturn orbital values used for initialization:
 - eccentricity: `0.05386179`
 - perihelion distance: `semi-major axis * (1 - eccentricity)` = `1349823607379.3088 m`
 - perihelion speed: `10179.094275183943 m/s`, computed from `sqrt(G * SunMass * (2 / perihelion - 1 / semiMajorAxis))`
-- Saturn's orbit stays in the default ecliptic (simulation x/z) plane. Its visible ring system uses [NASA's roughly `282000 km` overall extent](https://science.nasa.gov/saturn/facts/) and lies in Saturn's equatorial plane from its IAU pole (about 27° from ecliptic north), only at the rendering boundary.
+- Saturn's planar perihelion state serves lessons and tests; the astronomy scenes start from its Horizons system-barycenter state with the real 2.5° inclination. Its visible ring system uses [NASA's roughly `282000 km` overall extent](https://science.nasa.gov/saturn/facts/) and lies in Saturn's equatorial plane from its IAU pole (about 27° from ecliptic north), only at the rendering boundary.
 
 ## Rendering model
 
@@ -330,7 +330,7 @@ The app uses a small stable orbit camera instead of raylib's automatic orbital h
 
 The browser offers labelled buttons, speed/body selectors, and a camera-rotation checkbox. Shortcuts require canvas focus; Tab and form keys remain browser-native. Direct selection restores the default camera distance; framing adjusts zoom bounds/sensitivity and follows the family root. Resizing or changing scale refits an already framed system.
 
-The live physics inspector displays parent-relative distance (km), parent-relative speed (km/s), mass (kg), and physical radius (km), calculated from C-owned SI state. The Sun's parent-relative measurements are N/A. Physical values are independent of illustrative radii and moon spacing. Elapsed time includes seconds so a single 15-second step remains visible.
+The live physics inspector displays parent-relative distance (km), parent-relative speed (km/s), the two-body orbital period about the parent, mass (kg), and physical radius (km) with their data quality, calculated from C-owned SI state. The Sun's parent-relative measurements are N/A. Physical values are independent of illustrative radii and moon spacing. The sky clock above the view shows the scene's calendar date (TDB) to the minute, or a lesson's elapsed time, with the days since the start.
 
 ## Build prerequisites
 
