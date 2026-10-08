@@ -500,6 +500,11 @@ static void test_moon_families_place_their_barycenter_on_the_intended_orbit(void
     assert(scene_epoch_state(BODY_ID_MOON, &r, &v));
     assert(vec3d_length(vec3d_sub(vec3d_sub(core.bodies[4].position_m, core.bodies[3].position_m), r)) < 1e-4);
     assert(vec3d_length(vec3d_sub(vec3d_sub(core.bodies[4].velocity_mps, core.bodies[3].velocity_mps), v)) < 1e-9);
+    /* Independent of the snapshot: geocentric, between lunar perigee and
+     * apogee (356,400-406,700 km) at about 1 km/s. A topocentric or
+     * heliocentric centre fails this. */
+    assert(vec3d_length(r) > 3.56e8 && vec3d_length(r) < 4.07e8);
+    assert(vec3d_length(v) > 950.0 && vec3d_length(v) < 1090.0);
     assert(scene_epoch_state(BODY_ID_IO, &r, &v));
     assert(vec3d_length(vec3d_sub(vec3d_sub(core.bodies[10].position_m, core.bodies[9].position_m), r)) < 1e-4);
     /* Vesta and the inner planets are heliocentric epoch states as given. */

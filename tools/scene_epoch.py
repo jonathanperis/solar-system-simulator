@@ -19,6 +19,7 @@ mean-element state; the snapshot lists it explicitly.
 import argparse
 from datetime import datetime, timezone
 import json
+import math
 from pathlib import Path
 import re
 import time
@@ -37,8 +38,10 @@ CATALOGS = [("jovian", 599), ("saturnian", 699), ("uranian", 799), ("neptunian",
 # command, centre, expected name). Vesta, the Pluto system barycenter and the
 # Didymos system barycenter are heliocentric; the C scene assigns those states
 # to the family barycenters (V6).
-# Earth's Moon, Phobos and Deimos keep their legacy scene IDs (4, 6, 7).
-EXTRA = [(4, "301", "399", "Moon"), (6, "401", "499", "Phobos"), (7, "402", "499", "Deimos"),
+# Earth's Moon, Phobos and Deimos keep their legacy scene IDs (4, 6, 7). Their
+# centre must be "@399"/"@499": a bare "499" is not read as Mars's centre and
+# returns a state ~3e8 km away (caught in review of PR #40).
+EXTRA = [(4, "301", "@399", "Moon"), (6, "401", "@499", "Phobos"), (7, "402", "@499", "Deimos"),
          (8, "4;", "500@10", "Vesta"), (999, "9", "500@10", "Pluto Barycenter"),
          (920065803, "65803;", "500@10", "Didymos")]
 
@@ -90,12 +93,32 @@ def identity_matches(target, name, code):
     return inside == str(code) and tokens(label) in (tokens(name)[1:], [str(code)])
 
 
-def refresh():
+# Mean orbit (a km, e) of the non-catalog moons, for the distance check below.
+EXTRA_ORBITS = {4: (384400.0, 0.0549), 6: (9377.0, 0.0151), 7: (23460.0, 0.00033)}
+
+
+def catalog_orbits():
+    orbits = dict(EXTRA_ORBITS)
+    for catalog, _ in CATALOGS:
+        for moon in json.loads((ROOT / f"data/{catalog}_moons.json").read_text())["moons"]:
+            orbits[moon["code"]] = (moon["a_km"], moon["eccentricity"])
+    return orbits
+
+
+def refresh(only=None):
+    """Fetch every body, or with `only` re-fetch just those codes and keep
+    the rest of the pinned snapshot."""
     bodies, undated = [], []
+    if only:
+        previous = json.loads(DATA.read_text())
+        bodies = [b for b in previous["bodies"] if b["code"] not in only]
+        undated = [u for u in previous["undated"] if u["code"] not in only]
     work = [(code, cmd, center, name) for code, cmd, center, name in EXTRA]
     for catalog, center in CATALOGS:
         for moon in json.loads((ROOT / f"data/{catalog}_moons.json").read_text())["moons"]:
             work.append((moon["code"], str(moon["code"]), f"@{center}", moon["name"]))
+    if only:
+        work = [item for item in work if item[0] in only]
     for code, command, center, name in work:
         target, state = fetch(command, center)
         if state is None or not identity_matches(target, name, code):
@@ -105,6 +128,10 @@ def refresh():
         bodies.append({"code": code, "name": name, "horizons_target": target, "center": center,
                        "position_km": state[:3], "velocity_km_s": state[3:]})
         time.sleep(0.2)
+    # Keep the full-refresh order (EXTRA, then each catalog) after a partial one.
+    full = [code for code, *_ in EXTRA] + [code for code in catalog_orbits() if code not in EXTRA_ORBITS]
+    order = {code: index for index, code in enumerate(full)}
+    bodies.sort(key=lambda b: order[b["code"]])
     snapshot = {"epoch": EPOCH, "frame": "J2000 ecliptic", "source": HORIZONS,
                 "checked": datetime.now(timezone.utc).isoformat(), "bodies": bodies, "undated": undated}
     validate(snapshot)
@@ -129,6 +156,18 @@ def validate(snapshot):
     for b in snapshot["bodies"]:
         require(identity_matches(b["horizons_target"], b["name"], b["code"]), f"{b['name']}: Horizons identity mismatch")
         require(len(b["position_km"]) == 3 and len(b["velocity_km_s"]) == 3, f"{b['name']}: malformed state")
+    # A moon's state is relative to its primary, so its distance must lie near
+    # its own orbit. The bounds are loose (osculating states of irregular moons
+    # stray from mean elements: 0.76 to 1.18 times periapsis/apoapsis at this
+    # epoch) but reject a wrong centre, which is off by orders of magnitude.
+    orbits = catalog_orbits()
+    for b in snapshot["bodies"]:
+        if b["code"] not in orbits:
+            continue
+        a_km, e = orbits[b["code"]]
+        r_km = math.hypot(*b["position_km"])
+        require(0.5 * a_km * (1 - e) <= r_km <= 1.5 * a_km * (1 + e),
+                f"{b['name']}: {r_km:.0f} km from its primary is far from its orbit; check the Horizons centre")
 
 
 def generate(snapshot):
@@ -147,10 +186,11 @@ def generate(snapshot):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--refresh", action="store_true")
+    parser.add_argument("--only", type=int, nargs="+", metavar="CODE", help="with --refresh, re-fetch only these scene codes")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     if args.refresh:
-        refresh()
+        refresh(set(args.only) if args.only else None)
     snapshot = json.loads(DATA.read_text())
     validate(snapshot)
     output = generate(snapshot)

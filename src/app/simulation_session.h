@@ -74,6 +74,8 @@ double simulation_session_time_scale(const SimulationSession *session);
  * has broken down and no later state is physically meaningful. */
 bool simulation_session_state_is_finite(const SimulationSession *session);
 /* Physical inspection of the selected body. */
+/* Catalog experiments and epoch presets run on the 2026-06-09 calendar. */
+bool simulation_session_is_dated(const SimulationSession *session);
 BodyInspection simulation_session_inspect(const SimulationSession *session);
 /* The same parent-relative SI measurements for any body index, independent of
  * the inspector selection (comparisons measure their lesson subject). */
