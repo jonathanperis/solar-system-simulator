@@ -781,6 +781,13 @@ static void draw_opaque_bodies(const FrameContext *ctx)
             DrawBillboard(ctx->camera, resources->white, position, dot, renderer_body_color(body));
             continue;
         }
+        if (body->radius_quality == PHYSICAL_UNKNOWN && resources->ready && !render_marker_draws_wire(body_pixels(ctx, i, radius))) {
+            /* Too small to read as a wireframe: a dot of the same size. */
+            float dot = (float)(render_marker_dot_pixels(body_pixels(ctx, i, radius))
+                * render_world_units_per_pixel(ctx->distance[i], ctx->camera.fovy, ctx->viewport_height));
+            DrawBillboard(ctx->camera, resources->white, position, dot, renderer_body_color(body));
+            continue;
+        }
         if (body->radius_quality == PHYSICAL_UNKNOWN || !resources->ready) {
             /* Unknown radius: an explicitly nonphysical wire marker (V25). */
             if (body->radius_quality == PHYSICAL_UNKNOWN) draw_wire_marker(position, radius, renderer_body_color(body));
