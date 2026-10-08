@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from check_docs_routes import check_site_images, check_astro_generated, check_internal_references, check_not_found_page, check_page_security, check_public_sources, check_sitemap
+from check_docs_routes import check_preview_tags, check_site_images, check_astro_generated, check_internal_references, check_not_found_page, check_page_security, check_public_sources, check_sitemap
 from check_wasm_artifacts import main as check_wasm
 
 
@@ -90,7 +90,8 @@ class ArtifactChecks(unittest.TestCase):
             (dist / "favicon.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"><circle r="4"/></svg>')
             check_site_images(dist)
             for svg in ('<svg><script>alert(1)</script></svg>', '<svg><rect onload="x()"/></svg>',
-                        '<svg><image href="https://example.test/a.png"/></svg>', '<svg><rect style="fill:url(https://x)"/></svg>'):
+                        '<svg><image href="https://example.test/a.png"/></svg>', '<svg><rect style="fill:url(https://x)"/></svg>',
+                        '<svg><style>@import "https://example.test/icon.css";</style></svg>'):
                 with self.subTest(svg=svg), self.assertRaises(SystemExit):
                     (dist / "favicon.svg").write_text(svg)
                     check_site_images(dist)
@@ -98,6 +99,14 @@ class ArtifactChecks(unittest.TestCase):
             (dist / "social-preview.png").write_bytes(png(1200, 600))
             with self.assertRaises(SystemExit):
                 check_site_images(dist)
+
+    def test_every_page_carries_the_link_preview_tags(self):
+        html = ('<meta property="og:image" content="https://jonathanperis.github.io/solar-system-simulator/social-preview.png">'
+                '<meta name="twitter:card" content="summary_large_image"><meta property="og:image:width" content="1200">'
+                '<link rel="apple-touch-icon" href="/solar-system-simulator/apple-touch-icon.png">')
+        check_preview_tags("404.html", html)
+        with self.assertRaises(SystemExit):
+            check_preview_tags("physics/index.html", html.replace('summary_large_image', 'summary'))
 
     def test_not_found_page_is_an_astro_noindex_page_linking_home(self):
         good = ('<html><head><meta name="generator" content="Astro v7.3.6"><meta name="robots" content="noindex">'

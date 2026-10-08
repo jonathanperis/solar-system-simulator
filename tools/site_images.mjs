@@ -7,6 +7,7 @@
 // Usage: build the site, serve it, then pass its base URL, e.g.
 //   python3 tools/serve_site.py docs/dist --port 4400 &
 //   node tools/site_images.mjs http://127.0.0.1:4400/solar-system-simulator/
+// then rebuild (npm run build --prefix docs) so docs/dist/ picks the images up.
 // Uses the pinned project Playwright with installed Chrome (WebGL needs it).
 import { createRequire } from 'node:module';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -73,9 +74,19 @@ const click = selector => sim.evaluate(selector => document.querySelector(select
 if (await sim.locator('[data-runtime-rotate]').isChecked()) await click('[data-runtime-rotate]');
 await click('[data-command="trails"]');
 await click('[data-command="reset"]');
-await sim.waitForFunction(() => parseFloat(document.querySelector('[data-clock-note]')?.textContent?.replace('+', '') ?? '0') >= 4,
-  null, { timeout: 90000, polling: 50 });
+// Capture exactly four simulated days (345,600 s = 23,040 ticks of 15 s): run
+// to a quarter day short, pause, then single-step the remaining whole ticks.
+// The clock's data-seconds carries the exact simulated time.
+const target = 4 * 86400;
+const seconds = () => sim.evaluate(() => Number(document.querySelector('[data-runtime-elapsed]').dataset.seconds));
+await sim.waitForFunction(t => Number(document.querySelector('[data-runtime-elapsed]')?.dataset.seconds) >= t,
+  target - 21600, { timeout: 90000, polling: 50 });
 await click('[data-command="pause"]');
+await sim.waitForFunction(() => document.querySelector('[data-runtime-status]')?.textContent === 'Paused');
+const remaining = (target - await seconds()) / 15;
+if (!Number.isInteger(remaining) || remaining < 0) throw new Error(`cannot step to ${target} s from ${await seconds()} s`);
+await sim.evaluate(n => { for (let i = 0; i < n; ++i) document.querySelector('[data-command="step"]').click(); }, remaining);
+await sim.waitForFunction(t => Number(document.querySelector('[data-runtime-elapsed]')?.dataset.seconds) === t, target);
 await click('[data-command="frame"]');
 await sim.waitForTimeout(1500);
 const frame = (await sim.locator('canvas').screenshot()).toString('base64');
