@@ -11,7 +11,7 @@ A physics-first 3D solar system simulator written in C11 with raylib. This repos
 - **Architecture:** deterministic SI-unit simulation isolated from rendering.
 - **Current scenes:** a 32-body main scene of large bodies (Sun, eight planets, Vesta, Pluto, the Earth and Mars systems and the 18 major moons including Charon) and six system scenes holding every catalogued moon of Jupiter (115), Saturn (291), Uranus (29), Neptune (16) and Pluto (5), plus the Didymos–Dimorphos binary asteroid; 472 bodies in all. The separate small-body atlas contains 1,564,244 pinned records in compressed shards, not in the active scene or HTML body list.
 - **Primary goal:** teach and verify orbital mechanics foundations before visual polish.
-- **Current public-site direction:** simulator-first (DESIGN.md, SPEC A99–A105): the live simulation is the homepage instrument; Learn, Catalog and About are lean notebook pages.
+- **Current public-site direction:** a simulator-first redesign is planned (DESIGN.md, SPEC A99–A105, tasks T84–T85): the live simulation becomes the homepage instrument and Learn, Catalog and About lean notebook pages. Until those tasks land, the archival-atlas site remains live.
 
 ---
 
@@ -134,7 +134,7 @@ Do **not** comment obvious C syntax such as `++i`, simple assignments, or includ
 
 ## Current GitHub Pages direction
 
-The Pages site is live and follows DESIGN.md (decided 2026-10-07): the simulator is the homepage, and Learn, Catalog and About are the only other pages. Keep copy lean; avoid generic AI-site patterns listed in DESIGN.md.
+The Pages site is live. DESIGN.md (decided 2026-10-07) is the target for the planned redesign (T84–T85): the simulator becomes the homepage, and Learn, Catalog and About the only other pages. New work follows it; keep copy lean and avoid the generic AI-site patterns it lists.
 
 - `docs/` Astro static site: dark instrument at `/`, warm-paper notebook pages for `/learn/`, `/catalog/` and `/about/`.
 - WebAssembly build artifacts copied into the Pages output.

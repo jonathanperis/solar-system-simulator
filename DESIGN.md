@@ -18,7 +18,7 @@ The overhaul exists because the old site said too much. Avoid the patterns
 that make a page read as generated:
 
 - no hero banner, tagline or "features" section;
-- no grids of cards, icons in circles, emoji, gradients, glass or glow;
+- no grids of cards, icons in circles, emoji, gradients, glass or decorative interface glow (the renderer's Sun glow and atmosphere rims are physics illustration, SPEC A64);
 - no marketing adjectives ("powerful", "seamless", "immersive");
 - no paragraph of copy where a label, number or link does the job;
 - no duplicated explanations: each fact lives on one page, others link to it.
