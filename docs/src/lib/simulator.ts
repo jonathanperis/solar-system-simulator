@@ -587,7 +587,7 @@ export function mountSimulator(root: HTMLElement): void {
     const accepted = runtime.ccall?.('solar_web_lesson', 'number', ['number', 'number', 'number', 'number'],
       [Number(controls.lesson.value), Number(controls.factor.value), Number(controls.method.value), Number(controls.dt.value)]);
     lessonStatus.textContent = accepted ? 'Lesson loaded from its initial state. If paused, press Resume; Restart repeats this configuration.'
-      : 'Configuration rejected. Core uses 15-second Verlet; core/barycentric-core require speed factor 1; collision steps are 0.01–0.25 s; catalog scenes start through the atlas.';
+      : 'Configuration rejected. Core uses 15-second Verlet; core/barycentric-core require speed factor 1; collision steps are 0.01–0.25 s; planet scenes load from the Scene picker.';
     if (!accepted) {
       // Explain C's lesson-specific rejection after validation; ordinary bounds
       // are already handled by the numeric inputs. C still owns acceptance.
@@ -599,7 +599,7 @@ export function mountSimulator(root: HTMLElement): void {
         input.setCustomValidity(message);
         input.reportValidity();
       };
-      if (lesson < 0) rejectAt(controls.lesson, 'Choose a lesson preset. Prepared catalog experiments start through Advanced tools.');
+      if (lesson < 0) rejectAt(controls.lesson, 'Choose a lesson preset. Prepared catalog experiments start from the Data panel.');
       else if ([0, barycentricLesson].includes(lesson) && Number(controls.factor.value) !== 1)
         rejectAt(controls.factor, 'This preset keeps its starting speed unchanged. Use a multiplier of 1.');
       else if (lesson === 0 && Number(controls.method.value) !== 0)

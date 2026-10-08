@@ -116,17 +116,17 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
 .dock .date span { display: block; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
 .dock fieldset { display: contents; }
 .dock input[type="search"] { width: 11rem; }
-.inspector { position: absolute; right: 0.75rem; top: 2.5rem; width: min(22rem, calc(100% - 1.5rem)); max-height: calc(100% - 7rem); overflow: auto; padding: 0.75rem; }
+.inspector { position: absolute; right: 0.75rem; top: 2.5rem; width: min(22rem, calc(100% - 1.5rem)); max-height: calc(100% - 11rem); overflow: auto; padding: 0.75rem; }
 .inspector h2 { margin: 0 0 0.2rem; font: 600 1rem var(--mono); color: var(--amber); }
 .inspector dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.2rem 0.75rem; margin: 0.5rem 0; }
 .inspector dt { color: var(--text-2); }
 .inspector dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .inspector .row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-.lesson-strip { position: absolute; left: 0.75rem; top: 2.5rem; max-width: calc(100% - 24.5rem); display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem; padding: 0.5rem; max-width: calc(100% - 1.5rem); }
+.lesson-strip { position: absolute; left: 0.75rem; top: 2.5rem; max-width: calc(100% - 24.5rem); display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem; padding: 0.5rem; }
 .lesson-strip fieldset { display: contents; }
 .lesson-strip input[type="number"] { width: 6.5rem; }
 .lesson-strip p { margin: 0; align-self: center; color: var(--text); }
-.lesson-strip [data-lesson-status] { flex-basis: 100%; color: var(--text-2); }
+.lesson-strip [data-lesson-status] { flex-basis: 100%; min-width: 0; color: var(--text-2); }
 
 /* Sheets: native dialogs opened from the dock (view, keys, data). */
 .sheet { width: min(34rem, calc(100% - 1.5rem)); max-height: min(80dvh, 44rem); padding: 0; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: 0.8125rem/1.5 var(--mono); }
@@ -152,16 +152,25 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
   .site-header { padding: 0.5rem 0.75rem; }
   .site-header nav { gap: 0.7rem; }
   html.notebook main { padding: 1.25rem 1rem 2rem; }
-  /* Phone: the panels stop floating over the view and stack around it, so
-   * none can cover another; the canvas takes whatever height is left (the C
-   * runtime follows its CSS size every frame). */
-  .instrument { display: flex; flex-direction: column; }
-  .canvas-wrap { position: relative; inset: auto; flex: 1; min-height: 12rem; order: 3; }
+  .lessons li { grid-template-columns: 1fr; }
+  .lessons .button { grid-column: 1; grid-row: auto; justify-self: start; }
+  .sheet { width: 100%; max-width: none; margin: auto 0 0; max-height: 75dvh; }
+}
+
+@media (max-width: 760px), (max-height: 520px) {
+  /* Phones and short landscape screens: the panels stop floating over the
+   * view and stack around it, so none can cover another. The canvas takes the
+   * height left over but never less than 12rem; if the panels still do not
+   * fit, the instrument scrolls rather than clipping the dock. The C runtime
+   * follows the canvas's CSS size every frame. */
+  .instrument { display: flex; flex-direction: column; overflow-y: auto; }
+  .instrument > * { flex-shrink: 0; }
+  .canvas-wrap { position: relative; inset: auto; flex: 1 1 0; min-height: 12rem; order: 3; }
   .hud { position: static; order: 1; padding: 0.3rem 0.5rem; gap: 0 0.75rem; }
   .hud [data-runtime-controls] { display: none; }
   .lesson-strip { position: static; order: 2; max-width: none; border-width: 1px 0; padding: 0.4rem 0.5rem; gap: 0.35rem; }
   .lesson-strip input[type="number"] { width: 5rem; }
-  .inspector { position: static; order: 4; width: auto; max-height: none; border-width: 1px 0 0; padding: 0.4rem 0.5rem; font-size: 0.75rem; }
+  .inspector { position: static; order: 4; width: auto; max-height: none; overflow: visible; border-width: 1px 0 0; padding: 0.4rem 0.5rem; font-size: 0.75rem; }
   .inspector dl { grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr); gap: 0.1rem 0.5rem; margin: 0.2rem 0 0.4rem; }
   .dock { position: static; order: 5; width: auto; max-width: none; margin: 0; border-width: 1px 0 0; padding: 0.4rem 0.5rem; gap: 0.35rem; align-items: center; }
   .dock label { flex-direction: row; align-items: center; gap: 0.35rem; }
@@ -169,9 +178,6 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
   .dock .date span { display: none; }
   .dock [data-open-panel="keys-panel"] { display: none; }
   .instrument button, .instrument select, .instrument input { min-height: 2.25rem; padding: 0.2rem 0.45rem; }
-  .lessons li { grid-template-columns: 1fr; }
-  .lessons .button { grid-column: 1; grid-row: auto; justify-self: start; }
-  .sheet { width: 100%; max-width: none; margin: auto 0 0; max-height: 75dvh; }
 }
 
 @media (max-width: 400px) {
