@@ -5,7 +5,8 @@ type Readout = Pick<HTMLElement, 'textContent'>;
 interface RuntimeReadouts {
   status: Readout;
   controls: Readout;
-  elapsed: Readout;
+  /** Shows the date; `data-seconds` carries the exact simulated seconds (whole 15 s ticks in scenes) for tools and tests. */
+  elapsed: Readout & { dataset?: DOMStringMap };
   clockNote?: Readout;
   interval: Readout;
   parent: Readout;
@@ -413,6 +414,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       setText(readouts.controls, `Selected body: ${state.body}; view: ${state.view}.`);
       setText(readouts.elapsed, state.dated ? sceneDate(state.elapsedSeconds)
         : `${(state.elapsedSeconds / 86400).toFixed(4)} d (${Number(state.elapsedSeconds.toPrecision(12))} s)`);
+      if (readouts.elapsed.dataset) readouts.elapsed.dataset.seconds = String(state.elapsedSeconds);
       if (readouts.clockNote) setText(readouts.clockNote, clockNote(state.elapsedSeconds, Boolean(state.dated)));
       if (readouts.name) setText(readouts.name, state.body);
       if (readouts.period) setText(readouts.period, !state.hasParent ? 'N/A — no parent'
