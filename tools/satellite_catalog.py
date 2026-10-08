@@ -302,12 +302,15 @@ def elements_from_state(position_km, velocity_km_s, mu_km3_s2):
     e_vector = [((speed2 - mu_km3_s2 / radius) * r[k] - rv * v[k]) / mu_km3_s2 for k in range(3)]
     e = norm(e_vector)
     a = 1.0 / (2.0 / radius - speed2 / mu_km3_s2)
-    inclination = math.degrees(math.acos(h[2] / norm(h)))
+    # Rounding can push a unit-vector cosine a few ulps past +-1; clamp
+    # before acos so a valid near-equatorial state cannot raise.
+    clamp = lambda x: max(-1.0, min(1.0, x))
+    inclination = math.degrees(math.acos(clamp(h[2] / norm(h))))
     node = math.degrees(math.atan2(node_vector[1], node_vector[0])) % 360.0
-    periapsis = math.degrees(math.acos(dot(node_vector, e_vector) / (norm(node_vector) * e)))
+    periapsis = math.degrees(math.acos(clamp(dot(node_vector, e_vector) / (norm(node_vector) * e))))
     if e_vector[2] < 0:
         periapsis = 360.0 - periapsis
-    true_anomaly = math.acos(max(-1.0, min(1.0, dot(e_vector, r) / (e * radius))))
+    true_anomaly = math.acos(clamp(dot(e_vector, r) / (e * radius)))
     if rv < 0:
         true_anomaly = 2 * math.pi - true_anomaly
     eccentric = 2 * math.atan2(math.sqrt(1 - e) * math.sin(true_anomaly / 2), math.sqrt(1 + e) * math.cos(true_anomaly / 2))
