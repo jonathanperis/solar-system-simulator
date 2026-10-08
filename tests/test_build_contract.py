@@ -27,7 +27,8 @@ class BuildContract(unittest.TestCase):
     def test_web_builds_use_required_flags_without_native_debug_info(self):
         # Shipped WebAssembly must not inherit the native `-O2 -g` default:
         # DWARF sections quadruple the download and embed absolute build paths.
-        # Every emcc compile still carries the C11/warning/no-FMA contract.
+        # Every emcc compile still carries the C11/warning/no-FMA contract and
+        # -O3 (SPEC A97: worth 4 fps in the throttled Saturn scene).
         env = {**os.environ, "CFLAGS": "-O0 -g"}
         targets = ["build/web/solar-system-simulator.js", "build/web/learning-lab.mjs", "build/web/catalog-orbits.wasm"]
         # A stand-in raylib checkout whose Makefile does nothing keeps the dry
@@ -41,7 +42,7 @@ class BuildContract(unittest.TestCase):
         for line in emcc:
             with self.subTest(line=line[:80]):
                 flags = line.split()
-                for flag in ("-std=c11", "-Wall", "-Wextra", "-Wpedantic", "-ffp-contract=off", "-O2", "-Isrc"):
+                for flag in ("-std=c11", "-Wall", "-Wextra", "-Wpedantic", "-ffp-contract=off", "-O3", "-Isrc"):
                     self.assertIn(flag, flags)
                 self.assertNotIn("-g", flags)
                 self.assertNotIn("-O0", flags)
