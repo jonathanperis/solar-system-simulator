@@ -7,7 +7,7 @@ const base = '/solar-system-simulator/';
 // scene picker and the catalog.
 test('a small moon link opens its planet-system scene and selects it', async ({ page }) => {
   await page.goto(`${base}?body=pan`);
-  await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   await expect(page.locator('[data-active-scene]')).toContainText('300 active bodies · Saturn system', { timeout: 30000 });
   await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Pan;');
   await expect(page.locator('[data-inspector-parent]')).toHaveText('Saturn');
@@ -15,7 +15,7 @@ test('a small moon link opens its planet-system scene and selects it', async ({ 
 
 test('Pluto and Didymos moons open their small-body system scenes', async ({ page }) => {
   await page.goto(`${base}?body=nix`);
-  await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   await expect(page.locator('[data-active-scene]')).toContainText('15 active bodies · Pluto system', { timeout: 30000 });
   await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Nix;');
   await expect(page.locator('[data-inspector-parent]')).toHaveText('Pluto');
@@ -31,7 +31,7 @@ test('Pluto and Didymos moons open their small-body system scenes', async ({ pag
 
 test('the scene picker switches between the main scene and planet systems', async ({ page }) => {
   await page.goto(base);
-  await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   await expect(page.locator('[data-active-scene]')).toContainText('32 active bodies');
   const scene = page.getByRole('combobox', { name: 'Scene', exact: true });
   await expect(scene).toHaveValue('0');

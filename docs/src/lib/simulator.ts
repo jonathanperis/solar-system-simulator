@@ -6,6 +6,7 @@ interface RuntimeReadouts {
   status: Readout;
   controls: Readout;
   elapsed: Readout;
+  clockNote?: Readout;
   interval: Readout;
   parent: Readout;
   distance: Readout;
@@ -75,6 +76,12 @@ export const sceneEpochJd = 2461200.5;
 export function sceneDate(elapsedSeconds: number): string {
   const ms = (sceneEpochJd - 2440587.5) * 86400000 + elapsedSeconds * 1000;
   return `${new Date(ms).toISOString().slice(0, 16).replace('T', ' ')} TDB`;
+}
+/** The note beside the sky clock: how far the run has come from its starting
+ * sky, or that a lesson clock counts from the lesson start. */
+export function clockNote(elapsedSeconds: number, dated: boolean): string {
+  const days = elapsedSeconds / 86400;
+  return dated ? `${days >= 0 ? '+' : ''}${days.toFixed(2)} days since 2026-06-09` : 'since the lesson started';
 }
 export function formatPeriod(seconds: number): string {
   const days = seconds / 86400;
@@ -402,10 +409,11 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
         reportedSpeed = state.speedPreset;
       }
       setText(readouts.status, state.trailsFailed ? 'Trail recording paused: memory unavailable.'
-        : state.paused ? 'Simulation paused' : 'Running physics simulation');
+        : state.paused ? 'Paused' : 'Running');
       setText(readouts.controls, `Selected body: ${state.body}; view: ${state.view}.`);
       setText(readouts.elapsed, state.dated ? sceneDate(state.elapsedSeconds)
         : `${(state.elapsedSeconds / 86400).toFixed(4)} d (${Number(state.elapsedSeconds.toPrecision(12))} s)`);
+      if (readouts.clockNote) setText(readouts.clockNote, clockNote(state.elapsedSeconds, Boolean(state.dated)));
       if (readouts.name) setText(readouts.name, state.body);
       if (readouts.period) setText(readouts.period, !state.hasParent ? 'N/A — no parent'
         : Number.isFinite(state.periodS) ? formatPeriod(state.periodS!) : 'Unbound (no closed orbit)');
@@ -481,6 +489,7 @@ export function mountSimulator(root: HTMLElement): void {
     status: root.querySelector<HTMLElement>('[data-runtime-status]')!,
     controls: root.querySelector<HTMLElement>('[data-runtime-controls]')!,
     elapsed: root.querySelector<HTMLElement>('[data-runtime-elapsed]')!,
+    clockNote: root.querySelector<HTMLElement>('[data-clock-note]') ?? undefined,
     interval: root.querySelector<HTMLElement>('[data-runtime-interval]')!,
     parent: root.querySelector<HTMLElement>('[data-inspector-parent]')!,
     distance: root.querySelector<HTMLElement>('[data-inspector-distance]')!,

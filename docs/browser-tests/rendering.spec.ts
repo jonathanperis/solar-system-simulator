@@ -9,7 +9,7 @@ test('the cinematic renderer loads every texture without console errors', async 
   page.on('console', message => { if (message.type() === 'error' || /Content Security Policy|Refused to/i.test(message.text())) problems.push(message.text()); });
   page.on('pageerror', error => problems.push(error.message));
   await page.goto(`${base}?body=saturn`);
-  await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   const canvas = page.locator('canvas').first();
   await expect(canvas).toHaveAttribute('data-textures', /^(\d+)\/\1$/, { timeout: 45000 });
   const [loaded, total] = (await canvas.getAttribute('data-textures'))!.split('/').map(Number);
@@ -21,18 +21,18 @@ test('the cinematic renderer loads every texture without console errors', async 
 test('missing textures fall back to lit colours and the simulation keeps running', async ({ page }) => {
   await page.route(/\/textures\/[a-z_]+\.(jpg|png)$/, route => route.fulfill({ status: 404, body: '' }));
   await page.goto(base);
-  await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   const canvas = page.locator('canvas').first();
   await expect(canvas).toHaveAttribute('data-textures', '0/14', { timeout: 45000 });
   const elapsed = page.locator('[data-runtime-elapsed]');
   const before = await elapsed.textContent();
   await expect.poll(async () => elapsed.textContent(), { timeout: 10000 }).not.toBe(before);
-  await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
 });
 
 test('the reference grid can be hidden and shown again through C', async ({ page }) => {
   await page.goto(base);
-  await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   await page.getByRole('button', { name: 'View', exact: true }).click();
   const grid = page.getByRole('button', { name: /^Grid: (On|Off)$/ });
   await expect(grid).toHaveText('Grid: On');

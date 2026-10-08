@@ -101,9 +101,12 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
 .instrument { position: absolute; inset: 0; }
 .canvas-wrap { position: absolute; inset: 0; background: #000; }
 .canvas-wrap canvas { display: block; width: 100%; height: 100%; outline-offset: -2px; }
-.hud { position: absolute; left: 0.75rem; top: 0.6rem; right: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.2rem 1rem; pointer-events: none; font: 0.75rem/1.5 var(--mono); color: var(--text-2); text-shadow: 0 1px 2px #000; }
+.hud { position: absolute; left: 0.75rem; top: 0.6rem; right: 24rem; display: flex; flex-direction: column; gap: 0.15rem; pointer-events: none; font: 0.75rem/1.5 var(--mono); color: var(--text-2); text-shadow: 0 1px 3px #000; }
 .hud p { margin: 0; }
-.hud [data-runtime-status] { color: var(--text); }
+.clock { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.75rem; }
+.clock-time { font: 500 1.375rem/1.2 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+.clock-note { color: var(--amber); font-variant-numeric: tabular-nums; }
+.hud-line [data-runtime-status] { color: var(--text); }
 .instrument-panel, .dock, .lesson-strip { background: var(--panel); border: 1px solid var(--line); color: var(--text); font: 0.8125rem/1.4 var(--mono); }
 .instrument button, .instrument select, .instrument input, .sheet button, .sheet select, .sheet input { min-height: 2rem; padding: 0.2rem 0.6rem; border: 1px solid var(--line); background: var(--space); color: var(--text); font: 0.8125rem var(--mono); cursor: pointer; }
 .instrument button:hover, .sheet button:hover { border-color: var(--amber); }
@@ -112,8 +115,6 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
 .instrument label, .sheet label { font: 0.75rem var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
 .instrument fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .dock { position: absolute; left: 0; right: 0; bottom: 0.75rem; width: max-content; margin-inline: auto; display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem; padding: 0.5rem; max-width: calc(100% - 1.5rem); }
-.dock .date { min-width: 15ch; padding: 0 0.4rem; color: var(--text); font-variant-numeric: tabular-nums; }
-.dock .date span { display: block; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
 .dock fieldset { display: contents; }
 .dock input[type="search"] { width: 11rem; }
 .inspector { position: absolute; right: 0.75rem; top: 2.5rem; width: min(22rem, calc(100% - 1.5rem)); max-height: calc(100% - 11rem); overflow: auto; padding: 0.75rem; }
@@ -122,7 +123,7 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
 .inspector dt { color: var(--text-2); }
 .inspector dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .inspector .row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-.lesson-strip { position: absolute; left: 0.75rem; top: 2.5rem; max-width: calc(100% - 24.5rem); display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem; padding: 0.5rem; }
+.lesson-strip { position: absolute; left: 0.75rem; top: 5rem; max-width: calc(100% - 24.5rem); display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem; padding: 0.5rem; }
 .lesson-strip fieldset { display: contents; }
 .lesson-strip input[type="number"] { width: 6.5rem; }
 .lesson-strip p { margin: 0; align-self: center; color: var(--text); }
@@ -166,16 +167,14 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
   .instrument { display: flex; flex-direction: column; overflow-y: auto; }
   .instrument > * { flex-shrink: 0; }
   .canvas-wrap { position: relative; inset: auto; flex: 1 1 0; min-height: 12rem; order: 3; }
-  .hud { position: static; order: 1; padding: 0.3rem 0.5rem; gap: 0 0.75rem; }
-  .hud [data-runtime-controls] { display: none; }
+  .hud { position: static; order: 1; padding: 0.4rem 0.5rem; gap: 0; }
+  .clock-time { font-size: 1.125rem; }
   .lesson-strip { position: static; order: 2; max-width: none; border-width: 1px 0; padding: 0.4rem 0.5rem; gap: 0.35rem; }
   .lesson-strip input[type="number"] { width: 5rem; }
   .inspector { position: static; order: 4; width: auto; max-height: none; overflow: visible; border-width: 1px 0 0; padding: 0.4rem 0.5rem; font-size: 0.75rem; }
   .inspector dl { grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr); gap: 0.1rem 0.5rem; margin: 0.2rem 0 0.4rem; }
   .dock { position: static; order: 5; width: auto; max-width: none; margin: 0; border-width: 1px 0 0; padding: 0.4rem 0.5rem; gap: 0.35rem; align-items: center; }
   .dock label { flex-direction: row; align-items: center; gap: 0.35rem; }
-  .dock .date { min-width: 0; padding: 0; }
-  .dock .date span { display: none; }
   .dock [data-open-panel="keys-panel"] { display: none; }
   .instrument button, .instrument select, .instrument input { min-height: 2.25rem; padding: 0.2rem 0.45rem; }
 }
