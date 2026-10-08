@@ -1,4 +1,5 @@
 #include "experiment.h"
+#include "scene_epoch.h"
 #include "orbit.h"
 #include "constants.h"
 #include <math.h>
@@ -12,11 +13,6 @@
 _Static_assert(1 + SOLAR_EXPERIMENT_PLANET_COUNT + SOLAR_EXPERIMENT_CAPACITY <= SOLAR_SYSTEM_BODY_CAPACITY,
     "catalog experiments must fit the scene body array");
 
-/* Horizons heliocentric states of the planetary-system barycenters (Mercury
- * and Venus have no moons, so their centres are their barycenters). */
-static const double planet_states[SOLAR_EXPERIMENT_PLANET_COUNT][6] = {
-#include "planet_epoch.inc"
-};
 
 /* Experiments omit every moon, so each planet body stands for its whole
  * system: it sits at the system barycenter and pulls with the system's GM
@@ -122,9 +118,7 @@ bool experiment_parse(const char *text, SolarSystem *out,
          * the source-epoch barycentric system state in simulation axes. */
         Body b = factories[i]();
         b.mass_kg = planet_system_gm_m3ps2[i] / SOLAR_G;
-        const double *s = planet_states[i];
-        b.position_m = (Vec3d){s[0], s[1], s[2]};
-        b.velocity_mps = (Vec3d){s[3], s[4], s[5]};
+        scene_epoch_planet_state(i, &b.position_m, &b.velocity_mps);
         if (!solar_system_append(&system, &b)) return false;
     }
     size_t count = 0;

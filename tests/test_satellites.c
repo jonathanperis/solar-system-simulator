@@ -122,10 +122,14 @@ static void test_complete_jovian_catalog_and_initial_orbits(void)
         assert(body->parent_id == BODY_ID_JUPITER && !body->fixed);
         assert(solar_system_parent_index(&system, 9 + i) == 5);
         for (size_t j = 0; j < i; ++j) assert(body->id != system.bodies[9 + j].id);
-        Vec3d r = vec3d_sub(body->position_m, system.bodies[5].position_m);
-        Vec3d v = vec3d_sub(body->velocity_mps, system.bodies[5].velocity_mps);
+        /* Scenes start dated from Horizons (SPEC A92); the mean-element
+         * conversion itself is checked on a fresh satellite_create state. */
+        Body planet = system.bodies[5];
+        Body converted = satellite_create(def, &planet);
+        Vec3d r = vec3d_sub(converted.position_m, planet.position_m);
+        Vec3d v = vec3d_sub(converted.velocity_mps, planet.velocity_mps);
         double a = def->a_km * 1000;
-        double mu = SOLAR_G * (system.bodies[5].mass_kg + body->mass_kg);
+        double mu = SOLAR_G * (planet.mass_kg + body->mass_kg);
         double energy = vec3d_length_squared(v) / 2 - mu / vec3d_length(r);
         assert(fabs(energy / (-mu / (2 * a)) - 1) < 1e-9);
         assert(vec3d_length(r) >= a * (1 - def->eccentricity) - 0.001);

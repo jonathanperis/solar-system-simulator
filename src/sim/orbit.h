@@ -20,6 +20,9 @@ double orbit_closest_approach_m(Vec3d relative_position_m, Vec3d relative_veloci
 /* J2000 ecliptic (X toward the equinox, Z toward ecliptic north) to simulation
  * axes: (x, y, z)_sim = (X, Z, -Y). Simulation +Y is ecliptic north. */
 Vec3d orbit_ecliptic_to_simulation(Vec3d ecliptic);
+/* Unit vector toward ICRF right ascension/declination (degrees), rotated by
+ * the J2000 obliquity into the ecliptic and then into simulation axes. */
+Vec3d orbit_icrf_direction(double ra_deg, double dec_deg);
 /* Perifocal vector with J2000 ecliptic angles (degrees) to simulation axes. */
 Vec3d orbit_orient(Vec3d v, double inclination, double node, double periapsis);
 /* Compact FFI for Python snapshot generation and the WASM atlas. Coordinates

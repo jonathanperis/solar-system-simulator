@@ -24,6 +24,56 @@ Vec3d gravitational_acceleration_from(const Body *target, const Body *source)
     return vec3d_scale(displacement, scale);
 }
 
+/* J2 oblateness (SPEC A94). An oblate primary's potential adds
+ *   a = -(3/2) J2 GM R^2 / r^5 [(1 - 5 z^2/r^2) r + 2 z k]
+ * to a body at offset r from it, where k is the unit spin axis, z = r.k and R
+ * the reference radius. Only the primary's own moons feel it (bodies outside
+ * a family see the planet as a point mass, where the term is negligible), and
+ * the primary takes the equal and opposite force, so momentum is conserved. */
+Vec3d physics_oblateness_acceleration(const Body *primary, const Body *moon)
+{
+    if (!(primary->j2 > 0.0) || moon->parent_id != primary->id || moon == primary) return vec3d_zero();
+    double x = moon->position_m.x - primary->position_m.x;
+    double y = moon->position_m.y - primary->position_m.y;
+    double z_axis = moon->position_m.z - primary->position_m.z;
+    double r2 = x * x + y * y + z_axis * z_axis;
+    if (r2 == 0.0) return vec3d_zero();
+    const Vec3d pole = primary->pole;
+    const double radius = primary->j2_radius_m;
+    const double k = 1.5 * primary->j2 * SOLAR_G * primary->mass_kg * radius * radius;
+    double z = x * pole.x + y * pole.y + z_axis * pole.z;
+    double scale = -k / (r2 * r2 * sqrt(r2));
+    double radial = scale * (1.0 - 5.0 * z * z / r2), axial = scale * 2.0 * z;
+    return (Vec3d){x * radial + pole.x * axial, y * radial + pole.y * axial, z_axis * radial + pole.z * axial};
+}
+
+double physics_oblateness_potential_j(const Body *primary, const Body *moon)
+{
+    if (!(primary->j2 > 0.0) || moon->parent_id != primary->id || moon == primary) return 0.0;
+    Vec3d r = vec3d_sub(moon->position_m, primary->position_m);
+    double distance = vec3d_length(r);
+    if (distance == 0.0) return 0.0;
+    /* U = G M m J2 R^2 P2(sin latitude) / r^3, with P2(s) = (3 s^2 - 1) / 2. */
+    double s = vec3d_dot(r, primary->pole) / distance;
+    return SOLAR_G * primary->mass_kg * moon->mass_kg * primary->j2 * primary->j2_radius_m * primary->j2_radius_m
+        * 0.5 * (3.0 * s * s - 1.0) / (distance * distance * distance);
+}
+
+static void add_oblateness(Body *bodies, size_t body_count)
+{
+    for (size_t p = 0; p < body_count; ++p) {
+        if (!(bodies[p].j2 > 0.0)) continue;
+        for (size_t i = 0; i < body_count; ++i) {
+            if (i == p || bodies[i].parent_id != bodies[p].id) continue;
+            Vec3d a = physics_oblateness_acceleration(&bodies[p], &bodies[i]);
+            bodies[i].acceleration_mps2 = vec3d_add(bodies[i].acceleration_mps2, a);
+            /* Newton's third law: the planet is pulled back by m_moon/M_planet of it. */
+            double share = bodies[i].mass_kg / bodies[p].mass_kg;
+            bodies[p].acceleration_mps2 = vec3d_sub(bodies[p].acceleration_mps2, vec3d_scale(a, share));
+        }
+    }
+}
+
 /* Targets are processed in blocks through structure-of-arrays scratch so the
  * inner loop reads and writes contiguous doubles: compilers vectorize it
  * (SSE2/NEON natively, f64x2 with -msimd128 in WebAssembly) without changing
@@ -68,6 +118,7 @@ void physics_compute_accelerations(Body *bodies, size_t body_count)
         for (size_t i = 0; i < count; ++i)
             bodies[start + i].acceleration_mps2 = (Vec3d){block_ax[i], block_ay[i], block_az[i]};
     }
+    add_oblateness(bodies, body_count);
 }
 
 void physics_step(Body *bodies, size_t body_count, double dt_seconds)

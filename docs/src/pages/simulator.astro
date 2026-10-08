@@ -74,7 +74,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         <button type="button" data-open-panel="advanced-panel" aria-haspopup="dialog">Advanced</button>
       </div>
     </fieldset>
-    <p id="scale-note" class="scale-note">Illustrative mode enlarges bodies and moon spacing; Real scale uses physical sizes and distances. This model is not the sky on a particular date.</p>
+    <p id="scale-note" class="scale-note">Illustrative mode enlarges bodies and moon spacing; Real scale uses physical sizes and distances. Scenes start from the real sky of 2026-06-09, then follow this model.</p>
 
     <dialog id="objects-panel" class="option-sheet" aria-labelledby="objects-heading">
       <header><h2 id="objects-heading">Find an object</h2><button type="button" data-close-panel aria-label="Close object picker">Close</button></header>
@@ -184,6 +184,7 @@ const base = normalizeBase(import.meta.env.BASE_URL);
         <div><dt>Parent body</dt><dd data-inspector-parent>—</dd></div>
         <div><dt>Distance from parent</dt><dd data-inspector-distance>—</dd></div>
         <div><dt>Speed relative to parent</dt><dd data-inspector-speed>—</dd></div>
+        <div><dt>Orbital period (two-body)</dt><dd data-inspector-period>—</dd></div>
         <div><dt>Mass</dt><dd data-inspector-mass>—</dd></div>
         <div><dt>Physical radius</dt><dd data-inspector-radius>—</dd></div>
         <div><dt>Parent-relative acceleration</dt><dd data-inspector-acceleration>—</dd></div>
