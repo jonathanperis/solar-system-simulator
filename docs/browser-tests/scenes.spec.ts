@@ -13,7 +13,7 @@ test('a small moon link opens its planet-system scene and selects it', async ({ 
   await expect(page.locator('[data-inspector-parent]')).toHaveText('Saturn');
 });
 
-test('Pluto and Didymos moons open their small-body system scenes', async ({ page }) => {
+test('Pluto, Didymos and Patroclus moons open their small-body system scenes', async ({ page }) => {
   await page.goto(`${base}?body=nix`);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   await expect(page.locator('[data-active-scene]')).toContainText('15 active bodies · Pluto system', { timeout: 30000 });
@@ -23,6 +23,10 @@ test('Pluto and Didymos moons open their small-body system scenes', async ({ pag
   await expect(page.locator('[data-active-scene]')).toContainText('11 active bodies · Didymos system', { timeout: 30000 });
   await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Dimorphos;');
   await expect(page.locator('[data-inspector-parent]')).toHaveText('Didymos');
+  await page.goto(`${base}?body=menoetius`);
+  await expect(page.locator('[data-active-scene]')).toContainText('11 active bodies · Patroclus system', { timeout: 30000 });
+  await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Menoetius;');
+  await expect(page.locator('[data-inspector-parent]')).toHaveText('Patroclus');
   // Pluto and Charon are large bodies: they belong to the main scene.
   await page.goto(`${base}?body=charon`);
   await expect(page.locator('[data-active-scene]')).toContainText('32 active bodies');

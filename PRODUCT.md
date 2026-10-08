@@ -50,7 +50,7 @@ Solar System Simulator is a learning-first, physics-first C11 + raylib project t
 
 - Native app: C11 + raylib, built by `Makefile`.
 - Simulation: Newtonian N-body baseline with velocity-Verlet / kick-drift-kick stepping.
-- Scenes: a 32-body main scene (Sun, eight planets, Vesta, Pluto, the Earth and Mars systems and 18 major moons) and six system scenes with every catalogued moon of Jupiter, Saturn, Uranus, Neptune and Pluto plus the Didymos binary; 472 bodies in all. The default Sun is fixed; the barycentric-core lesson releases it.
+- Scenes: a 32-body main scene (Sun, eight planets, Vesta, Pluto, the Earth and Mars systems and 18 major moons) and seven system scenes with every catalogued moon of Jupiter, Saturn, Uranus, Neptune and Pluto plus the Didymos and Patroclus binaries; 474 bodies in all. The default Sun is fixed; the barycentric-core lesson releases it.
 - Small-body atlas: 1,564,244 records in the pinned JPL snapshot, separate from the active scenes.
 - Learning lab: guided presets, Verlet/Euler comparisons, diagnostics, force inspection, A/B plots, descriptors and SI CSV export; the same C model runs natively, in WebAssembly and in the raylib-free CLI.
 - Public site: being redesigned (SPEC A99–A105, DESIGN.md) into a simulator-first homepage with Learn, Catalog and About pages.

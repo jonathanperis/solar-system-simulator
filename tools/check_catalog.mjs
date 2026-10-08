@@ -12,7 +12,7 @@ const catalog = (scene) => execFileSync(lab, scene ? ['--catalog', scene] : ['--
 const scenes = [[undefined, mainSceneBodies], ['jupiter-system', familySceneBodies('Jupiter')],
   ['saturn-system', familySceneBodies('Saturn')], ['uranus-system', familySceneBodies('Uranus')],
   ['neptune-system', familySceneBodies('Neptune')], ['pluto-system', familySceneBodies('Pluto')],
-  ['didymos-system', familySceneBodies('Didymos')]];
+  ['didymos-system', familySceneBodies('Didymos')], ['patroclus-system', familySceneBodies('Patroclus')]];
 for (const [scene, bodies] of scenes) {
   const rows = catalog(scene);
   assert.equal(new Set(rows.map(row => row[0])).size, rows.length, 'C IDs must be unique');

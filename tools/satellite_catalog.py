@@ -7,8 +7,8 @@ One tool serves every giant planet (SPEC A78):
                        snapshot of each selected system
   --check              verify the committed C includes against the snapshots
                        without network access
-  --system NAME        jupiter, saturn, uranus or neptune (repeatable;
-                       default: all four)
+  --system NAME        jupiter, saturn, uranus, neptune, pluto, didymos or
+                       patroclus (repeatable; default: all)
 
 No masses or radii are inferred from assumed densities or albedos. Each moon
 keeps the epoch and reference frame of its own ephemeris solution; phases are
@@ -18,6 +18,7 @@ import argparse
 from datetime import date
 from html.parser import HTMLParser
 import json
+import math
 from pathlib import Path
 import re
 from urllib.request import urlopen
@@ -95,7 +96,8 @@ SYSTEMS = {
         "inventory_source": "https://science.nasa.gov/neptune/moons/",
     },
     # Small-body satellite systems (SPEC T78). Pluto's moons come from the same
-    # JPL tables; Didymos's companion from the Horizons DART reconstruction.
+    # JPL tables; Didymos's companion from the Horizons DART reconstruction and
+    # Patroclus's from the Horizons asteroid-satellite solution JPL#82.
     "pluto": {
         "planet": "Pluto", "adjective": "Plutonian", "count": 5,
         "epochs": {"2000-01-01.5"}, "frames": {"equatorial"}, "max_e": 0.1,
@@ -108,6 +110,12 @@ SYSTEMS = {
         "major": set(), "center": 920065803, "solution": "JPL s547",
         "inventory_source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='120065803'&OBJ_DATA='YES'&MAKE_EPHEM='NO'",
     },
+    "patroclus": {
+        "planet": "Patroclus", "adjective": "Patroclus", "count": 1, "source": "horizons",
+        "epochs": {"2024-01-01.0"}, "frames": {"ecliptic"}, "max_e": 0.1,
+        "major": set(), "center": 920000617, "solution": "JPL#82",
+        "inventory_source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='120000617'&OBJ_DATA='YES'&MAKE_EPHEM='NO'",
+    },
 }
 for _name, _center in (("jupiter", 599), ("saturn", 699), ("uranus", 799), ("neptune", 899)):
     SYSTEMS[_name]["center"] = _center
@@ -118,6 +126,7 @@ GROUPS = {
     "neptune": regular_group("Major moon", "Inner moons"),
     "pluto": lambda code, frame, major: "Major moon" if major else "Small moons",
     "didymos": lambda code, frame, major: "Didymos system",
+    "patroclus": lambda code, frame, major: "Patroclus system",
 }
 
 
@@ -276,10 +285,92 @@ def refresh_didymos():
     paths("didymos")[0].write_text(json.dumps(snapshot, indent=2, ensure_ascii=False) + "\n")
 
 
+def elements_from_state(position_km, velocity_km_s, mu_km3_s2):
+    """Osculating Keplerian elements (a km, e, i, node, argument of periapsis
+    and mean anomaly in degrees) of a relative state about `mu`, in the frame of
+    the state vectors. For a binary, mu = G(m1 + m2): the two-body relative
+    orbit, the same mu src/sim/satellite.c uses to place the moon."""
+    r, v = position_km, velocity_km_s
+    cross = lambda a, b: (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+    dot = lambda a, b: sum(x * y for x, y in zip(a, b))
+    norm = lambda a: math.sqrt(dot(a, a))
+    h = cross(r, v)
+    node_vector = (-h[1], h[0], 0.0)
+    rv = dot(r, v)
+    speed2 = dot(v, v)
+    radius = norm(r)
+    e_vector = [((speed2 - mu_km3_s2 / radius) * r[k] - rv * v[k]) / mu_km3_s2 for k in range(3)]
+    e = norm(e_vector)
+    a = 1.0 / (2.0 / radius - speed2 / mu_km3_s2)
+    inclination = math.degrees(math.acos(h[2] / norm(h)))
+    node = math.degrees(math.atan2(node_vector[1], node_vector[0])) % 360.0
+    periapsis = math.degrees(math.acos(dot(node_vector, e_vector) / (norm(node_vector) * e)))
+    if e_vector[2] < 0:
+        periapsis = 360.0 - periapsis
+    true_anomaly = math.acos(max(-1.0, min(1.0, dot(e_vector, r) / (e * radius))))
+    if rv < 0:
+        true_anomaly = 2 * math.pi - true_anomaly
+    eccentric = 2 * math.atan2(math.sqrt(1 - e) * math.sin(true_anomaly / 2), math.sqrt(1 + e) * math.cos(true_anomaly / 2))
+    mean = math.degrees(eccentric - e * math.sin(eccentric)) % 360.0
+    return a, e, inclination, node, periapsis, mean
+
+
+def horizons_gm_radius(info):
+    """GM (km^3/s^2) and radius (km) from a Horizons asteroid physical block."""
+    gm = re.search(r"GM=\s*([0-9.E+-]+)\s*km\^3/s\^2", info)
+    radius = re.search(r"RAD=\s*([0-9.]+)", info)
+    require(gm is not None and radius is not None, "Horizons physical block changed; review the source")
+    return float(gm.group(1)), float(radius.group(1))
+
+
+def refresh_patroclus():
+    """Menoetius relative to the Patroclus primary (Horizons body 920000617)
+    from the JPL#82 asteroid-satellite solution. Horizons gives no osculating
+    elements about the primary (it has no centre mass for it), so the
+    elements come from the state vector at 2024-01-01 TDB about the pair's
+    GM, as for a two-body relative orbit."""
+    config = SYSTEMS["patroclus"]
+    info = horizons_text(format="text", COMMAND="120000617", OBJ_DATA="YES", MAKE_EPHEM="NO")
+    primary = horizons_text(format="text", COMMAND="920000617", OBJ_DATA="YES", MAKE_EPHEM="NO")
+    # The source line names the solution, e.g. "tnosat_v001_20000617_jpl082_...".
+    solution = re.search(r"wrt/(JPL#\d+) system barycenter", info)
+    require(solution is not None, "patroclus: Horizons no longer names its Menoetius solution; review the source")
+    require(solution.group(1) == config["solution"],
+            f"patroclus: Horizons now serves {solution.group(1)}; review it and update SYSTEMS before pinning")
+    gm, radius = horizons_gm_radius(info)
+    primary_gm, _ = horizons_gm_radius(primary)
+    rows = horizons_text(format="text", COMMAND="120000617", CENTER="@920000617", MAKE_EPHEM="YES",
+        EPHEM_TYPE="VECTORS", TLIST="2460310.5", OUT_UNITS="KM-S", REF_PLANE="ECLIPTIC", REF_SYSTEM="ICRF",
+        VEC_TABLE="2", VEC_CORR="NONE", CSV_FORMAT="YES", OBJ_DATA="NO")
+    row = [field.strip() for field in rows.split("$$SOE")[1].split("$$EOE")[0].strip().splitlines()[0].split(",")]
+    require(float(row[0]) == 2460310.5 and "Ecliptic of J2000.0" in rows, "patroclus: Horizons epoch/frame contract changed")
+    state = [float(v) for v in row[2:8]]
+    mu = primary_gm + gm
+    a, e, inclination, node, periapsis, mean = elements_from_state(state[:3], state[3:], mu)
+    moon = {
+        "code": 120000617, "name": "Menoetius", "slug": "menoetius", "group": "Patroclus system",
+        "ephemeris": solution.group(1), "frame": "ecliptic", "epoch_tdb": "2024-01-01.0",
+        "a_km": round(a, 4), "eccentricity": round(e, 7),
+        "periapsis_deg": round(periapsis, 5), "mean_anomaly_deg": round(mean, 5),
+        "inclination_deg": round(inclination, 5), "node_deg": round(node, 5),
+        "period_days": round(2 * math.pi * math.sqrt(a ** 3 / mu) / 86400, 7),
+        "pole_ra_deg": None, "pole_dec_deg": None, "element_reference": "Horizons 120000617 @920000617 state, mu = GM_primary + GM_satellite",
+        "gm_km3_s2": gm, "radius_km": radius, "gm_sigma_km3_s2": None, "radius_sigma_km": None,
+        "mass_quality": "estimated", "radius_quality": "estimated",
+        "gm_reference": "Horizons 120000617 GM (no published uncertainty)", "radius_reference": "Horizons 120000617 RAD",
+        "major": False,
+    }
+    snapshot = {"schema": 1, "checked": date.today().isoformat(), "inventory_source": config["inventory_source"],
+        "names_source": "https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=617&sat=1", "elements_source": HORIZONS,
+        "physical_source": HORIZONS, "moons": [moon]}
+    validate("patroclus", snapshot)
+    paths("patroclus")[0].write_text(json.dumps(snapshot, indent=2, ensure_ascii=False) + "\n")
+
+
 def refresh(system, element_rows, physical_rows):
     config = SYSTEMS[system]
     if config.get("source") == "horizons":
-        refresh_didymos()
+        (refresh_patroclus if system == "patroclus" else refresh_didymos)()
         return
     planet = config["planet"]
     physical = {int(r[2]): r for r in physical_rows if len(r) == 12 and r[0] == planet}
@@ -376,7 +467,7 @@ def main():
     systems = args.system or list(SYSTEMS)
     if args.refresh:
         # Fetch the JPL satellite tables only when a table-backed system needs
-        # them, so a Didymos-only refresh does not depend on those requests.
+        # them, so a Didymos- or Patroclus-only refresh does not depend on those requests.
         tables = any(SYSTEMS[system].get("source") != "horizons" for system in systems)
         element_rows, physical_rows = (fetch_rows(ELEMENTS), fetch_rows(PHYSICAL)) if tables else ([], [])
         for system in systems:

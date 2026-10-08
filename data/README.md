@@ -3,7 +3,8 @@
 `tools/satellite_catalog.py` maintains one snapshot per giant planet:
 `jovian_moons.json` (115 moons, checked 2026-09-10), `saturnian_moons.json` (291),
 `uranian_moons.json` (29), `neptunian_moons.json` (16), `plutonian_moons.json` (5)
-and `didymos_moons.json` (1), all checked 2026-10-07.
+and `didymos_moons.json` (1), all checked 2026-10-07, and `patroclus_moons.json`
+(1), checked 2026-10-08.
 The Jovian description below applies to all four. System-specific rules:
 
 - Saturn: 24 regular moons use SAT441/SAT415 Laplace planes; 267 irregular moons
@@ -30,6 +31,14 @@ The Jovian description below applies to all four. System-specific rules:
   Didymos primary at 2024-01-01 TDB, the approximate GM (estimate) and the
   volume-equivalent radius of its triaxial shape. The primary's GM, radius and
   SBDB orbit are pinned in `src/sim/constants.h`.
+- Patroclus: `patroclus_moons.json` holds Menoetius from the JPL Horizons
+  asteroid-satellite solution JPL#82 (bodies 120000617 and 920000617). Horizons
+  gives no osculating elements about the primary, so the tool converts the
+  state vector at 2024-01-01 TDB into ecliptic J2000 elements about the pair's
+  GM (Patroclus 0.0740606 plus Menoetius 0.020917 km³/s², the two-body relative
+  orbit). Neither GM nor radius has a published uncertainty: both are
+  estimates. The primary's values and the SBDB 617 orbit (solution 87) are
+  pinned in `src/sim/constants.h`.
 - `major` marks moons with a measured GM of at least 2 km³/s² (about 3×10¹⁹ kg):
   the Galilean moons, Saturn's seven rounded moons (Mimas, the smallest, has
   2.5), Uranus's five and Triton. The Jovian file implies it for the Galilean
@@ -44,7 +53,7 @@ epochs are never presented as a dated snapshot.
 vectors at JD 2461200.5 TDB (2026-06-09) in the J2000 ecliptic. It holds each
 catalogued moon relative to its primary's centre (Earth's Moon, Phobos and
 Deimos under their legacy scene IDs 4, 6 and 7), and the heliocentric states of
-Vesta and the Pluto and Didymos system barycenters; the planetary-system
+Vesta and the Pluto, Didymos and Patroclus system barycenters; the planetary-system
 barycenters come from `planet_epoch.json`. `tools/scene_epoch.py --refresh`
 makes one serialized Horizons request per body and accepts a result only when
 Horizons names the same body ("Io (501)", "S2023_S01" for S/2023 S 1); two

@@ -199,9 +199,10 @@
 #define SOLAR_NEPTUNE_POLE_RA_DEG 299.36
 #define SOLAR_NEPTUNE_POLE_DEC_DEG 43.46
 
-/* Small-body satellite systems (SPEC T78). Like the planets, both primaries
+/* Small-body satellite systems (SPEC T78, T86). Like the planets, the primaries
  * start at a planar heliocentric perihelion with vis-viva speed; their real
- * inclinations (Pluto 17.1 deg, Didymos 3.4 deg) are not modeled here.
+ * inclinations (Pluto 17.1 deg, Didymos 3.4 deg, Patroclus 22.1 deg) are not
+ * modeled here; the dated scenes start from Horizons states instead.
  * Pluto: planet-only GM from JPL Horizons body 999 (Brozovic & Jacobson 2024,
  * checked 2026-10-07), IAU volume mean radius, and the JPL SBDB 134340
  * osculating orbit (solution 1, epoch JD 2457588.5). */
@@ -219,5 +220,15 @@
 #define SOLAR_DIDYMOS_RADIUS_M 355.15
 #define SOLAR_DIDYMOS_SEMI_MAJOR_AXIS_M (1.642709608529702 * SOLAR_AU_METERS)
 #define SOLAR_DIDYMOS_ECCENTRICITY 0.3831233242624545
+/* Patroclus primary: GM and radius from the Horizons asteroid-satellite
+ * solution JPL#82 (body 920000617; Menoetius carries GM 0.020917, so the pair
+ * is a near-equal binary like Pluto-Charon) and the JPL SBDB 617 orbit of the
+ * system (solution 87, epoch JD 2461200.5): a Jupiter trojan near L5. Neither
+ * GM has a published uncertainty: estimates (V25). */
+#define SOLAR_PATROCLUS_GM_M3PS2 7.40606e7
+#define SOLAR_PATROCLUS_MASS_KG (SOLAR_PATROCLUS_GM_M3PS2 / SOLAR_G)
+#define SOLAR_PATROCLUS_RADIUS_M 56500.0
+#define SOLAR_PATROCLUS_SEMI_MAJOR_AXIS_M (5.205975173988769 * SOLAR_AU_METERS)
+#define SOLAR_PATROCLUS_ECCENTRICITY 0.1391467916238868
 
 #endif

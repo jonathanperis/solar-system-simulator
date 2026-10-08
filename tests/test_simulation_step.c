@@ -166,7 +166,8 @@ static void test_full_scene_converges_over_100_days(void)
  * Tethys/Dione trojans are included. */
 static void test_family_scenes_converge_over_20_days(void)
 {
-    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE, BODY_ID_PLUTO, BODY_ID_DIDYMOS};
+    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE, BODY_ID_PLUTO, BODY_ID_DIDYMOS,
+        BODY_ID_PATROCLUS};
     for (size_t k = 0; k < sizeof(planets) / sizeof(planets[0]); ++k) {
         SolarSystem family;
         assert(solar_system_create_family(planets[k], &family));

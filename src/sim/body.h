@@ -43,7 +43,10 @@ typedef enum BodyId {
     BODY_ID_PLUTO = 999,
     /* Horizons IDs of the Didymos binary (primary centre and Dimorphos). */
     BODY_ID_DIMORPHOS = 120065803,
-    BODY_ID_DIDYMOS = 920065803
+    BODY_ID_DIDYMOS = 920065803,
+    /* Horizons IDs of the Patroclus binary (primary body and Menoetius). */
+    BODY_ID_MENOETIUS = 120000617,
+    BODY_ID_PATROCLUS = 920000617
 } BodyId;
 
 typedef enum PhysicalQuality {

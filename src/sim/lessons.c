@@ -10,6 +10,7 @@ const char *lesson_name(LessonPreset preset)
     const char *names[] = {"core", "circular", "eccentric", "escape", "earth-moon", "inclined", "phobos",
         "barycentric-core", "resonance", "encounter", "collision",
         "jupiter-system", "saturn-system", "uranus-system", "neptune-system", "pluto-system", "didymos-system",
+        "patroclus-system",
         "pluto-charon", "dart"};
     _Static_assert(sizeof(names) / sizeof(names[0]) == LESSON_COUNT, "every preset needs a name");
     return preset >= 0 && preset < LESSON_COUNT ? names[preset] : "catalog";
@@ -24,6 +25,7 @@ BodyId lesson_family_planet(LessonPreset preset)
         case LESSON_NEPTUNE_SYSTEM: return BODY_ID_NEPTUNE;
         case LESSON_PLUTO_SYSTEM: return BODY_ID_PLUTO;
         case LESSON_DIDYMOS_SYSTEM: return BODY_ID_DIDYMOS;
+        case LESSON_PATROCLUS_SYSTEM: return BODY_ID_PATROCLUS;
         default: return BODY_ID_NONE;
     }
 }
