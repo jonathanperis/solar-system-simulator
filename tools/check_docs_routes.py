@@ -114,7 +114,7 @@ PUBLIC_FORBIDDEN_NAMES = {"sitemap.xml", "robots.txt"}
 ACTIVE_DOCUMENT_SUFFIXES = {".svg", ".svgz", ".xhtml", ".xht", ".shtml"}
 ALLOWED_ACTIVE_DOCUMENTS: frozenset[str] = frozenset({"favicon.svg"})
 # Anything in an SVG that can run code or pull in another resource.
-SVG_ACTIVE_CONTENT = re.compile(r"<\s*(script|foreignObject|iframe|object|embed|use|image)\b|\son[a-z]+\s*=|href\s*=|url\(", re.I)
+SVG_ACTIVE_CONTENT = re.compile(r"<\s*(script|style|foreignObject|iframe|object|embed|use|image)\b|\son[a-z]+\s*=|href\s*=|url\(|@import", re.I)
 
 
 def check_astro_generated(dist: Path, allowed: frozenset[str] | set[str] = ALLOWED_ACTIVE_DOCUMENTS) -> None:
@@ -298,6 +298,17 @@ def check_site_images(dist: Path) -> None:
         fail("favicon.svg must stay static shapes: no scripts, handlers, links or external resources")
 
 
+PREVIEW_MARKERS = (f'property="og:image" content="{SOCIAL_IMAGE}"', 'name="twitter:card" content="summary_large_image"',
+                   'property="og:image:width" content="1200"', 'rel="apple-touch-icon"')
+
+
+def check_preview_tags(route: str, html: str) -> None:
+    """Any published page can be shared, including 404 and redirect stubs."""
+    for marker in PREVIEW_MARKERS:
+        if marker not in html:
+            fail(f"{route} missing link-preview marker: {marker}")
+
+
 def main(argv: list[str]) -> int:
     dist = Path(argv[1]) if len(argv) > 1 else Path("docs/dist")
     if not dist.is_dir():
@@ -315,7 +326,9 @@ def main(argv: list[str]) -> int:
     check_astro_generated(dist)
     check_not_found_page(dist)
     for page in sorted(dist.rglob("*.html")):
-        check_page_security(page.relative_to(dist).as_posix(), page.read_text(encoding="utf-8", errors="replace"))
+        html = page.read_text(encoding="utf-8", errors="replace")
+        check_page_security(page.relative_to(dist).as_posix(), html)
+        check_preview_tags(page.relative_to(dist).as_posix(), html)
     check_public_sources(Path(__file__).resolve().parents[1] / "docs" / "public")
 
     analytics_id = os.environ.get("PUBLIC_GA_ID", "")
@@ -339,10 +352,6 @@ def main(argv: list[str]) -> int:
         current = sum(attrs.get("aria-current") in {"page", "location"} for attrs in primary_links)
         if current != (0 if route == "index.html" else 1):
             fail(f"{route} must mark exactly its own section as current (none on the simulator)")
-        for marker in (f'property="og:image" content="{SOCIAL_IMAGE}"', 'name="twitter:card" content="summary_large_image"',
-                       'property="og:image:width" content="1200"', 'rel="apple-touch-icon"'):
-            if marker not in html:
-                fail(f"{route} missing link-preview marker: {marker}")
         if "rel=\"canonical\"" not in html:
             fail(f"{route} missing canonical URL")
         if "Skip to content" not in html:
