@@ -1,6 +1,7 @@
 #include "simulation_session.h"
 
 #include <ctype.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -226,7 +227,7 @@ BodyInspection simulation_session_inspect_body(const SimulationSession *session,
     const Body *body = &session->system.bodies[index];
     int parent_index = solar_system_parent_index(&session->system, index);
     BodyInspection result = {.name = body->name, .parent_name = "None", .has_parent = parent_index >= 0,
-        .mass_kg = body->mass_kg, .radius_m = body->radius_m,
+        .mass_kg = body->mass_kg, .radius_m = body->radius_m, .orbital_period_s = NAN,
         .mass_quality = body->mass_quality, .radius_quality = body->radius_quality};
     if (result.has_parent) {
         const Body *parent = &session->system.bodies[parent_index];
@@ -242,6 +243,10 @@ BodyInspection simulation_session_inspect_body(const SimulationSession *session,
         result.acceleration_mps2 = vec3d_length(result.relative_acceleration_mps2);
         double mu = SOLAR_G * (parent->mass_kg + (parent->fixed ? 0 : body->mass_kg));
         if (result.distance_m > 0) result.specific_energy_jpkg = 0.5 * result.speed_mps * result.speed_mps - mu / result.distance_m;
+        if (result.distance_m > 0 && result.specific_energy_jpkg < 0) {
+            double a = -mu / (2.0 * result.specific_energy_jpkg);
+            result.orbital_period_s = 2.0 * acos(-1.0) * sqrt(a * a * a / mu);
+        }
     }
     return result;
 }

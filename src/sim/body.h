@@ -75,6 +75,13 @@ typedef struct Body {
     Vec3d velocity_mps;
     Vec3d acceleration_mps2;
     bool fixed;
+    /* Oblateness (SPEC A94): zonal harmonic J2 referenced to
+     * `j2_radius_m`, about the unit spin axis `pole` (simulation axes). Zero
+     * means a point mass. Set only on planets in astronomy scenes; guided
+     * lessons stay point masses so analytic Kepler references still apply. */
+    double j2;
+    double j2_radius_m;
+    Vec3d pole;
 } Body;
 
 Body body_create(

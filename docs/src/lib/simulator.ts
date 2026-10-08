@@ -10,6 +10,7 @@ interface RuntimeReadouts {
   parent: Readout;
   distance: Readout;
   speed: Readout;
+  period?: Readout;
   mass: Readout;
   radius: Readout;
   camera: Readout;
@@ -66,6 +67,18 @@ interface LabState {
 }
 
 export const lessonNames = lessonOptions.map(([, label]) => label);
+
+/** Scenes and catalog experiments start at JD 2461200.5 TDB (2026-06-09,
+ * SPEC A92). TDB runs ~69 s ahead of UTC; the minute shown is TDB. */
+export const sceneEpochJd = 2461200.5;
+export function sceneDate(elapsedSeconds: number): string {
+  const ms = (sceneEpochJd - 2440587.5) * 86400000 + elapsedSeconds * 1000;
+  return `${new Date(ms).toISOString().slice(0, 16).replace('T', ' ')} TDB`;
+}
+export function formatPeriod(seconds: number): string {
+  const days = seconds / 86400;
+  return days >= 1 ? `${days.toFixed(4)} days` : `${(seconds / 3600).toFixed(3)} hours`;
+}
 /** Preset indices of the astronomy scenes (main and family), as C numbers them. */
 export const sceneIndices = lessonOptions.flatMap(([name], index) => sceneNames.includes(name) ? [index] : []);
 /** Preset index C uses for a body's home scene (0 = main scene). */
@@ -80,6 +93,9 @@ interface RuntimeState {
   distanceM: number; speedMps: number; massKg: number; radiusM: number; zoom: number;
   massQuality: number; radiusQuality: number; achievedTimeScale: number; pendingSeconds: number;
   shortTimescale: boolean;
+  /* Two-body period around the parent (s, NaN when unbound) and whether the
+   * scene starts from the dated 2026-06-09 sky. */
+  periodS?: number; dated?: boolean;
 }
 
 // Matches SolarCommand in src/main.c. All actions execute in the C runtime.
@@ -257,7 +273,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       controls.group.replaceChildren(new Option('All groups',''));
       controls.search.value='';
       const scene=canvas.closest('[data-simulator]')?.querySelector('[data-active-scene]');
-      if(scene) scene.textContent=experiment?`${count} active bodies · catalog epoch JD 2461200.5 TDB`:`${count} active bodies · perihelion demonstration`;
+      if(scene) scene.textContent=experiment?`${count} active bodies · catalog epoch JD 2461200.5 TDB`:`${count} active bodies · sky of 2026-06-09`;
     },
     _solar_web_command: undefined as ((command: number, value: number) => void) | undefined,
     _malloc: undefined as ((bytes: number) => number) | undefined,
@@ -381,7 +397,11 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       setText(readouts.status, state.trailsFailed ? 'Trail recording paused: memory unavailable.'
         : state.paused ? 'Simulation paused' : 'Running physics simulation');
       setText(readouts.controls, `Selected body: ${state.body}; view: ${state.view}.`);
-      setText(readouts.elapsed, `${(state.elapsedSeconds / 86400).toFixed(5)} simulated days · ${Number(state.elapsedSeconds.toPrecision(12))} s`);
+      setText(readouts.elapsed, state.dated
+        ? `${sceneDate(state.elapsedSeconds)} · ${(state.elapsedSeconds / 86400).toFixed(5)} simulated days`
+        : `${(state.elapsedSeconds / 86400).toFixed(5)} simulated days · ${Number(state.elapsedSeconds.toPrecision(12))} s`);
+      if (readouts.period) setText(readouts.period, !state.hasParent ? 'N/A — no parent'
+        : Number.isFinite(state.periodS) ? formatPeriod(state.periodS!) : 'Unbound (no closed orbit)');
       setText(readouts.interval, `${(state.intervalSeconds / 3600).toFixed(2)} simulated hours`);
       setText(readouts.parent, state.parent);
       setText(readouts.distance, state.hasParent ? `${(state.distanceM / 1000).toFixed(3)} km` : 'N/A — no parent');
@@ -456,6 +476,7 @@ export function mountSimulator(root: HTMLElement): void {
     parent: root.querySelector<HTMLElement>('[data-inspector-parent]')!,
     distance: root.querySelector<HTMLElement>('[data-inspector-distance]')!,
     speed: root.querySelector<HTMLElement>('[data-inspector-speed]')!,
+    period: root.querySelector<HTMLElement>('[data-inspector-period]') ?? undefined,
     mass: root.querySelector<HTMLElement>('[data-inspector-mass]')!,
     radius: root.querySelector<HTMLElement>('[data-inspector-radius]')!,
     camera: root.querySelector<HTMLElement>('[data-runtime-camera]')!,
@@ -613,7 +634,7 @@ export function mountSimulator(root: HTMLElement): void {
   root.querySelector('[data-demo]')!.addEventListener('click',()=>{
     ++experimentAction;
     runtime.ccall?.('solar_web_demo',null,[],[]);
-    experimentStatus.textContent='Core perihelion demonstration restored.';
+    experimentStatus.textContent='Main scene restored.';
   });
 
   // Configure the classic Emscripten module before its generated loader runs.

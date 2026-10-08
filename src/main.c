@@ -29,7 +29,8 @@ EM_JS(void, solar_web_report_state, (const char *body_name, const char *parent_n
     const char *camera_target, int selected, int paused, int speed_preset, int auto_rotate,
     double elapsed_seconds, double trail_interval_seconds, int trails_failed, int has_parent,
     double distance_m, double speed_mps, double mass_kg, double radius_m, double zoom,
-    int mass_quality, int radius_quality, double achieved_time_scale, double pending_seconds, int short_timescale), {
+    int mass_quality, int radius_quality, double achieved_time_scale, double pending_seconds, int short_timescale,
+    double orbital_period_s, int dated), {
     Module.reportState({body: UTF8ToString(body_name), parent: UTF8ToString(parent_name),
         view: UTF8ToString(view_mode), cameraTarget: UTF8ToString(camera_target), selected,
         paused: !!paused, speedPreset: speed_preset, autoRotate: !!auto_rotate,
@@ -37,7 +38,8 @@ EM_JS(void, solar_web_report_state, (const char *body_name, const char *parent_n
         trailsFailed: !!trails_failed, hasParent: !!has_parent,
         distanceM: distance_m, speedMps: speed_mps, massKg: mass_kg, radiusM: radius_m, zoom,
         massQuality: mass_quality, radiusQuality: radius_quality,
-        achievedTimeScale: achieved_time_scale, pendingSeconds: pending_seconds, shortTimescale: !!short_timescale});
+        achievedTimeScale: achieved_time_scale, pendingSeconds: pending_seconds, shortTimescale: !!short_timescale,
+        periodS: orbital_period_s, dated: !!dated});
 })
 
 EM_JS(void, solar_web_add_body, (int index, const char *name, const char *group), {
@@ -90,6 +92,7 @@ EM_JS(int, solar_web_canvas_has_focus, (void), {
 #include "sim/solar_system.h"
 #include "render/renderer.h"
 #include "sim/experiment.h"
+#include "sim/scene_epoch.h"
 
 typedef struct SolarApp {
     Camera3D camera;
@@ -328,7 +331,8 @@ static void report_web_state(const SolarApp *state)
         body_trails_recording_failed(&session->trails), body.has_parent,
         body.distance_m, body.speed_mps, body.mass_kg, body.radius_m, state->orbit_camera.distance,
         body.mass_quality, body.radius_quality, session->achieved_time_scale, session->clock.pending_seconds,
-        session->lesson == LESSON_COLLISION);
+        session->lesson == LESSON_COLLISION, body.orbital_period_s,
+        session->catalog_experiment || lesson_is_scene(session->lesson));
     PhysicsDiagnostics diagnostics = physics_diagnostics(&session->system);
     const Body *selected = &session->system.bodies[session->selected_body_index];
     solar_web_report_lab(session->lesson, session->clock.integrator, simulation_clock_step_seconds(&session->clock),
@@ -576,9 +580,10 @@ static void solar_app_update_draw(void *user_data)
      * Clip distances follow the camera only; SI positions and radii stay intact. */
     double far_plane = fmax(1000.0, state->orbit_camera.distance * 4.0);
     rlSetClipPlanes(fmax(1e-9, state->orbit_camera.distance * 0.001), far_plane);
-    /* Spin models count TDB days from J2000. Catalog experiments start at their
-     * source epoch; the synthetic perihelion scene and lessons start at J2000. */
-    double epoch_days = state->session.catalog_experiment ? SOLAR_CATALOG_EPOCH_JD - RENDER_J2000_JD : 0.0;
+    /* Spin models count TDB days from J2000. Scenes and catalog experiments
+     * start at the scene epoch (2026-06-09); synthetic lessons at J2000. */
+    bool dated = state->session.catalog_experiment || lesson_is_scene(state->session.lesson);
+    double epoch_days = dated ? SOLAR_SCENE_EPOCH_JD - RENDER_J2000_JD : 0.0;
     RenderView view = {state->camera, epoch_days + state->session.system.elapsed_seconds / SOLAR_DAY_SECONDS,
         (float)far_plane, state->grid};
     BeginMode3D(state->camera);
@@ -594,8 +599,12 @@ static void solar_app_update_draw(void *user_data)
      * and mobile layout. Native builds retain their in-window HUD. */
     DrawText("Solar System Simulator", 20, 20, 20, RAYWHITE);
     BodyInspection body = simulation_session_inspect(&state->session);
-    DrawText(TextFormat("%s | %.0f simulated seconds | %.0f sim s/real s", state->session.paused ? "Paused" : "Running",
-        state->session.system.elapsed_seconds, simulation_session_time_scale(&state->session)), 20, 50, 18, RAYWHITE);
+    char date[32] = "";
+    if (state->session.catalog_experiment || lesson_is_scene(state->session.lesson))
+        scene_epoch_format_date(state->session.system.elapsed_seconds, date, sizeof(date));
+    DrawText(TextFormat("%s | %s%s%.0f simulated seconds | %.0f sim s/real s", state->session.paused ? "Paused" : "Running",
+        date, date[0] ? " | " : "", state->session.system.elapsed_seconds, simulation_session_time_scale(&state->session)),
+        20, 50, 18, RAYWHITE);
     DrawText(TextFormat("Selected: %s | Parent: %s | View: %s", body.name, body.parent_name,
         renderer_scale_mode_label(state->render_mode)), 20, 75, 18, RAYWHITE);
     const char *mass = body.mass_quality == PHYSICAL_UNKNOWN ? "Unknown (test particle)"
@@ -603,7 +612,10 @@ static void solar_app_update_draw(void *user_data)
     const char *radius = body.radius_quality == PHYSICAL_UNKNOWN ? "Unknown (marker only)"
         : TextFormat("%.3f km%s", body.radius_m / 1000.0, body.radius_quality == PHYSICAL_ESTIMATED ? " (estimated)" : body.radius_quality == PHYSICAL_PUBLISHED ? " (published)" : "");
     DrawText(TextFormat("Mass: %s | Physical radius: %s", mass, radius), 20, 100, 18, RAYWHITE);
-    DrawText(body.has_parent ? TextFormat("Parent-relative: %.3f km | %.6f km/s", body.distance_m / 1000.0, body.speed_mps / 1000.0)
+    DrawText(body.has_parent ? (isfinite(body.orbital_period_s)
+            ? TextFormat("Parent-relative: %.3f km | %.6f km/s | period %.4f days (two-body)", body.distance_m / 1000.0,
+                body.speed_mps / 1000.0, body.orbital_period_s / SOLAR_DAY_SECONDS)
+            : TextFormat("Parent-relative: %.3f km | %.6f km/s | unbound", body.distance_m / 1000.0, body.speed_mps / 1000.0))
         : "Parent-relative distance/speed: N/A (no parent)", 20, 125, 18, RAYWHITE);
     DrawText(TextFormat("Space: pause | N: +%.1f s (paused) | R: reset | [ / ]: speed", simulation_clock_step_seconds(&state->session.clock)), 20, 155, 18, RAYWHITE);
     DrawText("1-9 / 0 / Tab / C: select | V: scale | F: family | B: body | Wheel: zoom", 20, 180, 18, RAYWHITE);

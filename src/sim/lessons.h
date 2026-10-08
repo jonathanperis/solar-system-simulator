@@ -11,6 +11,8 @@ typedef enum LessonPreset {
      * main scene they are fixed 15-second Verlet scenes, not guided lessons. */
     LESSON_JUPITER_SYSTEM, LESSON_SATURN_SYSTEM, LESSON_URANUS_SYSTEM, LESSON_NEPTUNE_SYSTEM,
     LESSON_PLUTO_SYSTEM, LESSON_DIDYMOS_SYSTEM,
+    /* Two-body lessons on small-body binaries (SPEC A96). */
+    LESSON_PLUTO_CHARON, LESSON_DART,
     LESSON_COUNT, LESSON_CATALOG = -1
 } LessonPreset;
 

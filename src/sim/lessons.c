@@ -9,7 +9,8 @@ const char *lesson_name(LessonPreset preset)
 {
     const char *names[] = {"core", "circular", "eccentric", "escape", "earth-moon", "inclined", "phobos",
         "barycentric-core", "resonance", "encounter", "collision",
-        "jupiter-system", "saturn-system", "uranus-system", "neptune-system", "pluto-system", "didymos-system"};
+        "jupiter-system", "saturn-system", "uranus-system", "neptune-system", "pluto-system", "didymos-system",
+        "pluto-charon", "dart"};
     _Static_assert(sizeof(names) / sizeof(names[0]) == LESSON_COUNT, "every preset needs a name");
     return preset >= 0 && preset < LESSON_COUNT ? names[preset] : "catalog";
 }
@@ -114,6 +115,37 @@ static void build_lesson(LessonPreset preset, double velocity_factor, SolarSyste
                 orbit_ecliptic_to_simulation((Vec3d){0, 10000 * velocity_factor, 0}));
         }
         system.bodies[1] = planet; system.bodies[2] = probe; system.body_count = 3;
+    } else if (preset == LESSON_PLUTO_CHARON || preset == LESSON_DART) {
+        /* An isolated binary at its barycenter, as in the Earth-Moon lesson.
+         * Pluto-Charon: Charon's catalog orbit (12% of Pluto's mass puts the
+         * barycenter outside Pluto). DART: Dimorphos on its pre-impact orbit,
+         * JPL Horizons s547 osculating ecliptic elements about the Didymos
+         * primary at 2022-09-01 TDB, started at periapsis; the speed factor
+         * is the along-track change, and 0.985 reproduces DART's ~2.6 mm/s
+         * slowdown (two-body period 12.34 h -> ~11.8 h, as observed: ~33 min). */
+        static const SatelliteDefinition dimorphos_pre_impact = {
+            .code = BODY_ID_DIMORPHOS, .name = "Dimorphos", .group = "Didymos system",
+            .a_km = 1.209922053993790, .eccentricity = 0.01711717899757169, .periapsis_deg = 73.55398047490951,
+            .mean_anomaly_deg = 0.0, .inclination_deg = 170.7245506300443, .node_deg = 39.81034174807041,
+            .gm_km3_s2 = 3.0268e-10, .radius_km = 0.0746, .period_days = 44418.72204856695 / 86400.0,
+            .frame = SATELLITE_FRAME_ECLIPTIC, .mass_quality = PHYSICAL_ESTIMATED, .radius_quality = PHYSICAL_ESTIMATED,
+        };
+        Body parent = preset == LESSON_PLUTO_CHARON ? solar_system_create_pluto_at_perihelion() : solar_system_create_didymos_at_perihelion();
+        parent.position_m = parent.velocity_mps = vec3d_zero();
+        parent.parent_id = BODY_ID_NONE;
+        Body moon = satellite_create(preset == LESSON_PLUTO_CHARON ? &satellite_catalog_for(BODY_ID_PLUTO)->moons[0]
+            : &dimorphos_pre_impact, &parent);
+        moon.velocity_mps = vec3d_scale(moon.velocity_mps, velocity_factor);
+        double fraction = moon.mass_kg / (parent.mass_kg + moon.mass_kg);
+        Vec3d center = vec3d_scale(moon.position_m, fraction);
+        Vec3d velocity = vec3d_scale(moon.velocity_mps, fraction);
+        parent.position_m = vec3d_scale(center, -1);
+        parent.velocity_mps = vec3d_scale(velocity, -1);
+        moon.position_m = vec3d_sub(moon.position_m, center);
+        moon.velocity_mps = vec3d_sub(moon.velocity_mps, velocity);
+        system.bodies[0] = parent;
+        system.bodies[1] = moon;
+        system.body_count = 2;
     } else if (preset == LESSON_EARTH_MOON || preset == LESSON_PHOBOS) {
         Body parent = preset == LESSON_EARTH_MOON ? solar_system_create_earth_at_perihelion() : solar_system_create_mars_at_perihelion();
         parent.position_m = parent.velocity_mps = vec3d_zero();

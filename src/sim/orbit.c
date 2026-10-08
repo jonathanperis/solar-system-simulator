@@ -115,3 +115,13 @@ double catalog_period_days(double q, double e)
     double a = q*SOLAR_AU_METERS/(1-e);
     return 2*acos(-1.0)*sqrt(a*a*a/(SOLAR_G*SOLAR_SUN_MASS_KG))/SOLAR_DAY_SECONDS;
 }
+
+Vec3d orbit_icrf_direction(double ra_deg, double dec_deg)
+{
+    const double degree = acos(-1.0) / 180.0;
+    Vec3d equatorial = {cos(dec_deg * degree) * cos(ra_deg * degree), cos(dec_deg * degree) * sin(ra_deg * degree),
+        sin(dec_deg * degree)};
+    /* Rotating about the shared X axis by minus the J2000 obliquity
+     * (23 deg 26' 21.448") takes equatorial coordinates to the ecliptic. */
+    return orbit_ecliptic_to_simulation(orbit_rotate_to_reference(equatorial, -23.439291111, 0.0, 0.0));
+}

@@ -98,16 +98,9 @@ Current milestone behavior:
 - Models a 32-body main scene (the original ten bodies, Saturn, Uranus, Neptune, the dwarf planet Pluto and the 18 major moons: Io, Europa, Ganymede, Callisto; Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Iapetus; Ariel, Umbriel, Titania, Oberon, Miranda; Triton; Charon) and six system scenes (`jupiter-system` 124 bodies, `saturn-system` 300, `uranus-system` 38, `neptune-system` 25, `pluto-system` 15, `didymos-system` 11: the Sun, eight planets, the primary and its complete moon catalog). Load a system from the simulator's scene picker, native `K`, or `solar-lab --scene NAME`; links to a small moon open its system. Known radii render as spheres; unknown radii use explicitly nonphysical wire markers.
 - Keeps the Sun fixed at the origin for a stable heliocentric baseline.
 - Uses right-handed simulation axes: `(x, y, z) = (X, Z, -Y)` of the J2000 ecliptic, so `+y` is ecliptic north and the ecliptic plane is the x/z plane. Prograde orbits have angular momentum along `+y` and appear counterclockwise when viewed from above (north).
-- Initializes Mercury at perihelion on the +X axis with prograde tangential velocity (toward -Z, ecliptic +Y) from the vis-viva equation.
-- Initializes Venus at perihelion on the -X axis with prograde tangential velocity (toward +Z) from the vis-viva equation.
-- Initializes the Earth–Moon barycenter at perihelion on the -Z axis (ecliptic +Y) with prograde tangential velocity (toward -X) from the vis-viva equation.
-- Initializes the Moon at Earth-relative perigee with tangential relative velocity from the Earth-Moon vis-viva equation.
-- Initializes the Mars–Phobos–Deimos barycenter at heliocentric perihelion on the +Z axis (ecliptic -Y) with prograde tangential velocity (toward +X) from the vis-viva equation.
-- Initializes Phobos and Deimos at Mars-relative periareion with tangential relative velocities from the Mars-moon vis-viva equations.
-- Initializes Vesta at heliocentric perihelion on the +X axis with prograde tangential velocity (toward -Z) from the vis-viva equation.
-- Initializes the Jovian-system barycenter (Jupiter plus its known-mass moons) at heliocentric perihelion on the -X axis with prograde tangential velocity (toward +Z) from the vis-viva equation.
-- Initializes giant-planet moons from sourced mean orbital elements (ecliptic, Laplace-plane or, for Uranus's major moons, spin-pole equatorial frames), preserving inclination and retrograde/prograde direction through a common-frame conversion, then adds the planet's absolute position and velocity.
-- Initializes the Saturn-system barycenter at heliocentric perihelion on the -Z axis with prograde tangential velocity (toward -X) from the vis-viva equation; Uranus and Neptune systems likewise.
+- Starts every scene from the real sky of **2026-06-09** (JD 2461200.5 TDB): the planetary-system barycenters from `data/planet_epoch.json` and every moon, Vesta, Pluto, Didymos and Dimorphos from a pinned JPL Horizons vector snapshot (`data/scene_epoch.json`, `tools/scene_epoch.py`). Orbits therefore carry their real tilts. Each family barycenter takes its system's state and the planet sits opposite its moons about it. Two moons Horizons does not serve under their own names (Daphnis, S/2025 U 1) keep mean-element states.
+- Shows the scene's calendar date (TDB) next to the elapsed simulated time, and a two-body orbital period for the selected body.
+- Gives Earth, Mars, Jupiter, Saturn, Uranus and Neptune their J2 oblateness (NASA fact sheets, IAU poles): each pulls its own moons with the J2 term and feels the reaction. Guided lessons keep point masses so their analytic references hold. Lessons still start from the legacy planar perihelion states.
 - Advances moving bodies with Newtonian gravity from all nonzero-mass sources using the shared simulation integrator. Unknown-mass moons are test particles, not invented physical masses.
 - Supports illustrative/default and real-scale visualization modes.
 - Draws bounded motion traces for non-star bodies and moving stars, with uniform full-run sampling that coarsens as the run grows and an always-current endpoint. Only fixed stars omit history.
@@ -131,27 +124,24 @@ Simulation code lives under `src/sim/` and is independent from raylib.
 - Core/catalog playback uses a fixed 15-second simulation step and carries frame remainders in an accumulator. Requested presets are one hour, one day (default), five days, ten days, and fifteen days per real second. Each update executes at most 2048 steps, retaining unconsumed time and reporting achieved speed/pending time. Display-frame partitioning does not change the sequence of physics steps once pending work is drained. Hidden-tab/minimized-window wall time is excluded, including the first resumed frame. A single frame longer than one second (laptop sleep with the window visible, a debugger pause) is discarded the same way; shorter slow frames keep their pending time.
 - `tests/test_simulation_step.c` verifies less than one degree of isolated Phobos/Deimos phase error over 100 days and less than 1% parent-relative position discrepancy against half-sized steps for the main scene, and over 20 days for each planet-system scene (including Saturn's co-orbital and trojan moons). These are numerical accuracy checks, not ephemeris validation.
 - The default core/catalog Sun stays fixed. The explicit barycentric-core lesson releases it and starts in the center-of-mass frame.
-- This is a deterministic physics baseline, not an ephemeris-accurate model. The perihelion demonstration scenes remain planar through Neptune, with moon inclinations from their source frames. Catalog experiments align their initial epoch, then use the same fixed-Sun point-mass gravity. Relativity, planetary oblateness and omitted-body perturbations are outside this model.
+- This is a deterministic physics baseline, not an ephemeris. It starts from the real sky of 2026-06-09 and then follows its own model: a fixed Sun, point masses plus planetary J2, no relativity, no tides and no bodies outside the scene, so it drifts away from the real sky over time.
 
 Current simulation data:
 
 Baseline planet values follow NASA/JPL references. Sun, Mercury, Venus, Earth, Moon and Mars masses are `GM / G` from DE440 GM values ([JPL astrodynamic parameters](https://ssd.jpl.nasa.gov/astro_par.html), [planetary physical parameters](https://ssd.jpl.nasa.gov/planets/phys_par.html)) with CODATA 2018 `G = 6.67430e-11`; Jupiter through Neptune use [JPL physical parameters](https://ssd.jpl.nasa.gov/planets/phys_par.html) and [JPL approximate orbital elements](https://ssd.jpl.nasa.gov/planets/approx_pos.html). Satellite values follow JPL Solar System Dynamics. Vesta's pinned physical values and osculating elements are attributed to JPL SBDB solution 36; the [live SBDB query](https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=4%20Vesta&phys-par=1&full-prec=1) may return a newer solution. Derived periapsis distances and vis-viva speeds are calculated in `src/sim/constants.h`. See the [provenance and precision policy](data/README.md#provenance-and-precision-policy) for missing legacy retrieval dates and uncertainty limitations.
 
-| Body | Mass | Radius | Initial state |
+| Body | Mass | Radius | Initial state (2026-06-09) |
 |---|---:|---:|---|
 | Sun | `1.98841e30 kg` | `695700000 m` | fixed at origin |
-| Mercury | `3.301001e23 kg` | `2439700 m` | perihelion position and tangential speed |
-| Venus | `4.867306e24 kg` | `6051800 m` | perihelion position and tangential speed |
-| Earth | `5.972168e24 kg` | `6371000 m` | Earth–Moon barycenter at perihelion with vis-viva speed; Earth sits opposite the Moon about it |
-| Moon | `7.345789e22 kg` | `1737400 m` | Earth-relative perigee offset and tangential relative speed |
-| Mars | `6.416909e23 kg` | `3389500 m` | Mars–Phobos–Deimos barycenter at perihelion with vis-viva speed; Mars offset about 0.1 m |
-| Phobos | `1.061834199841182e16 kg` | `11080 m` | Mars-relative periareion offset and tangential relative speed |
-| Deimos | `1.441349654645431e15 kg` | `6200 m` | Mars-relative periareion offset and tangential relative speed |
-| Vesta | `2.590276793071933e20 kg` | `261385 m` | heliocentric perihelion position and tangential speed |
-| Jupiter | `1.8981246e27 kg` | `69911000 m` | Jovian-system barycenter (Jupiter plus known-mass moons) at heliocentric perihelion with vis-viva speed |
-| Saturn | `5.6831737e26 kg` | `58232000 m` | Saturn-system barycenter (Saturn plus the scene's known-mass moons) at heliocentric perihelion with vis-viva speed |
-| Uranus | `8.6809862e25 kg` | `25362000 m` | Uranus-system barycenter at heliocentric perihelion, `a=19.18916464 AU`, `e=0.04725744` |
-| Neptune | `1.0240924e26 kg` | `24622000 m` | Neptune-system barycenter at heliocentric perihelion, `a=30.06992276 AU`, `e=0.00859048` |
+| Mercury | `3.301001e23 kg` | `2439700 m` | Horizons heliocentric state |
+| Venus | `4.867306e24 kg` | `6051800 m` | Horizons heliocentric state |
+| Earth | `5.972168e24 kg` | `6371000 m` | Earth–Moon barycenter at its Horizons state; Earth opposite the Moon about it |
+| Moon | `7.345789e22 kg` | `1737400 m` | Horizons geocentric state |
+| Mars | `6.416909e23 kg` | `3389500 m` | Mars-system barycenter at its Horizons state |
+| Phobos, Deimos | `1.06e16 kg`, `1.44e15 kg` | `11080 m`, `6200 m` | Horizons areocentric states |
+| Vesta | `2.590276793071933e20 kg` | `261385 m` | Horizons heliocentric state |
+| Jupiter–Neptune | planet-only GM / G | JPL mean radii | system barycenters at their Horizons states |
+| Pluto, Didymos | Horizons GM / G | JPL radii | system barycenters at their Horizons states |
 
 ### Giant-planet satellite data and scenes
 

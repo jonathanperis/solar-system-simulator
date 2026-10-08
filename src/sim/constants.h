@@ -171,6 +171,34 @@
 #define SOLAR_NEPTUNE_SEMI_MAJOR_AXIS_M (30.06992276 * SOLAR_AU_METERS)
 #define SOLAR_NEPTUNE_ECCENTRICITY .00859048
 
+/* Oblateness (SPEC A94): J2 and the equatorial radius it is referenced to,
+ * from the NASA Planetary Fact Sheets (checked 2026-10-07,
+ * https://nssdc.gsfc.nasa.gov/planetary/factsheet/), and the IAU WGCCRE 2015
+ * pole at J2000 (RA, Dec in degrees; precession of the poles is omitted).
+ * Only the axis line matters for J2, so Uranus's IAU pole serves as is. */
+#define SOLAR_EARTH_J2 1082.63e-6
+#define SOLAR_EARTH_J2_RADIUS_M 6378137.0
+#define SOLAR_EARTH_POLE_RA_DEG 0.0
+#define SOLAR_EARTH_POLE_DEC_DEG 90.0
+#define SOLAR_MARS_J2 1960.45e-6
+#define SOLAR_MARS_J2_RADIUS_M 3396200.0
+#define SOLAR_MARS_POLE_RA_DEG 317.68143
+#define SOLAR_MARS_POLE_DEC_DEG 52.88650
+#define SOLAR_JUPITER_J2 14736e-6
+#define SOLAR_JUPITER_J2_RADIUS_M 71492000.0
+#define SOLAR_JUPITER_POLE_RA_DEG 268.056595
+#define SOLAR_JUPITER_POLE_DEC_DEG 64.495303
+#define SOLAR_SATURN_J2 16298e-6
+#define SOLAR_SATURN_J2_RADIUS_M 60268000.0
+#define SOLAR_SATURN_POLE_RA_DEG 40.589
+#define SOLAR_SATURN_POLE_DEC_DEG 83.537
+#define SOLAR_URANUS_J2 3343.43e-6
+#define SOLAR_URANUS_J2_RADIUS_M 25559000.0
+#define SOLAR_NEPTUNE_J2 3411e-6
+#define SOLAR_NEPTUNE_J2_RADIUS_M 24764000.0
+#define SOLAR_NEPTUNE_POLE_RA_DEG 299.36
+#define SOLAR_NEPTUNE_POLE_DEC_DEG 43.46
+
 /* Small-body satellite systems (SPEC T78). Like the planets, both primaries
  * start at a planar heliocentric perihelion with vis-viva speed; their real
  * inclinations (Pluto 17.1 deg, Didymos 3.4 deg) are not modeled here.

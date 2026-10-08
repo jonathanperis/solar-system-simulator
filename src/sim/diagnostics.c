@@ -18,6 +18,12 @@ size_t physics_force_breakdown(const SolarSystem *system, size_t target, ForceCo
     for (size_t i = 0; i < system->body_count; ++i) {
         if (i == target || system->bodies[i].mass_kg == 0) continue;
         Vec3d acceleration = gravitational_acceleration_from(&system->bodies[target], &system->bodies[i]);
+        /* An oblate parent's J2 belongs to its own contribution, and so does
+         * the reaction a moon exerts back on an oblate planet. */
+        const Body *t = &system->bodies[target], *source = &system->bodies[i];
+        acceleration = vec3d_add(acceleration, physics_oblateness_acceleration(source, t));
+        if (t->mass_kg > 0)
+            acceleration = vec3d_sub(acceleration, vec3d_scale(physics_oblateness_acceleration(t, source), source->mass_kg / t->mass_kg));
         double magnitude = vec3d_length(acceleration);
         all[count++] = (ForceContribution){i, acceleration, magnitude, 0};
         sum += magnitude;
@@ -50,6 +56,8 @@ PhysicsDiagnostics physics_diagnostics(const SolarSystem *system)
         for (size_t j = 0; j < i; ++j) {
             double distance = vec3d_length(vec3d_sub(body->position_m, system->bodies[j].position_m));
             if (distance > 0) result.potential_energy_j -= SOLAR_G * body->mass_kg * system->bodies[j].mass_kg / distance;
+            result.potential_energy_j += physics_oblateness_potential_j(&system->bodies[j], body) +
+                physics_oblateness_potential_j(body, &system->bodies[j]);
         }
     }
     if (result.total_mass_kg > 0) result.center_of_mass_m = vec3d_scale(result.center_of_mass_m, 1.0 / result.total_mass_kg);
