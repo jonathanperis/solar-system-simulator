@@ -184,8 +184,8 @@ orbits in JPL's Small-Body Database, not an ephemeris, and are not modeled.
 
 Moons without a JPL physical-table GM have unknown mass: they feel known-source
 gravity with no gravitational backreaction, and moons without a radius draw
-wire markers that never claim a physical size (a plain dot while the marker
-would be under 3 pixels across in radius, like any tiny body). Measured, estimated, and unknown
+wire markers that never claim a physical size (a plain dot, like any tiny
+body, while the marker's projected radius is under 3 pixels). Measured, estimated, and unknown
 values remain distinct. Mean orbital elements describe shape/orientation, not a
 dated ephemeris or an exact resonant configuration; each moon keeps its ephemeris
 solution's epoch, so phases are consistent only within one solution. Point-mass
