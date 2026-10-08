@@ -272,6 +272,9 @@ Color renderer_body_color(const Body *body)
         case BODY_ID_CHARON: return (Color){168, 164, 160, 255};
         case BODY_ID_DIDYMOS: return (Color){150, 138, 124, 255};
         case BODY_ID_DIMORPHOS: return (Color){172, 160, 146, 255};
+        /* Dark P-type trojans (geometric albedo 0.047): a dim reddish grey. */
+        case BODY_ID_PATROCLUS: return (Color){128, 112, 100, 255};
+        case BODY_ID_MENOETIUS: return (Color){144, 128, 116, 255};
         case BODY_ID_UNKNOWN:
         case BODY_ID_NONE:
         default:

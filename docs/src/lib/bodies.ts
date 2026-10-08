@@ -4,12 +4,13 @@ import uranianCatalog from '../../../data/uranian_moons.json' with { type: 'json
 import neptunianCatalog from '../../../data/neptunian_moons.json' with { type: 'json' };
 import plutonianCatalog from '../../../data/plutonian_moons.json' with { type: 'json' };
 import didymosCatalog from '../../../data/didymos_moons.json' with { type: 'json' };
+import patroclusCatalog from '../../../data/patroclus_moons.json' with { type: 'json' };
 
 /** Scenes mirror the C presets: `core` is the main scene of large bodies;
  * each family scene holds one giant planet's complete moon catalog. */
 export type SceneName = 'core' | 'jupiter-system' | 'saturn-system' | 'uranus-system' | 'neptune-system'
-  | 'pluto-system' | 'didymos-system';
-export type FamilyPrimary = 'Jupiter' | 'Saturn' | 'Uranus' | 'Neptune' | 'Pluto' | 'Didymos';
+  | 'pluto-system' | 'didymos-system' | 'patroclus-system';
+export type FamilyPrimary = 'Jupiter' | 'Saturn' | 'Uranus' | 'Neptune' | 'Pluto' | 'Didymos' | 'Patroclus';
 
 export type ImplementedBody = {
   slug: string;
@@ -35,7 +36,9 @@ export function bodyIntroduction(body: ImplementedBody): string {
 
 type CatalogMoon = (typeof jovianCatalog.moons)[number] & { major?: boolean };
 type MoonFamily = { parent: string; scene: SceneName; adjective: string; milestone: string;
-  source: string; moons: CatalogMoon[] };
+  source: string; moons: CatalogMoon[];
+  /** Asteroid binaries come from Horizons osculating elements, not JPL mean elements. */
+  osculating?: boolean };
 
 /** The Jovian snapshot predates the `major` flag: its Galilean group is major. */
 const isMajor = (moon: CatalogMoon): boolean => moon.major ?? moon.group === 'Galilean moons';
@@ -52,7 +55,9 @@ const moonFamilies: MoonFamily[] = [
   { parent: 'Pluto', scene: 'pluto-system', adjective: 'Plutonian', milestone: 'Pluto system scene',
     source: 'data/plutonian_moons.json', moons: plutonianCatalog.moons as CatalogMoon[] },
   { parent: 'Didymos', scene: 'didymos-system', adjective: 'Didymos', milestone: 'Didymos system scene',
-    source: 'data/didymos_moons.json', moons: didymosCatalog.moons as unknown as CatalogMoon[] }
+    source: 'data/didymos_moons.json', moons: didymosCatalog.moons as unknown as CatalogMoon[], osculating: true },
+  { parent: 'Patroclus', scene: 'patroclus-system', adjective: 'Patroclus', milestone: 'Patroclus system scene',
+    source: 'data/patroclus_moons.json', moons: patroclusCatalog.moons as unknown as CatalogMoon[], osculating: true }
 ];
 
 /** A family's moons in C scene order: major moons first, each group in
@@ -69,7 +74,7 @@ function moonBody(family: MoonFamily, moon: CatalogMoon, index: number): Impleme
     parent: family.parent,
     milestone: major ? 'Main-scene major moon' : family.milestone,
     group: moon.group,
-    initialization: `Horizons state relative to ${family.parent} on 2026-06-09; ${moon.frame}-frame JPL mean elements give its orbit data.`,
+    initialization: `Horizons state relative to ${family.parent} on 2026-06-09; ${family.osculating ? 'Horizons osculating ecliptic elements' : `${moon.frame}-frame JPL mean elements`} give its orbit data.`,
     source: family.source,
     summary: `${moon.group}. ${major ? `In the main scene and the ${family.parent} system scene.` : `In the ${family.parent} system scene.`} ${moon.inclination_deg > 90 ? 'Retrograde' : 'Prograde'} in the source frame. Mass: ${moon.mass_quality === 'unknown' ? 'unknown — test particle' : moon.mass_quality}. Radius: ${moon.radius_quality === 'unknown' ? 'unknown — marker only' : moon.radius_quality}.`,
     scene: major ? 'core' : family.scene
@@ -215,26 +220,41 @@ const didymos: ImplementedBody = {
   source: 'src/sim/solar_system.c',
   summary: 'Near-Earth binary asteroid, the DART mission target, in the Didymos system scene.', scene: 'didymos-system'
 };
+/** Patroclus lives only in its family scene. */
+const patroclus: ImplementedBody = {
+  slug: 'patroclus', name: 'Patroclus', kind: 'Asteroid', parent: 'Sun', milestone: 'Small-body satellite systems',
+  group: 'Patroclus system',
+  initialization: 'Patroclus–Menoetius barycenter at its Horizons state on 2026-06-09; masses are Horizons JPL#82 estimates.',
+  source: 'src/sim/solar_system.c',
+  summary: 'Binary Jupiter trojan near L5, a Lucy mission target, in the Patroclus system scene.', scene: 'patroclus-system'
+};
+/** Primaries that are not in the main scene: they lead their family scene at index 9. */
+const familyOnlyPrimaries: Partial<Record<FamilyPrimary, ImplementedBody>> = { Didymos: didymos, Patroclus: patroclus };
 
 /** The main scene, in the C order of solar_system_create_current(). */
 export const mainSceneBodies: ImplementedBody[] = [sun, mercury, venus, earth, moon, mars, phobos, deimos, vesta, jupiter,
   ...majorMoonsOf('Jupiter'), saturn, ...majorMoonsOf('Saturn'), uranus, ...majorMoonsOf('Uranus'), neptune,
   ...majorMoonsOf('Neptune'), pluto, ...majorMoonsOf('Pluto')];
 
-/** A family scene, in the C order of solar_system_create_family(): Pluto and
- * Didymos, which are not planets, follow the eight planets at index 9. */
-export const familySceneBodies = (parent: FamilyPrimary): ImplementedBody[] =>
-  [sun, mercury, venus, earth, mars, jupiter, saturn, uranus, neptune,
-    ...(parent === 'Pluto' ? [pluto] : parent === 'Didymos' ? [didymos] : []), ...familyMoons[parent]];
+/** A family scene, in the C order of solar_system_create_family(): Pluto,
+ * Didymos and Patroclus, which are not planets, follow the eight planets at
+ * index 9. */
+export const familySceneBodies = (parent: FamilyPrimary): ImplementedBody[] => {
+  const primary = parent === 'Pluto' ? pluto : familyOnlyPrimaries[parent];
+  return [sun, mercury, venus, earth, mars, jupiter, saturn, uranus, neptune, ...(primary ? [primary] : []),
+    ...familyMoons[parent]];
+};
 
 /** Every simulated body once: the main scene, then each family's small
- * moons (and Didymos, the one primary outside the main scene). */
+ * moons (and Didymos and Patroclus, the primaries outside the main scene). */
 export const implementedBodies: ImplementedBody[] = [...mainSceneBodies,
-  ...moonFamilies.flatMap(family => [...(family.parent === 'Didymos' ? [didymos] : []),
-    ...familyMoons[family.parent].filter(body => body.scene !== 'core')])];
+  ...moonFamilies.flatMap(family => {
+    const primary = familyOnlyPrimaries[family.parent as FamilyPrimary];
+    return [...(primary ? [primary] : []), ...familyMoons[family.parent].filter(body => body.scene !== 'core')];
+  })];
 
-// Every planned system now has a scene (SPEC T78). Other asteroid satellites
-// have no JPL source this project can pin (SPEC A91).
+// Every system with a JPL ephemeris has a scene (SPEC T78, T86). Other asteroid
+// satellites have no JPL ephemeris this project can pin (SPEC R23).
 export const plannedBodies: string[] = [];
 
 export const bodyFocusOrder = mainSceneBodies.map((body) => body.name);

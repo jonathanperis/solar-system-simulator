@@ -14,8 +14,8 @@
 #define SOLAR_MAJOR_MOON_COUNT 18
 #define SOLAR_CORE_SCENE_BODY_COUNT (14 + SOLAR_MAJOR_MOON_COUNT)
 /* A family scene: the Sun, the eight planets and one primary's complete moon
- * catalog (major moons first). Pluto and Didymos, which are not planets, sit
- * at index 9 ahead of their moons. Saturn's scene is the largest. */
+ * catalog (major moons first). Pluto, Didymos and Patroclus, which are not
+ * planets, sit at index 9 ahead of their moons. Saturn's scene is the largest. */
 #define SOLAR_FAMILY_SCENE_PLANET_COUNT 9
 #define SOLAR_LARGEST_FAMILY_SCENE_BODY_COUNT (SOLAR_FAMILY_SCENE_PLANET_COUNT + SOLAR_SATURNIAN_MOON_COUNT)
 /* Every scene shares one fixed array sized for the largest scene. Other
@@ -42,6 +42,7 @@ Body solar_system_create_uranus_at_perihelion(void);
 Body solar_system_create_neptune_at_perihelion(void);
 Body solar_system_create_pluto_at_perihelion(void);
 Body solar_system_create_didymos_at_perihelion(void);
+Body solar_system_create_patroclus_at_perihelion(void);
 SolarSystem solar_system_create_sun_only(void);
 SolarSystem solar_system_create_sun_mercury(void);
 SolarSystem solar_system_create_sun_vesta(void);
@@ -59,13 +60,13 @@ bool solar_system_append(SolarSystem *system, const Body *body);
 void solar_system_step(SolarSystem *system, double dt_seconds);
 /* The main scene (large bodies only). */
 SolarSystem solar_system_create_current(void);
-/* Family scene of a giant planet, Pluto or Didymos: Sun at index 0, then
- * Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus and Neptune (1-8),
- * Pluto or Didymos at 9 when that is the primary, then the primary's moons,
+/* Family scene of a giant planet, Pluto, Didymos or Patroclus: Sun at index
+ * 0, then Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus and Neptune
+ * (1-8), Pluto, Didymos or Patroclus at 9 when that is the primary, then the primary's moons,
  * major moons first, each group in catalog order. False for any other body. */
 bool solar_system_create_family(BodyId primary, SolarSystem *result);
 /* Index of the primary in its family scene (Jupiter 5 ... Neptune 8,
- * Pluto and Didymos 9), or -1. */
+ * Pluto, Didymos and Patroclus 9), or -1. */
 int solar_system_family_planet_index(BodyId primary);
 int solar_system_parent_index(const SolarSystem *system, size_t body_index);
 
