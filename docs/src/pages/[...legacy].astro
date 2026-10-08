@@ -1,0 +1,19 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { legacyRedirects } from '../lib/site';
+import { normalizeBase } from '../lib/base';
+
+// Retired URLs (SPEC A99) render as small forwarding pages: forward.js keeps
+// the query and fragment, the meta refresh covers browsers without scripts.
+export function getStaticPaths() {
+  return legacyRedirects.map(({ from, to, label }) => ({ params: { legacy: from }, props: { to, label } }));
+}
+const { to, label } = Astro.props;
+const base = normalizeBase(import.meta.env.BASE_URL);
+---
+<BaseLayout title="Moved" description={`This page moved to ${label}.`} redirectTo={to}>
+  <div class="page">
+    <h1>This page moved.</h1>
+    <p>Continue to <a href={`${base}${to}`}>{label}</a>.</p>
+  </div>
+</BaseLayout>

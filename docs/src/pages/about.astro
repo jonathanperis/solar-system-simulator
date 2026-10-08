@@ -1,0 +1,90 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { normalizeBase } from '../lib/base';
+import { authorName, repoUrl } from '../lib/site';
+import { sourceSections } from '../lib/sourceMap';
+import { coreBodyCount, formatCount, smallBodyCatalogCount, totalBodyCount } from '../lib/siteCounts';
+
+// One page replaces the field guide, physics, source-atlas and pipeline pages
+// (SPEC A103). Each fact lives here once; other pages link to its section.
+const base = normalizeBase(import.meta.env.BASE_URL);
+const sources = [
+  ['Planet and Sun masses', 'GM / G: DE440 (Sun–Mars), planet-only Horizons GM (Jupiter–Pluto)', 'https://ssd.jpl.nasa.gov/astro_par.html'],
+  ['Starting positions', 'JPL Horizons vectors at JD 2461200.5 TDB (2026-06-09)', 'https://ssd.jpl.nasa.gov/horizons/'],
+  ['Moon elements', 'JPL planetary satellite mean elements', 'https://ssd.jpl.nasa.gov/sats/elem/'],
+  ['Moon masses and radii', 'JPL satellite physical parameters', 'https://ssd.jpl.nasa.gov/sats/phys_par/'],
+  ['J2 and equatorial radii', 'NASA Planetary Fact Sheets', 'https://nssdc.gsfc.nasa.gov/planetary/factsheet/'],
+  ['Spin poles', 'IAU WGCCRE 2015 (Archinal et al. 2018)', 'https://doi.org/10.1007/s10569-017-9805-5'],
+  ['Small bodies', 'JPL Small-Body Database snapshot', 'https://ssd-api.jpl.nasa.gov/sbdb_query.api'],
+  ['Didymos and Dimorphos', 'Horizons DART s547 reconstruction', 'https://ssd.jpl.nasa.gov/horizons/'],
+  ['Textures', 'Solar System Scope, CC BY 4.0', 'https://www.solarsystemscope.com/textures/']
+];
+---
+<BaseLayout title="About" description="What the simulator models and leaves out, where its data comes from, how the code is organized, and how to build and test it.">
+  <div class="page">
+    <h1>About</h1>
+    <p class="lede">A C11 solar system you can inspect: the same physics runs natively with raylib, in the browser through WebAssembly, and in a command-line CSV runner.</p>
+    <ul class="index">
+      <li><a href="#model">Model</a></li><li><a href="#data">Data</a></li><li><a href="#code">Code</a></li>
+      <li><a href="#rendering">Rendering</a></li><li><a href="#controls">Controls</a></li><li><a href="#build">Build and tests</a></li>
+      <li><a href="#roadmap">What's next</a></li><li><a href="#credits">Credits</a></li>
+    </ul>
+
+    <h2 id="model">Model</h2>
+    <ul>
+      <li>State is SI: metres, kilograms, seconds, in double precision, in the J2000 ecliptic (simulation axes x, y, z = X, Z, −Y, so +y is ecliptic north).</li>
+      <li>Gravity is Newtonian between point masses. Earth, Mars, Jupiter, Saturn, Uranus and Neptune add their J2 flattening for their own moons, and feel the reaction.</li>
+      <li>Time advances in fixed 15-second velocity-Verlet steps. Faster playback runs more steps per frame, never longer ones; if a device falls behind, the achieved speed is shown.</li>
+      <li>Every scene starts from the real sky of 2026-06-09, then follows only this model: a fixed Sun, no relativity, no tides, nothing outside the scene. It drifts from the real sky over time; it is not an ephemeris.</li>
+      <li>The solar-system scene holds {coreBodyCount} large bodies. Each giant planet, Pluto and Didymos also has a scene with every catalogued moon ({totalBodyCount} bodies in all).</li>
+      <li>Moons with no published mass are test particles: they feel gravity but exert none. Unknown radii are shown as Unknown and drawn as wire markers.</li>
+      <li>Checks: Phobos keeps its phase within 1° of the analytic orbit over 100 days; scenes agree within 1% with half-size steps; J2 reproduces the textbook nodal precession within 2%.</li>
+    </ul>
+
+    <h2 id="data">Data</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>What</th><th>Source</th></tr></thead>
+        <tbody>{sources.map(([what, source, href]) => <tr><td>{what}</td><td><a href={href}>{source}</a></td></tr>)}</tbody>
+      </table>
+    </div>
+    <p>Snapshots are pinned in <a href={`${repoUrl}/tree/main/data`}><code>data/</code></a> and checked offline on every build; refreshing them is an explicit, reviewed step. The small-body atlas holds {formatCount(smallBodyCatalogCount)} objects. <a href={`${repoUrl}/blob/main/data/README.md`}>Provenance and precision notes</a>.</p>
+
+    <h2 id="code">Code</h2>
+    <p>Physics in <code>src/sim/</code> never includes raylib; rendering in <code>src/render/</code> reads physical state and never writes it.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Part</th><th>Path</th><th>Checked by</th></tr></thead>
+        <tbody>{sourceSections.map(section => <tr><td>{section.label}</td><td><code>{section.path}</code></td><td>{section.verification}</td></tr>)}</tbody>
+      </table>
+    </div>
+
+    <h2 id="rendering">Rendering</h2>
+    <p>Illustrative scale enlarges bodies and spreads close moons so they can be seen; real scale uses physical sizes and distances. Lighting, textures, spin from the IAU poles, Saturn's rings and trails are presentation only: they never feed the physics, the inspector or the CSV export.</p>
+
+    <h2 id="controls">Controls</h2>
+    <p>The simulator's dock has play, speed, date and scene; Find, View, Keys and Data open small panels. With the view focused: <kbd>Space</kbd> pause, <kbd>N</kbd> step, <kbd>R</kbd> restart, <kbd>[</kbd> <kbd>]</kbd> speed, <kbd>F</kbd> <kbd>B</kbd> frame, <kbd>V</kbd> scale, <kbd>G</kbd> grid, <kbd>H</kbd> labels. Natively, <kbd>K</kbd> cycles scenes and <kbd>L</kbd> lessons.</p>
+
+    <h2 id="build">Build and tests</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Command</th><th>Does</th></tr></thead>
+        <tbody>
+          <tr><td><code>make</code> / <code>make run</code></td><td>build and run the native raylib app</td></tr>
+          <tr><td><code>make test</code></td><td>C tests for physics, scenes, app and renderer helpers, plus offline data checks</td></tr>
+          <tr><td><code>make test-sanitize</code></td><td>the same under address and undefined-behaviour sanitizers</td></tr>
+          <tr><td><code>make headless</code></td><td>the <code>solar-lab</code> CSV runner (<code>--scene</code>, <code>--catalog</code>, <code>--compare</code>)</td></tr>
+          <tr><td><code>make docs-assets</code></td><td>the WebAssembly build copied into this site</td></tr>
+          <tr><td><code>npm run test:browser --prefix docs</code></td><td>browser journeys against the built site</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>CI builds natively on Linux and macOS, builds WebAssembly, checks the site, runs CodeQL, and deploys the exact artifact it tested. <a href={`${repoUrl}/blob/main/SPEC.md`}>SPEC.md</a> records goals, invariants, tasks and bugs.</p>
+
+    <h2 id="roadmap">What's next</h2>
+    <p>Every source-backed moon system now has a scene. Moons of other asteroids have no JPL ephemeris to pin, so they wait for one. Open work is tracked in <a href={`${repoUrl}/blob/main/SPEC.md`}>SPEC.md</a>.</p>
+
+    <h2 id="credits">Credits</h2>
+    <p>Made by {authorName}. Code under the MIT licence; data are transformed extracts of NASA/JPL products; textures by Solar System Scope (CC BY 4.0); fonts Cormorant Garamond and JetBrains Mono (OFL). Usage analytics run only on the deployed site, and only when configured. <a href={repoUrl}>Source on GitHub</a>.</p>
+  </div>
+</BaseLayout>

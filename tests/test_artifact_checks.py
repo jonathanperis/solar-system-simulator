@@ -81,8 +81,9 @@ class ArtifactChecks(unittest.TestCase):
 
     def test_not_found_page_is_an_astro_noindex_page_linking_home(self):
         good = ('<html><head><meta name="generator" content="Astro v7.3.6"><meta name="robots" content="noindex">'
-                '</head><body><a href="/solar-system-simulator/">Home</a>'
-                '<a href="/solar-system-simulator/simulator/">Simulator</a></body></html>')
+                '</head><body><a href="/solar-system-simulator/">Simulator</a>'
+                '<a href="/solar-system-simulator/learn/">Learn</a><a href="/solar-system-simulator/catalog/">Catalog</a>'
+                '<a href="/solar-system-simulator/about/">About</a></body></html>')
         with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
             dist = Path(directory)
             with self.assertRaises(SystemExit):
@@ -91,7 +92,7 @@ class ArtifactChecks(unittest.TestCase):
             check_not_found_page(dist)
             for html in (good.replace('<meta name="generator" content="Astro v7.3.6">', ""),
                          good.replace('<meta name="robots" content="noindex">', ""),
-                         good.replace('href="/solar-system-simulator/simulator/"', 'href="simulator/"'),
+                         good.replace('href="/solar-system-simulator/learn/"', 'href="learn/"'),
                          good.replace('href="/solar-system-simulator/"', 'href="../"'),
                          good.replace("</head>", '<link rel="canonical" href="https://example.test/"></head>')):
                 with self.subTest(html=html), self.assertRaises(SystemExit):
@@ -119,6 +120,9 @@ class ArtifactChecks(unittest.TestCase):
             (root / "index.html").write_text("home")
             (root / "small-bodies").mkdir()
             (root / "small-bodies/index.html").write_text("catalog")
+            # A retired URL's redirect stub is noindex and not a sitemap page.
+            (root / "physics").mkdir()
+            (root / "physics/index.html").write_text('<meta name="robots" content="noindex">')
             base = "https://jonathanperis.github.io/solar-system-simulator/"
             expected = [base, base + "small-bodies/"]
 

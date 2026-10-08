@@ -1,8 +1,8 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import { normalizeBase } from '../lib/base';
-import { buildRevision } from '../lib/site';
-import { guidedLessons } from '../lib/lessonCatalog';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { normalizeBase } from '../../lib/base';
+import { buildRevision } from '../../lib/site';
+import { guidedLessons } from '../../lib/lessonCatalog';
 const base = normalizeBase(import.meta.env.BASE_URL);
 const plots = [
   ['trajectory', 'Overlaid trajectories', 'Physical ecliptic-plane projection seen from north'],
@@ -14,13 +14,12 @@ const plots = [
   ['resonant_angle_deg', 'Resonant angle', '3λ Jupiter − 2λ particle − ϖ particle, wrapped to ±180°']
 ];
 ---
-<BaseLayout title="Comparison lab" description="Run matched C physics experiments, compare live measurements, and share reproducible orbital lessons.">
+<BaseLayout title="Compare" description="Run matched C physics experiments, compare live measurements, and share reproducible orbital lessons.">
   <section class="comparison" data-comparison data-lab-src={`${base}wasm/learning-lab.mjs?revision=${encodeURIComponent(buildRevision)}`}>
     <header class="hero">
-      <p class="eyebrow">Experimental school / two runs, one question</p>
-      <h1>One question. Two experiments.</h1>
-      <p>Make a prediction, run a ready-made experiment, and compare what happened. Both runs start from the same physical state.</p>
-      <p><a href={`${base}simulator/`}>Open the 3D simulator</a> · <a href={`${base}docs/experiments/`}>Read the experiment guide</a></p>
+      <p class="eyebrow"><a href={`${base}learn/`}>Learn</a> / compare</p>
+      <h1>Compare two runs</h1>
+      <p>Pick a question, run both sides from the same start, read the difference.</p>
     </header>
     <p role="status" data-lab-status>Loading the C comparison module…</p>
     <form>
@@ -74,7 +73,7 @@ const plots = [
         <label>Trajectory display units<select name="units"><option value="m">Meters</option><option value="au">AU</option></select></label>
       </fieldset>
     </form>
-    <noscript><p>JavaScript and WebAssembly are required for live comparisons. The <a href={`${base}docs/experiments/`}>guide and native CLI instructions</a> remain available.</p></noscript>
+    <noscript><p>JavaScript and WebAssembly are required for live comparisons. The <a href={`${base}learn/`}>lessons</a> and the native CLI remain available.</p></noscript>
     <section class="summary" aria-label="Comparison progress">
       <label>Completed checkpoints <progress max="1" value="0"></progress></label>
       <p>Last matched time: <strong data-matched-time>—</strong> · Tracked subject: <strong data-subject>—</strong></p>
@@ -119,7 +118,7 @@ const plots = [
   </section>
 </BaseLayout>
 <script>
-  import { mountComparison } from '../lib/comparison';
+  import { mountComparison } from '../../lib/comparison';
   const root = document.querySelector<HTMLElement>('[data-comparison]');
   if (root) void mountComparison(root);
 </script>

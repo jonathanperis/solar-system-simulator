@@ -1,0 +1,41 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { normalizeBase } from '../../lib/base';
+
+// Each lesson is one question and one thing to watch (DESIGN.md, SPEC A101).
+// Run opens the simulator with the lesson loaded (`/?lesson=name`).
+const base = normalizeBase(import.meta.env.BASE_URL);
+const lessons = [
+  ['circular', 'Why does an orbit curve?', 'Earth on a circle. Turn on vectors: velocity is along the path, the pull points at the Sun.'],
+  ['eccentric', 'Why does a planet speed up near the Sun?', 'An orbit with e = 0.5. Watch speed rise at perihelion and fall at aphelion.'],
+  ['escape', 'How fast is fast enough to leave?', 'Start at escape speed. Lower the speed factor below 1 and the orbit closes again.'],
+  ['inclined', 'What does a tilted orbit look like?', 'A 30° inclination. Rotate the camera to see the orbit cross the ecliptic.'],
+  ['earth-moon', 'Do Earth and the Moon orbit each other?', 'Both circle their barycenter, 4,700 km from Earth’s centre.'],
+  ['pluto-charon', 'Can a world orbit empty space?', 'Charon is 12% of Pluto’s mass: their barycenter lies outside Pluto.'],
+  ['dart', 'How did DART move an asteroid?', 'Set Speed × to 0.985 and Load: the period readout drops by about half an hour, as it did in 2022.'],
+  ['phobos', 'How small must a step be?', 'Phobos loops Mars every 7.7 hours. Raise the step and watch the phase drift.'],
+  ['barycentric-core', 'Does the Sun move?', 'The full scene with a free Sun: it wobbles around the solar system’s barycenter.'],
+  ['resonance', 'What is a 3:2 resonance?', 'A particle that circles the Sun three times for every two of Jupiter’s.'],
+  ['encounter', 'What does a close flyby do?', 'A probe passes Earth at 10 km/s. Its path bends; Earth barely notices.'],
+  ['collision', 'What happens when two bodies touch?', 'Two spheres meet head on. Switch Contact between bounce and merge.']
+] as const;
+---
+<BaseLayout title="Learn" description="Short orbital-mechanics lessons that run in the C simulator, and a two-run comparison lab.">
+  <div class="page">
+    <h1>Learn</h1>
+    <p class="lede">Each lesson is a small, isolated setup in the same C physics. Run one, watch, then change one number.</p>
+    <ul class="lessons">
+      {lessons.map(([name, question, watch]) => (
+        <li>
+          <strong>{question}</strong>
+          <p>{watch}</p>
+          <a class="button" href={`${base}?lesson=${name}`}>Run</a>
+        </li>
+      ))}
+    </ul>
+    <h2>Compare two runs</h2>
+    <p>Run the same setup twice with different steps, methods or speeds and plot the difference. <a href={`${base}learn/compare/`}>Open the comparison lab</a>.</p>
+    <h2>Lessons change the rules</h2>
+    <p>Lessons start from simple invented states (circles, perihelia) and keep planets as point masses so their analytic answers apply. The main scene is different: it starts from the real sky of 2026-06-09 with planetary J2. Each lesson can switch between Verlet and Euler and choose its step; the comparison lab and <code>solar-lab</code> CLI export the same numbers as CSV.</p>
+  </div>
+</BaseLayout>

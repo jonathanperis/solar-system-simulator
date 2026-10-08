@@ -7,10 +7,9 @@ import { normalizeBase } from '../lib/base';
 const base = normalizeBase(import.meta.env.BASE_URL);
 ---
 <BaseLayout title="Page not found" description="This page is not part of the Solar System Simulator site." notFound>
-  <section class="panel not-found" data-not-found>
-    <p class="eyebrow">Off the chart / 404</p>
-    <h1>This page is not on the chart.</h1>
+  <div class="page" data-not-found>
+    <h1>Not found.</h1>
     <p>The address may be mistyped, or the page may have moved.</p>
-    <p><a href={base}>Return to the solar chart</a> · <a href={`${base}simulator/`}>Open the live simulator</a> · <a href={`${base}docs/`}>Browse the documentation</a></p>
-  </section>
+    <p><a href={base}>Simulator</a> · <a href={`${base}learn/`}>Learn</a> · <a href={`${base}catalog/`}>Catalog</a> · <a href={`${base}about/`}>About</a></p>
+  </div>
 </BaseLayout>

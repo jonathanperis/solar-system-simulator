@@ -2,8 +2,8 @@
 """Smoke-check generated Astro documentation routes.
 
 The checker is intentionally boring: it asserts the Pages site contains the
-common footer footprint, the dedicated /docs/ section, links to the WASM demo,
-and the source-backed markers that should not disappear during visual edits.
+simulator home page, the Learn/Catalog/About notebook pages with their footer,
+the legacy redirects, and the markers that should not disappear in visual edits.
 """
 
 from __future__ import annotations
@@ -24,41 +24,22 @@ BASE_PATH = "/solar-system-simulator/"
 
 
 ROUTES: dict[str, list[str]] = {
-    "index.html": [
-        "A solar system, drawn for inspection",
-        "favicon.ico",
-        "data-footer-credits",
-        "Jonathan Peris",
-        "data-orbital-atlas",
-        "Heliocentric",
-        "Earth system",
-        "Mars system",
-        "Jupiter system",
-        "data-atlas-moon-group",
-        "simulator/",
-        "Run live simulator",
-    ],
-    "physics/index.html": ["Physics stays in SI units", "docs/simulation-core/", "data-footer-credits"],
-    "compare/index.html": ["One question. Two experiments", "data-comparison", "learning-lab.mjs", "Guided challenges", "Force-contribution inspector", "data-config-error"],
-    "simulator/index.html": ["Explore the solar system", "data-simulator", "runtime-control-state", "canvas", "15-second", "uniform", "data-footer-credits", "data-runtime-panel", "data-runtime-body", "data-runtime-speed", "Show this system", "Center on this object", "physical measurements", "data-inspector-distance", "data-inspector-speed", "data-runtime-search", "data-runtime-group", "15 days / second", "10 days / second", "data-runtime-achieved", "test particles", "data-body-filter-status"],
-    "body-catalog/index.html": ["Find your next world", "data-body-search", "data-body-family", "docs/roadmap/", "Phobos", "Deimos", "Vesta", "Jupiter", "Saturn", "JPL physical parameters", "NASA's Saturn facts", "JPL SBDB solution 36"],
-    "small-bodies/index.html": ["A million worlds", "data-small-atlas", "data-density", "data-catalog-search", "data-results", "data-basket", "data-prepare", "catalog/manifest.json", "1,564,244"],
-    "source-atlas/index.html": ["The code separates physics from presentation", "docs/architecture/", "src/sim/"],
-    "pipeline/index.html": ["Native tests feed a Pages lab bench", "docs/build-and-web/", "make web"],
-    "docs/index.html": ["Find your way around the solar system", "Solar manual routes", "Every orbit manual page", "docs/architecture/", "Your first orbit"],
-    "docs/architecture/index.html": ["Architecture keeps physics testable", "src/sim/", "src/render/", "src/main.c", "tests/"],
-    "docs/experiments/index.html": ["Predict, run, measure, explain", "make headless", "solar-lab", "Barycentric Earth", "normalized_energy_change"],
-    "docs/simulation-core/index.html": ["Simulation state uses physical units first", "src/sim/physics.c", "src/sim/solar_system.c", "src/sim/vec3d.c"],
-    "docs/rendering/index.html": ["Rendering adapts physics for human eyes", "src/render/renderer.c", "src/app/body_trails.c"],
-    "docs/controls/index.html": ["Make the view your own", "Space", "N", "R", "Frame", "physical inspector", "simulation_session", "orbit_camera", "Everyday controls"],
-    "docs/build-and-web/index.html": ["Native checks feed the public WebAssembly lab", "make test", "make web", "make dist-wasm", ".github/workflows/build.yml", ".github/workflows/deploy-pages.yml"],
-    "docs/roadmap/index.html": ["Expansion stays one body at a time", "Implemented now", "Planned sequence", "Jupiter", "Saturn", "Kuiper belt"],
+    # The simulator is the home page (SPEC A100): instrument markers only.
+    "index.html": ["data-simulator", "runtime-control-state", "canvas", "favicon.ico", "data-runtime-panel", "data-runtime-body", "data-runtime-speed", "data-runtime-scene", "data-lesson-strip", "data-inspector-distance", "data-inspector-speed", "data-inspector-period", "data-runtime-search", "data-runtime-group", "data-runtime-achieved", "data-body-filter-status", "15 d/s", "10 d/s", "Frame system", "Frame body"],
+    "learn/index.html": ["Learn", "?lesson=dart", "?lesson=pluto-charon", "?lesson=circular", "learn/compare/"],
+    "learn/compare/index.html": ["Compare two runs", "data-comparison", "learning-lab.mjs", "Guided challenges", "Force-contribution inspector", "data-config-error"],
+    "catalog/index.html": ["Catalog", "data-body-search", "data-body-family", "data-core-body", "catalog/small-bodies/", "Phobos", "Titan", "Dimorphos"],
+    "catalog/small-bodies/index.html": ["Small bodies", "data-small-atlas", "data-density", "data-catalog-search", "data-results", "data-basket", "data-prepare", "catalog/manifest.json", "1,564,244"],
+    "about/index.html": ["About", "id=\"model\"", "id=\"data\"", "id=\"code\"", "id=\"rendering\"", "id=\"controls\"", "id=\"build\"", "id=\"roadmap\"", "id=\"credits\"", "src/sim/", "make test", "J2", "2026-06-09"],
 }
 
-FOOTER_MARKERS = ["data-footer-credits", "Jonathan Peris", "Learning laboratory", "raylib", "Emscripten", "Astro", "GitHub Pages"]
+# Notebook pages carry the one-line footer; the instrument has none (DESIGN.md, A104).
+NOTEBOOK_ROUTES = [route for route in ROUTES if route != "index.html"]
+FOOTER_MARKERS = ["data-site-footer", "Jonathan Peris", "raylib", "Emscripten", "Astro", "CC BY 4.0"]
+PRIMARY_NAV = {"learn/", "catalog/", "about/"}
 ATLAS_BODY_ANCHORS = ["sun", "mercury", "venus", "earth", "moon", "mars", "phobos", "deimos", "vesta", "jupiter"]
 ATLAS_BODY_ANCHORS += ["saturn", "uranus", "neptune", "pluto", "didymos"]
-# Every giant-planet moon (main scene or planet-system scene) has an anchor.
+# Every simulated body has a catalog row anchor (catalog/index.html#slug).
 for catalog in ("jovian", "saturnian", "uranian", "neptunian", "plutonian", "didymos"):
     ATLAS_BODY_ANCHORS += [moon["slug"] for moon in json.loads((Path(__file__).resolve().parents[1] / f"data/{catalog}_moons.json").read_text())["moons"]]
 
@@ -167,7 +148,7 @@ def check_not_found_page(dist: Path) -> None:
         fail("404.html must be noindex")
     if 'rel="canonical"' in html:
         fail("404.html must not declare a canonical URL")
-    for target in (BASE_PATH, f"{BASE_PATH}simulator/"):
+    for target in (BASE_PATH, *(BASE_PATH + path for path in sorted(PRIMARY_NAV))):
         if f'href="{target}"' not in html:
             fail(f"404.html must link to {target} with a base-absolute URL")
 
@@ -256,6 +237,8 @@ def check_sitemap(dist: Path) -> None:
         "https://jonathanperis.github.io" + BASE_PATH +
         page.relative_to(dist).as_posix().removesuffix("index.html")
         for page in dist.rglob("index.html")
+        # Redirect stubs for retired URLs are noindex and stay out of the sitemap.
+        if 'name="robots" content="noindex"' not in page.read_text(encoding="utf-8", errors="replace")
     }
     try:
         sitemap = ElementTree.parse(dist / "sitemap.xml")
@@ -266,6 +249,29 @@ def check_sitemap(dist: Path) -> None:
         "{http://www.sitemaps.org/schemas/sitemap/0.9}loc")]
     if len(locations) != len(expected) or set(locations) != expected:
         fail("sitemap.xml must list each generated canonical page exactly once")
+
+
+# Retired URLs (SPEC A99) and their new homes; mirrors legacyRedirects in
+# docs/src/lib/site.ts so old links and bookmarks keep working.
+LEGACY_REDIRECTS = {
+    "simulator": "", "compare": "learn/compare/", "body-catalog": "catalog/",
+    "small-bodies": "catalog/small-bodies/", "physics": "about/#model",
+    "source-atlas": "about/#code", "pipeline": "about/#build", "docs": "about/",
+    "docs/architecture": "about/#code", "docs/simulation-core": "about/#model",
+    "docs/rendering": "about/#rendering", "docs/controls": "about/#controls",
+    "docs/build-and-web": "about/#build", "docs/roadmap": "about/#roadmap",
+    "docs/experiments": "learn/",
+}
+
+
+def check_legacy_redirects(dist: Path) -> None:
+    for old, new in LEGACY_REDIRECTS.items():
+        html = read_route(dist, f"{old}/index.html")
+        target = BASE_PATH + new
+        if f'url={target}"' not in html or f'data-target="{target}"' not in html:
+            fail(f"{old}/ must forward to {target}")
+        if 'name="robots" content="noindex"' not in html:
+            fail(f"{old}/ redirect must be noindex")
 
 
 def main(argv: list[str]) -> int:
@@ -302,35 +308,30 @@ def main(argv: list[str]) -> int:
             for tag, attrs in parser.elements
             if tag == "a" and "data-primary-nav-link" in attrs
         ]
-        primary_paths = {BASE_PATH + path for path in ("simulator/", "docs/experiments/", "compare/", "docs/")}
-        if len(primary_links) != 4 or {attrs.get("href") for attrs in primary_links} != primary_paths:
-            fail(f"{route} must expose Explore, Learn, Experiments and Reference navigation destinations")
-        if sum(attrs.get("aria-current") in {"page", "location"} for attrs in primary_links) != 1:
-            fail(f"{route} must identify exactly one current primary navigation link")
+        primary_paths = {BASE_PATH + path for path in PRIMARY_NAV}
+        if len(primary_links) != len(PRIMARY_NAV) or {attrs.get("href") for attrs in primary_links} != primary_paths:
+            fail(f"{route} must expose the Learn, Catalog and About navigation destinations")
+        current = sum(attrs.get("aria-current") in {"page", "location"} for attrs in primary_links)
+        if current != (0 if route == "index.html" else 1):
+            fail(f"{route} must mark exactly its own section as current (none on the simulator)")
         if "rel=\"canonical\"" not in html:
             fail(f"{route} missing canonical URL")
         if "Skip to content" not in html:
             fail(f"{route} missing keyboard skip link")
         if route == "index.html" and "role=\"table\"" in html:
             fail("index.html uses invalid presentational table roles")
-        if route == "index.html":
-            body_controls = [
-                (tag, attrs)
-                for tag, attrs in parser.elements
-                if "data-atlas-body" in attrs
-            ]
-            if len(body_controls) != len(ATLAS_BODY_ANCHORS):
-                fail("index.html must expose one control for each atlas body")
-            if any(tag != "button" or "aria-pressed" not in attrs for tag, attrs in body_controls):
-                fail("index.html atlas bodies must be semantic toggle buttons")
+        if route == "catalog/index.html":
+            rows = [attrs for tag, attrs in parser.elements if "data-core-body" in attrs]
+            if len(rows) != len(ATLAS_BODY_ANCHORS):
+                fail("catalog/index.html must list each simulated body exactly once")
             for slug in ATLAS_BODY_ANCHORS:
-                if f"body-catalog/#{slug}" not in html:
-                    fail(f"index.html missing no-JS body catalog fallback: {slug}")
+                if f'id="{slug}"' not in html or f"?body={slug}" not in html:
+                    fail(f"catalog/index.html missing anchored, simulator-linked row: {slug}")
         if analytics_id and analytics_id not in html:
             fail(f"{route} missing configured analytics ID")
         if not analytics_id and "googletagmanager.com" in html:
             fail(f"{route} contacts Google Tag Manager without PUBLIC_GA_ID")
-        if route in {"index.html", "docs/index.html", "docs/build-and-web/index.html"}:
+        if route in NOTEBOOK_ROUTES:
             for marker in FOOTER_MARKERS:
                 if marker not in html:
                     fail(f"{route} missing footer marker: {marker}")
@@ -338,8 +339,9 @@ def main(argv: list[str]) -> int:
         if not (dist / "wasm" / f"solar-system-simulator.{extension}").is_file():
             fail(f"missing WebAssembly runtime asset: {extension}")
     redirect = read_route(dist, "wasm/solar-system-simulator.html")
-    if "http-equiv=\"refresh\"" not in redirect or f"{BASE_PATH}simulator/" not in redirect:
+    if "http-equiv=\"refresh\"" not in redirect or f'url={BASE_PATH}"' not in redirect:
         fail("legacy WebAssembly HTML URL must redirect to the Astro simulator")
+    check_legacy_redirects(dist)
 
     print(f"Docs routes OK in {dist}")
     return 0

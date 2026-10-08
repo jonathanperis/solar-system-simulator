@@ -58,7 +58,7 @@ test('C state drives playback, precise SI readouts, asset pairing, and permanent
     radiusM: 11266.7, zoom: 0.5, massQuality: 0, radiusQuality: 0, achievedTimeScale: 864000, pendingSeconds: 43200, shortTimescale: false };
   runtime.reportState(state);
   assert.equal(readouts.status.textContent, 'Simulation paused');
-  assert.equal(readouts.elapsed.textContent, '0.00017 simulated days · 15 s');
+  assert.equal(readouts.elapsed.textContent, '0.0002 d (15 s)');
   assert.equal(readouts.parent.textContent, 'Mars');
   assert.equal(readouts.distance.textContent, '9233.000 km');
   assert.equal(readouts.speed.textContent, '2.138000 km/s');

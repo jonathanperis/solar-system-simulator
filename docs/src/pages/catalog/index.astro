@@ -1,0 +1,61 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { implementedBodies } from '../../lib/bodies';
+import { normalizeBase } from '../../lib/base';
+import { coreBodyCount, formatCount, smallBodyCatalogCount, totalBodyCount } from '../../lib/siteCounts';
+
+// Every simulated body in one table (SPEC A102). Each name opens the
+// simulator at that body, loading its system scene when it is a small moon.
+const base = normalizeBase(import.meta.env.BASE_URL);
+const sceneLabel = (scene: string, parent: string) => scene === 'core' ? 'Solar system' : parent;
+const families = [...new Set(implementedBodies.map(body => body.kind === 'Moon' ? `${body.parent} moons` : `${body.kind}s`))];
+---
+<BaseLayout title="Catalog" description="Every body the simulator runs, with its parent and scene, plus the 1.56-million-object small-body atlas.">
+  <div class="page wide">
+    <h1>Catalog</h1>
+    <p class="lede">{totalBodyCount} simulated bodies: {coreBodyCount} in the solar-system scene, the rest in their planet's scene. For asteroids and distant objects, see the <a href={`${base}catalog/small-bodies/`}>small-body atlas</a> ({formatCount(smallBodyCatalogCount)} objects).</p>
+    <div class="actions">
+      <label>Search <input type="search" data-body-search placeholder="Titan, S/2021 J 8…" /></label>
+      <label>Family <select data-body-family><option value="">All</option>{families.map(family => <option>{family}</option>)}</select></label>
+      <button type="button" data-body-clear>Clear</button>
+    </div>
+    <p data-body-count role="status">{totalBodyCount} bodies.</p>
+    <p data-body-empty hidden>No match. Try a shorter name or clear the family.</p>
+    <div class="table-wrap">
+      <table aria-label="Simulated bodies">
+        <thead><tr><th>Body</th><th>Kind</th><th>Parent</th><th>Scene</th><th>Group</th></tr></thead>
+        <tbody>
+          {implementedBodies.map((body) => (
+            <tr id={body.slug} data-core-body data-name={body.name.toLowerCase()} data-family={body.kind === 'Moon' ? `${body.parent} moons` : `${body.kind}s`}>
+              <td><a href={`${base}?body=${encodeURIComponent(body.slug)}`}>{body.name}</a></td>
+              <td>{body.kind}</td>
+              <td>{body.parent}</td>
+              <td>{sceneLabel(body.scene, body.parent)}</td>
+              <td>{body.group ?? '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="fine-print">Moon data: JPL mean elements and physical parameters; positions: JPL Horizons on 2026-06-09. Missing masses are test particles; missing radii stay Unknown. <a href={`${base}about/#data`}>Sources</a>.</p>
+  </div>
+</BaseLayout>
+
+<script>
+  const search = document.querySelector<HTMLInputElement>('[data-body-search]')!;
+  const family = document.querySelector<HTMLSelectElement>('[data-body-family]')!;
+  const rows = [...document.querySelectorAll<HTMLElement>('[data-core-body]')];
+  const filter = () => {
+    const query = search.value.trim().toLowerCase();
+    let count = 0;
+    rows.forEach(row => {
+      row.hidden = !row.dataset.name!.includes(query) || Boolean(family.value && family.value !== row.dataset.family);
+      if (!row.hidden) count++;
+    });
+    document.querySelector('[data-body-count]')!.textContent = `${count} ${count === 1 ? 'body' : 'bodies'}.`;
+    document.querySelector<HTMLElement>('[data-body-empty]')!.hidden = count > 0;
+  };
+  search.addEventListener('input', filter);
+  family.addEventListener('change', filter);
+  document.querySelector('[data-body-clear]')!.addEventListener('click', () => { search.value = ''; family.value = ''; filter(); search.focus(); });
+</script>
