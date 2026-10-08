@@ -36,7 +36,8 @@ sentence about accuracy. Numbers carry units.
   the scene and the running state.
 - One bottom dock, left to right: play/pause, restart, speed (1 h, 1 d, 5 d,
   10 d, 15 d per second), scene picker (Solar system, Jupiter, Saturn, Uranus,
-  Neptune, Pluto, Didymos), then Find (body search), View, Keys and Data.
+  Neptune, Pluto, Didymos, Patroclus), then Find (body search), View, Keys and
+  Data.
 - Selecting a body opens a compact inspector on the right (bottom sheet on
   phones): name, parent, distance, speed, period, mass, radius, data quality,
   and two actions (Frame system, Frame body).

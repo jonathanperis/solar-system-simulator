@@ -353,21 +353,24 @@ static void test_main_scene_holds_the_large_bodies_in_a_stable_order(void)
     assert(solar_system_parent_index(&system, 31) == 30);
 }
 
-static void test_pluto_and_didymos_start_at_planar_perihelion(void)
+static void test_small_body_primaries_start_at_planar_perihelion(void)
 {
     const struct { Body body; double a, e; } cases[] = {
         {solar_system_create_pluto_at_perihelion(), SOLAR_PLUTO_SEMI_MAJOR_AXIS_M, SOLAR_PLUTO_ECCENTRICITY},
         {solar_system_create_didymos_at_perihelion(), SOLAR_DIDYMOS_SEMI_MAJOR_AXIS_M, SOLAR_DIDYMOS_ECCENTRICITY},
+        {solar_system_create_patroclus_at_perihelion(), SOLAR_PATROCLUS_SEMI_MAJOR_AXIS_M, SOLAR_PATROCLUS_ECCENTRICITY},
     };
     assert_close(SOLAR_G * SOLAR_PLUTO_MASS_KG / 1e9, 869.326, 1e-9);
     assert_close(SOLAR_G * SOLAR_DIDYMOS_MASS_KG / 1e9, 3.51278e-8, 1e-20);
-    for (size_t i = 0; i < 2; ++i) {
+    assert_close(SOLAR_G * SOLAR_PATROCLUS_MASS_KG / 1e9, 0.0740606, 1e-16);
+    for (size_t i = 0; i < 3; ++i) {
         Body b = cases[i].body;
         double q = cases[i].a * (1 - cases[i].e);
         double r = vec3d_length(b.position_m), v = vec3d_length(b.velocity_mps);
         assert(fabs(r / q - 1) < 1e-14 && fabs(b.position_m.y) < 1e-6);
         assert(fabs(v / sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * (2 / q - 1 / cases[i].a)) - 1) < 1e-14);
-        assert(vec3d_dot(b.position_m, b.velocity_mps) == 0 && vec3d_cross(b.position_m, b.velocity_mps).y > 0);
+        assert(fabs(vec3d_dot(b.position_m, b.velocity_mps)) < 1e-9 * vec3d_length(b.position_m) * v);
+        assert(vec3d_cross(b.position_m, b.velocity_mps).y > 0);
         assert(b.parent_id == BODY_ID_SUN && !b.fixed);
     }
     /* Pluto starts opposite Neptune, far from it despite the overlapping orbits. */
@@ -377,18 +380,26 @@ static void test_pluto_and_didymos_start_at_planar_perihelion(void)
     Body earth = solar_system_create_earth_at_perihelion();
     assert(vec3d_length(vec3d_sub(cases[1].body.position_m, earth.position_m)) > 1.3 * SOLAR_AU_METERS);
     assert(cases[1].body.mass_quality == PHYSICAL_ESTIMATED);
+    /* Patroclus, a trojan near L5, starts 60 degrees behind Jupiter: Jupiter's
+     * radius turns toward Patroclus's against the prograde (+Y) sense. */
+    Body jupiter = solar_system_create_jupiter_at_perihelion();
+    Vec3d lead = vec3d_cross(cases[2].body.position_m, jupiter.position_m);
+    double separation = atan2(vec3d_length(lead), vec3d_dot(cases[2].body.position_m, jupiter.position_m));
+    assert(fabs(separation * 180 / acos(-1.0) - 60) < 1e-9 && lead.y > 0);
+    assert(cases[2].body.mass_quality == PHYSICAL_ESTIMATED && cases[2].body.kind == BODY_KIND_ASTEROID);
 }
 
 static void test_family_scenes_hold_a_planet_and_its_complete_catalog(void)
 {
-    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE, BODY_ID_PLUTO, BODY_ID_DIDYMOS};
-    const size_t majors[] = {4, 7, 5, 1, 1, 0};
+    const BodyId planets[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE, BODY_ID_PLUTO, BODY_ID_DIDYMOS,
+        BODY_ID_PATROCLUS};
+    const size_t majors[] = {4, 7, 5, 1, 1, 0, 0};
     SolarSystem scene;
     assert(!solar_system_create_family(BODY_ID_EARTH, &scene));
-    for (size_t k = 0; k < 6; ++k) {
+    for (size_t k = 0; k < 7; ++k) {
         const SatelliteCatalog *catalog = satellite_catalog_for(planets[k]);
         assert(solar_system_create_family(planets[k], &scene));
-        /* Pluto and Didymos are not planets: they occupy index 9. */
+        /* Pluto, Didymos and Patroclus are not planets: they occupy index 9. */
         size_t first_moon = SOLAR_FAMILY_SCENE_PLANET_COUNT + (k >= 4);
         assert(scene.body_count == first_moon + catalog->count);
         const BodyId order[] = {BODY_ID_SUN, BODY_ID_MERCURY, BODY_ID_VENUS, BODY_ID_EARTH, BODY_ID_MARS,
@@ -486,6 +497,14 @@ static void test_moon_families_place_their_barycenter_on_the_intended_orbit(void
     Body pluto_barycenter = {0};
     assert(scene_epoch_state(BODY_ID_PLUTO, &pluto_barycenter.position_m, &pluto_barycenter.velocity_mps));
     assert_family_follows(&core, 30, pluto_barycenter, SOLAR_PLUTO_RADIUS_M);
+    /* Menoetius carries 22% of the pair's mass, so, as for Pluto and Charon,
+     * the Patroclus-Menoetius barycenter (~150 km from Patroclus's centre)
+     * lies outside Patroclus (56.5 km). */
+    SolarSystem patroclus_family;
+    Body patroclus_barycenter = {0};
+    assert(solar_system_create_family(BODY_ID_PATROCLUS, &patroclus_family));
+    assert(scene_epoch_state(BODY_ID_PATROCLUS, &patroclus_barycenter.position_m, &patroclus_barycenter.velocity_mps));
+    assert_family_follows(&patroclus_family, 9, patroclus_barycenter, SOLAR_PATROCLUS_RADIUS_M);
     for (BodyId planet = BODY_ID_JUPITER; planet != BODY_ID_NONE;
          planet = planet == BODY_ID_JUPITER ? BODY_ID_SATURN : planet == BODY_ID_SATURN ? BODY_ID_URANUS
              : planet == BODY_ID_URANUS ? BODY_ID_NEPTUNE : BODY_ID_NONE) {
@@ -1231,7 +1250,7 @@ int main(void)
     test_saturn_constants_and_derived_perihelion_state();
     test_main_scene_holds_the_large_bodies_in_a_stable_order();
     test_family_scenes_hold_a_planet_and_its_complete_catalog();
-    test_pluto_and_didymos_start_at_planar_perihelion();
+    test_small_body_primaries_start_at_planar_perihelion();
     test_oblateness_is_set_on_scene_planets_only();
     test_scene_dates_count_from_the_epoch();
     test_mercury_body_starts_at_perihelion_with_tangential_velocity();

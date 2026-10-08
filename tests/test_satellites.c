@@ -14,8 +14,9 @@
 
 static Vec3d icrf_direction(double ra_deg, double dec_deg);
 
-/* Every primary with a satellite catalog: the giants, Pluto and Didymos. */
-static const BodyId primaries[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE, BODY_ID_PLUTO, BODY_ID_DIDYMOS};
+/* Every primary with a satellite catalog: the giants, Pluto, Didymos and Patroclus. */
+static const BodyId primaries[] = {BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE, BODY_ID_PLUTO, BODY_ID_DIDYMOS,
+    BODY_ID_PATROCLUS};
 #define PRIMARY_COUNT (sizeof(primaries) / sizeof(primaries[0]))
 
 static void test_orbital_elements_preserve_geometry_and_parent_motion(void)
@@ -231,6 +232,7 @@ static Body parent_planet(BodyId planet)
     case BODY_ID_URANUS: return solar_system_create_uranus_at_perihelion();
     case BODY_ID_PLUTO: return solar_system_create_pluto_at_perihelion();
     case BODY_ID_DIDYMOS: return solar_system_create_didymos_at_perihelion();
+    case BODY_ID_PATROCLUS: return solar_system_create_patroclus_at_perihelion();
     default: return solar_system_create_neptune_at_perihelion();
     }
 }
@@ -274,6 +276,7 @@ static void test_giant_planet_catalogs_inventory_and_major_moons(void)
         {BODY_ID_NEPTUNE, 16, {801}, 1},
         {BODY_ID_PLUTO, 5, {901}, 1},
         {BODY_ID_DIDYMOS, 1, {0}, 0},
+        {BODY_ID_PATROCLUS, 1, {0}, 0},
     };
     assert(satellite_catalog_for(BODY_ID_EARTH) == NULL);
     for (size_t k = 0; k < sizeof(expected) / sizeof(expected[0]); ++k) {
@@ -414,6 +417,11 @@ static void test_reference_planes_orient_regular_moons(void)
     Body didymos = parent_planet(BODY_ID_DIDYMOS);
     Vec3d dimorphos = orbit_normal(&satellite_catalog_for(BODY_ID_DIDYMOS)->moons[0], &didymos);
     assert(dimorphos.y < -0.9);
+    /* Menoetius (JPL#82) orbits Patroclus at 152.5 degrees to the ecliptic:
+     * retrograde, so the binary turns clockwise seen from ecliptic north. */
+    Body patroclus = parent_planet(BODY_ID_PATROCLUS);
+    Vec3d menoetius = orbit_normal(&satellite_catalog_for(BODY_ID_PATROCLUS)->moons[0], &patroclus);
+    assert(menoetius.y < -0.88 && menoetius.y > -0.89);
 }
 
 int main(void)

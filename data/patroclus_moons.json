@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "checked": "2026-10-08",
+  "inventory_source": "https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='120000617'&OBJ_DATA='YES'&MAKE_EPHEM='NO'",
+  "names_source": "https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=617&sat=1",
+  "elements_source": "https://ssd.jpl.nasa.gov/api/horizons.api",
+  "physical_source": "https://ssd.jpl.nasa.gov/api/horizons.api",
+  "moons": [
+    {
+      "code": 120000617,
+      "name": "Menoetius",
+      "slug": "menoetius",
+      "group": "Patroclus system",
+      "ephemeris": "JPL#82",
+      "frame": "ecliptic",
+      "epoch_tdb": "2024-01-01.0",
+      "a_km": 692.5482,
+      "eccentricity": 0.0057886,
+      "periapsis_deg": 224.6938,
+      "mean_anomaly_deg": 335.4889,
+      "inclination_deg": 152.53224,
+      "node_deg": 324.08128,
+      "period_days": 4.3006146,
+      "pole_ra_deg": null,
+      "pole_dec_deg": null,
+      "element_reference": "Horizons 120000617 @920000617 state, mu = GM_primary + GM_satellite",
+      "gm_km3_s2": 0.020917,
+      "radius_km": 52.0,
+      "gm_sigma_km3_s2": null,
+      "radius_sigma_km": null,
+      "mass_quality": "estimated",
+      "radius_quality": "estimated",
+      "gm_reference": "Horizons 120000617 GM (no published uncertainty)",
+      "radius_reference": "Horizons 120000617 RAD",
+      "major": false
+    }
+  ]
+}

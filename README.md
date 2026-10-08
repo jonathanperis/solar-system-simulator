@@ -6,7 +6,7 @@ A hands-on orbital mechanics and engineering laboratory written in C11 with [ray
 
 ## Start here
 
-- **Explore:** a 32-body main scene — the Sun, all eight planets, Vesta, Pluto, Earth's Moon, Phobos, Deimos and the 18 major moons of the giant planets and Pluto — plus system scenes with every catalogued moon of Jupiter (115), Saturn (291), Uranus (29), Neptune (16) and Pluto (5), and the Didymos–Dimorphos binary asteroid from NASA's DART mission. The separate [small-body atlas](https://jonathanperis.github.io/solar-system-simulator/catalog/small-bodies/) contains 1,564,244 pinned records; it does not load them all into the physics scene.
+- **Explore:** a 32-body main scene — the Sun, all eight planets, Vesta, Pluto, Earth's Moon, Phobos, Deimos and the 18 major moons of the giant planets and Pluto — plus system scenes with every catalogued moon of Jupiter (115), Saturn (291), Uranus (29), Neptune (16) and Pluto (5), the Didymos–Dimorphos binary asteroid from NASA's DART mission, and the Patroclus–Menoetius binary Jupiter trojan that NASA's Lucy mission will visit. The separate [small-body atlas](https://jonathanperis.github.io/solar-system-simulator/catalog/small-bodies/) contains 1,564,244 pinned records; it does not load them all into the physics scene.
 - **Learn:** use [guided lessons](https://jonathanperis.github.io/solar-system-simulator/learn/) and matched A/B comparisons, then export SI measurements as CSV.
 - **Run locally:** start with the [raylib-free CLI](#learning-laboratory), or check [prerequisites](#build-prerequisites) before `make && make run` for the 3D app.
 - **Contribute:** read [the code map](https://jonathanperis.github.io/solar-system-simulator/about/#code), [build and tests](https://jonathanperis.github.io/solar-system-simulator/about/#build), and the [project layout](#project-layout). [Data provenance](data/README.md) distinguishes pinned measurements, estimates, and unknowns.
@@ -62,7 +62,7 @@ The 3D collision preset defaults to real scale and slower 1/5/10/25/50 simulated
 
 ## Complete small-body atlas and all eight planets
 
-The main scene contains the 32 large bodies through Pluto; the system scenes add every catalogued moon of the giant planets and Pluto, and the Didymos binary. The separate [small-body atlas](https://jonathanperis.github.io/solar-system-simulator/catalog/small-bodies/) exposes all 1,564,244 qualifying entries in the pinned JPL snapshot, including main-belt asteroids, near-Earth asteroids, Trojans, Centaurs and trans-Neptunian bodies. Select up to 16 objects for a C-owned experiment with the Sun and all eight planets.
+The main scene contains the 32 large bodies through Pluto; the system scenes add every catalogued moon of the giant planets and Pluto, and the Didymos and Patroclus binaries. The separate [small-body atlas](https://jonathanperis.github.io/solar-system-simulator/catalog/small-bodies/) exposes all 1,564,244 qualifying entries in the pinned JPL snapshot, including main-belt asteroids, near-Earth asteroids, Trojans, Centaurs and trans-Neptunian bodies. Select up to 16 objects for a C-owned experiment with the Sun and all eight planets.
 
 ### Small-body catalog and experiments
 
@@ -95,10 +95,10 @@ Review source counts, quality and generated changes before publishing a refreshe
 Current milestone behavior:
 
 - Opens a raylib 3D scene titled `Solar System Simulator`.
-- Models a 32-body main scene (the original ten bodies, Saturn, Uranus, Neptune, the dwarf planet Pluto and the 18 major moons: Io, Europa, Ganymede, Callisto; Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Iapetus; Ariel, Umbriel, Titania, Oberon, Miranda; Triton; Charon) and six system scenes (`jupiter-system` 124 bodies, `saturn-system` 300, `uranus-system` 38, `neptune-system` 25, `pluto-system` 15, `didymos-system` 11: the Sun, eight planets, the primary and its complete moon catalog). Load a system from the simulator's scene picker, native `K`, or `solar-lab --scene NAME`; links to a small moon open its system. Known radii render as spheres; unknown radii use explicitly nonphysical wire markers.
+- Models a 32-body main scene (the original ten bodies, Saturn, Uranus, Neptune, the dwarf planet Pluto and the 18 major moons: Io, Europa, Ganymede, Callisto; Mimas, Enceladus, Tethys, Dione, Rhea, Titan, Iapetus; Ariel, Umbriel, Titania, Oberon, Miranda; Triton; Charon) and seven system scenes (`jupiter-system` 124 bodies, `saturn-system` 300, `uranus-system` 38, `neptune-system` 25, `pluto-system` 15, `didymos-system` 11, `patroclus-system` 11: the Sun, eight planets, the primary and its complete moon catalog). Load a system from the simulator's scene picker, native `K`, or `solar-lab --scene NAME`; links to a small moon open its system. Known radii render as spheres; unknown radii use explicitly nonphysical wire markers.
 - Keeps the Sun fixed at the origin for a stable heliocentric baseline.
 - Uses right-handed simulation axes: `(x, y, z) = (X, Z, -Y)` of the J2000 ecliptic, so `+y` is ecliptic north and the ecliptic plane is the x/z plane. Prograde orbits have angular momentum along `+y` and appear counterclockwise when viewed from above (north).
-- Starts every scene from the real sky of **2026-06-09** (JD 2461200.5 TDB): the planetary-system barycenters from `data/planet_epoch.json` and every moon, Vesta, Pluto, Didymos and Dimorphos from a pinned JPL Horizons vector snapshot (`data/scene_epoch.json`, `tools/scene_epoch.py`). Orbits therefore carry their real tilts. Each family barycenter takes its system's state and the planet sits opposite its moons about it. Two moons Horizons does not serve under their own names (Daphnis, S/2025 U 1) keep mean-element states.
+- Starts every scene from the real sky of **2026-06-09** (JD 2461200.5 TDB): the planetary-system barycenters from `data/planet_epoch.json` and every moon, Vesta, Pluto, Didymos, Dimorphos, Patroclus and Menoetius from a pinned JPL Horizons vector snapshot (`data/scene_epoch.json`, `tools/scene_epoch.py`). Orbits therefore carry their real tilts. Each family barycenter takes its system's state and the planet sits opposite its moons about it. Two moons Horizons does not serve under their own names (Daphnis, S/2025 U 1) keep mean-element states.
 - Shows the scene's calendar date (TDB) next to the elapsed simulated time, and a two-body orbital period for the selected body.
 - Gives Earth, Mars, Jupiter, Saturn, Uranus and Neptune their J2 oblateness (NASA fact sheets, IAU poles): each pulls its own moons with the J2 term and feels the reaction. Guided lessons keep point masses so their analytic references hold. Lessons still start from the legacy planar perihelion states.
 - Advances moving bodies with Newtonian gravity from all nonzero-mass sources using the shared simulation integrator. Unknown-mass moons are test particles, not invented physical masses.
@@ -141,7 +141,7 @@ Baseline planet values follow NASA/JPL references. Sun, Mercury, Venus, Earth, M
 | Phobos, Deimos | `1.06e16 kg`, `1.44e15 kg` | `11080 m`, `6200 m` | Horizons areocentric states |
 | Vesta | `2.590276793071933e20 kg` | `261385 m` | Horizons heliocentric state |
 | Jupiter–Neptune | planet-only GM / G | JPL mean radii | system barycenters at their Horizons states |
-| Pluto, Didymos | Horizons GM / G | JPL radii | system barycenters at their Horizons states |
+| Pluto, Didymos, Patroclus | Horizons GM / G | JPL radii | system barycenters at their Horizons states |
 
 ### Giant-planet satellite data and scenes
 
@@ -165,7 +165,7 @@ reported), Uranus and Neptune systems above 150 days/second. Every scene holds
 about 60 fps on desktop Chrome and 58–59 fps on a 4×-CPU-throttled phone
 emulation at the default speed.
 
-Two small-body systems follow the same rules. Pluto (Horizons GM, SBDB orbit)
+Three small-body systems follow the same rules. Pluto (Horizons GM, SBDB orbit)
 and Charon belong to the main scene: Charon is 12% of Pluto's mass, so Pluto
 circles a barycenter about 2,100 km outside its own surface, and the pair turns
 retrograde seen from the ecliptic. Nix, Hydra, Kerberos and Styx circle the
@@ -173,8 +173,13 @@ Pluto–Charon pair, so they start around its barycenter with its total mass; th
 two-body periods are still 1.5–3.7% longer than JPL's, because JPL's mean orbits
 include the binary's rotating field. The `didymos-system` scene holds the DART
 target: Dimorphos on its retrograde 11.8-hour orbit about Didymos, from the
-Horizons s547 post-impact reconstruction, with estimated masses. Other asteroid
-moons have no JPL ephemeris and are not modeled.
+Horizons s547 post-impact reconstruction, with estimated masses. The
+`patroclus-system` scene holds the binary Jupiter trojan Patroclus and Menoetius
+from the Horizons asteroid-satellite solution JPL#82: Menoetius carries 22% of
+the pair's mass, so, like Pluto, Patroclus circles a barycenter about 150 km
+from its centre, outside its 56.5 km radius, on a retrograde 4.3-day orbit.
+Other asteroid moons (Ida's Dactyl, Kalliope's Linus, …) have only literature
+orbits in JPL's Small-Body Database, not an ephemeris, and are not modeled.
 
 Moons without a JPL physical-table GM have unknown mass: they feel known-source
 gravity with no gravitational backreaction, and moons without a radius draw
@@ -419,4 +424,4 @@ When updating documentation, check shared claims in the README, `docs/src/lib/si
 
 ## Next planned iterations
 
-Each future body or moon system is added one iteration at a time, with physical constants, initial conditions, tests, and rendering checks scoped to it. Every source-backed system now has a scene (SPEC A78–A91): all giant-planet moons, Pluto's five moons and the Didymos binary. Other asteroid moons (Ida's Dactyl, Kalliope's Linus, …) have no JPL ephemeris this project can pin (SPEC R23); they wait for one.
+Each future body or moon system is added one iteration at a time, with physical constants, initial conditions, tests, and rendering checks scoped to it. Every system with a JPL ephemeris now has a scene (SPEC A78–A91, A106): all giant-planet moons, Pluto's five moons and the Didymos and Patroclus binaries. Other asteroid moons (Ida's Dactyl, Kalliope's Linus, …) have only literature orbits, no JPL ephemeris this project can pin (SPEC R23); they wait for one.

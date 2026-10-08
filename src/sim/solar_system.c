@@ -459,8 +459,8 @@ static Body planet_at_epoch(Body (*factory)(void), size_t planet_index)
     return body;
 }
 
-/* Vesta, Pluto and Didymos at their pinned heliocentric (system barycenter)
- * epoch states. */
+/* Vesta, Pluto, Didymos and Patroclus at their pinned heliocentric (system
+ * barycenter) epoch states. */
 static Body small_body_at_epoch(Body (*factory)(void), int code)
 {
     Body body = factory();
@@ -588,6 +588,23 @@ Body solar_system_create_didymos_at_perihelion(void)
     return didymos;
 }
 
+Body solar_system_create_patroclus_at_perihelion(void)
+{
+    /* Patroclus is a Jupiter trojan near L5, trailing Jupiter by about 60
+     * degrees. Jupiter starts on the ecliptic -X axis (longitude 180 deg) and
+     * moves prograde, so Patroclus starts at longitude 120 deg with its
+     * prograde perihelion velocity (perpendicular to the radius). */
+    double q = SOLAR_PATROCLUS_SEMI_MAJOR_AXIS_M * (1 - SOLAR_PATROCLUS_ECCENTRICITY);
+    double v = sqrt(SOLAR_G * SOLAR_SUN_MASS_KG * (2 / q - 1 / SOLAR_PATROCLUS_SEMI_MAJOR_AXIS_M));
+    double longitude = acos(-1.0) * 2.0 / 3.0;
+    Body patroclus = body_create_identified("Patroclus", BODY_KIND_ASTEROID, BODY_ID_PATROCLUS, BODY_ID_SUN,
+        SOLAR_PATROCLUS_MASS_KG, SOLAR_PATROCLUS_RADIUS_M, ecliptic_plane(q * cos(longitude), q * sin(longitude)),
+        ecliptic_plane(-v * sin(longitude), v * cos(longitude)), false);
+    patroclus.mass_quality = patroclus.radius_quality = PHYSICAL_ESTIMATED;
+    patroclus.group = "Jupiter trojans";
+    return patroclus;
+}
+
 int solar_system_family_planet_index(BodyId primary)
 {
     switch (primary) {
@@ -596,7 +613,8 @@ int solar_system_family_planet_index(BodyId primary)
         case BODY_ID_URANUS: return 7;
         case BODY_ID_NEPTUNE: return 8;
         case BODY_ID_PLUTO:
-        case BODY_ID_DIDYMOS: return 9;
+        case BODY_ID_DIDYMOS:
+        case BODY_ID_PATROCLUS: return 9;
         default: return -1;
     }
 }
@@ -618,8 +636,10 @@ bool solar_system_create_family(BodyId primary, SolarSystem *result)
         (void)solar_system_append(&system, &body);
     }
     if (planet_index == 9) {
-        Body body = primary == BODY_ID_PLUTO ? small_body_at_epoch(solar_system_create_pluto_at_perihelion, BODY_ID_PLUTO)
-            : small_body_at_epoch(solar_system_create_didymos_at_perihelion, BODY_ID_DIDYMOS);
+        Body (*factory)(void) = primary == BODY_ID_PLUTO ? solar_system_create_pluto_at_perihelion
+            : primary == BODY_ID_DIDYMOS ? solar_system_create_didymos_at_perihelion
+            : solar_system_create_patroclus_at_perihelion;
+        Body body = small_body_at_epoch(factory, (int)primary);
         (void)solar_system_append(&system, &body);
     }
     append_moons(&system, (size_t)planet_index, false);

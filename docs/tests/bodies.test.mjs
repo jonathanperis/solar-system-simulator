@@ -5,8 +5,9 @@ import { familySceneBodies, implementedBodies, mainSceneBodies, plannedBodies } 
 
 test('the catalog lists the main scene, then each system’s small moons', () => {
   assert.equal(mainSceneBodies.length, 32);
-  // Main scene, then each system's small moons, plus Didymos and Dimorphos.
-  assert.equal(implementedBodies.length, 32 + 111 + 284 + 24 + 15 + 4 + 2);
+  // Main scene, then each system's small moons, plus the Didymos and
+  // Patroclus binaries.
+  assert.equal(implementedBodies.length, 32 + 111 + 284 + 24 + 15 + 4 + 2 + 2);
   assert.deepEqual(implementedBodies[9], {
     slug: 'jupiter', name: 'Jupiter', kind: 'Planet', parent: 'Sun', milestone: 'Outer planet pass',
     initialization: 'Jovian-system barycenter at its Horizons state on 2026-06-09; Jupiter sits opposite its known-mass moons.',
@@ -24,11 +25,11 @@ test('the main scene keeps the large bodies and family scenes hold every moon', 
       'Ariel', 'Umbriel', 'Titania', 'Oberon', 'Miranda', 'Triton', 'Charon']);
   assert.equal(mainSceneBodies[30].kind, 'Dwarf planet');
   assert.ok(mainSceneBodies.every(body => body.scene === 'core'));
-  const counts = { Jupiter: 115, Saturn: 291, Uranus: 29, Neptune: 16, Pluto: 5, Didymos: 1 };
+  const counts = { Jupiter: 115, Saturn: 291, Uranus: 29, Neptune: 16, Pluto: 5, Didymos: 1, Patroclus: 1 };
   for (const [planet, count] of Object.entries(counts)) {
     const scene = familySceneBodies(planet);
-    // Pluto and Didymos are not planets: they sit at index 9 before their moons.
-    const first = ['Pluto', 'Didymos'].includes(planet) ? 10 : 9;
+    // Pluto, Didymos and Patroclus are not planets: they sit at index 9 before their moons.
+    const first = ['Pluto', 'Didymos', 'Patroclus'].includes(planet) ? 10 : 9;
     assert.equal(scene.length, first + count);
     assert.deepEqual(scene.slice(0, 9).map(body => body.name),
       ['Sun', 'Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune']);

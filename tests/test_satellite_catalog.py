@@ -2,6 +2,7 @@
 import copy
 import importlib.util
 import json
+import math
 import subprocess
 import sys
 import unittest
@@ -66,6 +67,34 @@ class SatelliteValidation(unittest.TestCase):
                 satellites.refresh_didymos()
         finally:
             satellites.horizons_text = original
+
+    def test_a_new_patroclus_solution_needs_review(self):
+        info = "GM= 0.02 km^3/s^2  RAD= 52.\n1: soln ref.= wrt/JPL#90 system barycenter"
+        original = satellites.horizons_text
+        satellites.horizons_text = lambda **params: info
+        try:
+            with self.assertRaisesRegex(ValueError, 'now serves JPL#90'):
+                satellites.refresh_patroclus()
+        finally:
+            satellites.horizons_text = original
+
+    def test_elements_from_state_recover_a_known_orbit(self):
+        # A circular orbit at 1,000 km about mu = 1 km^3/s^2, inclined 150
+        # degrees (retrograde) with node 30 degrees, at argument of latitude 0.
+        mu, a, inc, node = 1.0, 1000.0, math.radians(150), math.radians(30)
+        speed = math.sqrt(mu / a)
+        position = (a * math.cos(node), a * math.sin(node), 0.0)
+        velocity = (-speed * math.sin(node) * math.cos(inc), speed * math.cos(node) * math.cos(inc), speed * math.sin(inc))
+        # Nudge e above zero so periapsis is defined: 1% faster at the node.
+        velocity = tuple(1.01 * v for v in velocity)
+        a_out, e, i, n, w, m = satellites.elements_from_state(position, velocity, mu)
+        self.assertAlmostEqual(i, 150.0, places=9)
+        self.assertAlmostEqual(n, 30.0, places=9)
+        # Faster than circular at the node: the node is periapsis, M = 0.
+        self.assertAlmostEqual(min(w, 360.0 - w), 0.0, places=6)
+        self.assertAlmostEqual(min(m, 360.0 - m), 0.0, places=6)
+        self.assertAlmostEqual(e, 1.01 ** 2 - 1, places=12)
+        self.assertAlmostEqual(a_out, a / (2 - 1.01 ** 2), places=9)
 
     def test_provisional_designations_use_iau_form(self):
         self.assertEqual(satellites.iau_name('S2003_J_2'), 'S/2003 J 2')

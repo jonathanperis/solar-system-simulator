@@ -28,7 +28,7 @@ ROUTES: dict[str, list[str]] = {
     "index.html": ["data-simulator", "runtime-control-state", "canvas", "favicon.ico", "data-runtime-panel", "data-runtime-body", "data-runtime-speed", "data-runtime-scene", "data-lesson-strip", "data-inspector-distance", "data-inspector-speed", "data-inspector-period", "data-runtime-search", "data-runtime-group", "data-runtime-achieved", "data-body-filter-status", "15 d/s", "10 d/s", "Frame system", "Frame body"],
     "learn/index.html": ["Learn", "?lesson=dart", "?lesson=pluto-charon", "?lesson=circular", "learn/compare/"],
     "learn/compare/index.html": ["Compare two runs", "data-comparison", "learning-lab.mjs", "Guided challenges", "Force-contribution inspector", "data-config-error"],
-    "catalog/index.html": ["Catalog", "data-body-search", "data-body-family", "data-core-body", "catalog/small-bodies/", "Phobos", "Titan", "Dimorphos"],
+    "catalog/index.html": ["Catalog", "data-body-search", "data-body-family", "data-core-body", "catalog/small-bodies/", "Phobos", "Titan", "Dimorphos", "Menoetius"],
     "catalog/small-bodies/index.html": ["Small bodies", "data-small-atlas", "data-density", "data-catalog-search", "data-results", "data-basket", "data-prepare", "catalog/manifest.json", "1,564,244"],
     "about/index.html": ["About", "id=\"model\"", "id=\"data\"", "id=\"code\"", "id=\"rendering\"", "id=\"controls\"", "id=\"build\"", "id=\"roadmap\"", "id=\"credits\"", "src/sim/", "make test", "J2", "2026-06-09"],
 }
@@ -38,9 +38,9 @@ NOTEBOOK_ROUTES = [route for route in ROUTES if route != "index.html"]
 FOOTER_MARKERS = ["data-site-footer", "Jonathan Peris", "raylib", "Emscripten", "Astro", "CC BY 4.0"]
 PRIMARY_NAV = {"learn/", "catalog/", "about/"}
 ATLAS_BODY_ANCHORS = ["sun", "mercury", "venus", "earth", "moon", "mars", "phobos", "deimos", "vesta", "jupiter"]
-ATLAS_BODY_ANCHORS += ["saturn", "uranus", "neptune", "pluto", "didymos"]
+ATLAS_BODY_ANCHORS += ["saturn", "uranus", "neptune", "pluto", "didymos", "patroclus"]
 # Every simulated body has a catalog row anchor (catalog/index.html#slug).
-for catalog in ("jovian", "saturnian", "uranian", "neptunian", "plutonian", "didymos"):
+for catalog in ("jovian", "saturnian", "uranian", "neptunian", "plutonian", "didymos", "patroclus"):
     ATLAS_BODY_ANCHORS += [moon["slug"] for moon in json.loads((Path(__file__).resolve().parents[1] / f"data/{catalog}_moons.json").read_text())["moons"]]
 
 
