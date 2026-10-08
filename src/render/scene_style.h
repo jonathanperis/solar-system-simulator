@@ -98,10 +98,27 @@ double render_world_units_per_pixel(double distance, double fovy_degrees, double
  * RENDER_TRAIL_PIXELS_PER_POINT pixels (never fewer than
  * RENDER_TRAIL_MIN_POINTS), and never finer than `base_stride`, the renderer's
  * fixed segment budget. A Jovian moon's trail seen from Saturn spans a few
- * pixels and needs a handful of points, not a thousand. */
-#define RENDER_TRAIL_PIXELS_PER_POINT 2.0
-#define RENDER_TRAIL_MIN_POINTS 24
+ * pixels and needs a handful of points, not a thousand. A 4 px chord on a
+ * curve of radius 20 px strays 0.1 px from the arc, below what a 1 px line
+ * shows; finer budgets (2 px, a 24-point floor) cost the 300-trail Saturn
+ * scene a third of its frame rate on a throttled phone (SPEC A97). */
+#define RENDER_TRAIL_PIXELS_PER_POINT 4.0
+#define RENDER_TRAIL_MIN_POINTS 12
 size_t render_trail_stride_for_extent(size_t point_count, size_t base_stride, double extent_pixels);
+
+/* The four side planes of the camera's view pyramid, for skipping trail
+ * segments that cannot appear on screen (presentation only). A segment is
+ * invisible when both endpoints lie outside the same plane, i.e. when their
+ * outcodes share a bit; that test never hides a visible segment, it only
+ * misses some invisible ones. The planes pass through the camera, so a point
+ * behind it is always outside at least one. `margin` widens the view (0.05
+ * is 5%) so a line's width at the screen edge is never cut. */
+typedef struct RenderFrustum {
+    Vec3d apex;
+    Vec3d normal[4];
+} RenderFrustum;
+RenderFrustum render_frustum(Vec3d apex, Vec3d forward, Vec3d up, double fovy_degrees, double aspect, double margin);
+unsigned render_frustum_outcode(const RenderFrustum *frustum, Vec3d point);
 
 /* Trim a trail segment a->b to the part outside a body's drawn sphere, so a
  * trail meets the planet's surface instead of running to its centre and

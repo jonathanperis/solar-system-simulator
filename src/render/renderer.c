@@ -508,6 +508,13 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
 {
     Vec3d camera_world = vec3d_add(origin, (Vec3d){camera->position.x, camera->position.y, camera->position.z});
     double viewport_height = (double)GetRenderHeight();
+    /* Segments wholly outside one side of the view are skipped: around a
+     * framed moon, most of a distant moon's history lies off screen, and
+     * submitting it vertex by vertex was the largest trail cost. */
+    Vec3d forward = {camera->target.x - camera->position.x, camera->target.y - camera->position.y,
+        camera->target.z - camera->position.z};
+    RenderFrustum view = render_frustum(camera_world, forward, (Vec3d){camera->up.x, camera->up.y, camera->up.z},
+        camera->fovy, (double)GetRenderWidth() / viewport_height, 0.05);
     ++trail_extent_frame;
     rlBegin(RL_LINES);
     for (size_t i = 0; i < system->body_count; ++i) {
@@ -534,20 +541,23 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
          * Opacity follows the sample's age so recent motion reads first. */
         size_t previous = 0;
         Vec3d start = renderer_trail_point_cached(cache, system, trails, i, 0, mode, trail_frame);
+        unsigned start_code = render_frustum_outcode(&view, start);
         for (size_t j = stride; j < point_count; j += stride) {
             Vec3d end = renderer_trail_point_cached(cache, system, trails, i, j, mode, trail_frame);
+            unsigned end_code = render_frustum_outcode(&view, end);
             Vec3d a = start, b = end;
-            if (render_clip_segment_outside_sphere(&a, &b, center, surface)) {
+            if (!(start_code & end_code) && render_clip_segment_outside_sphere(&a, &b, center, surface)) {
                 line_vertex(renderer_relative_vector(a, origin), color, render_trail_alpha(previous, point_count));
                 line_vertex(renderer_relative_vector(b, origin), color, render_trail_alpha(j, point_count));
             }
             start = end;
+            start_code = end_code;
             previous = j;
         }
         if (previous + 1 < point_count) {
             Vec3d end = renderer_trail_point_cached(cache, system, trails, i, point_count - 1, mode, trail_frame);
             Vec3d a = start, b = end;
-            if (render_clip_segment_outside_sphere(&a, &b, center, surface)) {
+            if (!(start_code & render_frustum_outcode(&view, end)) && render_clip_segment_outside_sphere(&a, &b, center, surface)) {
                 line_vertex(renderer_relative_vector(a, origin), color, render_trail_alpha(previous, point_count));
                 line_vertex(renderer_relative_vector(b, origin), color, 1.0f);
             }
@@ -712,6 +722,43 @@ static void draw_grid(const FrameContext *ctx)
     rlEnableDepthMask();
 }
 
+/* The unknown-radius wire marker (V25): the same 4-ring, 4-slice line sphere
+ * as raylib's DrawSphereWires, whose unit vertices are computed once here.
+ * DrawSphereWires evaluates sinf/cosf for every vertex and pushes a matrix
+ * that rlVertex3f then applies to each one; with 275 unknown-radius moons in
+ * the Saturn scene that was a tenth of the frame on a throttled phone. */
+#define WIRE_MARKER_RINGS 4
+#define WIRE_MARKER_SLICES 4
+#define WIRE_MARKER_VERTICES ((WIRE_MARKER_RINGS + 2) * WIRE_MARKER_SLICES * 6)
+
+static void draw_wire_marker(Vector3 center, float radius, Color color)
+{
+    static Vector3 unit[WIRE_MARKER_VERTICES];
+    static bool ready;
+    if (!ready) {
+        size_t n = 0;
+        for (int i = 0; i < WIRE_MARKER_RINGS + 2; ++i) {
+            for (int j = 0; j < WIRE_MARKER_SLICES; ++j) {
+                /* Ring latitude and slice longitude of each line end, in
+                 * DrawSphereWires's order: (i, j)-(i+1, j+1), (i+1, j+1)-(i+1, j),
+                 * (i+1, j)-(i, j). */
+                const int ends[6][2] = {{i, j}, {i + 1, j + 1}, {i + 1, j + 1}, {i + 1, j}, {i + 1, j}, {i, j}};
+                for (int k = 0; k < 6; ++k) {
+                    float latitude = DEG2RAD * (270 + (180.0f / (WIRE_MARKER_RINGS + 1)) * ends[k][0]);
+                    float longitude = DEG2RAD * (360.0f * ends[k][1] / WIRE_MARKER_SLICES);
+                    unit[n++] = (Vector3){cosf(latitude) * sinf(longitude), sinf(latitude), cosf(latitude) * cosf(longitude)};
+                }
+            }
+        }
+        ready = true;
+    }
+    rlBegin(RL_LINES);
+    rlColor4ub(color.r, color.g, color.b, color.a);
+    for (size_t n = 0; n < WIRE_MARKER_VERTICES; ++n)
+        rlVertex3f(center.x + radius * unit[n].x, center.y + radius * unit[n].y, center.z + radius * unit[n].z);
+    rlEnd();
+}
+
 /* Phase 3. Opaque bodies. Each mesh draw costs dozens of WebGL calls, so
  * bodies behind the camera are skipped and sub-pixel bodies become one
  * batched dot (presentation only: their SI state is untouched). */
@@ -736,7 +783,7 @@ static void draw_opaque_bodies(const FrameContext *ctx)
         }
         if (body->radius_quality == PHYSICAL_UNKNOWN || !resources->ready) {
             /* Unknown radius: an explicitly nonphysical wire marker (V25). */
-            if (body->radius_quality == PHYSICAL_UNKNOWN) DrawSphereWires(position, radius, 4, 4, renderer_body_color(body));
+            if (body->radius_quality == PHYSICAL_UNKNOWN) draw_wire_marker(position, radius, renderer_body_color(body));
             else DrawSphere(position, radius, renderer_body_color(body));
             continue;
         }

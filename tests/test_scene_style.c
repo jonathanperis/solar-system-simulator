@@ -224,19 +224,42 @@ static void test_declutter_keeps_the_most_important_labels(void)
 
 static void test_trail_detail_follows_screen_extent(void)
 {
-    /* A full 1025-point trail across 4000 px keeps every sample; across
-     * 2000 px (1000 points at 2 px spacing) every second one... */
-    assert(render_trail_stride_for_extent(1025, 1, 4000) == 1);
-    assert(render_trail_stride_for_extent(1025, 1, 2000) == 2);
-    /* ...one spanning 100 px needs ~50 points (2 px apart)... */
+    /* A full 1025-point trail along 8000 px of path keeps every sample;
+     * along 4000 px (1000 points at 4 px spacing) every second one... */
+    assert(render_trail_stride_for_extent(1025, 1, 8000) == 1);
+    assert(render_trail_stride_for_extent(1025, 1, 4000) == 2);
+    /* ...one spanning 100 px needs ~25 points (4 px apart: on a curve of
+     * radius 20 px a 4 px chord strays 0.1 px from the arc)... */
     size_t stride = render_trail_stride_for_extent(1025, 1, 100);
-    assert(stride >= 20 && stride <= 22 && 1024 / stride >= 46);
-    /* ...a sub-pixel trail keeps the 24-point floor so its shape survives,
+    assert(stride >= 40 && stride <= 42 && 1024 / stride >= 24);
+    /* ...a sub-pixel trail keeps the 12-point floor so its shape survives,
      * and the renderer's own segment budget is never undercut. */
     assert(1024 / render_trail_stride_for_extent(1025, 1, 0.5) >= RENDER_TRAIL_MIN_POINTS - 1);
     assert(render_trail_stride_for_extent(5000, 5, 4000) == 5);
     assert(render_trail_stride_for_extent(10, 1, 1) == 1);
     assert(render_trail_stride_for_extent(1025, 1, -1) == 1);
+}
+
+static void test_frustum_outcodes_skip_only_invisible_segments(void)
+{
+    /* Camera at (0, 0, 10) looking down -z with +y up, 60 degree vertical
+     * field of view, a 2:1 image: tan(30 deg) = 0.577 up, 1.155 sideways. */
+    RenderFrustum f = render_frustum((Vec3d){0, 0, 10}, (Vec3d){0, 0, -1}, (Vec3d){0, 1, 0}, 60, 2, 0);
+    assert(render_frustum_outcode(&f, (Vec3d){0, 0, 0}) == 0);
+    assert(render_frustum_outcode(&f, (Vec3d){10, 5, 0}) == 0);      /* inside, near the corner */
+    unsigned right = render_frustum_outcode(&f, (Vec3d){12, 0, 0});
+    unsigned left = render_frustum_outcode(&f, (Vec3d){-12, 0, 0});
+    unsigned above = render_frustum_outcode(&f, (Vec3d){0, 6, 0});
+    assert(right && left && above && !(right & left) && !(right & above));
+    /* Behind the camera is outside some side plane. */
+    assert(render_frustum_outcode(&f, (Vec3d){0, 0, 20}) != 0);
+    /* Both ends right of the view: skipped. Ends on opposite sides of the
+     * view: the segment crosses the screen, so it must be kept. */
+    assert(right & render_frustum_outcode(&f, (Vec3d){30, 1, -5}));
+    assert(!(right & left));
+    /* The margin widens the view: a point just outside becomes inside. */
+    RenderFrustum wide = render_frustum((Vec3d){0, 0, 10}, (Vec3d){0, 0, -1}, (Vec3d){0, 1, 0}, 60, 2, 0.05);
+    assert(render_frustum_outcode(&f, (Vec3d){0, 5.9, 0}) != 0 && render_frustum_outcode(&wide, (Vec3d){0, 5.9, 0}) == 0);
 }
 
 static void test_trail_segments_stop_at_the_body_surface(void)
@@ -328,6 +351,7 @@ int main(void)
     test_labels_name_planets_and_zoomed_in_moons();
     test_declutter_keeps_the_most_important_labels();
     test_trail_detail_follows_screen_extent();
+    test_frustum_outcodes_skip_only_invisible_segments();
     test_trail_segments_stop_at_the_body_surface();
     test_sphere_matches_simulation_handedness_and_map_layout();
     test_ring_annulus_spans_requested_radii();
