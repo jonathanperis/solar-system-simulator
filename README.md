@@ -413,7 +413,7 @@ SPEC.md                # current contracts, roadmap, acceptance and audit histor
 PRODUCT.md / DESIGN.md # learning goals and the instrument/notebook visual direction
 ```
 
-When updating documentation, check shared claims in the README, `docs/src/lib/site.ts`, `docs/src/lib/sourceMap.ts`, and the relevant field-guide page. The sitemap is generated from the Astro page modules; `make docs-check` verifies the published routes, assets, sitemap, Astro ownership, and CSP. Catalog counts describe pinned snapshots, not automatically refreshed live inventories.
+When updating documentation, check shared claims in the README, `docs/src/lib/site.ts`, `docs/src/lib/sourceMap.ts`, and the relevant Learn, Catalog or About page. The sitemap is generated from the Astro page modules; `make docs-check` verifies the published routes, assets, sitemap, Astro ownership, and CSP. Catalog counts describe pinned snapshots, not automatically refreshed live inventories.
 
 ## Next planned iterations
 

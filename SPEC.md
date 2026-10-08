@@ -53,7 +53,7 @@ I.app: body trails, stable orbit camera, bounded simulation stepping
 
 I.render: illustrative | real-scale transforms + raylib drawing; lighting shader pair, attributed textures (lazy-loaded on the web), IAU spin orientation, adaptive grid and faded trails are presentation only; Saturn rings are presentation-only geometry
 
-I.controls: native `Tab` | `C` focus; web `C` focus and browser-native `Tab`; `V` scale; wheel zoom; native `K` cycles the astronomy scenes and `L` the guided lessons; the web scene picker (Find an object → Scene) loads the main or a planet-system scene, and `?body=` links to a small moon load its planet-system scene first
+I.controls: native `Tab` | `C` focus; web `C` focus and browser-native `Tab`; `V` scale; wheel zoom; native `K` cycles the astronomy scenes and `L` the guided lessons; the web dock's Scene picker loads the main or a planet-system scene, the Find sheet searches bodies in the active scene, and `?body=` links to a small moon load its planet-system scene first
 
 I.inspection: native shortcuts and accessible web buttons share C-owned playback and selection; web readouts use live C physical state. Space pauses, N steps, R resets, A toggles camera rotation, F frames the selected system, B frames only the selected body; native 1–9 and 0 select the first ten catalog bodies and brackets change speed. Search/group selection reaches the full catalog.
 
