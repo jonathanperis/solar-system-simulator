@@ -110,6 +110,7 @@ typedef struct SolarApp {
     char feedback[160];
 #if defined(PLATFORM_WEB)
     size_t web_body_count;
+    unsigned web_report_frame;
 #endif
 #if !defined(PLATFORM_WEB)
     bool searching;
@@ -322,6 +323,9 @@ static void populate_web_bodies(void)
         solar_web_add_body((int)i, body->name, group);
     }
 }
+
+/* The animation loop reports state to the page on every fourth frame. */
+#define SOLAR_WEB_REPORT_FRAMES 4
 
 static void report_web_state(const SolarApp *state)
 {
@@ -572,7 +576,11 @@ static void solar_app_update_draw(void *user_data)
     apply_orbit_camera(&state->camera, &state->orbit_camera, (Vector3){0,0,0});
 
 #if defined(PLATFORM_WEB)
-    report_web_state(state);
+    /* Readouts for people: 15 updates a second read as live, and each report
+     * crosses into JavaScript with strings and objects (garbage every frame)
+     * and recomputes the Data sheet's diagnostics and force breakdown. Web
+     * commands still report at once, so controls answer immediately. */
+    if (state->web_report_frame++ % SOLAR_WEB_REPORT_FRAMES == 0) report_web_state(state);
 #endif
 
     BeginDrawing();
@@ -704,7 +712,14 @@ int main(int argc, char **argv)
     InitWindow(screen_width, screen_height, "Solar System Simulator");
     SetExitKey(KEY_NULL); /* Escape closes native search rather than the window. */
 #endif
+#if !defined(PLATFORM_WEB)
     SetTargetFPS(60);
+#endif
+    /* The browser paces frames with requestAnimationFrame (the main loop
+     * below passes fps 0). A raylib target there would make EndDrawing wait
+     * out its own 1/60 s clock, and Emscripten's nanosleep spins on the main
+     * thread: every frame burned CPU until that clock expired, and the two
+     * clocks' drift made frames that fit the budget miss vsync. */
     /* Without the shader the renderer still draws flat coloured spheres. */
     if (!renderer_resources_init(&app.render)) TraceLog(LOG_WARNING, "Cinematic renderer unavailable; using flat colours");
 #if !defined(PLATFORM_WEB)

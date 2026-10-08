@@ -163,8 +163,11 @@ Native throughput by scene: Jupiter system 58, Saturn system 20 (its 300 bodies
 fall short of the 15 days/s preset on slower devices, where the achieved rate is
 reported), Uranus and Neptune systems above 150 days/second. On a
 4×-CPU-throttled phone emulation at the default speed, the main, Jupiter and
-Uranus scenes hold 59 fps and the 300-body Saturn scene about 55 (measured
-2026-10-08, SPEC A97).
+Uranus scenes hold 60 fps; the 300-body Saturn scene needs 3.4–4.9 ms of
+main-thread CPU per frame unthrottled against a 4.2 ms budget for 60 fps at
+that throttle (measured 2026-10-08 on a busy host, SPEC A97). The browser loop
+is paced only by `requestAnimationFrame`: raylib's frame limiter would
+busy-wait there.
 
 Three small-body systems follow the same rules. Pluto (Horizons GM, SBDB orbit)
 and Charon belong to the main scene: Charon is 12% of Pluto's mass, so Pluto

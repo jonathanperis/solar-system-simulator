@@ -418,18 +418,35 @@ static Vector3 unit_vector(Vector3 v, Vector3 fallback)
     return length > 1e-20f ? (Vector3){v.x / length, v.y / length, v.z / length} : fallback;
 }
 
+static unsigned char line_alpha_byte(Color color, float alpha);
+
 static void line_vertex(Vector3 position, Color color, float alpha)
 {
-    rlColor4ub(color.r, color.g, color.b, (unsigned char)(color.a * (alpha < 0 ? 0 : alpha > 1 ? 1 : alpha)));
+    rlColor4ub(color.r, color.g, color.b, line_alpha_byte(color, alpha));
     rlVertex3f(position.x, position.y, position.z);
 }
 
 /* Adaptive ecliptic-plane reference grid (A67): power-of-ten minor and major
  * lines that cross-fade with zoom, each line split into short pieces so its
  * opacity can fall off with distance from the camera target. */
-static void draw_reference_grid(Vec3d origin, double camera_distance)
+static unsigned char line_alpha_byte(Color color, float alpha)
+{
+    return (unsigned char)(color.a * (alpha < 0 ? 0 : alpha > 1 ? 1 : alpha));
+}
+
+static void draw_reference_grid(Vec3d origin, double camera_distance, const Camera3D *camera, double aspect)
 {
     RenderGridLevels grid = render_grid_levels(camera_distance);
+    /* The grid reaches 3.5 camera distances out and fades to nothing well
+     * before that, so most of its pieces are transparent or off screen (about
+     * 13k vertices a frame in the Saturn overview, as many as every trail).
+     * A piece is skipped only when it cannot change a pixel: both endpoint
+     * alphas round to zero (the GPU interpolates alpha linearly between
+     * them), or both endpoints lie outside one side of the view. */
+    Vec3d camera_world = vec3d_add(origin, (Vec3d){camera->position.x, camera->position.y, camera->position.z});
+    RenderFrustum view = render_frustum(camera_world,
+        (Vec3d){camera->target.x - camera->position.x, camera->target.y - camera->position.y, camera->target.z - camera->position.z},
+        (Vec3d){camera->up.x, camera->up.y, camera->up.z}, camera->fovy, aspect, 0.05);
     const int pieces = 6;
     const Color minor_color = {70, 92, 118, 70}, major_color = {92, 120, 150, 120};
     rlBegin(RL_LINES);
@@ -460,8 +477,12 @@ static void draw_reference_grid(Vec3d origin, double camera_distance)
                         a = (Vec3d){origin.x + t0, plane_y, z}; b = (Vec3d){origin.x + t1, plane_y, z};
                     }
                     double da = hypot(a.x - origin.x, a.z - origin.z), db = hypot(b.x - origin.x, b.z - origin.z);
-                    line_vertex(renderer_relative_vector(a, origin), color, (float)(strength * render_grid_alpha(da, grid.radius) * 2.0));
-                    line_vertex(renderer_relative_vector(b, origin), color, (float)(strength * render_grid_alpha(db, grid.radius) * 2.0));
+                    float alpha_a = (float)(strength * render_grid_alpha(da, grid.radius) * 2.0);
+                    float alpha_b = (float)(strength * render_grid_alpha(db, grid.radius) * 2.0);
+                    if (!line_alpha_byte(color, alpha_a) && !line_alpha_byte(color, alpha_b)) continue;
+                    if (render_frustum_outcode(&view, a) & render_frustum_outcode(&view, b)) continue;
+                    line_vertex(renderer_relative_vector(a, origin), color, alpha_a);
+                    line_vertex(renderer_relative_vector(b, origin), color, alpha_b);
                 }
             }
         }
@@ -717,7 +738,8 @@ static void draw_grid(const FrameContext *ctx)
 {
     rlDrawRenderBatchActive();
     rlDisableDepthMask();
-    if (ctx->view->show_grid) draw_reference_grid(ctx->origin, ctx->camera_distance);
+    if (ctx->view->show_grid)
+        draw_reference_grid(ctx->origin, ctx->camera_distance, &ctx->camera, (double)GetRenderWidth() / ctx->viewport_height);
     rlDrawRenderBatchActive();
     rlEnableDepthMask();
 }
