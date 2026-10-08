@@ -20,6 +20,10 @@ const char *lesson_name(LessonPreset preset);
 /* True for the main scene and the four family scenes: fixed 15 s Verlet
  * astronomy scenes rather than guided lessons. */
 bool lesson_is_scene(LessonPreset preset);
+/* True when the preset starts from the dated 2026-06-09 sky (every scene and
+ * the barycentric-core lesson, which releases the Sun in the main scene), so
+ * clocks show calendar dates and spin uses the scene epoch. */
+bool lesson_starts_at_epoch(LessonPreset preset);
 /* The primary a family scene centres on, or BODY_ID_NONE. */
 BodyId lesson_family_planet(LessonPreset preset);
 /* Accepts initial-speed factors from lesson_minimum_velocity_factor() to 2. */

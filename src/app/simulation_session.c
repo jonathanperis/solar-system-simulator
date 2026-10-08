@@ -217,6 +217,11 @@ bool simulation_session_state_is_finite(const SimulationSession *session)
     return true;
 }
 
+bool simulation_session_is_dated(const SimulationSession *session)
+{
+    return session->catalog_experiment || lesson_starts_at_epoch(session->lesson);
+}
+
 BodyInspection simulation_session_inspect(const SimulationSession *session)
 {
     return simulation_session_inspect_body(session, session->selected_body_index);

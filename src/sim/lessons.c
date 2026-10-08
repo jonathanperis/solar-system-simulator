@@ -33,6 +33,11 @@ bool lesson_is_scene(LessonPreset preset)
     return preset == LESSON_CORE || lesson_family_planet(preset) != BODY_ID_NONE;
 }
 
+bool lesson_starts_at_epoch(LessonPreset preset)
+{
+    return lesson_is_scene(preset) || preset == LESSON_BARYCENTRIC_CORE;
+}
+
 size_t lesson_subject_index(LessonPreset preset)
 {
     /* A family scene opens on its planet. */

@@ -49,8 +49,12 @@ barycenters come from `planet_epoch.json`. `tools/scene_epoch.py --refresh`
 makes one serialized Horizons request per body and accepts a result only when
 Horizons names the same body ("Io (501)", "S2023_S01" for S/2023 S 1); two
 bodies are undated and keep mean elements: Daphnis (no Horizons data at the
-epoch) and S/2025 U 1 (its code resolves to an asteroid). `--check` verifies
-the generated `src/sim/scene_epoch.inc` offline.
+epoch) and S/2025 U 1 (its code resolves to an asteroid). Centres are always
+written `@399`, `@499`, `@699`…: a bare `499` is an observatory code, not
+Mars. The validator rejects any moon whose distance lies outside 0.5× its
+periapsis to 1.5× its apoapsis, which catches a wrong centre. `--refresh --only
+CODE…` re-fetches single bodies. `--check` verifies the generated
+`src/sim/scene_epoch.inc` offline.
 
 Propagating mean elements to the epoch instead was tried and rejected: it
 missed Horizons by up to 178° (resonances and forced eccentricities).
