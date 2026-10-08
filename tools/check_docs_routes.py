@@ -108,10 +108,13 @@ PUBLIC_FORBIDDEN_NAMES = {"sitemap.xml", "robots.txt"}
 
 
 # Document types a browser can render as a page that runs script (SVG can
-# embed <script>; XHTML/SHTML are HTML variants). None are published today;
-# any future one must be named in ALLOWED_ACTIVE_DOCUMENTS after review.
+# embed <script>; XHTML/SHTML are HTML variants). Each published one is named
+# here after review: favicon.svg is static shapes only, which
+# check_site_images keeps true.
 ACTIVE_DOCUMENT_SUFFIXES = {".svg", ".svgz", ".xhtml", ".xht", ".shtml"}
-ALLOWED_ACTIVE_DOCUMENTS: frozenset[str] = frozenset()
+ALLOWED_ACTIVE_DOCUMENTS: frozenset[str] = frozenset({"favicon.svg"})
+# Anything in an SVG that can run code or pull in another resource.
+SVG_ACTIVE_CONTENT = re.compile(r"<\s*(script|foreignObject|iframe|object|embed|use|image)\b|\son[a-z]+\s*=|href\s*=|url\(", re.I)
 
 
 def check_astro_generated(dist: Path, allowed: frozenset[str] | set[str] = ALLOWED_ACTIVE_DOCUMENTS) -> None:
@@ -274,6 +277,27 @@ def check_legacy_redirects(dist: Path) -> None:
             fail(f"{old}/ redirect must be noindex")
 
 
+SOCIAL_IMAGE = "https://jonathanperis.github.io" + BASE_PATH + "social-preview.png"
+
+
+def check_site_images(dist: Path) -> None:
+    """Link previews need the 1200×630 PNG card; browsers and iOS need the icon set
+    (rendered by tools/site_images.mjs from docs/public/favicon.svg)."""
+    card = dist / "social-preview.png"
+    if not card.is_file():
+        fail("missing social-preview.png; run tools/site_images.mjs")
+    data = card.read_bytes()
+    # PNG signature, then the IHDR chunk: width and height as big-endian u32.
+    if data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR" or \
+            (int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")) != (1200, 630):
+        fail("social-preview.png must be a 1200x630 PNG")
+    for name in ("favicon.svg", "favicon-32x32.png", "apple-touch-icon.png"):
+        if not (dist / name).is_file():
+            fail(f"missing {name}; run tools/site_images.mjs")
+    if SVG_ACTIVE_CONTENT.search((dist / "favicon.svg").read_text(encoding="utf-8", errors="replace")):
+        fail("favicon.svg must stay static shapes: no scripts, handlers, links or external resources")
+
+
 def main(argv: list[str]) -> int:
     dist = Path(argv[1]) if len(argv) > 1 else Path("docs/dist")
     if not dist.is_dir():
@@ -287,6 +311,7 @@ def main(argv: list[str]) -> int:
     if not (dist / "sitemap.xml").is_file():
         fail("missing sitemap.xml")
     check_sitemap(dist)
+    check_site_images(dist)
     check_astro_generated(dist)
     check_not_found_page(dist)
     for page in sorted(dist.rglob("*.html")):
@@ -314,6 +339,10 @@ def main(argv: list[str]) -> int:
         current = sum(attrs.get("aria-current") in {"page", "location"} for attrs in primary_links)
         if current != (0 if route == "index.html" else 1):
             fail(f"{route} must mark exactly its own section as current (none on the simulator)")
+        for marker in (f'property="og:image" content="{SOCIAL_IMAGE}"', 'name="twitter:card" content="summary_large_image"',
+                       'property="og:image:width" content="1200"', 'rel="apple-touch-icon"'):
+            if marker not in html:
+                fail(f"{route} missing link-preview marker: {marker}")
         if "rel=\"canonical\"" not in html:
             fail(f"{route} missing canonical URL")
         if "Skip to content" not in html:

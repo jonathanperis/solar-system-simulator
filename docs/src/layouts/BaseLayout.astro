@@ -26,6 +26,10 @@ const redirectTarget = Astro.props.redirectTo !== undefined ? withBase(base, Ast
 const notFound = Astro.props.notFound === true;
 const canonicalUrl = new URL(redirectTarget ?? (notFound ? base : Astro.url.pathname), 'https://jonathanperis.github.io').href;
 const csp = contentSecurityPolicy(Boolean(import.meta.env.PUBLIC_GA_ID));
+// Link previews (WhatsApp, Slack, social sites) need an absolute image URL.
+// tools/site_images.mjs renders the card and the icons into docs/public/.
+const socialImage = new URL(`${base}social-preview.png`, 'https://jonathanperis.github.io').href;
+const socialImageAlt = 'Solar System Simulator: Jupiter and the Galilean moons rendered by the simulator, beside the title on warm paper.';
 const currentPath = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
 const activeRoute = primaryRoutes.find(route => currentPath.startsWith(withBase(base, route.href)));
 ---
@@ -51,10 +55,23 @@ const activeRoute = primaryRoutes.find(route => currentPath.startsWith(withBase(
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalUrl} />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content={socialImage} />
+    <meta property="og:image:secure_url" content={socialImage} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={socialImageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={socialImage} />
+    <meta name="twitter:image:alt" content={socialImageAlt} />
+    <meta name="theme-color" content={variant === 'instrument' ? '#111419' : '#f6f1e7'} />
     <link rel="icon" href={`${base}favicon.ico`} sizes="any" />
+    <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
+    <link rel="icon" type="image/png" sizes="32x32" href={`${base}favicon-32x32.png`} />
+    <link rel="apple-touch-icon" href={`${base}apple-touch-icon.png`} />
     {/* Self-hosted OFL fonts (public/fonts). */}
     <link rel="preload" href={`${base}fonts/jetbrains-mono-latin.woff2`} as="font" type="font/woff2" crossorigin />
     {variant === 'notebook' && <link rel="preload" href={`${base}fonts/cormorant-garamond-latin.woff2`} as="font" type="font/woff2" crossorigin />}
