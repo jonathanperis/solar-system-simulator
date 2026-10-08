@@ -31,8 +31,9 @@ sentence about accuracy. Numbers carry units.
 - The canvas fills the viewport under a thin top bar: wordmark (links home),
   Learn, Catalog, About, Source.
 - A sky clock leads the top-left of the canvas: the scene date and time in
-  large mono numerals (or the elapsed time in a lesson), an amber note of how
-  far the run has come from 2026-06-09, then the scene and the running state.
+  large mono numerals with an amber note of the days since 2026-06-09; in a
+  lesson, the elapsed time with the note "since the lesson started". Below it,
+  the scene and the running state.
 - One bottom dock, left to right: play/pause, restart, speed (1 h, 1 d, 5 d,
   10 d, 15 d per second), scene picker (Solar system, Jupiter, Saturn, Uranus,
   Neptune, Pluto, Didymos), then Find (body search), View, Keys and Data.
