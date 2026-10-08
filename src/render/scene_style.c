@@ -197,6 +197,18 @@ size_t render_trail_stride_for_extent(size_t point_count, size_t base_stride, do
     return stride > base_stride ? stride : base_stride;
 }
 
+bool render_marker_draws_wire(double radius_pixels)
+{
+    return radius_pixels >= RENDER_WIRE_MARKER_MIN_RADIUS_PIXELS;
+}
+
+double render_marker_dot_pixels(double radius_pixels)
+{
+    /* A wireframe this small fills roughly 1.5 times its radius. */
+    double blob = 1.5 * radius_pixels;
+    return blob > RENDER_DOT_PIXELS ? blob : RENDER_DOT_PIXELS;
+}
+
 RenderFrustum render_frustum(Vec3d apex, Vec3d forward, Vec3d up, double fovy_degrees, double aspect, double margin)
 {
     Vec3d f = vec3d_scale(forward, 1.0 / vec3d_length(forward));

@@ -240,6 +240,16 @@ static void test_trail_detail_follows_screen_extent(void)
     assert(render_trail_stride_for_extent(1025, 1, -1) == 1);
 }
 
+static void test_small_wire_markers_become_dots(void)
+{
+    /* A marker that reads as a wireframe keeps it; a few-pixel blob becomes
+     * a dot of about the same size, never smaller than any other dot. */
+    assert(render_marker_draws_wire(3.0) && render_marker_draws_wire(40.0));
+    assert(!render_marker_draws_wire(2.9) && !render_marker_draws_wire(0.0));
+    assert(render_marker_dot_pixels(2.0) == 3.0);
+    assert(render_marker_dot_pixels(0.5) == RENDER_DOT_PIXELS);
+}
+
 static void test_frustum_outcodes_skip_only_invisible_segments(void)
 {
     /* Camera at (0, 0, 10) looking down -z with +y up, 60 degree vertical
@@ -352,6 +362,7 @@ int main(void)
     test_declutter_keeps_the_most_important_labels();
     test_trail_detail_follows_screen_extent();
     test_frustum_outcodes_skip_only_invisible_segments();
+    test_small_wire_markers_become_dots();
     test_trail_segments_stop_at_the_body_surface();
     test_sphere_matches_simulation_handedness_and_map_layout();
     test_ring_annulus_spans_requested_radii();

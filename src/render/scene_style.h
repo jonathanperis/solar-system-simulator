@@ -87,6 +87,14 @@ RenderGridLevels render_grid_levels(double camera_distance);
  * are sub-pixel in the overview. Returns 0 for degenerate input. */
 double render_projected_radius_pixels(double radius, double distance, double fovy_degrees, double viewport_height);
 #define RENDER_MESH_MIN_RADIUS_PIXELS 0.75
+/* An unknown-radius wire marker (V25) needs room to read as a wire sphere.
+ * Below RENDER_WIRE_MARKER_MIN_RADIUS_PIXELS its 144-vertex wireframe is a
+ * blob a few pixels wide (the Saturn overview has 275 of them, more vertices
+ * than every trail together), so it becomes a dot render_marker_dot_pixels
+ * wide: about the blob's size, never smaller than any other dot. */
+#define RENDER_WIRE_MARKER_MIN_RADIUS_PIXELS 3.0
+bool render_marker_draws_wire(double radius_pixels);
+double render_marker_dot_pixels(double radius_pixels);
 /* World size of one screen pixel at `distance` (the inverse of the pinhole
  * projection above). Sub-pixel bodies are drawn as dots RENDER_DOT_PIXELS
  * wide in this many world units, so they stay visible but tiny. */
