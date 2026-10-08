@@ -197,6 +197,42 @@ size_t render_trail_stride_for_extent(size_t point_count, size_t base_stride, do
     return stride > base_stride ? stride : base_stride;
 }
 
+RenderFrustum render_frustum(Vec3d apex, Vec3d forward, Vec3d up, double fovy_degrees, double aspect, double margin)
+{
+    Vec3d f = vec3d_scale(forward, 1.0 / vec3d_length(forward));
+    Vec3d side = vec3d_cross(f, up);
+    Vec3d right = vec3d_scale(side, 1.0 / vec3d_length(side));
+    Vec3d true_up = vec3d_cross(right, f);
+    /* Half-angles of the (slightly widened) view: vertical from fovy,
+     * horizontal from the aspect ratio of the same image plane. */
+    double tan_y = tan(fovy_degrees * acos(-1.0) / 360.0) * (1.0 + margin);
+    double tan_x = tan_y * aspect;
+    double cy = 1.0 / sqrt(1.0 + tan_y * tan_y), sy = tan_y * cy;
+    double cx = 1.0 / sqrt(1.0 + tan_x * tan_x), sx = tan_x * cx;
+    /* Outward normals: a point p (relative to the apex) is outside a plane
+     * when dot(p, normal) > 0, e.g. right of the view when its rightward
+     * component exceeds tan_x times its forward component. */
+    RenderFrustum frustum = {apex, {
+        vec3d_sub(vec3d_scale(right, cx), vec3d_scale(f, sx)),
+        vec3d_sub(vec3d_scale(right, -cx), vec3d_scale(f, sx)),
+        vec3d_sub(vec3d_scale(true_up, cy), vec3d_scale(f, sy)),
+        vec3d_sub(vec3d_scale(true_up, -cy), vec3d_scale(f, sy)),
+    }};
+    return frustum;
+}
+
+unsigned render_frustum_outcode(const RenderFrustum *frustum, Vec3d point)
+{
+    /* Inline arithmetic: this runs for every trail sample drawn. */
+    double x = point.x - frustum->apex.x, y = point.y - frustum->apex.y, z = point.z - frustum->apex.z;
+    unsigned code = 0;
+    for (unsigned k = 0; k < 4; ++k) {
+        const Vec3d *n = &frustum->normal[k];
+        if (x * n->x + y * n->y + z * n->z > 0) code |= 1u << k;
+    }
+    return code;
+}
+
 static double distance_squared(Vec3d a, Vec3d b)
 {
     double x = a.x - b.x, y = a.y - b.y, z = a.z - b.z;
