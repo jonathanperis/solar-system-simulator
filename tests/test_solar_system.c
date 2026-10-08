@@ -7,6 +7,8 @@
 
 #include "sim/constants.h"
 #include "sim/solar_system.h"
+#include "sim/scene_epoch.h"
+#include "sim/lessons.h"
 
 static void assert_close(double actual, double expected, double epsilon)
 {
@@ -450,6 +452,13 @@ static void assert_family_follows(const SolarSystem *system, size_t parent, Body
     assert(vec3d_length(vec3d_sub(system->bodies[parent].position_m, intended.position_m)) > min_shift_m);
 }
 
+static Body epoch_planet(size_t planet_index)
+{
+    Body body = {0};
+    scene_epoch_planet_state(planet_index, &body.position_m, &body.velocity_mps);
+    return body;
+}
+
 static void test_moon_families_place_their_barycenter_on_the_intended_orbit(void)
 {
     Body earth = solar_system_create_earth_at_perihelion();
@@ -461,37 +470,70 @@ static void test_moon_families_place_their_barycenter_on_the_intended_orbit(void
     /* Earth sits ~4,670 km from the Earth-Moon barycenter. */
     assert_family_follows(&pair, 3, earth, 4.0e6);
     assert_family_follows(&martian, 3, earth, 4.0e6);
-    assert_family_follows(&core, 3, earth, 4.0e6);
     assert_family_follows(&martian, 5, mars, 0.05); /* Phobos and Deimos offsets partly cancel: ~0.1 m. */
-    assert_family_follows(&core, 5, mars, 0.05);
-    assert_family_follows(&core, 9, jupiter, 1.0e4);
-    /* Saturn shifts ~290 km toward Titan, Neptune ~75 km toward Triton. */
-    assert_family_follows(&core, 14, solar_system_create_saturn_at_perihelion(), 1.0e5);
-    assert_family_follows(&core, 22, solar_system_create_uranus_at_perihelion(), 1.0e3);
-    assert_family_follows(&core, 28, solar_system_create_neptune_at_perihelion(), 1.0e4);
-    /* Charon pulls Pluto ~2,100 km off the barycenter, outside Pluto itself. */
-    assert_family_follows(&core, 30, solar_system_create_pluto_at_perihelion(), 1.0e6);
-    Vec3d pluto_shift = vec3d_sub(core.bodies[30].position_m, solar_system_create_pluto_at_perihelion().position_m);
-    assert(vec3d_length(pluto_shift) > SOLAR_PLUTO_RADIUS_M);
+    (void)jupiter;
+
+    /* SPEC A92: scenes start at the 2026-06-09 sky. Each family barycenter
+     * takes its Horizons system-barycenter state; the planet is displaced
+     * opposite its moons (Saturn ~290 km toward Titan, Pluto ~2,100 km toward
+     * Charon, outside Pluto itself). */
+    assert_family_follows(&core, 3, epoch_planet(2), 4.0e6);
+    assert_family_follows(&core, 5, epoch_planet(3), 0.01);
+    assert_family_follows(&core, 9, epoch_planet(4), 1.0e4);
+    assert_family_follows(&core, 14, epoch_planet(5), 1.0e5);
+    assert_family_follows(&core, 22, epoch_planet(6), 1.0e3);
+    assert_family_follows(&core, 28, epoch_planet(7), 1.0e4);
+    Body pluto_barycenter = {0};
+    assert(scene_epoch_state(BODY_ID_PLUTO, &pluto_barycenter.position_m, &pluto_barycenter.velocity_mps));
+    assert_family_follows(&core, 30, pluto_barycenter, SOLAR_PLUTO_RADIUS_M);
     for (BodyId planet = BODY_ID_JUPITER; planet != BODY_ID_NONE;
          planet = planet == BODY_ID_JUPITER ? BODY_ID_SATURN : planet == BODY_ID_SATURN ? BODY_ID_URANUS
              : planet == BODY_ID_URANUS ? BODY_ID_NEPTUNE : BODY_ID_NONE) {
         SolarSystem family;
         assert(solar_system_create_family(planet, &family));
         int index = solar_system_family_planet_index(planet);
-        Body intended = planet == BODY_ID_JUPITER ? jupiter : planet == BODY_ID_SATURN ? solar_system_create_saturn_at_perihelion()
-            : planet == BODY_ID_URANUS ? solar_system_create_uranus_at_perihelion() : solar_system_create_neptune_at_perihelion();
-        assert_family_follows(&family, (size_t)index, intended, 1.0e2);
+        assert_family_follows(&family, (size_t)index, epoch_planet((size_t)index - 1), 1.0e2);
     }
 
-    /* Moons keep their sourced parent-relative state exactly as before. */
-    Body moon = solar_system_create_moon_at_perigee_near_earth(&earth);
-    Vec3d relative = vec3d_sub(core.bodies[4].position_m, core.bodies[3].position_m);
-    Vec3d expected = vec3d_sub(moon.position_m, earth.position_m);
-    assert(vec3d_length(vec3d_sub(relative, expected)) < 1e-4);
-    Vec3d relative_v = vec3d_sub(core.bodies[4].velocity_mps, core.bodies[3].velocity_mps);
-    Vec3d expected_v = vec3d_sub(moon.velocity_mps, earth.velocity_mps);
-    assert(vec3d_length(vec3d_sub(relative_v, expected_v)) < 1e-9);
+    /* Moons sit at their pinned planetocentric states. */
+    Vec3d r, v;
+    assert(scene_epoch_state(BODY_ID_MOON, &r, &v));
+    assert(vec3d_length(vec3d_sub(vec3d_sub(core.bodies[4].position_m, core.bodies[3].position_m), r)) < 1e-4);
+    assert(vec3d_length(vec3d_sub(vec3d_sub(core.bodies[4].velocity_mps, core.bodies[3].velocity_mps), v)) < 1e-9);
+    assert(scene_epoch_state(BODY_ID_IO, &r, &v));
+    assert(vec3d_length(vec3d_sub(vec3d_sub(core.bodies[10].position_m, core.bodies[9].position_m), r)) < 1e-4);
+    /* Vesta and the inner planets are heliocentric epoch states as given. */
+    assert(scene_epoch_state(BODY_ID_VESTA, &r, &v));
+    assert(vec3d_length(vec3d_sub(core.bodies[8].position_m, r)) == 0);
+    Body mercury = epoch_planet(0);
+    assert(vec3d_length(vec3d_sub(core.bodies[1].position_m, mercury.position_m)) == 0);
+}
+
+/* SPEC A94: oblateness belongs to scene planets, never to lesson bodies. */
+static void test_oblateness_is_set_on_scene_planets_only(void)
+{
+    SolarSystem core = solar_system_create_current();
+    for (size_t i = 0; i < core.body_count; ++i) {
+        const Body *b = &core.bodies[i];
+        bool oblate = b->id == BODY_ID_EARTH || b->id == BODY_ID_MARS || b->id == BODY_ID_JUPITER ||
+            b->id == BODY_ID_SATURN || b->id == BODY_ID_URANUS || b->id == BODY_ID_NEPTUNE;
+        assert((b->j2 > 0) == oblate);
+        if (oblate) assert(fabs(vec3d_length(b->pole) - 1) < 1e-12 && b->j2_radius_m > b->radius_m * 0.98);
+    }
+    /* Saturn's pole sits ~28 degrees from ecliptic north (+Y). */
+    assert(acos(core.bodies[14].pole.y) * 180 / acos(-1.0) > 25 && acos(core.bodies[14].pole.y) * 180 / acos(-1.0) < 30);
+    SolarSystem lesson;
+    assert(lesson_create(LESSON_EARTH_MOON, 1, &lesson) && lesson.bodies[0].j2 == 0);
+    assert(solar_system_create_earth_at_perihelion().j2 == 0);
+}
+
+static void test_scene_dates_count_from_the_epoch(void)
+{
+    char date[32];
+    assert(scene_epoch_format_date(0, date, sizeof(date)) && strcmp(date, "2026-06-09 00:00 TDB") == 0);
+    assert(scene_epoch_format_date(365 * 86400.0 + 3600 * 13.5, date, sizeof(date)) && strcmp(date, "2027-06-09 13:30 TDB") == 0);
+    assert(scene_epoch_format_date((365 + 365 + 265) * 86400.0, date, sizeof(date)) && strcmp(date, "2029-02-28 00:00 TDB") == 0);
+    assert(!scene_epoch_format_date(0, date, 8));
 }
 
 static void test_mercury_body_starts_at_perihelion_with_tangential_velocity(void)
@@ -1185,6 +1227,8 @@ int main(void)
     test_main_scene_holds_the_large_bodies_in_a_stable_order();
     test_family_scenes_hold_a_planet_and_its_complete_catalog();
     test_pluto_and_didymos_start_at_planar_perihelion();
+    test_oblateness_is_set_on_scene_planets_only();
+    test_scene_dates_count_from_the_epoch();
     test_mercury_body_starts_at_perihelion_with_tangential_velocity();
     test_venus_body_starts_at_perihelion_with_tangential_velocity();
     test_earth_body_starts_at_perihelion_with_tangential_velocity();

@@ -3,6 +3,7 @@
 #include "constants.h"
 #include "orbit.h"
 #include "physics.h"
+#include "scene_epoch.h"
 
 _Static_assert(SOLAR_CORE_SCENE_BODY_COUNT == 32, "V5: the main scene has 32 bodies");
 _Static_assert(SOLAR_CORE_SCENE_BODY_COUNT <= SOLAR_SYSTEM_BODY_CAPACITY, "main scene must fit the body array");
@@ -420,6 +421,57 @@ SolarSystem solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_
     return system;
 }
 
+/* Places a body at a pinned state relative to its parent's current state. */
+static void set_relative_state(Body *body, const Body *parent, Vec3d r, Vec3d v)
+{
+    body->position_m = vec3d_add(parent->position_m, r);
+    body->velocity_mps = vec3d_add(parent->velocity_mps, v);
+}
+
+/* Oblateness for the planets whose moons the scenes carry (SPEC A94). */
+static void set_oblateness(Body *body)
+{
+    const struct { BodyId id; double j2, radius_m, ra_deg, dec_deg; } table[] = {
+        {BODY_ID_EARTH, SOLAR_EARTH_J2, SOLAR_EARTH_J2_RADIUS_M, SOLAR_EARTH_POLE_RA_DEG, SOLAR_EARTH_POLE_DEC_DEG},
+        {BODY_ID_MARS, SOLAR_MARS_J2, SOLAR_MARS_J2_RADIUS_M, SOLAR_MARS_POLE_RA_DEG, SOLAR_MARS_POLE_DEC_DEG},
+        {BODY_ID_JUPITER, SOLAR_JUPITER_J2, SOLAR_JUPITER_J2_RADIUS_M, SOLAR_JUPITER_POLE_RA_DEG, SOLAR_JUPITER_POLE_DEC_DEG},
+        {BODY_ID_SATURN, SOLAR_SATURN_J2, SOLAR_SATURN_J2_RADIUS_M, SOLAR_SATURN_POLE_RA_DEG, SOLAR_SATURN_POLE_DEC_DEG},
+        {BODY_ID_URANUS, SOLAR_URANUS_J2, SOLAR_URANUS_J2_RADIUS_M, SOLAR_URANUS_IAU_POLE_RA_DEG, SOLAR_URANUS_IAU_POLE_DEC_DEG},
+        {BODY_ID_NEPTUNE, SOLAR_NEPTUNE_J2, SOLAR_NEPTUNE_J2_RADIUS_M, SOLAR_NEPTUNE_POLE_RA_DEG, SOLAR_NEPTUNE_POLE_DEC_DEG},
+    };
+    for (size_t i = 0; i < sizeof(table) / sizeof(table[0]); ++i) {
+        if (table[i].id != body->id) continue;
+        body->j2 = table[i].j2;
+        body->j2_radius_m = table[i].radius_m;
+        body->pole = orbit_icrf_direction(table[i].ra_deg, table[i].dec_deg);
+    }
+}
+
+/* A planet's identity, mass and radius from its factory, at the epoch state of
+ * its system barycenter (Mercury..Neptune = 0..7), with its oblateness.
+ * place_family_barycenter later shifts the planet so that its family, not the
+ * planet, has that state. */
+static Body planet_at_epoch(Body (*factory)(void), size_t planet_index)
+{
+    Body body = factory();
+    scene_epoch_planet_state(planet_index, &body.position_m, &body.velocity_mps);
+    set_oblateness(&body);
+    return body;
+}
+
+/* Vesta, Pluto and Didymos at their pinned heliocentric (system barycenter)
+ * epoch states. */
+static Body small_body_at_epoch(Body (*factory)(void), int code)
+{
+    Body body = factory();
+    Vec3d r, v;
+    if (scene_epoch_state(code, &r, &v)) {
+        body.position_m = r;
+        body.velocity_mps = v;
+    }
+    return body;
+}
+
 /* A companion above this fraction of its primary's mass makes the pair a
  * binary (Charon is 12% of Pluto; Titan is 0.02% of Saturn). */
 #define SOLAR_BINARY_MASS_RATIO 0.01
@@ -437,7 +489,12 @@ static void append_moons(SolarSystem *system, size_t planet_index, bool major_on
     for (int pass = 0; pass < 2; ++pass) {
         for (size_t i = 0; i < catalog->count; ++i) {
             if (catalog->moons[i].major != (pass == 0)) continue;
-            Body moon = satellite_create(&catalog->moons[i], pass == 0 ? &system->bodies[planet_index] : &center);
+            /* A dated moon takes its real state relative to the primary's
+             * centre (SPEC A92); only undated moons use mean elements. */
+            Vec3d r, v;
+            bool dated = scene_epoch_state(catalog->moons[i].code, &r, &v);
+            Body moon = satellite_create(&catalog->moons[i], pass == 0 || dated ? &system->bodies[planet_index] : &center);
+            if (dated) set_relative_state(&moon, &system->bodies[planet_index], r, v);
             (void)solar_system_append(system, &moon);
             const Body *primary = &system->bodies[planet_index];
             if (pass == 0 && moon.mass_kg > SOLAR_BINARY_MASS_RATIO * primary->mass_kg) {
@@ -453,19 +510,43 @@ static void append_moons(SolarSystem *system, size_t planet_index, bool major_on
     }
 }
 
+/* Appends a moon at its pinned state relative to `parent` (Earth's Moon,
+ * Phobos, Deimos), keeping the factory's identity and physical data. */
+static void append_dated_moon(SolarSystem *system, Body moon, size_t parent_index)
+{
+    Vec3d r, v;
+    if (scene_epoch_state((int)moon.id, &r, &v)) set_relative_state(&moon, &system->bodies[parent_index], r, v);
+    (void)solar_system_append(system, &moon);
+}
+
+/* The main scene: the large bodies at the real sky of the scene epoch,
+ * 2026-06-09 (SPEC A92). Planet states are system barycenters, which
+ * place_family_barycenter assigns to each family after its moons are added;
+ * moons sit at their pinned planetocentric states. */
 SolarSystem solar_system_create_current(void)
 {
-    SolarSystem system = solar_system_create_sun_mercury_venus_earth_moon_mars_phobos_deimos_vesta_jupiter();
-    /* The static assertions above prove the inventory fits; tests also check
-     * that body_count reaches SOLAR_CORE_SCENE_BODY_COUNT. Each giant planet
-     * carries only its major moons here, and its family barycenter takes the
-     * planet's intended heliocentric state (V6). */
-    append_moons(&system, 9, true);
-    place_family_barycenter(&system, 9);
-    Body (*const giants[])(void) = {solar_system_create_saturn_at_perihelion, solar_system_create_uranus_at_perihelion,
-        solar_system_create_neptune_at_perihelion};
+    SolarSystem system = solar_system_create_sun_only();
+    Body (*const inner[])(void) = {solar_system_create_mercury_at_perihelion, solar_system_create_venus_at_perihelion};
+    for (size_t i = 0; i < 2; ++i) {
+        Body planet = planet_at_epoch(inner[i], i);
+        (void)solar_system_append(&system, &planet);
+    }
+    Body earth = planet_at_epoch(solar_system_create_earth_at_perihelion, 2);
+    (void)solar_system_append(&system, &earth);
+    append_dated_moon(&system, solar_system_create_moon_at_perigee_near_earth(&earth), 3);
+    place_family_barycenter(&system, 3);
+    Body mars = planet_at_epoch(solar_system_create_mars_at_perihelion, 3);
+    (void)solar_system_append(&system, &mars);
+    append_dated_moon(&system, solar_system_create_phobos_at_periareion_near_mars(&mars), 5);
+    append_dated_moon(&system, solar_system_create_deimos_at_periareion_near_mars(&mars), 5);
+    place_family_barycenter(&system, 5);
+    Body vesta = small_body_at_epoch(solar_system_create_vesta_at_perihelion, BODY_ID_VESTA);
+    (void)solar_system_append(&system, &vesta);
+    /* Each giant planet carries only its major moons here. */
+    Body (*const giants[])(void) = {solar_system_create_jupiter_at_perihelion, solar_system_create_saturn_at_perihelion,
+        solar_system_create_uranus_at_perihelion, solar_system_create_neptune_at_perihelion};
     for (size_t i = 0; i < sizeof(giants) / sizeof(giants[0]); ++i) {
-        Body planet = giants[i]();
+        Body planet = planet_at_epoch(giants[i], 4 + i);
         size_t index = system.body_count;
         (void)solar_system_append(&system, &planet);
         append_moons(&system, index, true);
@@ -473,7 +554,7 @@ SolarSystem solar_system_create_current(void)
     }
     /* Charon carries 12% of Pluto's mass, so their barycenter lies outside
      * Pluto: in this scene Pluto visibly circles a point in empty space. */
-    Body pluto = solar_system_create_pluto_at_perihelion();
+    Body pluto = small_body_at_epoch(solar_system_create_pluto_at_perihelion, BODY_ID_PLUTO);
     size_t pluto_index = system.body_count;
     (void)solar_system_append(&system, &pluto);
     append_moons(&system, pluto_index, true);
@@ -524,20 +605,21 @@ bool solar_system_create_family(BodyId primary, SolarSystem *result)
 {
     int planet_index = solar_system_family_planet_index(primary);
     if (planet_index < 0) return false;
-    /* The same synthetic perihelion states as the main scene, without the
-     * other planets' moons: their pull on a distant family is negligible and
-     * leaving them out keeps the largest scene affordable (SPEC A82). */
+    /* The same epoch states as the main scene, without the other planets'
+     * moons: their pull on a distant family is negligible and leaving them
+     * out keeps the largest scene affordable (SPEC A82). */
     SolarSystem system = solar_system_create_sun_only();
     Body (*const planets[])(void) = {solar_system_create_mercury_at_perihelion, solar_system_create_venus_at_perihelion,
         solar_system_create_earth_at_perihelion, solar_system_create_mars_at_perihelion,
         solar_system_create_jupiter_at_perihelion, solar_system_create_saturn_at_perihelion,
         solar_system_create_uranus_at_perihelion, solar_system_create_neptune_at_perihelion};
     for (size_t i = 0; i < sizeof(planets) / sizeof(planets[0]); ++i) {
-        Body body = planets[i]();
+        Body body = planet_at_epoch(planets[i], i);
         (void)solar_system_append(&system, &body);
     }
     if (planet_index == 9) {
-        Body body = primary == BODY_ID_PLUTO ? solar_system_create_pluto_at_perihelion() : solar_system_create_didymos_at_perihelion();
+        Body body = primary == BODY_ID_PLUTO ? small_body_at_epoch(solar_system_create_pluto_at_perihelion, BODY_ID_PLUTO)
+            : small_body_at_epoch(solar_system_create_didymos_at_perihelion, BODY_ID_DIDYMOS);
         (void)solar_system_append(&system, &body);
     }
     append_moons(&system, (size_t)planet_index, false);

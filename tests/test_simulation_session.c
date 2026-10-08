@@ -7,6 +7,7 @@
 
 #include "app/simulation_session.h"
 #include "sim/constants.h"
+#include "sim/scene_epoch.h"
 
 static void assert_same_motion(const SolarSystem *a, const SolarSystem *b)
 {
@@ -70,7 +71,10 @@ static void test_inspector_uses_parent_ids_and_relative_si_motion(void)
     simulation_session_select_body(&session, 6);
     BodyInspection inspection = simulation_session_inspect(&session);
     assert(inspection.has_parent && strcmp(inspection.parent_name, "Mars") == 0);
-    assert(fabs(inspection.distance_m - SOLAR_PHOBOS_PERIAREION_M) < 0.0001);
+    /* Phobos starts at its Horizons 2026-06-09 state relative to Mars. */
+    Vec3d phobos_r, phobos_v;
+    assert(scene_epoch_state(BODY_ID_PHOBOS, &phobos_r, &phobos_v));
+    assert(fabs(inspection.distance_m - vec3d_length(phobos_r)) < 0.0001);
     assert(inspection.mass_kg == session.system.bodies[6].mass_kg);
     assert(inspection.radius_m == session.system.bodies[6].radius_m);
     double speed = inspection.speed_mps;
@@ -99,9 +103,11 @@ static void test_session_exposes_jupiter_and_appended_saturn(void)
     BodyInspection inspection = simulation_session_inspect(&session);
     assert(strcmp(inspection.name, "Jupiter") == 0);
     assert(strcmp(inspection.parent_name, "Sun") == 0);
-    /* The Jovian family barycenter sits at perihelion; Jupiter is displaced
-     * opposite its known-mass moons by well under 300 km (A58). */
-    assert(fabs(inspection.distance_m - SOLAR_JUPITER_PERIHELION_M) < 3.0e5);
+    /* The Jovian family barycenter takes Horizons' 2026-06-09 state (SPEC
+     * A92); Jupiter is displaced opposite its major moons by under 300 km. */
+    Vec3d barycenter, barycenter_v;
+    scene_epoch_planet_state(4, &barycenter, &barycenter_v);
+    assert(fabs(inspection.distance_m - vec3d_length(barycenter)) < 3.0e5);
     assert(inspection.mass_kg == SOLAR_JUPITER_MASS_KG);
     assert(inspection.radius_m == SOLAR_JUPITER_RADIUS_M);
     assert(simulation_session_find_body(&session, "saturn", 0) == 14);
@@ -110,7 +116,8 @@ static void test_session_exposes_jupiter_and_appended_saturn(void)
     assert(strcmp(inspection.name, "Saturn") == 0);
     assert(strcmp(inspection.parent_name, "Sun") == 0);
     /* Saturn's family barycenter (mostly Titan) shifts it by ~290 km. */
-    assert(fabs(inspection.distance_m - SOLAR_SATURN_PERIHELION_M) < 3.0e5);
+    scene_epoch_planet_state(5, &barycenter, &barycenter_v);
+    assert(fabs(inspection.distance_m - vec3d_length(barycenter)) < 3.0e5);
     assert(inspection.mass_kg == SOLAR_SATURN_MASS_KG);
     assert(inspection.radius_m == SOLAR_SATURN_RADIUS_M);
     session.paused = true;

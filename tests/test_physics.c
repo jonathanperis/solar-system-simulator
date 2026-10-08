@@ -105,10 +105,68 @@ static void test_optimized_accelerations_match_pairwise_formula(void)
     }
 }
 
+/* A94: a test particle around an oblate planet regresses its node at the
+ * secular J2 rate -3/2 n J2 (R/a)^2 cos i. */
+static void test_j2_nodal_precession_matches_the_secular_rate(void)
+{
+    const double radius = 60268000.0, j2 = 0.016298, mass = 5.6832e26;
+    const double a = 3.0 * radius, inclination = acos(-1.0) / 6.0;
+    Body planet = body_create_identified("Planet", BODY_KIND_PLANET, (BodyId)1, BODY_ID_NONE, mass, radius,
+        vec3d_zero(), vec3d_zero(), true);
+    planet.j2 = j2;
+    planet.j2_radius_m = radius;
+    planet.pole = (Vec3d){0, 1, 0};
+    double mu = SOLAR_G * mass, speed = sqrt(mu / a);
+    /* Circular orbit through +X, tilted about X by the inclination: the
+     * ascending node starts on +X in the equatorial (x, z) plane. */
+    Body moon = body_create_identified("Moon", BODY_KIND_MOON, (BodyId)2, (BodyId)1, 0, 0, (Vec3d){a, 0, 0},
+        (Vec3d){0, speed * sin(inclination), -speed * cos(inclination)}, false);
+    Body bodies[] = {planet, moon};
+    const double dt = 15, days = 20;
+    double first = 0, previous = 0, unwrapped = 0;
+    for (int day = 0; day <= days; ++day) {
+        Vec3d h = vec3d_cross(bodies[1].position_m, bodies[1].velocity_mps);
+        /* Node line = pole x h, in the equatorial plane; its angle about +Y. */
+        Vec3d node = vec3d_cross((Vec3d){0, 1, 0}, h);
+        double angle = atan2(-node.z, node.x);
+        if (day == 0) first = previous = unwrapped = angle;
+        else {
+            double step = atan2(sin(angle - previous), cos(angle - previous));
+            unwrapped += step;
+            previous = angle;
+        }
+        for (int i = 0; i < 5760 && day < days; ++i) physics_step(bodies, 2, dt);
+    }
+    double measured = (unwrapped - first) / (days * SOLAR_DAY_SECONDS);
+    double n = sqrt(mu / (a * a * a));
+    double expected = -1.5 * n * j2 * (radius / a) * (radius / a) * cos(inclination);
+    assert(measured < 0 && fabs(measured / expected - 1) < 0.02);
+}
+
+/* A94: the planet takes the reaction to its J2 pull on a massive moon. */
+static void test_j2_conserves_momentum(void)
+{
+    Body planet = body_create_identified("Planet", BODY_KIND_PLANET, (BodyId)1, BODY_ID_NONE, 1.9e27, 7e7,
+        vec3d_zero(), vec3d_zero(), false);
+    planet.j2 = 0.0147;
+    planet.j2_radius_m = 7.1492e7;
+    planet.pole = (Vec3d){0, 1, 0};
+    Body moon = body_create_identified("Moon", BODY_KIND_MOON, (BodyId)2, (BodyId)1, 1.5e23, 2.6e6,
+        (Vec3d){1.07e9, 2e7, 0}, (Vec3d){0, 300, 10880}, false);
+    Body bodies[] = {planet, moon};
+    Vec3d before = vec3d_add(vec3d_scale(bodies[0].velocity_mps, bodies[0].mass_kg), vec3d_scale(bodies[1].velocity_mps, bodies[1].mass_kg));
+    for (int i = 0; i < 5760; ++i) physics_step(bodies, 2, 15);
+    Vec3d after = vec3d_add(vec3d_scale(bodies[0].velocity_mps, bodies[0].mass_kg), vec3d_scale(bodies[1].velocity_mps, bodies[1].mass_kg));
+    double scale = bodies[1].mass_kg * 10880;
+    assert(vec3d_length(vec3d_sub(after, before)) < 1e-9 * scale);
+}
+
 int main(void)
 {
     test_optimized_accelerations_match_pairwise_formula();
     test_massless_particles_feel_gravity_without_backreaction();
+    test_j2_nodal_precession_matches_the_secular_rate();
+    test_j2_conserves_momentum();
     test_sun_only_body_acceleration_is_zero();
     test_solar_gravity_at_one_au_has_expected_magnitude_and_direction();
     test_zero_distance_contributes_no_acceleration();

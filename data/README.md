@@ -38,6 +38,23 @@ The Jovian description below applies to all four. System-specific rules:
 Phases are mutually consistent only within one ephemeris solution; the mixed
 epochs are never presented as a dated snapshot.
 
+## Scene epoch snapshot
+
+`scene_epoch.json` pins the real sky every scene starts from: JPL Horizons
+vectors at JD 2461200.5 TDB (2026-06-09) in the J2000 ecliptic. It holds each
+catalogued moon relative to its primary's centre (Earth's Moon, Phobos and
+Deimos under their legacy scene IDs 4, 6 and 7), and the heliocentric states of
+Vesta and the Pluto and Didymos system barycenters; the planetary-system
+barycenters come from `planet_epoch.json`. `tools/scene_epoch.py --refresh`
+makes one serialized Horizons request per body and accepts a result only when
+Horizons names the same body ("Io (501)", "S2023_S01" for S/2023 S 1); two
+bodies are undated and keep mean elements: Daphnis (no Horizons data at the
+epoch) and S/2025 U 1 (its code resolves to an asteroid). `--check` verifies
+the generated `src/sim/scene_epoch.inc` offline.
+
+Propagating mean elements to the epoch instead was tried and rejected: it
+missed Horizons by up to 178° (resonances and forced eccentricities).
+
 ## Jovian satellite snapshot
 
 `jovian_moons.json` is the versioned input for both C initialization and the

@@ -40,6 +40,9 @@ typedef struct BodyInspection {
     double radius_m;
     double acceleration_mps2;
     double specific_energy_jpkg;
+    /* Two-body period around the parent from the specific energy (Kepler's
+     * third law with a = -mu / 2E), seconds; NAN when unbound or parentless. */
+    double orbital_period_s;
     Vec3d relative_position_m;
     Vec3d relative_velocity_mps;
     Vec3d relative_acceleration_mps2;

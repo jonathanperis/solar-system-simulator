@@ -1,12 +1,14 @@
-// Order matches C's LessonPreset (tools/check_catalog.mjs). The last six are
-// family scenes, chosen from the simulator's scene picker, not lessons.
+// Order matches C's LessonPreset (tools/check_catalog.mjs). The six "-system"
+// entries are family scenes, chosen from the simulator's scene picker; the
+// two binaries after them are guided lessons again.
 export const lessonOptions = [
   ['core', 'Main scene'], ['circular', 'Circular orbit'], ['eccentric', 'Eccentric orbit'],
   ['escape', 'Escape threshold'], ['earth-moon', 'Barycentric Earth–Moon'], ['inclined', 'Inclined orbit'],
   ['phobos', 'Phobos resolution'], ['barycentric-core', 'Moving-Sun barycentric core'],
   ['resonance', '3:2 resonance experiment'], ['encounter', 'Close Earth encounter'], ['collision', 'Head-on collisions'],
   ['jupiter-system', 'Jupiter system'], ['saturn-system', 'Saturn system'], ['uranus-system', 'Uranus system'],
-  ['neptune-system', 'Neptune system'], ['pluto-system', 'Pluto system'], ['didymos-system', 'Didymos system']
+  ['neptune-system', 'Neptune system'], ['pluto-system', 'Pluto system'], ['didymos-system', 'Didymos system'],
+  ['pluto-charon', 'Pluto–Charon binary'], ['dart', 'DART impact']
 ] as const;
 
 export type LessonName = (typeof lessonOptions)[number][0];
@@ -27,5 +29,7 @@ export const comparisonPresets: Record<string, string> = {
   'barycentric-core': 'SOLAR_LAB_V1 barycentric-core 1 verlet 15 none verlet 15 none 3600 86400',
   resonance: 'SOLAR_LAB_V1 resonance 1 verlet 300 none verlet 150 none 86400 3153600000',
   encounter: 'SOLAR_LAB_V1 encounter 1 verlet 300 none verlet 15 none 1800 86400',
-  collision: 'SOLAR_LAB_V1 collision 1 verlet 0.1 bounce verlet 0.1 merge 1 20'
+  collision: 'SOLAR_LAB_V1 collision 1 verlet 0.1 bounce verlet 0.1 merge 1 20',
+  'pluto-charon': 'SOLAR_LAB_V1 pluto-charon 1 verlet 300 none verlet 150 none 21600 2764800',
+  dart: 'SOLAR_LAB_V1 dart 0.985 verlet 15 none verlet 7.5 none 600 172800'
 };

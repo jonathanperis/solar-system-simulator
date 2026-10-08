@@ -207,9 +207,56 @@ static void test_contact_is_detected_along_each_step(void)
     simulation_session_destroy(&session);
 }
 
+static double two_body_period_s(const SolarSystem *lesson)
+{
+    SimulationSession session = simulation_session_create();
+    session.system = *lesson;
+    BodyInspection body = simulation_session_inspect_body(&session, 1);
+    simulation_session_destroy(&session);
+    return body.orbital_period_s;
+}
+
+/* SPEC A96: DART slowed Dimorphos along its orbit; 0.985 of the pre-impact
+ * speed shortens the two-body period by about half an hour (observed ~33 min). */
+static void test_dart_lesson_reproduces_the_period_change(void)
+{
+    SolarSystem before, after;
+    assert(lesson_create(LESSON_DART, 1, &before) && lesson_create(LESSON_DART, 0.985, &after));
+    assert(before.body_count == 2 && before.bodies[0].id == BODY_ID_DIDYMOS && before.bodies[1].id == BODY_ID_DIMORPHOS);
+    double pre = two_body_period_s(&before), post = two_body_period_s(&after);
+    assert(fabs(pre / 44418.722 - 1) < 0.01);
+    double minutes = (pre - post) / 60;
+    assert(minutes > 28 && minutes < 36);
+    /* Started at periapsis, so the analytic two-body reference applies. */
+    Vec3d relative;
+    assert(lesson_reference_position(&before, 1, 3600, &relative));
+    /* The orbit is retrograde seen from ecliptic north (i ~ 171 deg). */
+    Vec3d h = vec3d_cross(vec3d_sub(before.bodies[1].position_m, before.bodies[0].position_m),
+        vec3d_sub(before.bodies[1].velocity_mps, before.bodies[0].velocity_mps));
+    assert(h.y < 0);
+}
+
+/* SPEC A96: Charon is 12% of Pluto's mass, so the pair's barycenter (the
+ * lesson origin) lies outside Pluto. */
+static void test_pluto_charon_lesson_orbits_a_point_outside_pluto(void)
+{
+    SolarSystem pair;
+    assert(lesson_create(LESSON_PLUTO_CHARON, 1, &pair));
+    assert(pair.body_count == 2 && pair.bodies[0].id == BODY_ID_PLUTO && pair.bodies[1].id == BODY_ID_CHARON);
+    assert(vec3d_length(pair.bodies[0].position_m) > SOLAR_PLUTO_RADIUS_M);
+    Vec3d momentum = vec3d_add(vec3d_scale(pair.bodies[0].velocity_mps, pair.bodies[0].mass_kg),
+        vec3d_scale(pair.bodies[1].velocity_mps, pair.bodies[1].mass_kg));
+    assert(vec3d_length(momentum) < 1e-6 * pair.bodies[1].mass_kg);
+    assert(fabs(two_body_period_s(&pair) / (6.387222 * SOLAR_DAY_SECONDS) - 1) < 0.002);
+    Vec3d relative;
+    assert(lesson_reference_position(&pair, 1, 86400, &relative));
+}
+
 int main(void)
 {
     test_lessons_refuse_speeds_whose_orbit_enters_the_parent();
+    test_dart_lesson_reproduces_the_period_change();
+    test_pluto_charon_lesson_orbits_a_point_outside_pluto();
     test_contact_is_detected_along_each_step();
     test_barycentric_translation_and_force_decomposition();
     test_resonance_and_encounter_states_are_explicit_experiments();

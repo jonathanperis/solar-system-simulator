@@ -17,8 +17,9 @@ ALL_CPPFLAGS = -Isrc -Ibuild $(CPPFLAGS)
 # Shipped WebAssembly gets its own tuning knob. The native default carries -g,
 # and in emcc that embeds DWARF sections with absolute build paths and keeps
 # the JS glue unminified (about 4x the download). Override WEB_CFLAGS='-O2 -g'
-# locally to debug the browser build.
-WEB_CFLAGS ?= -O2
+# locally to debug the browser build. -O3 measured +8% frame rate for the
+# 300-body Saturn scene on a throttled phone for ~10% more WASM.
+WEB_CFLAGS ?= -O3
 # -msimd128 lets the vectorized gravity kernel (src/sim/physics.c) use
 # WebAssembly f64x2 lanes. Lane arithmetic is the same IEEE double arithmetic,
 # so native and browser results stay identical (tools/test_learning_wasm.mjs).
@@ -68,6 +69,7 @@ SIM_SRCS := \
     src/sim/orbit.c \
     src/sim/experiment.c \
     src/sim/satellite_catalog.c \
+    src/sim/scene_epoch.c \
     src/sim/solar_system.c
 
 SESSION_SRCS := src/app/body_trails.c src/app/simulation_step.c src/app/simulation_session.c
@@ -131,9 +133,11 @@ test: test-core $(TEST_RENDERER)
 test-core: build/catalog-orbits.dylib $(HEADLESS_TEST_BINS)
 	python3 tools/satellite_catalog.py --check
 	python3 tools/planet_epoch.py --check
+	python3 tools/scene_epoch.py --check
 	python3 tests/test_small_body_catalog.py
 	python3 tests/test_satellite_catalog.py
 	python3 tests/test_planet_epoch.py
+	python3 tests/test_scene_epoch.py
 	$(MAKE) test-binaries TEST_BINS="$(HEADLESS_TEST_BINS)"
 
 test-binaries: $(TEST_BINS)
