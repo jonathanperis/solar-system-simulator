@@ -9,6 +9,7 @@
 #include "sim/solar_system.h"
 #include "sim/scene_epoch.h"
 #include "sim/lessons.h"
+#include "sim/physics.h"
 
 static void assert_close(double actual, double expected, double epsilon)
 {
@@ -549,6 +550,88 @@ static void test_oblateness_is_set_on_scene_planets_only(void)
     SolarSystem lesson;
     assert(lesson_create(LESSON_EARTH_MOON, 1, &lesson) && lesson.bodies[0].j2 == 0);
     assert(solar_system_create_earth_at_perihelion().j2 == 0);
+}
+
+/* The kernel's accelerations in plain scalar form (V3, A94): every massive
+ * source in index order through gravitational_acceleration_from, then each
+ * oblate primary in index order applying its moons' J2 terms and reactions in
+ * index order through physics_oblateness_acceleration. */
+static void scalar_reference_accelerations(const Body *bodies, size_t count, Vec3d *out)
+{
+    for (size_t i = 0; i < count; ++i) {
+        out[i] = vec3d_zero();
+        for (size_t j = 0; j < count; ++j)
+            if (bodies[j].mass_kg != 0.0) out[i] = vec3d_add(out[i], gravitational_acceleration_from(&bodies[i], &bodies[j]));
+    }
+    for (size_t p = 0; p < count; ++p) {
+        if (!(bodies[p].j2 > 0.0)) continue;
+        for (size_t i = 0; i < count; ++i) {
+            if (i == p || bodies[i].parent_id != bodies[p].id) continue;
+            Vec3d a = physics_oblateness_acceleration(&bodies[p], &bodies[i]);
+            out[i] = vec3d_add(out[i], a);
+            out[p] = vec3d_sub(out[p], vec3d_scale(a, bodies[i].mass_kg / bodies[p].mass_kg));
+        }
+    }
+}
+
+static void assert_kernel_matches_scalar_reference(SolarSystem *system)
+{
+    static Vec3d expected[SOLAR_SYSTEM_BODY_CAPACITY];
+    /* One step first, so the comparison runs on evolved, fully 3D states. */
+    physics_step(system->bodies, system->body_count, 15);
+    scalar_reference_accelerations(system->bodies, system->body_count, expected);
+    physics_compute_accelerations(system->bodies, system->body_count);
+    for (size_t i = 0; i < system->body_count; ++i)
+        assert(!memcmp(&system->bodies[i].acceleration_mps2, &expected[i], sizeof(Vec3d)));
+}
+
+/* SPEC A82/A97: the vectorized gravity kernel and the inlined J2 loop are
+ * performance restructurings only. Their results must equal the scalar
+ * formulas bit for bit in every astronomy scene and lesson, including a moon
+ * at its primary's centre and two oblate primaries with massive and massless
+ * moons. */
+static void test_kernel_matches_the_scalar_formulas_bit_for_bit(void)
+{
+    for (int preset = 0; preset < LESSON_COUNT; ++preset) {
+        SolarSystem system;
+        assert(lesson_create((LessonPreset)preset, 1, &system));
+        assert_kernel_matches_scalar_reference(&system);
+    }
+    SolarSystem custom = {0};
+    Body sun = body_create_identified("Sun", BODY_KIND_STAR, BODY_ID_SUN, BODY_ID_NONE, SOLAR_SUN_MASS_KG,
+        SOLAR_SUN_RADIUS_M, vec3d_zero(), vec3d_zero(), true);
+    Body planet = body_create_identified("Planet", BODY_KIND_PLANET, (BodyId)100, BODY_ID_SUN, 5.7e26, 6e7,
+        (Vec3d){1.4e12, 2e10, -3e11}, (Vec3d){2e3, 1e2, 9e3}, false);
+    planet.j2 = 0.0163;
+    planet.j2_radius_m = 6.0e7;
+    planet.pole = (Vec3d){0.0, 0.8829475928589269, 0.4694715627858908};
+    Body other = planet;
+    other.id = (BodyId)200;
+    other.position_m = (Vec3d){-7e11, -1e10, 2e11};
+    other.pole = (Vec3d){0.0, 1.0, 0.0};
+    custom.bodies[custom.body_count++] = sun;
+    custom.bodies[custom.body_count++] = planet;
+    custom.bodies[custom.body_count++] = other;
+    for (int i = 0; i < 6; ++i) {
+        const Body *parent = &custom.bodies[1 + i % 2];
+        Body moon = body_create_identified("Moon", BODY_KIND_MOON, (BodyId)(300 + i), parent->id, i < 2 ? 1e21 : 0.0, 1e5,
+            vec3d_add(parent->position_m, (Vec3d){(1 + i) * 1.1e8, (i - 3) * 2.3e7, (2 - i) * 4.7e7}),
+            vec3d_add(parent->velocity_mps, (Vec3d){-1e3, 4e3 + 300 * i, 2e2}), false);
+        custom.bodies[custom.body_count++] = moon;
+    }
+    /* A massless tracer exactly at its oblate primary's centre feels nothing. */
+    Body centred = custom.bodies[2];
+    centred.id = (BodyId)400;
+    centred.parent_id = custom.bodies[2].id;
+    centred.mass_kg = 0.0;
+    centred.j2 = 0.0;
+    custom.bodies[custom.body_count++] = centred;
+    physics_compute_accelerations(custom.bodies, custom.body_count);
+    Vec3d expected[16];
+    scalar_reference_accelerations(custom.bodies, custom.body_count, expected);
+    for (size_t i = 0; i < custom.body_count; ++i)
+        assert(!memcmp(&custom.bodies[i].acceleration_mps2, &expected[i], sizeof(Vec3d)));
+    assert_kernel_matches_scalar_reference(&custom);
 }
 
 static void test_scene_dates_count_from_the_epoch(void)
@@ -1252,6 +1335,7 @@ int main(void)
     test_family_scenes_hold_a_planet_and_its_complete_catalog();
     test_small_body_primaries_start_at_planar_perihelion();
     test_oblateness_is_set_on_scene_planets_only();
+    test_kernel_matches_the_scalar_formulas_bit_for_bit();
     test_scene_dates_count_from_the_epoch();
     test_mercury_body_starts_at_perihelion_with_tangential_velocity();
     test_venus_body_starts_at_perihelion_with_tangential_velocity();

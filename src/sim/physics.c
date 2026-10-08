@@ -59,17 +59,49 @@ double physics_oblateness_potential_j(const Body *primary, const Body *moon)
         * 0.5 * (3.0 * s * s - 1.0) / (distance * distance * distance);
 }
 
+/* The hot-loop form of physics_oblateness_acceleration (SPEC A97): the same
+ * operations in the same order, so results are identical, but inlined with
+ * the primary's constants hoisted out of the moon loop. Through out-of-line
+ * Vec3d calls (vec3d.c is a separate translation unit) and a division per
+ * moon, J2 cost about a quarter of the 300-body Saturn scene's physics time
+ * in WebAssembly. */
 static void add_oblateness(Body *bodies, size_t body_count)
 {
     for (size_t p = 0; p < body_count; ++p) {
-        if (!(bodies[p].j2 > 0.0)) continue;
+        Body *primary = &bodies[p];
+        if (!(primary->j2 > 0.0)) continue;
+        const Vec3d pole = primary->pole;
+        const double radius = primary->j2_radius_m;
+        const double k = 1.5 * primary->j2 * SOLAR_G * primary->mass_kg * radius * radius;
+        const double px = primary->position_m.x, py = primary->position_m.y, pz = primary->position_m.z;
         for (size_t i = 0; i < body_count; ++i) {
-            if (i == p || bodies[i].parent_id != bodies[p].id) continue;
-            Vec3d a = physics_oblateness_acceleration(&bodies[p], &bodies[i]);
-            bodies[i].acceleration_mps2 = vec3d_add(bodies[i].acceleration_mps2, a);
-            /* Newton's third law: the planet is pulled back by m_moon/M_planet of it. */
-            double share = bodies[i].mass_kg / bodies[p].mass_kg;
-            bodies[p].acceleration_mps2 = vec3d_sub(bodies[p].acceleration_mps2, vec3d_scale(a, share));
+            Body *moon = &bodies[i];
+            if (i == p || moon->parent_id != primary->id) continue;
+            double x = moon->position_m.x - px;
+            double y = moon->position_m.y - py;
+            double z_axis = moon->position_m.z - pz;
+            double r2 = x * x + y * y + z_axis * z_axis;
+            Vec3d a = vec3d_zero();
+            if (r2 != 0.0) {
+                double z = x * pole.x + y * pole.y + z_axis * pole.z;
+                double scale = -k / (r2 * r2 * sqrt(r2));
+                double radial = scale * (1.0 - 5.0 * z * z / r2), axial = scale * 2.0 * z;
+                a = (Vec3d){x * radial + pole.x * axial, y * radial + pole.y * axial, z_axis * radial + pole.z * axial};
+            }
+            moon->acceleration_mps2.x += a.x;
+            moon->acceleration_mps2.y += a.y;
+            moon->acceleration_mps2.z += a.z;
+            /* Newton's third law: the planet is pulled back by m_moon/M_planet
+             * of it. A massless tracer's share is exactly zero, and
+             * subtracting a zero product leaves any finite nonzero
+             * acceleration bit-for-bit unchanged, so tracers skip it. That
+             * also breaks the serial chain through the planet's acceleration
+             * for the hundreds of catalog tracers. */
+            if (moon->mass_kg == 0.0) continue;
+            double share = moon->mass_kg / primary->mass_kg;
+            primary->acceleration_mps2.x -= a.x * share;
+            primary->acceleration_mps2.y -= a.y * share;
+            primary->acceleration_mps2.z -= a.z * share;
         }
     }
 }
