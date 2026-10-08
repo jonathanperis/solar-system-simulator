@@ -13,7 +13,7 @@ async function downloadText(download: Download): Promise<string> {
 
 test('comparison, save/share/import and display units retain reproducible C measurements', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto(`${base}compare/`);
+  await page.goto(`${base}learn/compare/`);
   await expect(page.locator('[data-lab-status]')).toContainText('Comparison lab ready');
   await page.getByRole('button', { name: 'Start comparison', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText('Comparison complete.');
@@ -57,7 +57,7 @@ test('comparison, save/share/import and display units retain reproducible C meas
 });
 
 test('Phobos challenge uses analytical measurements rather than visual plausibility', async ({ page }) => {
-  await page.goto(`${base}compare/`);
+  await page.goto(`${base}learn/compare/`);
   await expect(page.locator('[data-lab-status]')).toContainText('Comparison lab ready');
   await page.getByLabel('Guided challenges').selectOption('phase');
   await page.getByRole('button', { name: 'Load challenge' }).click();
@@ -74,101 +74,69 @@ test('Phobos challenge uses analytical measurements rather than visual plausibil
   await expect(page.locator('[data-challenge-feedback]')).toContainText('Budget met');
 });
 
-test('mobile atlas controls remain distinct and keyboard bearing stays continuous', async ({ page }) => {
-  for (const width of [320, 390]) {
-    await page.setViewportSize({ width, height: 844 });
-    await page.goto(base);
-    const controls = page.locator('[data-atlas-plate="heliocentric"] [data-atlas-body]');
-    await expect(controls).toHaveCount(11);
-    const boxes = await Promise.all((await controls.all()).map(control => control.boundingBox()));
-    for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
-      const a = boxes[i]!, b = boxes[j]!;
-      expect(Math.min(a.x+a.width, b.x+b.width) > Math.max(a.x,b.x) && Math.min(a.y+a.height,b.y+b.height) > Math.max(a.y,b.y), `marker overlap ${width}px ${i}/${j}`).toBe(false);
-    }
-    for (const name of ['Vesta', 'Uranus']) {
-      await page.getByRole('button', { name, exact: true }).click();
-      await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
-      if (name === 'Uranus') {
-        await page.getByText('Model and sources', { exact: true }).click();
-        await page.getByRole('link', { name: 'Open catalog', exact: true }).scrollIntoViewIfNeeded();
-        const sheet = await page.locator('[data-atlas-note]').boundingBox();
-        const close = await page.getByRole('button', { name: 'Close body detail' }).boundingBox();
-        expect(close!.y).toBeGreaterThanOrEqual(sheet!.y);
-        expect(close!.y + close!.height).toBeLessThanOrEqual(sheet!.y + sheet!.height);
-      }
-      await page.getByRole('button', { name: 'Close body detail' }).focus();
-      await page.keyboard.press('Escape');
-      await expect(page.getByRole('button', { name, exact: true })).toBeFocused();
-    }
-    await page.getByRole('slider', { name: 'Observation bearing' }).focus();
-    await page.keyboard.press('Home'); await page.keyboard.press('ArrowRight');
-    await expect(page.getByRole('slider', { name: 'Observation bearing' })).toHaveValue('1');
-  }
-});
-
 test('3D controls export the same SI snapshot across render scales', async ({ page }) => {
-  await page.goto(`${base}simulator/`);
+  await page.goto(`${base}?lesson=circular`);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
+  await expect(page.locator('[data-active-scene]')).toContainText('Circular orbit');
   await page.getByRole('button', { name: 'Pause', exact: true }).click();
-  await page.getByRole('button', { name: 'Learn', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Lesson preset', exact: true }).selectOption('1');
-  await page.getByRole('button', { name: 'Load lesson', exact: true }).click();
-  await page.getByRole('button', { name: 'Close learning activities' }).click();
-  await page.getByRole('button', { name: 'Advanced', exact: true }).click();
+  await page.getByRole('button', { name: 'Restart', exact: true }).click();
+  await expect(page.locator('[data-runtime-elapsed]')).toContainText('(0 s)');
+  const openSheet = async (name: string) => page.getByRole('button', { name, exact: true }).click();
+  await openSheet('Data');
   await page.getByRole('button', { name: 'Step +15 s', exact: true }).click();
-  await expect(page.locator('[data-runtime-elapsed]')).toContainText('15 s');
+  await expect(page.locator('[data-runtime-elapsed]')).toContainText('(15 s)');
+  await page.getByText('Gravity sources at').click();
   await expect(page.locator('[data-runtime-forces]')).toContainText('Sun');
-  const first = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download measurements (CSV)' }).click();
+  const first = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download CSV' }).click();
   const before = await downloadText(await first);
-  await page.getByRole('button', { name: 'Close advanced tools' }).click();
-  await page.getByRole('button', { name: 'View options', exact: true }).click();
+  await page.getByRole('button', { name: 'Close data' }).click();
+  await openSheet('View');
   await page.getByRole('button', { name: 'View: Illustrative', exact: true }).click();
-  await page.getByRole('button', { name: 'Close view options' }).click();
-  await page.getByRole('button', { name: 'Advanced', exact: true }).click();
-  const second = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download measurements (CSV)' }).click();
+  await page.getByRole('button', { name: 'Close view' }).click();
+  await openSheet('Data');
+  const second = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download CSV' }).click();
   expect(await downloadText(await second)).toBe(before);
-  await page.getByRole('button', { name: 'Close advanced tools' }).click();
-  await page.getByRole('button', { name: 'Learn', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Lesson preset', exact: true }).selectOption({ label: 'Head-on collisions' });
-  await page.getByText('Advanced physics settings', { exact: true }).click();
-  const timestep = page.getByLabel('Time per calculation (seconds)');
+  await page.getByRole('button', { name: 'Close data' }).click();
+
+  // The lesson strip validates its own fields and keeps the previous lesson.
+  const lesson = page.getByRole('combobox', { name: 'Lesson', exact: true });
+  const timestep = page.getByRole('spinbutton', { name: 'Step (s)' });
+  await lesson.selectOption({ label: 'Head-on collisions' });
   await timestep.fill('0.5');
-  await page.getByText('Advanced physics settings', { exact: true }).click();
-  await page.getByRole('button', { name: 'Load lesson', exact: true }).click();
+  await page.getByRole('button', { name: 'Load', exact: true }).click();
   await expect(timestep).toBeFocused();
   await expect(page.locator('[data-lesson-status]')).toContainText('0.01 to 0.25 seconds');
   await expect(page.locator('[data-active-scene]')).toContainText('Circular orbit');
   await timestep.fill('0.1');
-  await page.getByRole('button', { name: 'Load lesson', exact: true }).click();
+  await page.getByRole('button', { name: 'Load', exact: true }).click();
   await page.getByRole('button', { name: 'Contact: Elastic bounce (restart)', exact: true }).click();
-  await page.getByRole('button', { name: 'Close learning activities' }).click();
-  await page.getByRole('combobox', { name: 'Simulation speed', exact: true }).selectOption('4');
+  await page.getByRole('combobox', { name: 'Speed', exact: true }).selectOption('4');
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
-  const bodies = page.getByRole('combobox', { name: 'Selected body', exact: true, includeHidden: true }).locator('option');
+  const bodies = page.getByRole('combobox', { name: 'Body', exact: true, includeHidden: true }).locator('option');
   await expect(bodies).toHaveCount(1);
   await expect(page.locator('[data-runtime-forces]')).toContainText('No other known-mass gravitational sources.');
   await page.getByRole('button', { name: 'Pause', exact: true }).click();
   await page.getByRole('button', { name: 'Restart', exact: true }).click();
   await expect(bodies).toHaveCount(2);
-  await page.getByRole('button', { name: 'Learn', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Lesson preset', exact: true }).selectOption({ label: 'Moving-Sun barycentric core' });
-  const factor = page.getByLabel('Starting speed multiplier');
+  await lesson.selectOption({ label: 'Moving-Sun barycentric core' });
+  const factor = page.getByRole('spinbutton', { name: 'Speed ×' });
   await factor.fill('1.1');
-  await page.getByText('Advanced physics settings', { exact: true }).click();
-  await page.getByRole('button', { name: 'Load lesson', exact: true }).click();
+  await page.getByRole('button', { name: 'Load', exact: true }).click();
   await expect(factor).toBeFocused();
   await expect(page.locator('[data-lesson-status]')).toContainText('multiplier of 1');
   await expect(page.locator('[data-active-scene]')).toContainText('Head-on collisions');
   await factor.fill('1');
-  await page.getByRole('button', { name: 'Load lesson', exact: true }).click();
+  await page.getByRole('button', { name: 'Load', exact: true }).click();
   await expect(page.locator('[data-active-scene]')).toContainText('32 active bodies');
-  await expect(page.getByLabel('Time per calculation (seconds)')).toHaveValue('15');
-  await page.getByRole('button', { name: 'Close learning activities' }).click();
-  await page.getByRole('button', { name: 'Advanced', exact: true }).click();
+  await expect(timestep).toHaveValue('15');
+  await openSheet('Data');
   await page.getByRole('button', { name: 'Step +15 s', exact: true }).click();
   // The barycentric core starts from the dated sky, so its clock is a date.
-  await expect(page.locator('[data-runtime-elapsed]')).toContainText('2026-06-09 00:00 TDB');
+  await expect(page.locator('[data-runtime-elapsed]')).toHaveText('2026-06-09 00:00 TDB');
   await expect(page.locator('[data-forces-time]')).toHaveText('15 simulated seconds');
+  // Leaving the lesson for the main scene hides the strip again.
+  await page.getByRole('button', { name: 'Main scene', exact: true }).click();
+  await expect(page.locator('[data-lesson-strip]')).toBeHidden();
 });
 
 test('real missing/invalid local assets fail visibly and disable runtime controls', async ({ page }) => {

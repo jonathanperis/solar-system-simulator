@@ -134,7 +134,7 @@ export async function mountCatalog(root: HTMLElement): Promise<void> {
     try {
       const text=experimentText([...basket.values()],manifest.epoch);
       sessionStorage.setItem('solar-catalog-experiment',JSON.stringify({text,snapshot:manifest.sourceSha256,count:basket.size}));
-      location.href=`${base}simulator/?experiment=1`;
+      location.href=`${base}?experiment=1`;
     } catch(error) {basketStatus.textContent=errorMessage(error);}
   };
   download.onclick=()=>{

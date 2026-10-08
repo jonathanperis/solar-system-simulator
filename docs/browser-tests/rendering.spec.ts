@@ -8,7 +8,7 @@ test('the cinematic renderer loads every texture without console errors', async 
   const problems: string[] = [];
   page.on('console', message => { if (message.type() === 'error' || /Content Security Policy|Refused to/i.test(message.text())) problems.push(message.text()); });
   page.on('pageerror', error => problems.push(error.message));
-  await page.goto(`${base}simulator/?body=saturn`);
+  await page.goto(`${base}?body=saturn`);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
   const canvas = page.locator('canvas').first();
   await expect(canvas).toHaveAttribute('data-textures', /^(\d+)\/\1$/, { timeout: 45000 });
@@ -20,7 +20,7 @@ test('the cinematic renderer loads every texture without console errors', async 
 
 test('missing textures fall back to lit colours and the simulation keeps running', async ({ page }) => {
   await page.route(/\/textures\/[a-z_]+\.(jpg|png)$/, route => route.fulfill({ status: 404, body: '' }));
-  await page.goto(`${base}simulator/`);
+  await page.goto(base);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
   const canvas = page.locator('canvas').first();
   await expect(canvas).toHaveAttribute('data-textures', '0/14', { timeout: 45000 });
@@ -31,9 +31,9 @@ test('missing textures fall back to lit colours and the simulation keeps running
 });
 
 test('the reference grid can be hidden and shown again through C', async ({ page }) => {
-  await page.goto(`${base}simulator/`);
+  await page.goto(base);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
-  await page.getByRole('button', { name: 'View options', exact: true }).click();
+  await page.getByRole('button', { name: 'View', exact: true }).click();
   const grid = page.getByRole('button', { name: /^Grid: (On|Off)$/ });
   await expect(grid).toHaveText('Grid: On');
   await expect(grid).toHaveAttribute('aria-pressed', 'true');

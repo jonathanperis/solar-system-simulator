@@ -207,7 +207,10 @@ static bool start_app_lesson(SolarApp *state, LessonPreset lesson, double factor
         state->render_mode = RENDER_SCALE_REAL;
         frame_selected_system(state, true);
     }
-    if (lesson == LESSON_ENCOUNTER) frame_selected_system(state, true);
+    /* Two-body lessons open on the whole pair: framing the small partner alone
+     * hides the body it orbits. */
+    if (lesson == LESSON_ENCOUNTER || lesson == LESSON_PLUTO_CHARON || lesson == LESSON_DART)
+        frame_selected_system(state, true);
     if (lesson == LESSON_RESONANCE) {
         state->session.selected_body_index = 0;
         frame_selected_system(state, true);

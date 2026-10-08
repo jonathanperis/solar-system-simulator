@@ -11,6 +11,7 @@ interface RuntimeReadouts {
   distance: Readout;
   speed: Readout;
   period?: Readout;
+  name?: Readout;
   mass: Readout;
   radius: Readout;
   camera: Readout;
@@ -237,7 +238,10 @@ export async function loadRuntimeTextures(runtime: TextureRuntime, canvas: HTMLC
 /** A body requested by `?body=slug`, with the preset index of its home scene. */
 export interface RequestedBody { name: string; scene: number }
 
-export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: RuntimeReadouts, artifactUrl: URL, controls: RuntimeControls, requestedBody?: RequestedBody) {
+/** A guided lesson requested by `?lesson=name` (Learn page links). */
+export interface RequestedLesson { index: number; dt: number }
+
+export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: RuntimeReadouts, artifactUrl: URL, controls: RuntimeControls, requestedBody?: RequestedBody, requestedLesson?: RequestedLesson) {
   let failed = false;
   let reportedBody = -1;
   let reportedSpeed = -1;
@@ -341,6 +345,9 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
         // Family scenes are chosen in the scene picker, not the lesson list.
         if (!sceneIndices.includes(state.lesson) || state.lesson === 0) controls.lesson.value = String(state.lesson);
         controls.scene.value = sceneIndices.includes(state.lesson) ? String(state.lesson) : '';
+        // The lesson strip shows only while a guided lesson runs.
+        const strip = canvas.closest?.('[data-simulator]')?.querySelector<HTMLElement>('[data-lesson-strip]');
+        if (strip) strip.hidden = state.lesson < 0 || sceneIndices.includes(state.lesson);
         controls.method.value = String(state.method);
         controls.dt.value = String(state.dt);
         controls.factor.value = String(state.factor);
@@ -397,9 +404,9 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       setText(readouts.status, state.trailsFailed ? 'Trail recording paused: memory unavailable.'
         : state.paused ? 'Simulation paused' : 'Running physics simulation');
       setText(readouts.controls, `Selected body: ${state.body}; view: ${state.view}.`);
-      setText(readouts.elapsed, state.dated
-        ? `${sceneDate(state.elapsedSeconds)} · ${(state.elapsedSeconds / 86400).toFixed(5)} simulated days`
-        : `${(state.elapsedSeconds / 86400).toFixed(5)} simulated days · ${Number(state.elapsedSeconds.toPrecision(12))} s`);
+      setText(readouts.elapsed, state.dated ? sceneDate(state.elapsedSeconds)
+        : `${(state.elapsedSeconds / 86400).toFixed(4)} d (${Number(state.elapsedSeconds.toPrecision(12))} s)`);
+      if (readouts.name) setText(readouts.name, state.body);
       if (readouts.period) setText(readouts.period, !state.hasParent ? 'N/A — no parent'
         : Number.isFinite(state.periodS) ? formatPeriod(state.periodS!) : 'Unbound (no closed orbit)');
       setText(readouts.interval, `${(state.intervalSeconds / 3600).toFixed(2)} simulated hours`);
@@ -424,6 +431,8 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
         pendingBody = requestedBody?.name;
         if (requestedBody && requestedBody.scene > 0)
           this.ccall?.('solar_web_lesson', 'number', ['number', 'number', 'number', 'number'], [requestedBody.scene, 1, 0, 15]);
+        else if (requestedLesson && requestedLesson.index > 0)
+          this.ccall?.('solar_web_lesson', 'number', ['number', 'number', 'number', 'number'], [requestedLesson.index, 1, 0, requestedLesson.dt]);
       }
       if (pendingBody) {
         const target = bodies.find(body => body.name === pendingBody);
@@ -477,6 +486,7 @@ export function mountSimulator(root: HTMLElement): void {
     distance: root.querySelector<HTMLElement>('[data-inspector-distance]')!,
     speed: root.querySelector<HTMLElement>('[data-inspector-speed]')!,
     period: root.querySelector<HTMLElement>('[data-inspector-period]') ?? undefined,
+    name: root.querySelector<HTMLElement>('[data-inspector-name]') ?? undefined,
     mass: root.querySelector<HTMLElement>('[data-inspector-mass]')!,
     radius: root.querySelector<HTMLElement>('[data-inspector-radius]')!,
     camera: root.querySelector<HTMLElement>('[data-runtime-camera]')!,
@@ -496,6 +506,10 @@ export function mountSimulator(root: HTMLElement): void {
   }, artifactUrl, controls, (() => {
     const body = implementedBodies.find(item => item.slug === new URLSearchParams(location.search).get('body'));
     return body && { name: body.name, scene: sceneIndexOf(body.scene) };
+  })(), (() => {
+    const name = new URLSearchParams(location.search).get('lesson');
+    const index = lessonOptions.findIndex(([lesson]) => lesson === name);
+    return index > 0 && !sceneIndices.includes(index) ? { index, dt: name === 'collision' ? 0.1 : 15 } : undefined;
   })());
 
   const send = (command: keyof typeof runtimeCommands, value = 0): void => {
@@ -518,7 +532,8 @@ export function mountSimulator(root: HTMLElement): void {
   root.querySelectorAll<HTMLElement>('[data-close-panel]').forEach(button => {
     button.addEventListener('click', () => {
       button.closest('dialog')!.close();
-      if (button.hasAttribute('data-open-diagnostics')) root.querySelector('#diagnostics-heading')!.closest('details')!.open = true;
+      const diagnostics = root.querySelector('#diagnostics-heading')?.closest('details');
+      if (button.hasAttribute('data-open-diagnostics') && diagnostics) diagnostics.open = true;
     });
   });
   const sceneStatus = root.querySelector<HTMLElement>('[data-scene-status]')!;
@@ -561,7 +576,8 @@ export function mountSimulator(root: HTMLElement): void {
   }
   const loadLesson = () => {
     clearLessonValidity();
-    if (!controls.dt.checkValidity() || !controls.factor.checkValidity()) controls.dt.closest('details')!.open = true;
+    const settings = controls.dt.closest('details');
+    if (settings && (!controls.dt.checkValidity() || !controls.factor.checkValidity())) settings.open = true;
     if (controls.factor.validity.rangeUnderflow) {
       const message = `Below ${controls.factor.min}× this starting orbit would pass through the parent body; point-mass gravity has no surface. Use at least ${controls.factor.min}.`;
       lessonStatus.textContent = message;
@@ -570,7 +586,7 @@ export function mountSimulator(root: HTMLElement): void {
     if (!controls.dt.reportValidity() || !controls.factor.reportValidity()) return;
     const accepted = runtime.ccall?.('solar_web_lesson', 'number', ['number', 'number', 'number', 'number'],
       [Number(controls.lesson.value), Number(controls.factor.value), Number(controls.method.value), Number(controls.dt.value)]);
-    lessonStatus.textContent = accepted ? 'Lesson loaded from its initial state. Close this panel to watch; if paused, press Resume. Restart repeats this configuration.'
+    lessonStatus.textContent = accepted ? 'Lesson loaded from its initial state. If paused, press Resume; Restart repeats this configuration.'
       : 'Configuration rejected. Core uses 15-second Verlet; core/barycentric-core require speed factor 1; collision steps are 0.01–0.25 s; catalog scenes start through the atlas.';
     if (!accepted) {
       // Explain C's lesson-specific rejection after validation; ordinary bounds

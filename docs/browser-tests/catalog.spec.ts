@@ -21,7 +21,7 @@ test('full-index journey: consent, superseding search mid-download, Stop, restar
     if (holding && (order.get(file) ?? 0) >= 20 && !identityFiles.has(file)) await gate;
     try { await route.continue(); } catch { /* the request was aborted by Stop */ }
   });
-  await page.goto(`${base}small-bodies/`);
+  await page.goto(`${base}catalog/small-bodies/`);
   await expect(page.locator('[data-search-status]')).toContainText('matches');
   await page.evaluate(() => {
     const region = document.querySelector('[data-scan-announce]')!;
