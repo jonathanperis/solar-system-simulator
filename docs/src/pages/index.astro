@@ -1,10 +1,206 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import OrbitalAtlas from '../components/OrbitalAtlas.astro';
 import { normalizeBase } from '../lib/base';
+import { buildRevision } from '../lib/site';
+import { lessonOptions, sceneNames } from '../lib/lessonCatalog';
+import { coreBodyCount, jovianMoonCount, saturnianMoonCount, uranianMoonCount, neptunianMoonCount, plutonianMoonCount } from '../lib/siteCounts';
+
+// The simulator is the homepage (DESIGN.md, SPEC A100). Every control talks to
+// the C runtime through src/lib/simulator.ts; this page only lays them out.
 const base = normalizeBase(import.meta.env.BASE_URL);
+const sceneIndex = (scene: string) => lessonOptions.findIndex(([name]) => name === scene);
+const sceneChoices = [
+  { index: sceneIndex('core'), label: `Solar system (${coreBodyCount})` },
+  { index: sceneIndex('jupiter-system'), label: `Jupiter (${jovianMoonCount} moons)` },
+  { index: sceneIndex('saturn-system'), label: `Saturn (${saturnianMoonCount} moons)` },
+  { index: sceneIndex('uranus-system'), label: `Uranus (${uranianMoonCount} moons)` },
+  { index: sceneIndex('neptune-system'), label: `Neptune (${neptunianMoonCount} moons)` },
+  { index: sceneIndex('pluto-system'), label: `Pluto (${plutonianMoonCount} moons)` },
+  { index: sceneIndex('didymos-system'), label: 'Didymos (DART binary)' }
+];
+// Guided lessons load into the lesson strip; the main scene stays reachable there too.
+const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label, index }))
+  .filter(({ name }) => name === 'core' || !sceneNames.includes(name));
 ---
-<BaseLayout>
-  <link slot="head" rel="stylesheet" href={`${base}styles/atlas-positions.css`} />
-  <OrbitalAtlas />
+<BaseLayout variant="instrument" description="Live C11 and raylib solar system in the browser: SI-unit N-body physics starting from the real sky of 2026-06-09.">
+  <section class="instrument" data-simulator data-catalog-manifest={`${base}catalog/manifest.json`} data-runtime-src={`${base}wasm/solar-system-simulator.js?revision=${encodeURIComponent(buildRevision)}`} aria-label="Solar system simulator">
+    <div class="canvas-wrap">
+      {/* role="application": the focused canvas consumes single-key shortcuts. */}
+      <canvas id="canvas" tabindex="0" role="application" aria-roledescription="3D simulation view"
+        aria-label="Live solar system simulation" aria-describedby="canvas-keys runtime-control-state">
+        Your browser needs canvas and WebGL to display the simulation.
+      </canvas>
+      <p id="canvas-keys" class="sr-only">With the view focused: Space pauses, N steps while paused, R restarts, V switches scale, F frames the system, B frames the body, A toggles rotation, G grid, H labels, C cycles bodies, brackets change speed. Tab leaves the view.</p>
+    </div>
+
+    <div class="hud">
+      <p data-runtime-status role="status" aria-live="polite">Downloading simulator…</p>
+      <p id="runtime-control-state" data-runtime-controls role="status" aria-live="polite">Waiting for simulation state.</p>
+      <p data-active-scene>—</p>
+      <p data-scene-status role="status"></p>
+    </div>
+
+    <div class="lesson-strip" data-lesson-strip hidden>
+      <fieldset data-runtime-panel disabled>
+        <legend class="sr-only">Lesson</legend>
+        <label>Lesson <select data-lesson>
+          {lessonChoices.map(({ label, index }) => <option value={index}>{label}</option>)}
+          <option value="-1" disabled>Catalog experiment</option>
+        </select></label>
+        <label>Method <select data-integrator><option value="0">Verlet</option><option value="1">Euler</option></select></label>
+        <label>Step (s) <input type="number" data-dt min="0.01" max="3600" step="any" value="15" required /></label>
+        <label>Speed × <input type="number" data-velocity-factor min="0.1" max="2" step="any" value="1" required /></label>
+        <button type="button" data-apply-lesson>Load</button>
+        <button type="button" data-command="contact" hidden>Contact: bounce</button>
+        <p data-lesson-status role="status"></p>
+      </fieldset>
+    </div>
+
+    <aside class="inspector instrument-panel" aria-labelledby="inspector-heading">
+      <h2 id="inspector-heading" data-inspector-name>—</h2>
+      <dl>
+        <dt>Parent</dt><dd data-inspector-parent>—</dd>
+        <dt>Distance</dt><dd data-inspector-distance>—</dd>
+        <dt>Speed</dt><dd data-inspector-speed>—</dd>
+        <dt>Period</dt><dd data-inspector-period>—</dd>
+        <dt>Mass</dt><dd data-inspector-mass>—</dd>
+        <dt>Radius</dt><dd data-inspector-radius>—</dd>
+      </dl>
+      <fieldset data-runtime-panel disabled class="row">
+        <legend class="sr-only">Framing</legend>
+        <button type="button" data-command="frame">Frame system</button>
+        <button type="button" data-command="frameBody">Frame body</button>
+        <button type="button" data-whole-system>Whole scene</button>
+      </fieldset>
+    </aside>
+
+    <div class="dock instrument-panel">
+      <fieldset data-runtime-panel disabled>
+        <legend class="sr-only">Playback and scene</legend>
+        <button type="button" data-command="pause">Pause</button>
+        <button type="button" data-command="reset">Restart</button>
+        <label>Speed <select data-runtime-speed>
+          <option value="0">1 h/s</option>
+          <option value="1" selected>1 d/s</option>
+          <option value="2">5 d/s</option>
+          <option value="3">10 d/s</option>
+          <option value="4">15 d/s</option>
+        </select></label>
+        <p class="date"><span>Date</span><output data-runtime-elapsed>—</output></p>
+        <label>Scene <select data-runtime-scene>
+          {sceneChoices.map(({ index, label }) => <option value={index}>{label}</option>)}
+          <option value="" disabled>Lesson or experiment</option>
+        </select></label>
+        <button type="button" data-load-scene>Load scene</button>
+        <button type="button" data-open-panel="find-panel" aria-haspopup="dialog">Find</button>
+        <button type="button" data-open-panel="view-panel" aria-haspopup="dialog">View</button>
+        <button type="button" data-open-panel="keys-panel" aria-haspopup="dialog">Keys</button>
+        <button type="button" data-open-panel="advanced-panel" aria-haspopup="dialog">Data</button>
+      </fieldset>
+    </div>
+
+    <dialog id="find-panel" class="sheet" aria-labelledby="find-heading">
+      <header><h2 id="find-heading">Find a body</h2><button type="button" data-close-panel aria-label="Close find">Close</button></header>
+      <fieldset class="body" data-runtime-panel disabled>
+        <legend class="sr-only">Find a body</legend>
+        <div class="row">
+          <label>Name <input type="search" data-runtime-search placeholder="Titan, S/2021 J 8…" /></label>
+          <label>Group <select data-runtime-group><option value="">All groups</option></select></label>
+          <button type="button" data-clear-filters>Clear</button>
+        </div>
+        <label>Body <select data-runtime-body></select></label>
+        <p data-body-filter-status role="status"></p>
+        <p>Small moons live in their planet's scene: switch the scene first, or open a moon from the <a href={`${base}catalog/`}>catalog</a>.</p>
+        <button type="button" data-close-panel>Show</button>
+      </fieldset>
+    </dialog>
+
+    <dialog id="view-panel" class="sheet" aria-labelledby="view-heading">
+      <header><h2 id="view-heading">View</h2><button type="button" data-close-panel aria-label="Close view">Close</button></header>
+      <fieldset class="body" data-runtime-panel disabled>
+        <legend class="sr-only">View</legend>
+        <div class="row">
+          <button type="button" data-command="view">View: Illustrative</button>
+          <button type="button" data-command="zoom" data-value="1">Zoom in</button>
+          <button type="button" data-command="zoom" data-value="-1">Zoom out</button>
+          <label class="check"><input type="checkbox" data-runtime-rotate checked /> Rotate</label>
+        </div>
+        <div class="row">
+          <button type="button" data-command="trails">Trails: Absolute</button>
+          <button type="button" data-command="vectors" aria-pressed="false">Vector directions: Off</button>
+          <button type="button" data-command="grid" aria-pressed="true">Grid: On</button>
+          <button type="button" data-command="labels" aria-pressed="true">Labels: On</button>
+        </div>
+        <p>Illustrative scale enlarges bodies and spreads close moons; real scale uses physical sizes. Views never change the physics.</p>
+      </fieldset>
+    </dialog>
+
+    <dialog id="keys-panel" class="sheet" aria-labelledby="keys-heading">
+      <header><h2 id="keys-heading">Keys</h2><button type="button" data-close-panel aria-label="Close keys">Close</button></header>
+      <div class="body">
+        <dl class="keys">
+          <dt><kbd>Space</kbd></dt><dd>pause or resume</dd>
+          <dt><kbd>N</kbd></dt><dd>one step while paused</dd>
+          <dt><kbd>R</kbd></dt><dd>restart</dd>
+          <dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower, faster</dd>
+          <dt><kbd>C</kbd> <kbd>1</kbd>–<kbd>0</kbd></dt><dd>cycle or pick bodies</dd>
+          <dt><kbd>F</kbd> <kbd>B</kbd></dt><dd>frame system, frame body</dd>
+          <dt><kbd>V</kbd> <kbd>A</kbd></dt><dd>scale, camera rotation</dd>
+          <dt><kbd>T</kbd> <kbd>X</kbd> <kbd>G</kbd> <kbd>H</kbd></dt><dd>trails, vectors, grid, labels</dd>
+          <dt>Wheel, drag</dt><dd>zoom, orbit</dd>
+        </dl>
+        <p>Keys work while the view has focus. Tab moves through the controls.</p>
+      </div>
+    </dialog>
+
+    <dialog id="advanced-panel" class="sheet" aria-labelledby="advanced-heading">
+      <header><h2 id="advanced-heading">Data</h2><button type="button" data-close-panel aria-label="Close data">Close</button></header>
+      <fieldset class="body" data-runtime-panel disabled>
+        <legend class="sr-only">Measurements and experiments</legend>
+        <div class="row">
+          <button type="button" data-command="step" disabled>Step +15 s</button>
+          <button type="button" data-export>Download CSV</button>
+        </div>
+        <p data-export-status role="status"></p>
+        <details>
+          <summary id="diagnostics-heading">Numbers</summary>
+          <dl>
+            <dt>Time</dt><dd data-runtime-interval>—</dd>
+            <dt>Achieved speed</dt><dd data-runtime-achieved>—</dd>
+            <dt>Pending time</dt><dd data-runtime-pending>—</dd>
+            <dt>Integrator</dt><dd data-integration>—</dd>
+            <dt>Energy</dt><dd data-energy>—</dd>
+            <dt>Energy change</dt><dd data-energy-change>—</dd>
+            <dt>Momentum</dt><dd data-momentum>—</dd>
+            <dt>Angular momentum</dt><dd data-angular-momentum>—</dd>
+            <dt>Acceleration</dt><dd data-inspector-acceleration>—</dd>
+            <dt>Specific energy</dt><dd data-inspector-specific-energy>—</dd>
+            <dt>Position</dt><dd data-inspector-position>—</dd>
+            <dt>Velocity</dt><dd data-inspector-velocity>—</dd>
+            <dt>Magnification</dt><dd data-magnification>—</dd>
+            <dt>Camera</dt><dd data-runtime-camera>—</dd>
+          </dl>
+        </details>
+        <details>
+          <summary>Gravity sources at <span data-forces-time>—</span></summary>
+          <div class="table-wrap"><table><thead><tr><th>Source</th><th>Acceleration</th><th>Share</th><th>X, Y, Z (m/s²)</th></tr></thead><tbody data-runtime-forces></tbody></table></div>
+        </details>
+        <div class="row">
+          <a href={`${base}catalog/small-bodies/`}>Choose small bodies</a>
+          <button type="button" data-start-experiment>Start prepared experiment</button>
+          <button type="button" data-demo>Main scene</button>
+        </div>
+        <p data-experiment-status role="status"></p>
+        <p>All values are SI and come from the C runtime. <a href={`${base}about/#model`}>How the model works</a>.</p>
+      </fieldset>
+    </dialog>
+
+    <noscript><p class="hud">JavaScript is required to run the WebAssembly simulator. <a href={`${base}about/`}>Read how it works</a>.</p></noscript>
+  </section>
 </BaseLayout>
+
+<script>
+  import { mountSimulator } from '../lib/simulator';
+  const root = document.querySelector<HTMLElement>('[data-simulator]');
+  if (root) mountSimulator(root);
+</script>

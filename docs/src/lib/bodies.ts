@@ -9,7 +9,6 @@ import didymosCatalog from '../../../data/didymos_moons.json' with { type: 'json
  * each family scene holds one giant planet's complete moon catalog. */
 export type SceneName = 'core' | 'jupiter-system' | 'saturn-system' | 'uranus-system' | 'neptune-system'
   | 'pluto-system' | 'didymos-system';
-export type MoonPlate = 'jupiter' | 'saturn' | 'uranus' | 'neptune' | 'pluto' | 'didymos';
 export type FamilyPrimary = 'Jupiter' | 'Saturn' | 'Uranus' | 'Neptune' | 'Pluto' | 'Didymos';
 
 export type ImplementedBody = {
@@ -20,13 +19,6 @@ export type ImplementedBody = {
   milestone: string;
   initialization: string;
   source: string;
-  accent: 'solar' | 'cyan' | 'earth' | 'moon' | 'mars' | 'asteroid' | 'jupiter' | 'saturn' | 'uranus' | 'neptune'
-    | 'pluto' | 'didymos';
-  chart: {
-    plate: 'heliocentric' | 'earth' | 'mars' | MoonPlate;
-    angle: number;
-    radius: number;
-  };
   summary: string;
   group?: string;
   /** Where the body is simulated: the main scene, or (small moons only) its
@@ -42,24 +34,24 @@ export function bodyIntroduction(body: ImplementedBody): string {
 }
 
 type CatalogMoon = (typeof jovianCatalog.moons)[number] & { major?: boolean };
-type MoonFamily = { parent: string; plate: MoonPlate; scene: SceneName; adjective: string; milestone: string;
+type MoonFamily = { parent: string; scene: SceneName; adjective: string; milestone: string;
   source: string; moons: CatalogMoon[] };
 
 /** The Jovian snapshot predates the `major` flag: its Galilean group is major. */
 const isMajor = (moon: CatalogMoon): boolean => moon.major ?? moon.group === 'Galilean moons';
 
 const moonFamilies: MoonFamily[] = [
-  { parent: 'Jupiter', plate: 'jupiter', scene: 'jupiter-system', adjective: 'Jovian', milestone: 'Complete Jovian moon catalog',
+  { parent: 'Jupiter', scene: 'jupiter-system', adjective: 'Jovian', milestone: 'Complete Jovian moon catalog',
     source: 'data/jovian_moons.json', moons: jovianCatalog.moons },
-  { parent: 'Saturn', plate: 'saturn', scene: 'saturn-system', adjective: 'Saturnian', milestone: 'Saturn system scene',
+  { parent: 'Saturn', scene: 'saturn-system', adjective: 'Saturnian', milestone: 'Saturn system scene',
     source: 'data/saturnian_moons.json', moons: saturnianCatalog.moons as CatalogMoon[] },
-  { parent: 'Uranus', plate: 'uranus', scene: 'uranus-system', adjective: 'Uranian', milestone: 'Uranus system scene',
+  { parent: 'Uranus', scene: 'uranus-system', adjective: 'Uranian', milestone: 'Uranus system scene',
     source: 'data/uranian_moons.json', moons: uranianCatalog.moons as CatalogMoon[] },
-  { parent: 'Neptune', plate: 'neptune', scene: 'neptune-system', adjective: 'Neptunian', milestone: 'Neptune system scene',
+  { parent: 'Neptune', scene: 'neptune-system', adjective: 'Neptunian', milestone: 'Neptune system scene',
     source: 'data/neptunian_moons.json', moons: neptunianCatalog.moons as CatalogMoon[] },
-  { parent: 'Pluto', plate: 'pluto', scene: 'pluto-system', adjective: 'Plutonian', milestone: 'Pluto system scene',
+  { parent: 'Pluto', scene: 'pluto-system', adjective: 'Plutonian', milestone: 'Pluto system scene',
     source: 'data/plutonian_moons.json', moons: plutonianCatalog.moons as CatalogMoon[] },
-  { parent: 'Didymos', plate: 'didymos', scene: 'didymos-system', adjective: 'Didymos', milestone: 'Didymos system scene',
+  { parent: 'Didymos', scene: 'didymos-system', adjective: 'Didymos', milestone: 'Didymos system scene',
     source: 'data/didymos_moons.json', moons: didymosCatalog.moons as unknown as CatalogMoon[] }
 ];
 
@@ -67,10 +59,6 @@ const moonFamilies: MoonFamily[] = [
  * catalog order (solar_system.c append_moons). */
 const orderedMoons = (family: MoonFamily): CatalogMoon[] =>
   [...family.moons.filter(isMajor), ...family.moons.filter(moon => !isMajor(moon))];
-
-/** Six marker slots per moon-plate page. The upper-left quadrant stays empty
- * so wide layouts never put a marker under the hero copy. */
-const moonChartAngles = [30, 90, 140, 185, 228, 330];
 
 function moonBody(family: MoonFamily, moon: CatalogMoon, index: number): ImplementedBody {
   const major = isMajor(moon);
@@ -81,10 +69,8 @@ function moonBody(family: MoonFamily, moon: CatalogMoon, index: number): Impleme
     parent: family.parent,
     milestone: major ? 'Main-scene major moon' : family.milestone,
     group: moon.group,
-    initialization: `${moon.frame}-frame mean elements (epoch ${moon.epoch_tdb} TDB) converted to ${family.parent}-relative SI position and velocity.`,
+    initialization: `Horizons state relative to ${family.parent} on 2026-06-09; ${moon.frame}-frame JPL mean elements give its orbit data.`,
     source: family.source,
-    accent: family.plate,
-    chart: { plate: family.plate, angle: moonChartAngles[index % moonChartAngles.length], radius: 72 },
     summary: `${moon.group}. ${major ? `In the main scene and the ${family.parent} system scene.` : `In the ${family.parent} system scene.`} ${moon.inclination_deg > 90 ? 'Retrograde' : 'Prograde'} in the source frame. Mass: ${moon.mass_quality === 'unknown' ? 'unknown — test particle' : moon.mass_quality}. Radius: ${moon.radius_quality === 'unknown' ? 'unknown — marker only' : moon.radius_quality}.`,
     scene: major ? 'core' : family.scene
   };
@@ -103,11 +89,9 @@ const [sun, mercury, venus, earth, moon, mars, phobos, deimos, vesta, jupiter] =
     kind: 'Star',
     parent: 'None',
     milestone: 'Foundation',
-    initialization: 'Fixed origin anchor for the current heliocentric baseline.',
+    initialization: 'Fixed at the origin of the heliocentric scenes.',
     source: 'src/sim/solar_system.c',
-    accent: 'solar',
-    chart: { plate: 'heliocentric', angle: 0, radius: 0 },
-    summary: 'Fixed origin anchor for the current heliocentric baseline.'
+    summary: 'Fixed at the origin of the heliocentric scenes.'
   },
   {
     slug: 'mercury',
@@ -115,11 +99,9 @@ const [sun, mercury, venus, earth, moon, mars, phobos, deimos, vesta, jupiter] =
     kind: 'Planet',
     parent: 'Sun',
     milestone: 'Inner planet pass',
-    initialization: 'Heliocentric perihelion position with vis-viva tangential speed.',
+    initialization: 'Horizons heliocentric state on 2026-06-09.',
     source: 'src/sim/solar_system.c',
-    accent: 'cyan',
-    chart: { plate: 'heliocentric', angle: 324, radius: 21 },
-    summary: 'Inner planet initialized at heliocentric perihelion.'
+    summary: 'The innermost planet.'
   },
   {
     slug: 'venus',
@@ -127,11 +109,9 @@ const [sun, mercury, venus, earth, moon, mars, phobos, deimos, vesta, jupiter] =
     kind: 'Planet',
     parent: 'Sun',
     milestone: 'Inner planet pass',
-    initialization: 'Heliocentric perihelion position with vis-viva tangential speed.',
+    initialization: 'Horizons heliocentric state on 2026-06-09.',
     source: 'src/sim/solar_system.c',
-    accent: 'cyan',
-    chart: { plate: 'heliocentric', angle: 52, radius: 35 },
-    summary: 'Nearly circular inner orbit seeded at perihelion.'
+    summary: 'The nearly circular inner orbit.'
   },
   {
     slug: 'earth',
@@ -139,10 +119,8 @@ const [sun, mercury, venus, earth, moon, mars, phobos, deimos, vesta, jupiter] =
     kind: 'Planet',
     parent: 'Sun',
     milestone: 'Earth pass',
-    initialization: 'Earth–Moon barycenter at heliocentric perihelion (ecliptic +Y, simulation -Z) with prograde vis-viva speed; Earth sits opposite the Moon about it.',
+    initialization: 'Earth–Moon barycenter at its Horizons state on 2026-06-09; Earth sits opposite the Moon about it.',
     source: 'src/sim/solar_system.c',
-    accent: 'earth',
-    chart: { plate: 'heliocentric', angle: 152, radius: 51 },
     summary: 'Reference planet for the Earth-Moon relative system.'
   },
   {
@@ -151,11 +129,9 @@ const [sun, mercury, venus, earth, moon, mars, phobos, deimos, vesta, jupiter] =
     kind: 'Moon',
     parent: 'Earth',
     milestone: 'Earth Moon pass',
-    initialization: 'Earth-relative perigee offset added to Earth absolute state.',
+    initialization: 'Horizons state relative to Earth on 2026-06-09.',
     source: 'src/sim/solar_system.c',
-    accent: 'moon',
-    chart: { plate: 'earth', angle: 37, radius: 38 },
-    summary: 'Earth-relative perigee state, shown on the Earth plate.'
+    summary: 'Earth’s Moon, at its Horizons 2026-06-09 state relative to Earth.'
   },
   {
     slug: 'mars',
@@ -163,11 +139,9 @@ const [sun, mercury, venus, earth, moon, mars, phobos, deimos, vesta, jupiter] =
     kind: 'Planet',
     parent: 'Sun',
     milestone: 'Mars pass',
-    initialization: 'Mars–Phobos–Deimos barycenter at heliocentric perihelion (ecliptic -Y, simulation +Z) with prograde vis-viva speed.',
+    initialization: 'Mars-system barycenter at its Horizons state on 2026-06-09.',
     source: 'src/sim/solar_system.c',
-    accent: 'mars',
-    chart: { plate: 'heliocentric', angle: 228, radius: 66 },
-    summary: 'Outer inner-planet orbit seeded at perihelion.'
+    summary: 'The outermost rocky planet, with two small moons.'
   },
   {
     slug: 'phobos',
@@ -175,10 +149,8 @@ const [sun, mercury, venus, earth, moon, mars, phobos, deimos, vesta, jupiter] =
     kind: 'Moon',
     parent: 'Mars',
     milestone: 'Mars moons pass',
-    initialization: 'Mars-relative periareion state added to Mars absolute state.',
+    initialization: 'Horizons state relative to Mars on 2026-06-09.',
     source: 'src/sim/solar_system.c',
-    accent: 'mars',
-    chart: { plate: 'mars', angle: 210, radius: 24 },
     summary: 'Inner Martian moon shown relative to Mars.'
   },
   {
@@ -187,10 +159,8 @@ const [sun, mercury, venus, earth, moon, mars, phobos, deimos, vesta, jupiter] =
     kind: 'Moon',
     parent: 'Mars',
     milestone: 'Mars moons pass',
-    initialization: 'Mars-relative periareion state added to Mars absolute state.',
+    initialization: 'Horizons state relative to Mars on 2026-06-09.',
     source: 'src/sim/solar_system.c',
-    accent: 'mars',
-    chart: { plate: 'mars', angle: 33, radius: 47 },
     summary: 'Outer Martian moon shown relative to Mars.'
   },
   {
@@ -199,10 +169,8 @@ const [sun, mercury, venus, earth, moon, mars, phobos, deimos, vesta, jupiter] =
     kind: 'Asteroid',
     parent: 'Sun',
     milestone: 'Asteroid pass',
-    initialization: 'Planar heliocentric perihelion position with vis-viva tangential speed.',
+    initialization: 'Horizons heliocentric state on 2026-06-09.',
     source: 'src/sim/solar_system.c',
-    accent: 'asteroid',
-    chart: { plate: 'heliocentric', angle: 196, radius: 80 },
     summary: 'Main-belt asteroid, represented as a single sourced body.'
   },
   {
@@ -211,11 +179,9 @@ const [sun, mercury, venus, earth, moon, mars, phobos, deimos, vesta, jupiter] =
     kind: 'Planet',
     parent: 'Sun',
     milestone: 'Outer planet pass',
-    initialization: 'Jovian-system barycenter (Jupiter plus known-mass moons) at planar heliocentric perihelion with vis-viva tangential speed.',
+    initialization: 'Jovian-system barycenter at its Horizons state on 2026-06-09; Jupiter sits opposite its known-mass moons.',
     source: 'src/sim/solar_system.c',
-    accent: 'jupiter',
-    chart: { plate: 'heliocentric', angle: 112, radius: 91 },
-    summary: 'First gas giant, initialized at heliocentric perihelion.'
+    summary: 'The largest planet, with its four Galilean moons in the main scene.'
   },
 
 ]);
@@ -226,31 +192,27 @@ const [saturn, uranus, neptune] = named([
     kind: 'Planet',
     parent: 'Sun',
     milestone: 'Saturn pass',
-    initialization: 'Saturn-system barycenter (Saturn plus known-mass moons) at planar heliocentric perihelion with vis-viva tangential speed.',
+    initialization: 'Saturn-system barycenter at its Horizons state on 2026-06-09.',
     source: 'src/sim/solar_system.c',
-    accent: 'saturn',
-    chart: { plate: 'heliocentric', angle: 214, radius: 97 },
-    summary: 'Ringed gas giant initialized at heliocentric perihelion; rings are renderer-only.'
+    summary: 'Ringed gas giant; the rings are drawn only, not simulated.'
   },
   {slug:'uranus',name:'Uranus',kind:'Planet',parent:'Sun',milestone:'Uranus foundation',
-    initialization:'Uranus-system barycenter (Uranus plus known-mass moons) at planar heliocentric perihelion with vis-viva speed.',source:'src/sim/solar_system.c',accent:'uranus',
-    chart:{plate:'heliocentric',angle:62,radius:83},summary:'Ice giant with JPL-sourced mass, mean radius, and orbital elements.'},
+    initialization:'Uranus-system barycenter at its Horizons state on 2026-06-09.',source:'src/sim/solar_system.c',summary:'Ice giant with JPL-sourced mass, mean radius, and orbital elements.'},
   {slug:'neptune',name:'Neptune',kind:'Planet',parent:'Sun',milestone:'Neptune foundation',
-    initialization:'Neptune-system barycenter (Neptune plus known-mass moons) at planar heliocentric perihelion with vis-viva speed.',source:'src/sim/solar_system.c',accent:'neptune',
-    chart:{plate:'heliocentric',angle:150,radius:91},summary:'Outer giant included in every selected small-body experiment.'}
+    initialization:'Neptune-system barycenter at its Horizons state on 2026-06-09.',source:'src/sim/solar_system.c',summary:'Outer giant included in every selected small-body experiment.'}
 ]);
 const [pluto] = named([
   { slug: 'pluto', name: 'Pluto', kind: 'Dwarf planet', parent: 'Sun', milestone: 'Small-body satellite systems',
-    initialization: 'Pluto–Charon barycenter at planar heliocentric perihelion with vis-viva speed; Pluto itself circles a point outside its own surface.',
-    source: 'src/sim/solar_system.c', accent: 'pluto', chart: { plate: 'heliocentric', angle: 90, radius: 99 },
+    initialization: 'Pluto–Charon barycenter at its Horizons state on 2026-06-09; Pluto circles a point outside its own surface.',
+    source: 'src/sim/solar_system.c',
     summary: 'Dwarf planet with JPL Horizons GM; its 17° orbital inclination is not modeled.' }
 ]);
-/** Didymos lives only in its family scene, at the centre of its own plate. */
+/** Didymos lives only in its family scene. */
 const didymos: ImplementedBody = {
   slug: 'didymos', name: 'Didymos', kind: 'Asteroid', parent: 'Sun', milestone: 'Small-body satellite systems',
   group: 'Didymos system',
-  initialization: 'Didymos–Dimorphos barycenter at planar heliocentric perihelion with vis-viva speed; masses are Horizons estimates.',
-  source: 'src/sim/solar_system.c', accent: 'didymos', chart: { plate: 'didymos', angle: 0, radius: 0 },
+  initialization: 'Didymos-system barycenter at its Horizons state on 2026-06-09; masses are Horizons estimates.',
+  source: 'src/sim/solar_system.c',
   summary: 'Near-Earth binary asteroid, the DART mission target, in the Didymos system scene.', scene: 'didymos-system'
 };
 

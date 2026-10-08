@@ -46,7 +46,6 @@ I.dist: `make dist-wasm` → WASM zip
 
 I.docs: `make docs-check` → generated route checks
 
-I.atlas: homepage static SVG/DOM atlas; plate/body selection reachable by pointer, keyboard, touch
 
 I.sim: `SolarSystem`, `Body`, `solar_system_create_*`, `solar_system_step`
 
@@ -58,7 +57,7 @@ I.controls: native `Tab` | `C` focus; web `C` focus and browser-native `Tab`; `V
 
 I.inspection: native shortcuts and accessible web buttons share C-owned playback and selection; web readouts use live C physical state. Space pauses, N steps, R resets, A toggles camera rotation, F frames the selected system, B frames only the selected body; native 1–9 and 0 select the first ten catalog bodies and brackets change speed. Search/group selection reaches the full catalog.
 
-I.pages: `/`, `/docs/`, `/docs/architecture/`, `/docs/simulation-core/`, `/docs/rendering/`, `/docs/controls/`, `/docs/build-and-web/`, `/docs/roadmap/`, `/docs/experiments/`, `/physics/`, `/body-catalog/`, `/small-bodies/`, `/source-atlas/`, `/pipeline/`, `/simulator/`, `/compare/`; `/wasm/solar-system-simulator.html` redirects to `/simulator/`
+I.pages: `/` (simulator), `/learn/`, `/learn/compare/`, `/catalog/`, `/catalog/small-bodies/`, `/about/`, `/404.html`; retired URLs (`/simulator/`, `/compare/`, `/body-catalog/`, `/small-bodies/`, `/physics/`, `/source-atlas/`, `/pipeline/`, `/docs/…`) and `/wasm/solar-system-simulator.html` are noindex Astro redirect pages that keep the query and fragment
 
 I.ci: `Build` runs native tests, WASM validation, and docs/dependency checks. `Deploy Pages` consumes the exact successful artifact and commit from a same-repository `main` push or manual run. `CodeQL` scans C/C++, JavaScript/TypeScript, and Actions on PRs, main pushes, weekly schedules, and manual dispatch.
 
@@ -124,13 +123,13 @@ V16: public claims trace to source/tests; checked claims match implementation; l
 
 V17: local/fork docs builds emit no analytics; deployed Pages build emits configured analytics only; public analytics disclosure exists. The page CSP allows Google Analytics hosts only in builds with `PUBLIC_GA_ID`.
 
-V18: keyboard focus always visible; runtime status announces changes; interactive content uses valid semantic HTML. Web form controls retain Tab, arrow, Home/End, type-ahead, and native button activation despite Emscripten/GLFW window-level keyboard listeners; simulator shortcuts act only with canvas focus. The atlas has a single polite status region; continuous pointer/range input announces once it settles; visible text is at least 12 px; the simulator canvas is `role=application` with a described keyboard model.
+V18: keyboard focus always visible; runtime status announces changes; interactive content uses valid semantic HTML. Web form controls retain Tab, arrow, Home/End, type-ahead, and native button activation despite Emscripten/GLFW window-level keyboard listeners; simulator shortcuts act only with canvas focus. Visible text is at least 12 px and no page scrolls sideways at 320 px; the simulator canvas is `role=application` with a described keyboard model.
 
 V19: checked WASM begins `\0asm\1\0\0\0`; docs checker resolves all internal routes/assets under configured base path. Every generated HTML document is rendered by an Astro page: the route checker requires the Astro generator marker on each, a leading CSP meta without unsafe-inline/unsafe-eval and without wildcard sources other than Google's documented GA4 subdomains in `connect-src`/`img-src` (analytics builds only), no inline script/style/handlers, and no HTML, sitemap or robots file in `docs/public`; the sitemap is an Astro endpoint.
 
-V20: atlas visual scale/positions are explicitly illustrative; body names, parents, initialization, sources derive from `implementedBodies`; live motion claims link only to WASM runtime.
+V20: retired with the homepage atlas (A105). Body names, parents and scenes on the catalog still derive from `implementedBodies`.
 
-V21: atlas selection works without pointer; body controls expose selected state, drawer closes on `Escape`, focus returns to invoking body, reduced-motion suppresses ornamental motion.
+V21: retired with the homepage atlas (A105). Simulator sheets are native dialogs: `Escape` closes them and focus returns to the opening button.
 
 V22: 100-day isolated Phobos/Deimos numerical checks compare orbital phase against an analytical Kepler solution (less than 1 degree error); the main scene compares the app step with half-sized reference steps over 100 days and each family scene over 20 days (less than 1% parent-relative position discrepancy).
 
@@ -423,7 +422,7 @@ A96|Lesson `pluto-charon`: the isolated pair at its barycenter, which lies outsi
 A97|The 300-body Saturn scene's frame rate on the 4×-throttled phone profile at default speed is measured and recorded with each physics change. Measured 2026-10-07 with the dated sky and J2: 56.3 fps (desktop 60; every other scene 59–60), with the WebAssembly build at `-O3` (+8%). The 59 fps target was not reached: the frame is physics-bound (about 7,500 pair evaluations × 96 steps per frame at 1 day/s), and blocking four sources per pass measured slower. A larger gain needs an error-bounded tidal treatment of distant sources for massless moons, a model change this plan does not make|CDP frame-rate probe recorded in the PR
 A98|Renovate: the configuration is valid (dry run) but the hosted Renovate GitHub App has not run on the repository; activating it requires Jonathan to grant the app access (GitHub Settings → Applications → Renovate). Recorded as an owner action, not a code task|owner action
 
-## §A — Design overhaul (plan), 2026-10-07
+## §A — Design overhaul, 2026-10-07
 
 Jonathan: "plan a design overhaul … the current one has a ton of info and is not so good at UX … a very non AI based website, interactive, lean and according to the project scope". Findings: 16 page routes; the field guide alone has 8 pages and about 6,400 words; the homepage is a decorative illustrative atlas (its positions are explicitly not physical), so the actual simulator is one click away; the simulator page carries about 2,500 words of copy around the canvas; navigation splits "Explore/Learn/Experiments/Reference" across overlapping pages.
 
@@ -435,12 +434,14 @@ Principles:
 
 id|criterion|verify
 A99|Routes: `/` simulator (full viewport), `/learn/` (lessons, including A/B comparison at `/learn/compare/`), `/catalog/` (every simulated body plus the small-body atlas at `/catalog/small-bodies/`), `/about/` (model, data sources, build and tests, credits on one indexed page). Old routes (`/simulator/`, `/compare/`, `/physics/`, `/body-catalog/`, `/small-bodies/`, `/source-atlas/`, `/pipeline/`, `/docs/…`, `/wasm/solar-system-simulator.html`) are Astro redirect pages that preserve query and fragment|route checks, redirect journey
-A100|Simulator page: the canvas fills the viewport below a thin bar (wordmark, Learn, Catalog, About, source link). One bottom dock: play/pause, speed (1 h–15 d per second), date, scene picker (Solar system, Jupiter, Saturn, Uranus, Neptune, Pluto, Didymos), and body search. Selecting a body opens a compact inspector (parent, distance, speed, period, mass, radius with quality). View settings (scale, trails, vectors, grid, labels) and keyboard help are small popovers. Visible copy on the page stays under 150 words; status and errors remain announced|word-count check, browser journeys, screenshots at desktop and phone sizes
+A100|Simulator page: the canvas fills the viewport below a thin bar (wordmark, Learn, Catalog, About, source link). One bottom dock: play/pause, speed (1 h–15 d per second), date, scene picker (Solar system, Jupiter, Saturn, Uranus, Neptune, Pluto, Didymos), and Find/View/Keys/Data sheets (body search lives in Find). A compact inspector (parent, distance, speed, period, mass, radius with quality). View settings (scale, trails, vectors, grid, labels) and keyboard help are small popovers. Visible copy on the page stays under 150 words; status and errors remain announced|word-count check, browser journeys, screenshots at desktop and phone sizes
 A101|Learn: each lesson is one row: a question, what to watch, and Run, which opens `/?lesson=NAME` with a lesson strip (method, step, speed factor, reset) over the canvas. Comparison keeps its C-backed charts and descriptors behind a question-first form|browser journeys
-A102|Catalog: one sortable, searchable table of all simulated bodies (name, kind, parent, scene, mass, radius with quality) where each row opens the simulator at that body; the small-body atlas keeps its search, map and experiment basket with trimmed copy|browser journeys, Node tests
+A102|Catalog: one searchable, family-filtered table of all simulated bodies (name, kind, parent, scene, group; mass and radius with quality stay in the simulator inspector) where each row opens the simulator at that body; the small-body atlas keeps its search, map and experiment basket with trimmed copy|browser journeys, Node tests
 A103|About: one page with an in-page index: what the model is and is not, units and integrator, J2 and limits, data sources (one table), build and verification commands, credits and licenses. It replaces the 8 field-guide pages, Physics, Source atlas and Pipeline|route checks, link checks
 A104|Visual system (DESIGN.md): the simulator is a dark instrument (canvas, hairline borders, one amber accent, mono labels and numbers); text pages are a lab notebook (warm paper, serif headings, readable 65-character measure, mono data tables, footnote-style source links). Accessibility stays: keyboard paths, visible focus, 12 px minimum text, reduced motion, valid semantics, CSP without inline code|screenshots, axe-style checks in browser journeys, CSP route checks
 A105|The decorative homepage atlas and its plates are removed. Its tests are replaced by catalog and simulator journeys; V20/V21 retire with it|test inventory in the PR
+
+Result (T84–T85): the four routes, 15 redirect pages and the instrument home shipped. Instrument copy measures 146 visible words at 1440×900. On phones the HUD, lesson strip, inspector and dock stack around the canvas instead of floating over it. The Pluto–Charon and DART lessons open framed on the whole pair. The route checker, `tests/test_artifact_checks.py` and 24 browser journeys (including the redirect journey and 320 px overflow checks) pass.
 
 Order: T80 dated epoch scenes → T81 J2 and period readout → T82 lessons → T83 Saturn 60 fps → T84 redesign: routes, redirects and simulator home → T85 redesign: learn, catalog, about, removals. Each is its own PR.
 
@@ -531,8 +532,8 @@ T80|x|start every scene from the Horizons sky of 2026-06-09 with a pinned vector
 T81|x|add J2 oblateness for Earth, Mars and the giants, and an orbital-period readout|A94,A95
 T82|x|add the Pluto–Charon and DART lessons|A96
 T83|x|measure and improve the Saturn scene on the throttled phone profile (56 fps recorded; 59 not reached, see A97)|A97
-T84|.|redesign: four routes, redirects and the simulator as the homepage|A99,A100,A104
-T85|.|redesign: Learn, Catalog and About pages; remove the atlas and field-guide pages|A101,A102,A103,A105
+T84|x|redesign: four routes, redirects and the simulator as the homepage|A99,A100,A104
+T85|x|redesign: Learn, Catalog and About pages; remove the atlas and field-guide pages|A101,A102,A103,A105
 
 Audit remediation verification, 2026-10-06: delivered through PRs #20, #21, #22, #24, #25 (round 1), #26 (main CI/analytics blocker found by round 2) and #27 (round 2), each rebase-merged after the required Build/CodeQL checks passed and every review thread was resolved. Production Pages served 81eb308 after #26 with CSP, Astro generator marker, generated sitemap and no robots.txt verified on the live site. Locally, round 2 passed `make clean && make test-sanitize`, `make && make test test-build test-cli test-validators`, catalog/command/epoch/Jovian/small-body checks, a fresh raylib WASM build with native/WASM replay of every example, `npm ci`/`npm audit`/37 Node tests/`astro check`/build, route checks, and 17/17 sandboxed Chrome journeys for both analytics-free and `PUBLIC_GA_ID` builds. The second audit's Medium findings (main CI red, experiment Earth-centre start, debug-info WASM, duplicate SPEC IDs, PR-only workflow docs, invisible catalog download) are closed. Remaining Low/Info items are recorded rather than changed: Jonathan later chose Renovate over Dependabot (A63) and asked for every non-main branch to be deleted; CI stays Linux-only and the browser lane stays on Ubuntu 22.04 per R13; browser specs are type-checked by Playwright, not `astro check` (adding `@types/node` was deferred); GA consent policy remains V17; the pre-existing desktop atlas Vesta/Uranus label overlap, Saturn's illustrative ring tilt and literal Jupiter–Neptune masses (V6 scopes GM-derived masses to Sun–Mars) are unchanged.
 

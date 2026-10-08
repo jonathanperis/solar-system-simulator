@@ -35,9 +35,9 @@ class Handler(SimpleHTTPRequestHandler):
         path = urlsplit(self.path).path
         if args.test_fixtures and path.startswith("/__test__/"):
             fixtures = {
-                "/__test__/missing-runtime/": ("simulator/index.html", "data-runtime-src", "/missing-runtime.js"),
-                "/__test__/bad-runtime/": ("simulator/index.html", "data-runtime-src", "/__test__/bad-runtime/solar-system-simulator.js"),
-                "/__test__/bad-lab/": ("compare/index.html", "data-lab-src", "/__test__/bad-lab/learning-lab.mjs"),
+                "/__test__/missing-runtime/": ("index.html", "data-runtime-src", "/missing-runtime.js"),
+                "/__test__/bad-runtime/": ("index.html", "data-runtime-src", "/__test__/bad-runtime/solar-system-simulator.js"),
+                "/__test__/bad-lab/": ("learn/compare/index.html", "data-lab-src", "/__test__/bad-lab/learning-lab.mjs"),
             }
             if path in fixtures:
                 page, attribute, url = fixtures[path]

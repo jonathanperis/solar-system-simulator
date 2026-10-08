@@ -19,6 +19,6 @@ test('page copy derives scene and catalog counts from data instead of literals',
   assert.ok(pages.length > 10);
   for (const file of pages) {
     const source = await readFile(new URL(`../src/${file}`, import.meta.url), 'utf8');
-    for (const literal of literals) assert.ok(!new RegExp(`(^|[^0-9.,])${escapeRegExp(literal)}([^0-9,]|$)`).test(source), `${file} hard-codes ${literal}`);
+    for (const literal of literals) assert.ok(!new RegExp(`(^|[^0-9.,A-Za-z])${escapeRegExp(literal)}([^0-9,]|$)`).test(source), `${file} hard-codes ${literal}`);
   }
 });

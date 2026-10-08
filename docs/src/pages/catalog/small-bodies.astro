@@ -1,8 +1,8 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import { normalizeBase } from '../lib/base';
-import { buildRevision } from '../lib/site';
-import manifest from '../../public/catalog/manifest.json';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { normalizeBase } from '../../lib/base';
+import { buildRevision } from '../../lib/site';
+import manifest from '../../../public/catalog/manifest.json';
 const base = normalizeBase(import.meta.env.BASE_URL);
 // Stated before the first full scan so a mobile visitor is never surprised by it.
 const indexMegabytes = Math.round(manifest.shards.reduce((bytes, shard) => bytes + shard.index.bytes, 0) / 1e6);
@@ -11,11 +11,11 @@ const indexMegabytes = Math.round(manifest.shards.reduce((bytes, shard) => bytes
   <section class="small-atlas" data-small-atlas data-base={base} data-revision={buildRevision}>
     <header class="atlas-heading">
       <p class="eyebrow">Small-body field atlas / JPL source inventory</p>
-      <h1>A million worlds, individually inspectable.</h1>
+      <h1>Small bodies</h1>
       <p>{manifest.count.toLocaleString('en-US')} cataloged bodies. Asteroids, Trojans, Centaurs, and the distant trans-Neptunian population, including provisional designations.</p>
       <p class="fine-print">Snapshot: {manifest.checked.slice(0,10)} · common preview epoch: JD {manifest.epoch} TDB · <a href={manifest.source}>JPL source query</a></p>
     </header>
-    <p>Search for a world, open its details, then add it to an experiment. The catalog is an index; only the bodies you choose will enter the live simulation.</p>
+    <p>Search, open a body, add up to 16 to an experiment. Only the bodies you choose enter the simulation.</p>
     <details class="map-disclosure"><summary>Explore the orbital-density map</summary>
       <section class="chart-panel" aria-labelledby="map-heading">
         <h2 id="map-heading">Orbital-density map</h2>
@@ -78,13 +78,13 @@ const indexMegabytes = Math.round(manifest.shards.reduce((bytes, shard) => bytes
       <p>Cataloged, displayed, and actively simulated counts describe different things. The initial density overview accounts for {manifest.mappable.toLocaleString('en-US')} source orbits; {manifest.unavailableOrbits} records lack usable orbital data. Result pages contain at most 50 rows.</p>
       <p>Missing mass becomes a massless test particle; missing radius stays Unknown with a wire marker. Published SBDB parameters have unclassified measurement/estimate provenance; explicitly sourced dwarf-planet supplements identify their quality. Known dwarf planets and other trans-Neptunian objects remain distinguished in their observation cards.</p>
       <p>Source elements are propagated to one epoch using the shared C conic kernel. Their differing original epochs and solution quality remain visible. Planet initial states come from a pinned Sun-centered Horizons snapshot. Fixed-Sun point-mass experiments are educational approximations, especially for close encounters; they are not ephemeris predictions.</p>
-      <p><a href={`${base}simulator/`}>Open core demonstration</a> · <a href={`${base}docs/simulation-core/`}>Read the physical model</a> · <a href={`${base}catalog/manifest.json`}>Download inventory manifest</a></p>
+      <p><a href={base}>Open the simulator</a> · <a href={`${base}about/#model`}>How the model works</a> · <a href={`${base}catalog/manifest.json`}>Download the inventory manifest</a></p>
     </section>
     <noscript><p>JavaScript and WebAssembly enable search and orbital previews. The source manifest and documentation remain available above.</p></noscript>
   </section>
 </BaseLayout>
 <script>
-  import { mountCatalog } from '../lib/catalogExplorer';
+  import { mountCatalog } from '../../lib/catalogExplorer';
   const root = document.querySelector<HTMLElement>('[data-small-atlas]');
   if (root) mountCatalog(root);
 </script>

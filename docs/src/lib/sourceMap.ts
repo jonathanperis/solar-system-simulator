@@ -74,7 +74,7 @@ export const sourceSections: SourceSection[] = [
   },
   {
     label: 'Browser runtime',
-    path: 'docs/src/pages/simulator.astro',
+    path: 'docs/src/pages/index.astro',
     responsibility: 'Shared Astro layout, controls, and canvas; simulator.ts sends commands to C and presents live physical readouts and errors.',
     verification: 'Runtime integration tests, generated route checks, and headless browser verification.'
   },
