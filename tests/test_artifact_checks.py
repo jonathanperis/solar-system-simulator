@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from check_docs_routes import check_astro_generated, check_internal_references, check_not_found_page, check_page_security, check_public_sources, check_sitemap
+from check_docs_routes import check_site_images, check_astro_generated, check_internal_references, check_not_found_page, check_page_security, check_public_sources, check_sitemap
 from check_wasm_artifacts import main as check_wasm
 
 
@@ -78,6 +78,26 @@ class ArtifactChecks(unittest.TestCase):
                 with self.subTest(where="allow-list", name=name):
                     check_astro_generated(dist, allowed={name})
                     check_public_sources(public, allowed={name})
+
+    def test_site_images_are_a_1200x630_card_and_a_static_icon_set(self):
+        def png(width, height):
+            return b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\x0dIHDR" + width.to_bytes(4, "big") + height.to_bytes(4, "big") + bytes(5)
+        with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
+            dist = Path(directory)
+            (dist / "social-preview.png").write_bytes(png(1200, 630))
+            (dist / "favicon-32x32.png").write_bytes(png(32, 32))
+            (dist / "apple-touch-icon.png").write_bytes(png(180, 180))
+            (dist / "favicon.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"><circle r="4"/></svg>')
+            check_site_images(dist)
+            for svg in ('<svg><script>alert(1)</script></svg>', '<svg><rect onload="x()"/></svg>',
+                        '<svg><image href="https://example.test/a.png"/></svg>', '<svg><rect style="fill:url(https://x)"/></svg>'):
+                with self.subTest(svg=svg), self.assertRaises(SystemExit):
+                    (dist / "favicon.svg").write_text(svg)
+                    check_site_images(dist)
+            (dist / "favicon.svg").write_text("<svg/>")
+            (dist / "social-preview.png").write_bytes(png(1200, 600))
+            with self.assertRaises(SystemExit):
+                check_site_images(dist)
 
     def test_not_found_page_is_an_astro_noindex_page_linking_home(self):
         good = ('<html><head><meta name="generator" content="Astro v7.3.6"><meta name="robots" content="noindex">'

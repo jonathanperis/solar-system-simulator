@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Instrument mark (DESIGN.md tokens): the amber Sun inside a tilted orbit
+       on the dark canvas. The orbit's far half passes behind the Sun and the
+       near half in front, so the mark reads as 3D even at 16 px.
+       tools/site_images.mjs renders the ICO and PNG icons from this file. -->
+  <rect width="64" height="64" rx="14" fill="#111419"/>
+  <circle cx="32" cy="32" r="14" fill="#e8aa4e" opacity=".18"/>
+  <g transform="rotate(-20 32 32)" fill="none" stroke="#e7e4dd" stroke-width="3" stroke-linecap="round">
+    <path d="M6 32 A26 10 0 0 1 58 32" stroke-opacity=".45"/>
+  </g>
+  <circle cx="32" cy="32" r="9.5" fill="#e8aa4e"/>
+  <g transform="rotate(-20 32 32)">
+    <path d="M58 32 A26 10 0 0 1 6 32" fill="none" stroke="#e7e4dd" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="53.3" cy="37.7" r="5" fill="#e7e4dd" stroke="#111419" stroke-width="2"/>
+  </g>
+</svg>
