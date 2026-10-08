@@ -41,6 +41,27 @@ test('phone simulator keeps every panel clear of the view, with object handoffs,
   await expect(page.getByRole('button', { name: 'Data', exact: true })).toBeFocused();
 });
 
+test('instrument panels never cover each other, from short phones to desktops, during a lesson', async ({ page }) => {
+  const overlap = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
+    Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > 1 && Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y) > 1;
+  await page.goto(`${base}?lesson=collision`);
+  await expect(page.locator('[data-lesson-strip]')).toBeVisible({ timeout: 30000 });
+  for (const [width, height] of [[375, 548], [844, 390], [820, 1180], [1024, 768], [1280, 800], [1440, 900]]) {
+    await page.setViewportSize({ width, height });
+    // A long status line must wrap inside the strip, not widen it.
+    await page.getByRole('button', { name: 'Load', exact: true }).click();
+    await expect(page.locator('[data-lesson-status]')).not.toBeEmpty();
+    const panels = await Promise.all(['.lesson-strip', '.inspector', '.dock'].map(selector => page.locator(selector).boundingBox()));
+    for (let i = 0; i < panels.length; i++) for (let j = i + 1; j < panels.length; j++)
+      expect(overlap(panels[i]!, panels[j]!), `panels ${i}/${j} overlap at ${width}x${height}`).toBe(false);
+    // Every dock control stays reachable: in view or reachable by scrolling the instrument.
+    const pause = page.getByRole('button', { name: /^(Pause|Resume)$/ });
+    await pause.scrollIntoViewIfNeeded();
+    await expect(pause).toBeInViewport();
+    expect((await page.locator('#canvas').boundingBox())!.height, `canvas at ${width}x${height}`).toBeGreaterThanOrEqual(180);
+  }
+});
+
 test('the instrument stays lean and every page keeps readable text', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(base);

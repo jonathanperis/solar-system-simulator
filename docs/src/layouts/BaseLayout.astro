@@ -39,7 +39,9 @@ const activeRoute = primaryRoutes.find(route => currentPath.startsWith(withBase(
     {/* Route validation requires this marker on every published HTML document (A60). */}
     <meta name="generator" content={Astro.generator} />
     {redirectTarget !== undefined && <script src={`${base}scripts/forward.js`} data-target={redirectTarget}></script>}
-    {redirectTarget !== undefined && <meta http-equiv="refresh" content={`0;url=${redirectTarget}`} />}
+    {/* Without scripts the meta refresh still forwards (dropping the query);
+         inside <noscript> it cannot race forward.js in browsers that run it. */}
+    {redirectTarget !== undefined && <noscript><meta http-equiv="refresh" content={`0;url=${redirectTarget}`} /></noscript>}
     {(redirectTarget !== undefined || notFound) && <meta name="robots" content="noindex" />}
     <title>{title}</title>
     <meta name="description" content={description} />

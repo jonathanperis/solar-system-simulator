@@ -91,13 +91,13 @@ const indexMegabytes = Math.round(manifest.shards.reduce((bytes, shard) => bytes
 <style>
   .small-atlas { margin: 2rem 0; }
   .atlas-heading h1 { max-width: 19ch; }
-  .map-disclosure, .experiment-basket { margin: 1rem 0; border: 1px solid var(--rule); padding: .75rem; background: var(--paper-light); }
+  .map-disclosure, .experiment-basket { margin: 1rem 0; border: 1px solid var(--rule); padding: .75rem; background: var(--paper-2); }
   summary { min-height: 44px; padding: .5rem; cursor: pointer; font-weight: 600; }
-  .chart-panel, .selection-panel, .search-panel { padding: 1.25rem; border: 1px solid var(--rule); background: var(--paper-light); min-width: 0; }
-  .chart-panel { background: var(--navy); color: var(--paper); }
+  .chart-panel, .selection-panel, .search-panel { padding: 1.25rem; border: 1px solid var(--rule); background: var(--paper-2); min-width: 0; }
+  .chart-panel { background: var(--space); color: var(--paper); }
   .selection-panel { width: min(40rem, calc(100% - 2rem)); max-height: 85dvh; overflow-y: auto; color: var(--ink); }
   .selection-panel::backdrop { background: rgb(10 24 44 / .55); }
-  .selection-panel header { display: flex; justify-content: space-between; align-items: center; gap: .5rem; position: sticky; top: 0; z-index: 1; padding: .5rem 0; background: var(--paper-light); }
+  .selection-panel header { display: flex; justify-content: space-between; align-items: center; gap: .5rem; position: sticky; top: 0; z-index: 1; padding: .5rem 0; background: var(--paper-2); }
   .selection-panel h2 { font-size: 1.8rem; margin: 0; }
   .chart-panel h2, .chart-panel p { color: inherit; }
   .chart-panel p, .selection-panel p { font-size: .95rem; }
@@ -105,18 +105,18 @@ const indexMegabytes = Math.round(manifest.shards.reduce((bytes, shard) => bytes
   dl { font-family: monospace; font-size: .8rem; overflow-wrap: anywhere; }
   form { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
   label { display: flex; flex-direction: column; gap: .25rem; font-size: 1rem; }
-  input, select, button { min-height: 44px; padding: .5rem .65rem; border: 1px solid var(--ink-soft); color: var(--ink); background: var(--paper-light); font: inherit; font-size: .9rem; max-width: 100%; }
-  .small-atlas :global(button) { min-height:44px; padding:.5rem .65rem; border:1px solid var(--ink-soft); background:var(--paper-light); color:var(--ink); cursor:pointer; }
-  .small-atlas :global(button:focus-visible) { outline:3px solid var(--brass); outline-offset:3px; }
+  input, select, button { min-height: 44px; padding: .5rem .65rem; border: 1px solid var(--ink-2); color: var(--ink); background: var(--paper-2); font: inherit; font-size: .9rem; max-width: 100%; }
+  .small-atlas :global(button) { min-height:44px; padding:.5rem .65rem; border:1px solid var(--ink-2); background:var(--paper-2); color:var(--ink); cursor:pointer; }
+  .small-atlas :global(button:focus-visible) { outline:3px solid var(--amber-ink); outline-offset:3px; }
   button:disabled { opacity: .5; cursor: default; }
-  :is(input,select,button):focus-visible { outline: 3px solid var(--brass); outline-offset: 3px; }
+  :is(input,select,button):focus-visible { outline: 3px solid var(--amber-ink); outline-offset: 3px; }
   .result-wrap { overflow-x: auto; } table { width: 100%; } th, .result-wrap :global(td) { text-align: left; padding: .55rem; }
-  .scan-consent { margin: .75rem 0; padding: .75rem; border: 1px solid var(--brass); background: var(--paper); }
+  .scan-consent { margin: .75rem 0; padding: .75rem; border: 1px solid var(--amber-ink); background: var(--paper); }
   .scan-consent p { margin-top: 0; }
   .scan-consent button + button { margin-left: .5rem; }
   .scan-progress { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; margin: .75rem 0; }
   .scan-progress[hidden] { display: none; }
-  .scan-progress progress { flex: 1 1 10rem; height: .75rem; accent-color: var(--brass); }
+  .scan-progress progress { flex: 1 1 10rem; height: .75rem; accent-color: var(--amber-ink); }
   .result-pages { display: flex; justify-content: space-between; align-items: center; margin: 1rem 0; }
    @media (max-width: 760px) {
      form label { width: 100%; }
