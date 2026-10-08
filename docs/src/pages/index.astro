@@ -33,10 +33,15 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
       <p id="canvas-keys" class="sr-only">With the view focused: Space pauses, N steps while paused, R restarts, V switches scale, F frames the system, B frames the body, A toggles rotation, G grid, H labels, C cycles bodies, brackets change speed. Tab leaves the view.</p>
     </div>
 
+    {/* The sky clock leads the view: the date is the one reading that always
+         matters, so it sits on the canvas rather than among the controls. */}
     <div class="hud">
-      <p data-runtime-status role="status" aria-live="polite">Downloading simulator…</p>
-      <p id="runtime-control-state" data-runtime-controls role="status" aria-live="polite">Waiting for simulation state.</p>
-      <p data-active-scene>—</p>
+      <div class="clock" role="group" aria-label="Simulation clock">
+        <output class="clock-time" data-runtime-elapsed>—</output>
+        <p class="clock-note" data-clock-note></p>
+      </div>
+      <p class="hud-line"><span data-active-scene>—</span> · <span data-runtime-status role="status" aria-live="polite">Downloading simulator…</span></p>
+      <p id="runtime-control-state" class="sr-only" data-runtime-controls role="status" aria-live="polite">Waiting for simulation state.</p>
       <p data-scene-status role="status"></p>
     </div>
 
@@ -86,7 +91,6 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
           <option value="3">10 d/s</option>
           <option value="4">15 d/s</option>
         </select></label>
-        <p class="date"><span>Date</span><output data-runtime-elapsed>—</output></p>
         <label>Scene <select data-runtime-scene>
           {sceneChoices.map(({ index, label }) => <option value={index}>{label}</option>)}
           <option value="" disabled>Lesson or experiment</option>

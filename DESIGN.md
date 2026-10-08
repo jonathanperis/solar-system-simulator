@@ -30,9 +30,12 @@ sentence about accuracy. Numbers carry units.
 
 - The canvas fills the viewport under a thin top bar: wordmark (links home),
   Learn, Catalog, About, Source.
-- One bottom dock, left to right: play/pause, speed (1 h, 1 d, 5 d, 10 d,
-  15 d per second), scene date, scene picker (Solar system, Jupiter, Saturn,
-  Uranus, Neptune, Pluto, Didymos), body search.
+- A sky clock leads the top-left of the canvas: the scene date and time in
+  large mono numerals (or the elapsed time in a lesson), an amber note of how
+  far the run has come from 2026-06-09, then the scene and the running state.
+- One bottom dock, left to right: play/pause, restart, speed (1 h, 1 d, 5 d,
+  10 d, 15 d per second), scene picker (Solar system, Jupiter, Saturn, Uranus,
+  Neptune, Pluto, Didymos), then Find (body search), View, Keys and Data.
 - Selecting a body opens a compact inspector on the right (bottom sheet on
   phones): name, parent, distance, speed, period, mass, radius, data quality,
   and two actions (Frame system, Frame body).

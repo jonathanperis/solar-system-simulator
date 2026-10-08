@@ -38,7 +38,7 @@ test('every page runs under its CSP with self-hosted fonts and no third-party re
     return ['600 1rem "Cormorant Garamond"', '700 1rem "JetBrains Mono"'].map(font => document.fonts.check(font));
   })).toEqual([true, true]);
   await page.goto(base);
-  await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   await page.goto(`${base}learn/compare/`);
   await expect(page.locator('[data-lab-status]')).toContainText('Comparison lab ready');
   await page.getByRole('button', { name: 'Start comparison', exact: true }).click();
@@ -62,7 +62,7 @@ test('every page runs under its CSP with self-hosted fonts and no third-party re
 
 test('oversized or malformed session experiments are rejected visibly before reaching C', async ({ page }) => {
   await page.goto(base);
-  await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   for (const [stored, message] of [
     [JSON.stringify({ text: `SOLAR_EXPERIMENT_V1 2461200.5\n${'x'.repeat(20000)}`, snapshot: 'abc', count: 1 }), 'too large'],
     ['{"text":', 'could not be read']
@@ -104,7 +104,7 @@ test('the historic runtime URL is an Astro page that forwards to the simulator',
   const violations = await watchPolicy(page);
   await page.goto(`${base}wasm/solar-system-simulator.html`);
   await expect(page).toHaveURL(new RegExp(`${base}$`));
-  await expect(page.locator('[data-runtime-status]')).toHaveText('Running physics simulation');
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   expect(violations).toEqual([]);
 });
 
