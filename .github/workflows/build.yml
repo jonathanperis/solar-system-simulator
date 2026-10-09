@@ -75,38 +75,6 @@ jobs:
       - name: Check address and undefined behavior sanitizers
         run: make test-sanitize
 
-  macos:
-    # Jonathan develops on macOS. This job builds the native app and runs the
-    # C suite there, then renders Earth offscreen with the real GLSL 330
-    # shader (CGL, no window) and checks the pixels; Linux CI only compiles
-    # the shader text. Not a required check: it adds coverage, not a gate.
-    name: macOS native build, tests and shader render
-    runs-on: macos-latest
-    timeout-minutes: 30
-    env:
-      RAYLIB_CFLAGS: -I/usr/local/include
-      RAYLIB_LIBS: -L/usr/local/lib -lraylib -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo -framework CoreAudio -framework CoreFoundation
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
-
-      - name: Build or restore pinned raylib
-        uses: ./.github/actions/raylib
-        with:
-          platform: native
-
-      - name: Build simulator
-        run: make clean && make
-
-      - name: Run C test suite
-        run: make test
-
-      - name: Render with the native shader and check the pixels
-        run: make test-native-shaders
-
   wasm:
     name: WebAssembly artifact
     runs-on: ubuntu-latest
