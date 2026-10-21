@@ -96,6 +96,8 @@ Vector3 renderer_relative_vector(Vec3d position, Vec3d origin);
 /* Screen-space markers after the 3D pass (SPEC A108): rings around dot-sized
  * planets and corner brackets on the selected body. Presentation only. */
 void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Camera3D camera, size_t selected);
+/* The body under a screen point (click to select, SPEC A112), or -1. */
+int renderer_pick_body(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Camera3D camera, Vector2 pointer);
 void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d origin,
     const RenderResources *resources, Camera3D camera, size_t selected);
 void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode,

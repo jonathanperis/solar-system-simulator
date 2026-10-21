@@ -710,6 +710,27 @@ void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3
     }
 }
 
+int renderer_pick_body(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Camera3D camera, Vector2 pointer)
+{
+    static RenderPickCandidate candidates[SOLAR_SYSTEM_BODY_CAPACITY];
+    Vector3 forward = unit_vector((Vector3){camera.target.x - camera.position.x, camera.target.y - camera.position.y,
+        camera.target.z - camera.position.z}, (Vector3){0, 0, -1});
+    double viewport_height = (double)GetScreenHeight();
+    size_t count = system->body_count < SOLAR_SYSTEM_BODY_CAPACITY ? system->body_count : SOLAR_SYSTEM_BODY_CAPACITY;
+    for (size_t i = 0; i < count; ++i) {
+        const Body *body = &system->bodies[i];
+        Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
+        Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
+        bool in_front = offset.x * forward.x + offset.y * forward.y + offset.z * forward.z > 0;
+        Vector2 at = in_front ? GetWorldToScreen(position, camera) : (Vector2){0, 0};
+        double distance = sqrt(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z);
+        float radius = body->radius_quality == PHYSICAL_UNKNOWN ? 0
+            : (float)render_projected_radius_pixels(renderer_body_radius(body, mode), distance, camera.fovy, viewport_height);
+        candidates[i] = (RenderPickCandidate){at.x, at.y, radius, body->kind, in_front};
+    }
+    return render_pick_body(candidates, count, pointer.x, pointer.y);
+}
+
 /* Everything the drawing phases share in one frame, computed once: camera
  * geometry, the light source, and each body's camera-relative position,
  * drawn radius and distance. */

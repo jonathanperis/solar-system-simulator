@@ -69,3 +69,32 @@ test('orbit guides start on with parent-relative trails and toggle through C', a
   await page.getByRole('button', { name: 'View', exact: true }).click();
   await expect(orbits).toHaveText('Orbits: On');
 });
+
+// SPEC A112: reduced motion stops auto-rotation (and fly-to animation), and
+// dragging the canvas turns the view.
+test('reduced motion starts still, and a drag turns the paused view', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(base);
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await expect(page.locator('[data-runtime-rotate]')).not.toBeChecked();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Paused');
+  const canvas = page.locator('canvas').first();
+  await expect(canvas).toHaveAttribute('data-textures', /^(\d+)\/\1$/, { timeout: 45000 }); // no late texture changes the frame
+  await page.waitForTimeout(300);
+  const still = await canvas.screenshot();
+  await page.waitForTimeout(300);
+  expect((await canvas.screenshot()).equals(still)).toBe(true); // nothing moves on its own
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  for (let step = 1; step <= 10; step++) {
+    await page.mouse.move(box.x + box.width / 2 + step * 12, box.y + box.height / 2 + step * 4);
+    await page.waitForTimeout(20);
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(200);
+  expect((await canvas.screenshot()).equals(still)).toBe(false);
+});
