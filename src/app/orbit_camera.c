@@ -149,6 +149,6 @@ void orbit_camera_flight_blend(const OrbitCameraFlight *flight, float progress, 
     out->pitch_radians = flight->from.pitch_radians + (to->pitch_radians - flight->from.pitch_radians) * e;
     double d0 = flight->from.distance > 1e-30f ? flight->from.distance : 1e-30, d1 = to->distance > 1e-30f ? to->distance : 1e-30;
     double hop = 0.6 * log(1.0 + sqrt(travel) / (d0 > d1 ? d0 : d1));
-    double log_distance = log(d0) + (log(d1) - log(d0)) * e + hop * sin(pi * e);
+    double log_distance = log(d0) + (log(d1) - log(d0)) * e + hop * sin(3.14159265358979323846 * (double)e);
     out->distance = e >= 1.0f ? to->distance : (float)exp(log_distance);
 }
