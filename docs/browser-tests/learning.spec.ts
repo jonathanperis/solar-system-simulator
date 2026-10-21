@@ -110,7 +110,7 @@ test('3D controls export the same SI snapshot across render scales', async ({ pa
   await timestep.fill('0.1');
   await page.getByRole('button', { name: 'Load', exact: true }).click();
   await page.getByRole('button', { name: 'Contact: Elastic bounce (restart)', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Speed', exact: true }).selectOption('4');
+  await page.getByRole('slider', { name: /^Speed/ }).fill('4');
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
   const bodies = page.getByRole('combobox', { name: 'Body', exact: true, includeHidden: true }).locator('option');
   await expect(bodies).toHaveCount(1);

@@ -108,6 +108,11 @@ int renderer_pick_target(Vector2 pointer);
  * over the canvas; off-screen markers slide past them (A119). */
 #define RENDER_MAX_BLOCKERS 12
 void renderer_set_blockers(const float *rects, int count);
+/* Keyboard hopping (SPEC A120): the sibling after/before `index` (bodies of
+ * the same parent with a known radius, wrapping), its parent, or its first
+ * child; -1 when there is none. A parentless body's siblings are its children. */
+typedef enum RenderNavigation { RENDER_NAV_NEXT, RENDER_NAV_PREVIOUS, RENDER_NAV_UP, RENDER_NAV_DOWN } RenderNavigation;
+int renderer_navigation_neighbor(const SolarSystem *system, size_t index, RenderNavigation direction);
 /* The body under a screen point (click to select, SPEC A112), or -1. */
 int renderer_pick_body(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Camera3D camera, Vector2 pointer);
 /* Body names. With `all` false (labels hidden) only the hovered body is

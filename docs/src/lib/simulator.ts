@@ -39,7 +39,9 @@ interface RuntimeControls {
   step: HTMLButtonElement;
   rotate: HTMLInputElement;
   body: HTMLSelectElement;
-  speed: HTMLSelectElement;
+  /* Speed slider over C's five presets (A120). */
+  speed: HTMLInputElement;
+  speedLabel?: Readout;
   view: HTMLButtonElement;
   search: HTMLInputElement;
   group: HTMLSelectElement;
@@ -54,6 +56,10 @@ interface RuntimeControls {
   labels: HTMLButtonElement;
   orbits: HTMLButtonElement;
   contact: HTMLButtonElement;
+  follow?: HTMLButtonElement;
+  tour?: HTMLButtonElement;
+  /* Called with the selected body's name whenever C's selection changes. */
+  onSelection?: (name: string) => void;
 }
 
 interface LabState {
@@ -70,6 +76,9 @@ interface LabState {
   labels?: boolean;
   /* Osculating orbit guides (presentation only, SPEC A107). */
   orbits?: boolean;
+  /* Follow camera and tour (SPEC A120). */
+  follow?: boolean;
+  touring?: boolean;
 }
 
 export const lessonNames = lessonOptions.map(([, label]) => label);
@@ -147,7 +156,8 @@ interface RuntimeState {
 
 // Matches SolarCommand in src/main.c. All actions execute in the C runtime.
 export const runtimeCommands = { pause: 0, step: 1, reset: 2, speed: 3, select: 4, view: 5, zoom: 6, rotate: 7, frame: 8, frameBody: 9,
-  trails: 10, vectors: 11, background: 12, contact: 13, grid: 14, labels: 15, orbits: 16 } as const;
+  trails: 10, vectors: 11, background: 12, contact: 13, grid: 14, labels: 15, orbits: 16,
+  follow: 17, tour: 18 } as const;
 
 interface RuntimeBody { index: number; name: string; group: string }
 
@@ -199,7 +209,17 @@ function setText(element: Readout, text: string): void {
  * other keys must reach native controls, while C gates shortcuts by focus. */
 export function routeSimulatorKeyboard(event: Pick<KeyboardEvent, 'key' | 'stopImmediatePropagation' | 'preventDefault'>, canvasFocused: boolean): void {
   if (event.key === 'Tab' || event.key === 'Backspace') event.stopImmediatePropagation();
-  else if (canvasFocused && event.key === ' ') event.preventDefault();
+  // Space pauses and the arrows hop between bodies (A120): neither may scroll the page.
+  else if (canvasFocused && (event.key === ' ' || event.key.startsWith('Arrow'))) event.preventDefault();
+}
+
+/** Compact and spoken labels of C's speed presets (A120). */
+export function speedLabels(shortTimescale: boolean): { short: string[]; spoken: string[] } {
+  return shortTimescale
+    ? { short: ['1 s/s', '5 s/s', '10 s/s', '25 s/s', '50 s/s'],
+      spoken: ['1 second / second', '5 seconds / second', '10 seconds / second', '25 seconds / second', '50 seconds / second'] }
+    : { short: ['1 h/s', '1 d/s', '5 d/s', '10 d/s', '15 d/s'],
+      spoken: ['1 hour / second', '1 day / second', '5 days / second', '10 days / second', '15 days / second'] };
 }
 
 export function moveSelectByKey(select: Pick<HTMLSelectElement, 'selectedIndex' | 'options' | 'dispatchEvent'>, key: string): boolean {
@@ -340,6 +360,10 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       controls.body.add(new Option(`${name} — ${group}`, String(index)));
     },
     filterBodies,
+    /** Runtime index of a body in the active scene by name, or -1. */
+    bodyIndex(name: string): number {
+      return bodies.find(body => body.name === name)?.index ?? -1;
+    },
     locateFile(path: string) {
       const url = new URL(path, artifactUrl);
       url.search = artifactUrl.search;
@@ -411,6 +435,14 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       setText(controls.labels, `Labels: ${state.labels === false ? 'Off' : 'On'}`);
       controls.labels.setAttribute('aria-pressed', String(state.labels !== false));
       setText(controls.orbits, `Orbits: ${state.orbits === false ? 'Off' : 'On'}`);
+      if (controls.follow) {
+        setText(controls.follow, `Follow: ${state.follow ? 'On' : 'Off'}`);
+        controls.follow.setAttribute('aria-pressed', String(Boolean(state.follow)));
+      }
+      if (controls.tour) {
+        setText(controls.tour, state.touring ? 'Stop tour' : 'Tour');
+        controls.tour.setAttribute('aria-pressed', String(Boolean(state.touring)));
+      }
       controls.orbits.setAttribute('aria-pressed', String(state.orbits !== false));
       controls.contact.hidden = state.lesson !== collisionLesson;
       setText(controls.contact, `Contact: ${state.contactMode === 2 ? 'Inelastic merge' : 'Elastic bounce'} (restart)`);
@@ -429,9 +461,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       if (failed) return;
       if (shortTimescale !== state.shortTimescale) {
         shortTimescale = state.shortTimescale;
-        const labels = shortTimescale ? ['1 second / second', '5 seconds / second', '10 seconds / second', '25 seconds / second', '50 seconds / second']
-          : ['1 hour / second', '1 day / second', '5 days / second', '10 days / second', '15 days / second'];
-        [...controls.speed.options].forEach((option, index) => { option.textContent = labels[index]; });
+        reportedSpeed = -1; // relabel the slider below
       }
       hasParent = state.hasParent;
       controls.panels.forEach(panel => { panel.disabled = false; });
@@ -444,10 +474,14 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       if (reportedBody !== state.selected) {
         reportedBody = state.selected;
         filterBodies();
+        controls.onSelection?.(state.body);
       }
       if (reportedSpeed !== state.speedPreset) {
         controls.speed.value = String(state.speedPreset);
         reportedSpeed = state.speedPreset;
+        const labels = speedLabels(shortTimescale);
+        if (controls.speedLabel) setText(controls.speedLabel, labels.short[state.speedPreset] ?? '');
+        controls.speed.setAttribute?.('aria-valuetext', labels.spoken[state.speedPreset] ?? '');
       }
       setText(readouts.status, state.trailsFailed ? 'Trail recording paused: memory unavailable.'
         : state.paused ? 'Paused' : 'Running');
@@ -512,7 +546,10 @@ export function mountSimulator(root: HTMLElement): void {
     step: root.querySelector<HTMLButtonElement>('[data-command="step"]')!,
     rotate: root.querySelector<HTMLInputElement>('[data-runtime-rotate]')!,
     body: root.querySelector<HTMLSelectElement>('[data-runtime-body]')!,
-    speed: root.querySelector<HTMLSelectElement>('[data-runtime-speed]')!,
+    speed: root.querySelector<HTMLInputElement>('[data-runtime-speed]')!,
+    speedLabel: root.querySelector<HTMLElement>('[data-speed-label]') ?? undefined,
+    follow: root.querySelector<HTMLButtonElement>('[data-command="follow"]') ?? undefined,
+    tour: root.querySelector<HTMLButtonElement>('[data-command="tour"]') ?? undefined,
     view: root.querySelector<HTMLButtonElement>('[data-command="view"]')!,
     search: root.querySelector<HTMLInputElement>('[data-runtime-search]')!,
     group: root.querySelector<HTMLSelectElement>('[data-runtime-group]')!,
@@ -567,11 +604,40 @@ export function mountSimulator(root: HTMLElement): void {
   const send = (command: keyof typeof runtimeCommands, value = 0): void => {
     if (!controls.panels[0].disabled) runtime._solar_web_command!(runtimeCommands[command], value);
   };
+  // A120: the address follows the selection (?body=slug), so a copied link
+  // shares the view and browser Back retraces the bodies visited. Lessons
+  // and experiments keep their own addresses.
+  const addressed = (): boolean => !new URLSearchParams(location.search).has('lesson')
+    && !new URLSearchParams(location.search).has('experiment');
+  let firstSelection = true, fromHistory = false;
+  controls.onSelection = name => {
+    const slug = implementedBodies.find(body => body.name === name)?.slug;
+    if (!addressed() || !slug) return;
+    const url = new URL(location.href);
+    const unaddressedStart = firstSelection && !url.searchParams.has('body');
+    if (!unaddressedStart) url.searchParams.set('body', slug);
+    const entry = { solarBody: slug };
+    if (firstSelection || fromHistory || url.href === location.href) history.replaceState(entry, '', url);
+    else history.pushState(entry, '', url);
+    firstSelection = false;
+    fromHistory = false;
+  };
+  window.addEventListener('popstate', () => {
+    if (!addressed()) return;
+    const slug = new URLSearchParams(location.search).get('body') ?? 'sun';
+    const body = implementedBodies.find(item => item.slug === slug);
+    const index = body ? runtime.bodyIndex(body.name) : -1;
+    // A body of another scene: reload, and the deep link opens that scene.
+    if (index < 0) { location.reload(); return; }
+    fromHistory = true;
+    send('select', index);
+    send(index === 0 ? 'frame' : 'frameBody');
+  });
   root.querySelectorAll<HTMLButtonElement>('[data-command]').forEach(button => {
     button.addEventListener('click', () => send(button.dataset.command as keyof typeof runtimeCommands, Number(button.dataset.value ?? 0)));
   });
   controls.body.addEventListener('change', () => send('select', Number(controls.body.value)));
-  controls.speed.addEventListener('change', () => send('speed', Number(controls.speed.value)));
+  controls.speed.addEventListener('input', () => send('speed', Number(controls.speed.value)));
   controls.search.addEventListener('input', runtime.filterBodies);
   controls.group.addEventListener('change', runtime.filterBodies);
   root.querySelector('[data-clear-filters]')!.addEventListener('click', () => {
@@ -596,7 +662,7 @@ export function mountSimulator(root: HTMLElement): void {
     sceneStatus.textContent = accepted ? `${controls.scene.selectedOptions[0].text} loaded from its initial state.`
       : 'The scene could not be loaded.';
   });
-  for (const select of [controls.body, controls.speed, controls.group, controls.scene, controls.lesson, controls.method]) {
+  for (const select of [controls.body, controls.group, controls.scene, controls.lesson, controls.method]) {
     select.addEventListener('keydown', event => {
       if (moveSelectByKey(select, event.key)) {
         event.preventDefault();
@@ -710,6 +776,20 @@ export function mountSimulator(root: HTMLElement): void {
   window.Module = runtime;
   const routeKeyboard = (event: KeyboardEvent): void => routeSimulatorKeyboard(event, document.activeElement === canvas);
   window.addEventListener('keydown', routeKeyboard, true);
+  // A120: "/" opens body search from the view; Backspace on the view goes
+  // back to the previously viewed body (browser history, below).
+  window.addEventListener('keydown', event => {
+    if (event.type !== 'keydown' || document.activeElement !== canvas) return;
+    if (event.key === '/') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      root.querySelector<HTMLDialogElement>('#find-panel')!.showModal();
+      controls.search.focus();
+    } else if (event.key === 'Backspace' && history.state?.solarBody) {
+      event.preventDefault();
+      history.back();
+    }
+  }, true);
   window.addEventListener('keypress', routeKeyboard, true);
   // raylib's web backend needs WebGL. Probe a detached canvas so the runtime's
   // own canvas keeps the context attributes Emscripten requests.
