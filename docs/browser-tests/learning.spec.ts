@@ -91,7 +91,7 @@ test('3D controls export the same SI snapshot across render scales', async ({ pa
   const before = await downloadText(await first);
   await page.getByRole('button', { name: 'Close data' }).click();
   await openSheet('View');
-  await page.getByRole('button', { name: 'View: Illustrative', exact: true }).click();
+  await page.getByRole('button', { name: 'Real', exact: true }).click();
   await page.getByRole('button', { name: 'Close view' }).click();
   await openSheet('Data');
   const second = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download CSV' }).click();
