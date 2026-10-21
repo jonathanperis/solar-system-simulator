@@ -41,13 +41,16 @@ typedef struct RenderResources {
 } RenderResources;
 
 /* Per-frame view: the raylib camera (in origin-relative render units), the
- * spin-model clock in TDB days since J2000, the far clip distance, and whether
- * the reference grid is shown. */
+ * spin-model clock in TDB days since J2000, the far clip distance, whether
+ * the reference grid and orbit guides are shown, and the selected body (its
+ * guide is drawn brighter). */
 typedef struct RenderView {
     Camera3D camera;
     double orientation_days;
     float far_plane;
     bool show_grid;
+    bool show_orbits;
+    size_t selected;
 } RenderView;
 
 bool renderer_resources_init(RenderResources *resources);
@@ -89,6 +92,9 @@ float renderer_body_visual_radius(const Body *body, RenderScaleMode mode);
 Vector3 renderer_relative_vector(Vec3d position, Vec3d origin);
 /* Name labels in screen space (call after EndMode3D): the Sun, planets, the
  * selected body, and moons of a zoomed-in family, decluttered by priority. */
+/* Screen-space markers after the 3D pass (SPEC A108): rings around dot-sized
+ * planets and corner brackets on the selected body. Presentation only. */
+void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Camera3D camera, size_t selected);
 void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d origin,
     const RenderResources *resources, Camera3D camera, size_t selected);
 void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode,

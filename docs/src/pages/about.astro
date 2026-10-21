@@ -18,7 +18,8 @@ const sources = [
   ['Small bodies', 'JPL Small-Body Database snapshot', 'https://ssd-api.jpl.nasa.gov/sbdb_query.api'],
   ['Didymos and Dimorphos', 'Horizons DART s547 reconstruction', 'https://ssd.jpl.nasa.gov/horizons/'],
   ['Patroclus and Menoetius', 'Horizons asteroid-satellite solution JPL#82', 'https://ssd.jpl.nasa.gov/horizons/'],
-  ['Textures', 'Solar System Scope, CC BY 4.0', 'https://www.solarsystemscope.com/textures/']
+  ['Textures', 'Solar System Scope, CC BY 4.0', 'https://www.solarsystemscope.com/textures/'],
+  ['Moon maps', 'USGS Astrogeology global mosaics, public domain', 'https://astrogeology.usgs.gov/search?pmi-target=&facets=Product+Type%3A%3AMosaic']
 ];
 ---
 <BaseLayout title="About" description="What the simulator models and leaves out, where its data comes from, how the code is organized, and how to build and test it.">
@@ -62,9 +63,10 @@ const sources = [
 
     <h2 id="rendering">Rendering</h2>
     <p>Illustrative scale enlarges bodies and spreads close moons so they can be seen; real scale uses physical sizes and distances. Lighting, textures, spin from the IAU poles, Saturn's rings and trails are presentation only: they never feed the physics, the inspector or the CSV export.</p>
+    <p>Orbit guides are each body's osculating two-body ellipse about its parent, recomputed every frame from the current position and velocity. The trail is the measured path; the guide is where the body would go if only its parent pulled on it, so the two separate slowly under perturbations. Moon maps are USGS mosaics; maps without colour are tinted with an approximate hue.</p>
 
     <h2 id="controls">Controls</h2>
-    <p>The simulator's dock has play, speed, date and scene; Find, View, Keys and Data open small panels. With the view focused: <kbd>Space</kbd> pause, <kbd>N</kbd> step, <kbd>R</kbd> restart, <kbd>[</kbd> <kbd>]</kbd> speed, <kbd>F</kbd> <kbd>B</kbd> frame, <kbd>V</kbd> scale, <kbd>G</kbd> grid, <kbd>H</kbd> labels. Natively, <kbd>K</kbd> cycles scenes and <kbd>L</kbd> lessons.</p>
+    <p>The simulator's dock has play, speed, date and scene; Find, View, Keys and Data open small panels. With the view focused: <kbd>Space</kbd> pause, <kbd>N</kbd> step, <kbd>R</kbd> restart, <kbd>[</kbd> <kbd>]</kbd> speed, <kbd>F</kbd> <kbd>B</kbd> frame, <kbd>V</kbd> scale, <kbd>O</kbd> orbits, <kbd>T</kbd> trails, <kbd>G</kbd> grid, <kbd>H</kbd> labels. Natively, <kbd>K</kbd> cycles scenes and <kbd>L</kbd> lessons.</p>
 
     <h2 id="build">Build and tests</h2>
     <div class="table-wrap">
@@ -86,6 +88,6 @@ const sources = [
     <p>Every moon system with a JPL ephemeris now has a scene, most recently the Patroclus–Menoetius trojan binary. Moons of other asteroids have only literature orbits, so they wait for an ephemeris. Open work is tracked in <a href={`${repoUrl}/blob/main/SPEC.md`}>SPEC.md</a>.</p>
 
     <h2 id="credits">Credits</h2>
-    <p>Made by {authorName}. Code under the MIT licence; data are transformed extracts of NASA/JPL products; textures by Solar System Scope (CC BY 4.0); fonts Cormorant Garamond and JetBrains Mono (OFL). Usage analytics run only on the deployed site, and only when configured. <a href={repoUrl}>Source on GitHub</a>.</p>
+    <p>Made by {authorName}. Code under the MIT licence; data are transformed extracts of NASA/JPL products; textures by Solar System Scope (CC BY 4.0); moon maps from USGS Astrogeology mosaics of NASA, ESA and DLR data (public domain); fonts Cormorant Garamond and JetBrains Mono (OFL). Usage analytics run only on the deployed site, and only when configured. <a href={repoUrl}>Source on GitHub</a>.</p>
   </div>
 </BaseLayout>

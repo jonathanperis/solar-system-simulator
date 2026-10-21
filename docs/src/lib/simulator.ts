@@ -52,6 +52,7 @@ interface RuntimeControls {
   vectors: HTMLButtonElement;
   grid: HTMLButtonElement;
   labels: HTMLButtonElement;
+  orbits: HTMLButtonElement;
   contact: HTMLButtonElement;
 }
 
@@ -67,6 +68,8 @@ interface LabState {
   grid?: boolean;
   /* In-canvas body names (presentation only). */
   labels?: boolean;
+  /* Osculating orbit guides (presentation only, SPEC A107). */
+  orbits?: boolean;
 }
 
 export const lessonNames = lessonOptions.map(([, label]) => label);
@@ -109,7 +112,7 @@ interface RuntimeState {
 
 // Matches SolarCommand in src/main.c. All actions execute in the C runtime.
 export const runtimeCommands = { pause: 0, step: 1, reset: 2, speed: 3, select: 4, view: 5, zoom: 6, rotate: 7, frame: 8, frameBody: 9,
-  trails: 10, vectors: 11, background: 12, contact: 13, grid: 14, labels: 15 } as const;
+  trails: 10, vectors: 11, background: 12, contact: 13, grid: 14, labels: 15, orbits: 16 } as const;
 
 interface RuntimeBody { index: number; name: string; group: string }
 
@@ -372,6 +375,8 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       controls.grid.setAttribute('aria-pressed', String(state.grid !== false));
       setText(controls.labels, `Labels: ${state.labels === false ? 'Off' : 'On'}`);
       controls.labels.setAttribute('aria-pressed', String(state.labels !== false));
+      setText(controls.orbits, `Orbits: ${state.orbits === false ? 'Off' : 'On'}`);
+      controls.orbits.setAttribute('aria-pressed', String(state.orbits !== false));
       controls.contact.hidden = state.lesson !== collisionLesson;
       setText(controls.contact, `Contact: ${state.contactMode === 2 ? 'Inelastic merge' : 'Elastic bounce'} (restart)`);
       setText(readouts.acceleration, hasParent ? `${state.acceleration.toExponential(6)} m/s²` : 'N/A — no parent');
@@ -485,6 +490,7 @@ export function mountSimulator(root: HTMLElement): void {
     vectors: root.querySelector<HTMLButtonElement>('[data-command="vectors"]')!,
     grid: root.querySelector<HTMLButtonElement>('[data-command="grid"]')!,
     labels: root.querySelector<HTMLButtonElement>('[data-command="labels"]')!,
+    orbits: root.querySelector<HTMLButtonElement>('[data-command="orbits"]')!,
     contact: root.querySelector<HTMLButtonElement>('[data-command="contact"]')!
   };
   const runtime = createSimulatorModule(canvas, {

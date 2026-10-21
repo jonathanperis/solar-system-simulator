@@ -72,7 +72,6 @@ await sim.setViewportSize({ width: 640, height: 630 + Math.round(header) });
 await sim.addStyleTag({ content: '.hud,.dock,.inspector,.lesson-strip{display:none!important}' });
 const click = selector => sim.evaluate(selector => document.querySelector(selector).click(), selector);
 if (await sim.locator('[data-runtime-rotate]').isChecked()) await click('[data-runtime-rotate]');
-await click('[data-command="trails"]');
 await click('[data-command="reset"]');
 // Capture exactly four simulated days (345,600 s = 23,040 ticks of 15 s): run
 // to a quarter day short, pause, then single-step the remaining whole ticks.
