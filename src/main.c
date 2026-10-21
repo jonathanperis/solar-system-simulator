@@ -131,6 +131,9 @@ typedef struct SolarApp {
     float pinch_spread;
     float interaction_hold_seconds;
     float pixel_scale; /* backing pixels per CSS pixel (A114) */
+#if defined(PLATFORM_WEB)
+    RenderResolutionGovernor governor; /* steps HiDPI down on slow GPUs (A116) */
+#endif
     RenderResources render;
     char feedback[160];
 #if defined(PLATFORM_WEB)
@@ -582,7 +585,9 @@ static void solar_app_update_draw(void *user_data)
      * responsive layout changes instead of stretching the old framebuffer.
      * The backing store has pixel_scale pixels per CSS pixel; the canvas keeps
      * its CSS size (Emscripten clears any inline size when it resizes). */
-    float ratio = (float)solar_web_pixel_ratio();
+    /* The governor lowers the scale if this device cannot keep up (A116). */
+    float governed = render_resolution_governor_update(&state->governor, GetFrameTime());
+    float ratio = fminf((float)solar_web_pixel_ratio(), governed);
     int width = (int)lroundf((float)solar_web_initial_canvas_width() * ratio);
     int height = (int)lroundf((float)solar_web_initial_canvas_height() * ratio);
     if (ratio != state->pixel_scale) {
@@ -861,6 +866,9 @@ int main(int argc, char **argv)
     app.session = simulation_session_create();
     app.auto_rotate = true;
     app.pixel_scale = 1.0f;
+#if defined(PLATFORM_WEB)
+    render_resolution_governor_init(&app.governor, 2.0f);
+#endif
 #if defined(PLATFORM_WEB)
     /* prefers-reduced-motion (DESIGN.md): no auto-rotation, and framing cuts
      * instead of flying. The page unticks its Rotate box to match. */

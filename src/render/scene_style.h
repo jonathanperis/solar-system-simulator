@@ -224,6 +224,27 @@ typedef struct RenderPickCandidate {
 #define RENDER_PICK_SLOP_PIXELS 14.0f
 int render_pick_body(const RenderPickCandidate *candidates, size_t count, float x, float y);
 
+/* Resolution governor (SPEC A116). The browser draws at up to 2 backing
+ * pixels per CSS pixel; a phone GPU that cannot fill that many pixels would
+ * stutter. After a warm-up of RENDER_GOVERNOR_WARMUP_SECONDS, frames slower
+ * than RENDER_GOVERNOR_SLOW_FRAME_SECONDS add their time to a debt that fast
+ * frames pay back at twice the rate; RENDER_GOVERNOR_DEBT_SECONDS of debt
+ * lowers the scale by 0.5 (never below 1). It never climbs back, so it cannot
+ * oscillate. Frames over RENDER_GOVERNOR_STALL_SECONDS are stalls (hidden
+ * tab, debugger) and are ignored: the app's own stall bound
+ * (SOLAR_APP_STALL_FRAME_SECONDS), so a device running at 2 fps still counts.
+ * A CPU-bound run (Saturn family at top speed) can also trip it: sharpness is
+ * traded for frame rate, never simulation time. */
+#define RENDER_GOVERNOR_WARMUP_SECONDS 3.0f
+#define RENDER_GOVERNOR_SLOW_FRAME_SECONDS (1.0f / 48.0f)
+#define RENDER_GOVERNOR_DEBT_SECONDS 2.0f
+#define RENDER_GOVERNOR_STALL_SECONDS 1.0f
+typedef struct RenderResolutionGovernor {
+    float scale, elapsed_seconds, debt_seconds;
+} RenderResolutionGovernor;
+void render_resolution_governor_init(RenderResolutionGovernor *governor, float max_scale);
+float render_resolution_governor_update(RenderResolutionGovernor *governor, float frame_seconds);
+
 /* Name labels drawn in the canvas (presentation only). The Sun, planets and
  * dwarf planets are always named; the selected body always is; moons and small bodies are
  * named once their family is zoomed in (at least
