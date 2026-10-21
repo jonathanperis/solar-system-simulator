@@ -24,6 +24,12 @@ EM_JS(double, solar_web_pixel_ratio, (void), {
     return Math.min(2, Math.max(1, ratio));
 })
 
+/* Pointer cursor over a body (A118): a data attribute the stylesheet reads,
+ * so no inline style is needed under the site's CSP. */
+EM_JS(void, solar_web_set_hover, (int on), {
+    if (Module.canvas) { if (on) Module.canvas.dataset.hover = ''; else delete Module.canvas.dataset.hover; }
+})
+
 EM_JS(int, solar_web_prefers_reduced_motion, (void), {
     return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 0;
 })
@@ -132,6 +138,8 @@ typedef struct SolarApp {
     float interaction_hold_seconds;
     float shown_seconds; /* wall time the view has been on screen (startup cuts, A112) */
     float pixel_scale; /* backing pixels per CSS pixel (A114) */
+    int hovered;       /* body under a mouse pointer, -1 for none (A118) */
+    bool touch_seen;   /* touch devices have no hover */
 #if defined(PLATFORM_WEB)
     RenderResolutionGovernor governor; /* steps HiDPI down on slow GPUs (A116) */
 #endif
@@ -199,6 +207,7 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value);
 static void handle_pointer(SolarApp *state)
 {
     int touches = GetTouchPointCount();
+    if (touches > 0) state->touch_seen = true;
     if (touches >= 2) {
         Vector2 a = GetTouchPosition(0), b = GetTouchPosition(1);
         float spread = hypotf(a.x - b.x, a.y - b.y);
@@ -227,6 +236,17 @@ static void handle_pointer(SolarApp *state)
         state->pointer_last = at;
         state->pointer_down = true;
         return;
+    }
+    /* Hover (A118): a mouse resting on a body names and rings it. */
+    int hovered = -1;
+    if (!state->touch_seen && IsCursorOnScreen())
+        hovered = renderer_pick_body(&state->session.system, state->render_mode, state->shown_origin, state->camera,
+            GetMousePosition());
+    if (hovered != state->hovered) {
+        state->hovered = hovered;
+#if defined(PLATFORM_WEB)
+        solar_web_set_hover(hovered >= 0);
+#endif
     }
     if (state->pointer_down && state->pointer_travel <= SOLAR_CLICK_SLOP_PIXELS) {
         int picked = renderer_pick_body(&state->session.system, state->render_mode, state->shown_origin, state->camera,
@@ -738,9 +758,9 @@ static void solar_app_update_draw(void *user_data)
     if (state->vectors) renderer_draw_vectors(&state->session.system, state->session.selected_body_index, state->render_mode, origin);
     EndMode3D();
     renderer_draw_markers(&state->session.system, state->render_mode, origin, state->camera,
-        state->session.selected_body_index);
-    if (state->labels) renderer_draw_labels(&state->session.system, state->render_mode, origin, &state->render,
-        state->camera, state->session.selected_body_index);
+        state->session.selected_body_index, state->hovered);
+    if (state->labels || state->hovered >= 0) renderer_draw_labels(&state->session.system, state->render_mode, origin,
+        &state->render, state->camera, state->session.selected_body_index, state->hovered, state->labels);
 
 #if !defined(PLATFORM_WEB)
     /* Astro presents these readouts outside the web canvas for accessibility
@@ -873,6 +893,7 @@ int main(int argc, char **argv)
     app.session = simulation_session_create();
     app.auto_rotate = true;
     app.pixel_scale = 1.0f;
+    app.hovered = -1;
 #if defined(PLATFORM_WEB)
     render_resolution_governor_init(&app.governor, 2.0f);
 #endif

@@ -97,12 +97,16 @@ Vector3 renderer_relative_vector(Vec3d position, Vec3d origin);
  * capped at 2). Presentation only. */
 void renderer_set_pixel_scale(float scale);
 /* Screen-space markers after the 3D pass (SPEC A108): rings around dot-sized
- * planets and corner brackets on the selected body. Presentation only. */
-void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Camera3D camera, size_t selected);
+ * planets, corner brackets on the selected body and a ring on the body under
+ * the pointer (`hovered`, -1 for none; A118). Presentation only. */
+void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Camera3D camera, size_t selected,
+    int hovered);
 /* The body under a screen point (click to select, SPEC A112), or -1. */
 int renderer_pick_body(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Camera3D camera, Vector2 pointer);
+/* Body names. With `all` false (labels hidden) only the hovered body is
+ * named; the hovered body is always named, like the selection (A118). */
 void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d origin,
-    const RenderResources *resources, Camera3D camera, size_t selected);
+    const RenderResources *resources, Camera3D camera, size_t selected, int hovered, bool all);
 void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *trails, RenderScaleMode mode,
     RenderTrailFrame trail_frame, Vec3d origin, const RenderResources *resources, const RenderView *view);
 

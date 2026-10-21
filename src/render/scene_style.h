@@ -227,6 +227,9 @@ bool render_eclipse_caster(Vec3d receiver_m, double receiver_radius_m, Vec3d cas
  * the amber label and the inspector name it. */
 #define RENDER_SELECTION_MAX_RADIUS_PIXELS 90.0
 bool render_selection_wants_brackets(double radius_pixels);
+/* Radius (CSS pixels) of the ring around the body under the pointer (A118):
+ * always clear of the drawn disc and at least a ring marker's size. */
+double render_hover_ring_radius(double radius_pixels);
 bool render_body_wants_ring_marker(BodyKind kind, double radius_pixels);
 double render_selection_bracket_half_size(double radius_pixels);
 
