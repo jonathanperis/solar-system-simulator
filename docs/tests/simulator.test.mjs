@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, clockNote } from '../src/lib/simulator.ts';
+import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, clockNote, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod } from '../src/lib/simulator.ts';
 import { errorMessage, downloadText } from '../src/lib/browser.ts';
 
 test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolling', () => {
@@ -60,10 +60,10 @@ test('C state drives playback, precise SI readouts, asset pairing, and permanent
   assert.equal(readouts.status.textContent, 'Paused');
   assert.equal(readouts.elapsed.textContent, '0.0002 d (15 s)');
   assert.equal(readouts.parent.textContent, 'Mars');
-  assert.equal(readouts.distance.textContent, '9233.000 km');
-  assert.equal(readouts.speed.textContent, '2.138000 km/s');
-  assert.equal(readouts.mass.textContent, '1.061834e+16 kg');
-  assert.equal(readouts.radius.textContent, '11.267 km');
+  assert.equal(readouts.distance.textContent, '9\u202f233.0\u00a0km');
+  assert.equal(readouts.speed.textContent, '2.1380\u00a0km/s');
+  assert.equal(readouts.mass.textContent, '1.0618\u00a0×\u00a010¹⁶\u00a0kg');
+  assert.equal(readouts.radius.textContent, '11.267\u00a0km');
   assert.equal(controls.body.value, '6');
   assert.equal(controls.speed.value, '0');
   assert.ok(controls.panels.every(panel => !panel.disabled));
@@ -81,7 +81,7 @@ test('C state drives playback, precise SI readouts, asset pairing, and permanent
   runtime.reportState({ ...state, paused: false, view: 'Real scale', hasParent: false, parent: 'None' });
   assert.equal(readouts.distance.textContent, 'N/A — no parent');
   assert.equal(readouts.speed.textContent, 'N/A — no parent');
-  assert.equal(readouts.radius.textContent, '11.267 km');
+  assert.equal(readouts.radius.textContent, '11.267\u00a0km');
   assert.equal(controls.step.disabled, true);
   runtime.reportState({ ...state, selected: 124, speedPreset: 4, paused: false,
     massKg: 0, radiusM: 0, massQuality: 2, radiusQuality: 2 });
@@ -91,8 +91,8 @@ test('C state drives playback, precise SI readouts, asset pairing, and permanent
   assert.equal(readouts.pending.textContent, '0.500 days');
   assert.equal(controls.speed.value, '4');
   runtime.reportState({ ...state, massQuality: 1, radiusQuality: 1 });
-  assert.equal(readouts.mass.textContent, '1.061834e+16 kg (estimated)');
-  assert.equal(readouts.radius.textContent, '11.267 km (estimated)');
+  assert.equal(readouts.mass.textContent, '1.0618\u00a0×\u00a010¹⁶\u00a0kg (estimated)');
+  assert.equal(readouts.radius.textContent, '11.267\u00a0km (estimated)');
   runtime.onAbort('Unable to load WebAssembly');
   runtime.setStatus('');
   runtime.reportState(state);
@@ -258,4 +258,23 @@ test('the sky clock reads the scene date and how far the run has come', () => {
   assert.equal(clockNote(0, true), '+0.00 days since 2026-06-09');
   // Lessons are not dated: their clock counts from the lesson start.
   assert.equal(clockNote(140970, false), 'since the lesson started');
+});
+
+test('inspector readouts group digits and carry readable units (SPEC A113)', () => {
+  const nb = '\u202f';
+  assert.equal(formatDistance(1.41648818261e12), `1${nb}416${nb}488${nb}183\u00a0km · 9.4686\u00a0AU`);
+  assert.equal(formatDistance(384399.5e3), `384${nb}399.5\u00a0km`);
+  assert.equal(formatDistance(9233e3), `9${nb}233.0\u00a0km`);
+  assert.equal(formatDistance(1189.4), '1.189\u00a0km');
+  assert.equal(formatSpeed(9716.28), '9.7163\u00a0km/s');
+  assert.equal(formatSpeed(213.8), '213.80\u00a0m/s');
+  assert.equal(formatSpeed(0.17), '0.170\u00a0m/s');
+  assert.equal(formatMass(5.683174e26), '5.6832\u00a0×\u00a010²⁶\u00a0kg');
+  assert.equal(formatMass(1.061834e16), '1.0618\u00a0×\u00a010¹⁶\u00a0kg');
+  assert.equal(formatMass(4.2e9), '4.2000\u00a0×\u00a010⁹\u00a0kg');
+  assert.equal(formatRadius(58232e3), `58${nb}232.0\u00a0km`);
+  assert.equal(formatRadius(11267), '11.267\u00a0km');
+  assert.equal(formatPeriod(10765.1427 * 86400), `10${nb}765.14\u00a0d · 29.47\u00a0yr`);
+  assert.equal(formatPeriod(27.3217 * 86400), '27.322\u00a0d');
+  assert.equal(formatPeriod(13.942 * 3600), '13.942\u00a0h');
 });
