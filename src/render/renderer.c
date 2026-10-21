@@ -629,7 +629,7 @@ static Vec3d orbit_guide_vertex(const Body *body, const Body *parent, Vec3d pare
 }
 
 void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d origin,
-    const RenderResources *resources, Camera3D camera, size_t selected)
+    const RenderResources *resources, Camera3D camera, size_t selected, int hovered, bool all)
 {
     static RenderLabelBox boxes[SOLAR_SYSTEM_BODY_CAPACITY];
     static size_t body_of[SOLAR_SYSTEM_BODY_CAPACITY];
@@ -658,6 +658,8 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
     size_t count = 0;
     for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
         if (!on_screen[i]) continue;
+        bool is_hovered = (int)i == hovered;
+        if (!all && !is_hovered) continue;
         const Body *body = &system->bodies[i];
         Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
         Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
@@ -668,7 +670,7 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
         double separation = 1e9;
         if (parent >= 0 && system->bodies[parent].kind != BODY_KIND_STAR)
             separation = hypot(screen[i].x - screen[parent].x, screen[i].y - screen[parent].y) / s;
-        if (!render_body_wants_label(body->kind, i == selected, body->radius_quality != PHYSICAL_UNKNOWN, radius_px, separation))
+        if (!render_body_wants_label(body->kind, i == selected || is_hovered, body->radius_quality != PHYSICAL_UNKNOWN, radius_px, separation))
             continue;
         /* Hidden behind a nearer body that is large on screen: no label. */
         bool hidden = false;
@@ -680,7 +682,7 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
         }
         if (hidden) continue;
         Vector2 text = MeasureTextEx(font, body->name, size, spacing);
-        int priority = i == selected ? 1000 : body->kind == BODY_KIND_STAR ? 900
+        int priority = i == selected ? 1000 : is_hovered ? 950 : body->kind == BODY_KIND_STAR ? 900
             : body->kind == BODY_KIND_PLANET ? 800 - (int)i : body->kind == BODY_KIND_DWARF_PLANET ? 600 - (int)i : 400 - (int)i;
         /* Above the body (and its ring marker or selection brackets), but
          * kept on screen when the body fills the view. */
@@ -688,6 +690,7 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
         if (render_body_wants_ring_marker(body->kind, radius_px)) clearance = fmax(clearance, RENDER_RING_MARKER_RADIUS_PIXELS);
         if (i == selected && render_selection_wants_brackets(radius_px))
             clearance = fmax(clearance, render_selection_bracket_half_size(radius_px));
+        if (is_hovered) clearance = fmax(clearance, render_hover_ring_radius(radius_px));
         float top = fmaxf(4.0f * s, screen[i].y - (float)clearance * s - 4.0f * s - text.y);
         boxes[count] = (RenderLabelBox){screen[i].x - text.x / 2, top, text.x, text.y, priority, false};
         body_of[count++] = i;
@@ -696,14 +699,16 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
     for (size_t k = 0; k < count; ++k) {
         if (!boxes[k].visible) continue;
         const Body *body = &system->bodies[body_of[k]];
-        Color color = body_of[k] == selected ? (Color){240, 200, 120, 255} : (Color){228, 222, 206, 225};
+        Color color = body_of[k] == selected ? (Color){240, 200, 120, 255}
+            : (int)body_of[k] == hovered ? (Color){255, 250, 240, 255} : (Color){228, 222, 206, 225};
         /* A soft drop shadow keeps pale text readable over bright planets. */
         DrawTextEx(font, body->name, (Vector2){boxes[k].x + s, boxes[k].y + s}, size, spacing, (Color){0, 0, 0, 170});
         DrawTextEx(font, body->name, (Vector2){boxes[k].x, boxes[k].y}, size, spacing, color);
     }
 }
 
-void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Camera3D camera, size_t selected)
+void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Camera3D camera, size_t selected,
+    int hovered)
 {
     Vector3 forward = unit_vector((Vector3){camera.target.x - camera.position.x, camera.target.y - camera.position.y,
         camera.target.z - camera.position.z}, (Vector3){0, 0, -1});
@@ -711,8 +716,8 @@ void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3
     const float s = pixel_scale;
     for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
         const Body *body = &system->bodies[i];
-        bool is_selected = i == selected;
-        if (!is_selected && body->kind != BODY_KIND_PLANET && body->kind != BODY_KIND_DWARF_PLANET) continue;
+        bool is_selected = i == selected, is_hovered = (int)i == hovered;
+        if (!is_selected && !is_hovered && body->kind != BODY_KIND_PLANET && body->kind != BODY_KIND_DWARF_PLANET) continue;
         Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
         Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
         if (offset.x * forward.x + offset.y * forward.y + offset.z * forward.z <= 0) continue;
@@ -720,7 +725,11 @@ void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3
         double radius_px = body->radius_quality == PHYSICAL_UNKNOWN ? 0
             : render_projected_radius_pixels(renderer_body_radius(body, mode), distance, camera.fovy, viewport_height);
         Vector2 at = GetWorldToScreen(position, camera);
-        if (render_body_wants_ring_marker(body->kind, radius_px) && !is_selected) {
+        if (is_hovered && !is_selected) {
+            /* The body under the pointer: a brighter ring just outside it. */
+            float ring = (float)render_hover_ring_radius(radius_px) * s;
+            DrawRing(at, ring - 0.75f * s, ring + 0.75f * s, 0, 360, 48, (Color){255, 250, 240, 210});
+        } else if (render_body_wants_ring_marker(body->kind, radius_px) && !is_selected) {
             /* A thin ring in the body's colour: findable, but quieter than
              * the dot it surrounds. */
             Color ring = renderer_body_color(body);
