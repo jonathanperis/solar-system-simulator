@@ -4,11 +4,21 @@ import { implementedBodies } from '../../lib/bodies';
 import { normalizeBase } from '../../lib/base';
 import { coreBodyCount, formatCount, smallBodyCatalogCount, totalBodyCount } from '../../lib/siteCounts';
 
-// Every simulated body in one table (SPEC A102). Each name opens the
-// simulator at that body, loading its system scene when it is a small moon.
+// Every simulated body (SPEC A102), grouped by system (A129): the Sun,
+// planets and small worlds open, each planet's moons in a collapsible section
+// with its count. Each name opens the simulator at that body, loading its
+// system scene when it is a small moon.
 const base = normalizeBase(import.meta.env.BASE_URL);
-const sceneLabel = (scene: string, parent: string) => scene === 'core' ? 'Solar system' : parent;
-const families = [...new Set(implementedBodies.map(body => body.kind === 'Moon' ? `${body.parent} moons` : `${body.kind}s`))];
+// A scene is named after its system ('saturn-system' -> 'Saturn'); the
+// parent is not always it (Didymos and Patroclus orbit the Sun).
+const sceneLabel = (scene: string) => scene === 'core' ? 'Solar system' : scene.replace(/-system$/, '').replace(/^./, c => c.toUpperCase());
+const familyOf = (body: (typeof implementedBodies)[number]) => body.kind === 'Moon' ? `${body.parent} moons` : `${body.kind}s`;
+const families = [...new Set(implementedBodies.map(familyOf))];
+const sectionOf = (body: (typeof implementedBodies)[number]) => body.kind === 'Moon' ? `${body.parent}'s moons` : 'Sun, planets and small worlds';
+const sections = [...new Set(implementedBodies.map(sectionOf))].map(title => ({
+  title,
+  bodies: implementedBodies.filter(body => sectionOf(body) === title),
+}));
 ---
 <BaseLayout title="Catalog" description="Every body the simulator runs, with its parent and scene, plus the 1.56-million-object small-body atlas.">
   <div class="page wide">
@@ -21,22 +31,27 @@ const families = [...new Set(implementedBodies.map(body => body.kind === 'Moon' 
     </div>
     <p data-body-count role="status">{totalBodyCount} bodies.</p>
     <p data-body-empty hidden>No match. Try a shorter name or clear the family.</p>
-    <div class="table-wrap">
-      <table aria-label="Simulated bodies">
-        <thead><tr><th>Body</th><th>Kind</th><th>Parent</th><th>Scene</th><th>Group</th></tr></thead>
-        <tbody>
-          {implementedBodies.map((body) => (
-            <tr id={body.slug} data-core-body data-name={body.name.toLowerCase()} data-family={body.kind === 'Moon' ? `${body.parent} moons` : `${body.kind}s`}>
-              <td><a href={`${base}?body=${encodeURIComponent(body.slug)}`}>{body.name}</a></td>
-              <td>{body.kind}</td>
-              <td>{body.parent}</td>
-              <td>{sceneLabel(body.scene, body.parent)}</td>
-              <td>{body.group ?? '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    {sections.map((section, index) => (
+      <details class="catalog-section" data-catalog-section open={index === 0}>
+        <summary><span class="section-title">{section.title}</span> <span class="section-count" data-section-count>{section.bodies.length}</span></summary>
+        <div class="table-wrap">
+          <table aria-label={section.title}>
+            <thead><tr><th>Body</th><th>Kind</th><th>Parent</th><th>Scene</th><th>Group</th></tr></thead>
+            <tbody>
+              {section.bodies.map((body) => (
+                <tr id={body.slug} data-core-body data-name={body.name.toLowerCase()} data-family={familyOf(body)}>
+                  <td><a href={`${base}?body=${encodeURIComponent(body.slug)}`}>{body.name}</a></td>
+                  <td>{body.kind}</td>
+                  <td>{body.parent}</td>
+                  <td>{sceneLabel(body.scene)}</td>
+                  <td>{body.group ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    ))}
     <p class="fine-print">Moon data: JPL mean elements and physical parameters; positions: JPL Horizons on 2026-06-09. Missing masses are test particles; missing radii stay Unknown. <a href={`${base}about/#data`}>Sources</a>.</p>
   </div>
 </BaseLayout>
@@ -45,17 +60,36 @@ const families = [...new Set(implementedBodies.map(body => body.kind === 'Moon' 
   const search = document.querySelector<HTMLInputElement>('[data-body-search]')!;
   const family = document.querySelector<HTMLSelectElement>('[data-body-family]')!;
   const rows = [...document.querySelectorAll<HTMLElement>('[data-core-body]')];
+  const sections = [...document.querySelectorAll<HTMLDetailsElement>('[data-catalog-section]')];
+  // Sections start as the page renders them; a filter opens every section
+  // with a match and hides empty ones, and clearing it restores the start.
+  const initiallyOpen = sections.map(section => section.open);
   const filter = () => {
     const query = search.value.trim().toLowerCase();
+    const filtering = Boolean(query || family.value);
     let count = 0;
     rows.forEach(row => {
       row.hidden = !row.dataset.name!.includes(query) || Boolean(family.value && family.value !== row.dataset.family);
       if (!row.hidden) count++;
     });
+    sections.forEach((section, index) => {
+      const shown = section.querySelectorAll('[data-core-body]:not([hidden])').length;
+      section.hidden = shown === 0;
+      section.querySelector('[data-section-count]')!.textContent = String(shown);
+      section.open = filtering ? shown > 0 : initiallyOpen[index];
+    });
     document.querySelector('[data-body-count]')!.textContent = `${count} ${count === 1 ? 'body' : 'bodies'}.`;
     document.querySelector<HTMLElement>('[data-body-empty]')!.hidden = count > 0;
+  };
+  // A link to #titan opens the section that holds Titan's row.
+  const revealTarget = () => {
+    const row = location.hash ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
+    const section = row?.closest<HTMLDetailsElement>('[data-catalog-section]');
+    if (section && row) { section.open = true; row.scrollIntoView({ block: 'center' }); }
   };
   search.addEventListener('input', filter);
   family.addEventListener('change', filter);
   document.querySelector('[data-body-clear]')!.addEventListener('click', () => { search.value = ''; family.value = ''; filter(); search.focus(); });
+  window.addEventListener('hashchange', revealTarget);
+  revealTarget();
 </script>

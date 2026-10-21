@@ -2,7 +2,8 @@
 // Renders the site's icons and link-preview card into docs/public/:
 //   favicon.ico (16/32/48), favicon-32x32.png, apple-touch-icon.png from the
 //   hand-written docs/public/favicon.svg, and social-preview.png (1200×630,
-//   the og:image) from a live frame of the simulator beside a notebook title.
+//   the og:image) from a live frame of the simulator beside a notebook title,
+//   and about-view.jpg (1280×720), the About page's figure of the solar system.
 //
 // Usage: build the site, serve it, then pass its base URL, e.g.
 //   python3 tools/serve_site.py docs/dist --port 4400 &
@@ -116,6 +117,25 @@ await card.setContent(`<!doctype html><html><head><style>
 </body></html>`);
 await card.evaluate(() => document.fonts.ready);
 writeFileSync(`${publicDir}social-preview.png`, await card.screenshot());
+
+// The About page's figure (A129): the solar-system scene from above the
+// inner planets, with the asteroid belt and Jupiter's Trojans. Rotation off,
+// labels kept; the HUD panels are hidden so the frame is all sky.
+const view = await browser.newPage({ viewport: { width: 1280, height: 760 }, bypassCSP: true });
+await view.goto(base);
+await view.locator('[data-runtime-status]').filter({ hasText: /^Running$/ }).waitFor({ timeout: 90000 });
+await view.waitForFunction(() => /^(\d+)\/\1$/.test(document.querySelector('canvas')?.dataset.textures ?? ''), null, { timeout: 90000 });
+await view.waitForFunction(() => document.querySelector('canvas')?.dataset.belt === 'loaded', null, { timeout: 90000 });
+const viewHeader = await view.locator('.site-header').evaluate(element => element.getBoundingClientRect().height);
+await view.setViewportSize({ width: 1280, height: 720 + Math.round(viewHeader) });
+await view.addStyleTag({ content: '.hud,.dock,.inspector,.lesson-strip{display:none!important}' });
+await view.evaluate(() => {
+  const rotate = document.querySelector('[data-runtime-rotate]');
+  if (rotate?.getAttribute('aria-checked') === 'true') rotate.click();
+  document.querySelector('[data-command="pause"]').click();
+});
+await view.waitForTimeout(1500);
+writeFileSync(`${publicDir}about-view.jpg`, await view.locator('canvas').screenshot({ type: 'jpeg', quality: 82 }));
 
 await browser.close();
 console.log(`site images written to ${publicDir}`);

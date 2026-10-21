@@ -30,6 +30,10 @@ const sources = [
   <div class="page">
     <h1>About</h1>
     <p class="lede">A C11 solar system you can inspect: the same physics runs natively with raylib, in the browser through WebAssembly, and in a command-line CSV runner.</p>
+    <figure class="figure">
+      <a href={base}><img src={`${base}about-view.jpg`} width="1280" height="720" alt="The simulator: the Sun and inner planets on their orbit guides, inside the asteroid belt, with Jupiter's Trojan swarm beyond." loading="lazy" decoding="async" /></a>
+      <figcaption>The solar-system scene on 2026-06-09: orbit guides, the asteroid belt and Jupiter's leading Trojans. <a href={base}>Open the simulator</a>.</figcaption>
+    </figure>
     <ul class="index">
       <li><a href="#model">Model</a></li><li><a href="#data">Data</a></li><li><a href="#code">Code</a></li>
       <li><a href="#rendering">Rendering</a></li><li><a href="#controls">Controls</a></li><li><a href="#build">Build and tests</a></li>
@@ -58,19 +62,47 @@ const sources = [
 
     <h2 id="code">Code</h2>
     <p>Physics in <code>src/sim/</code> never includes raylib; rendering in <code>src/render/</code> reads physical state and never writes it.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Part</th><th>Path</th><th>Checked by</th></tr></thead>
-        <tbody>{sourceSections.map(section => <tr><td>{section.label}</td><td><code>{section.path}</code></td><td>{section.verification}</td></tr>)}</tbody>
-      </table>
-    </div>
+    <details class="fold">
+      <summary>Where each part lives and what checks it</summary>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Part</th><th>Path</th><th>Checked by</th></tr></thead>
+          <tbody>{sourceSections.map(section => <tr><td>{section.label}</td><td><code>{section.path}</code></td><td>{section.verification}</td></tr>)}</tbody>
+        </table>
+      </div>
+    </details>
 
     <h2 id="rendering">Rendering</h2>
-    <p>Illustrative scale enlarges bodies and spreads close moons so they can be seen; real scale uses physical sizes and distances. Lighting, textures, spin from the IAU poles, Saturn's rings and trails are presentation only: they never feed the physics, the inspector or the CSV export.</p>
-    <p>Orbit guides are each body's osculating two-body ellipse about its parent, recomputed every frame from the current position and velocity. The trail is the measured path; the guide is where the body would go if only its parent pulled on it, so the two separate slowly under perturbations. Moon maps are USGS mosaics; maps without colour are tinted with an approximate hue. The asteroid belt and Kuiper belt are a 48,074-body sample of the small-body atlas, moved on their two-body orbits around the Sun for display only.</p>
+    <p>Everything drawn is presentation: it reads the physical state and never feeds the physics, the inspector or the CSV export.</p>
+    <dl class="glossary">
+      <dt>Scale</dt><dd>Illustrative enlarges bodies and spreads close moons so they can be seen; real uses physical sizes and distances. Switching morphs between them.</dd>
+      <dt>Orbit guides</dt><dd>Each body's two-body ellipse about its parent, from its current position and velocity: where it would go if only its parent pulled on it.</dd>
+      <dt>Trails</dt><dd>The path each body actually took. Guide and trail separate slowly where other bodies perturb the orbit.</dd>
+      <dt>Surfaces</dt><dd>Planet maps by Solar System Scope; moon maps are USGS mosaics (maps without colour are tinted). Every map turns on its IAU spin axis.</dd>
+      <dt>Shadows</dt><dd>Eclipses from the true geometry: they appear exactly when a moon's shadow really falls on its planet, or a planet's on a moon.</dd>
+      <dt>Rings</dt><dd>Saturn's from a map; Uranus's, Neptune's and Jupiter's from NASA ring tables, as faint as reality in real scale. Dusty rings glow when backlit.</dd>
+      <dt>Sky</dt><dd>A real all-sky image turned to its true directions, with optional IAU constellation lines.</dd>
+      <dt>Small bodies</dt><dd>48,074 asteroids, Trojans and Kuiper-belt objects sampled from the atlas, moved on their orbits around the Sun.</dd>
+    </dl>
 
     <h2 id="controls">Controls</h2>
-    <p>The simulator's dock has play, speed, date and scene; Find, View, Keys and Data open small panels. Drag to turn the view, scroll or pinch to zoom, point at a body to name it, and click it (or its name, or the arrow at the edge for a planet out of view) to fly to it; <kbd>Esc</kbd> steps back out and Back retraces your path. Arrow keys hop between neighbouring bodies, <kbd>/</kbd> searches, <kbd>Y</kbd> follows an orbit, and Tour visits every planet. With the view focused: <kbd>Space</kbd> pause, <kbd>N</kbd> step, <kbd>R</kbd> restart, <kbd>[</kbd> <kbd>]</kbd> speed, <kbd>F</kbd> <kbd>B</kbd> frame, <kbd>V</kbd> scale, <kbd>O</kbd> orbits, <kbd>T</kbd> trails, <kbd>G</kbd> grid, <kbd>H</kbd> labels. Natively, <kbd>K</kbd> cycles scenes and <kbd>L</kbd> lessons.</p>
+    <p>The dock has play, speed and scene; Tour visits every planet; Find, View, Keys and Data open small panels. Keys work while the view has focus.</p>
+    <div class="table-wrap">
+      <table class="controls">
+        <thead><tr><th>To</th><th>Do</th></tr></thead>
+        <tbody>
+          <tr><td>Turn, zoom</td><td>drag, scroll or pinch; two fingers twist</td></tr>
+          <tr><td>Name a body</td><td>point at it, or long-press on a phone</td></tr>
+          <tr><td>Go to a body</td><td>click it, its name, or the arrow at the edge for one out of view; <kbd>/</kbd> searches</td></tr>
+          <tr><td>Hop between bodies</td><td><kbd>←</kbd> <kbd>→</kbd> neighbours, <kbd>↑</kbd> parent, <kbd>↓</kbd> moons</td></tr>
+          <tr><td>Go back</td><td><kbd>Esc</kbd> steps out, <kbd>Backspace</kbd> or the browser's Back retraces</td></tr>
+          <tr><td>Play</td><td><kbd>Space</kbd> pause, <kbd>N</kbd> step, <kbd>R</kbd> restart, <kbd>[</kbd> <kbd>]</kbd> speed</td></tr>
+          <tr><td>Frame</td><td><kbd>F</kbd> system, <kbd>B</kbd> body, <kbd>V</kbd> scale, <kbd>Y</kbd> follow an orbit</td></tr>
+          <tr><td>Show</td><td><kbd>O</kbd> orbits, <kbd>T</kbd> trails, <kbd>Q</kbd> asteroids, <kbd>S</kbd> constellations, <kbd>G</kbd> grid, <kbd>H</kbd> labels</td></tr>
+          <tr><td>Native app only</td><td><kbd>K</kbd> cycles scenes, <kbd>L</kbd> lessons</td></tr>
+        </tbody>
+      </table>
+    </div>
 
     <h2 id="build">Build and tests</h2>
     <div class="table-wrap">
