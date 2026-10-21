@@ -43,7 +43,7 @@ build mipmaps.
 | `saturn_ring.png` | `2k_saturn_ring_alpha.png` | 1024 × 64 | RGBA strip, inner edge left |
 | `uranus.jpg` | `2k_uranus.jpg` | 1024 × 512 | nearly featureless; halved |
 | `neptune.jpg` | `2k_neptune.jpg` | 2048 × 1024 | |
-| `stars_milky_way.jpg` | `8k_stars_milky_way.jpg` | 4096 × 2048 | illustrative backdrop, not a sky ephemeris |
+| `stars_milky_way.jpg` | `8k_stars_milky_way.jpg` | 4096 × 2048 | all-sky map in galactic coordinates (longitude increasing leftward, south pole up); `render_sky_orientation` turns it into the true sky (SPEC A117) |
 
 USGS maps are reduced to 1024 × 512 by area averaging, recentred on
 longitude 0 with east to the right, and saved as JPEG (quality 84).

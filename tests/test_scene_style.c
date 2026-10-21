@@ -537,6 +537,35 @@ static void test_eclipse_caster_is_a_scaled_copy_of_the_true_geometry(void)
     assert(render_eclipse_caster(receiver, 7e7, edge, 1.8e6, sun, 6.957e8, 1.0, &c));
 }
 
+/* The Milky Way map is a real all-sky image in galactic coordinates
+ * (longitude increasing leftward, south galactic pole at the top). Oriented
+ * by render_sky_orientation (SPEC A117), each star of the map lies in its true
+ * direction: Sirius and Vega land where the map has them. */
+static void test_sky_map_puts_stars_in_their_true_directions(void)
+{
+    RenderOrientation sky = render_sky_orientation();
+    assert(fabs(vec3d_length(sky.pole) - 1) < 1e-12 && fabs(vec3d_length(sky.prime_meridian) - 1) < 1e-12);
+    assert(fabs(vec3d_dot(sky.pole, sky.prime_meridian)) < 1e-9);
+    const struct { double ra, dec, l, b; } stars[] = {
+        {101.2872, -16.7161, 227.23, -8.89},  /* Sirius */
+        {279.2347, 38.7837, 67.45, 19.24},    /* Vega */
+        {95.9880, -52.6957, 261.21, -25.29},  /* Canopus */
+    };
+    Vec3d z = vec3d_cross(sky.prime_meridian, sky.pole);
+    for (size_t k = 0; k < 3; ++k) {
+        Vec3d d = orbit_icrf_direction(stars[k].ra, stars[k].dec);
+        /* Body-frame coordinates, then the sphere's (u, v) as render_build_sphere lays them out. */
+        double x = vec3d_dot(d, sky.prime_meridian), y = vec3d_dot(d, sky.pole), zz = vec3d_dot(d, z);
+        double longitude = atan2(-zz, x), latitude = asin(y);
+        double u = (longitude + 3.14159265358979323846) / (2 * 3.14159265358979323846);
+        double v = 0.5 - latitude / 3.14159265358979323846;
+        /* The map: u = 0.5 - l/360 (l wrapped to +-180), v = 0.5 + b/180 (south up). */
+        double l = fmod(stars[k].l + 180.0, 360.0) - 180.0;
+        double map_u = 0.5 - l / 360.0, map_v = 0.5 + stars[k].b / 180.0;
+        assert(fabs(u - map_u) < 0.002 && fabs(v - map_v) < 0.002);
+    }
+}
+
 int main(void)
 {
     test_texture_inventory_matches_assets();
@@ -564,6 +593,7 @@ int main(void)
     test_pick_prefers_the_body_under_the_pointer();
     test_resolution_governor_steps_down_only_under_sustained_load();
     test_eclipse_caster_is_a_scaled_copy_of_the_true_geometry();
+    test_sky_map_puts_stars_in_their_true_directions();
     puts("test_scene_style passed");
     return 0;
 }
