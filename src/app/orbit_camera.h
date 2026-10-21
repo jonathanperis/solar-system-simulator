@@ -49,6 +49,9 @@ void orbit_camera_pinch(OrbitCameraState *state, float ratio);
  * Presentation only. */
 typedef struct OrbitCameraFlight {
     bool active;
+    /* The origin goes straight to the destination each frame (set for scale
+     * changes, where the destination already glides with the morph). */
+    bool track_origin;
     float elapsed_seconds, duration_seconds;
     double from_origin[3];
     OrbitCameraState from;
