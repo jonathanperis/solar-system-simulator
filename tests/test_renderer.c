@@ -455,7 +455,10 @@ static void check_moons_outside_drawn_rings(BodyId planet, double ring_outer_m, 
         double true_distance = vec3d_length(vec3d_sub(system.bodies[i].position_m, system.bodies[saturn].position_m));
         if (true_distance <= ring_outer_m) continue;
         double drawn = vec3d_length(vec3d_sub(renderer_body_position(&system, i, RENDER_SCALE_ILLUSTRATIVE), center));
-        assert(drawn > rings + renderer_body_radius(&system.bodies[i], RENDER_SCALE_ILLUSTRATIVE));
+        /* The drawn ring annulus reaches ring_outer_m scaled like the planet. */
+        double annulus = renderer_body_radius(&system.bodies[saturn], RENDER_SCALE_ILLUSTRATIVE) * ring_outer_m
+            / system.bodies[saturn].radius_m;
+        assert(drawn > fmax(rings, annulus) + renderer_body_radius(&system.bodies[i], RENDER_SCALE_ILLUSTRATIVE));
         ++checked;
     }
     assert(checked >= at_least);
@@ -466,7 +469,9 @@ static void test_illustrative_saturn_moons_stay_outside_the_drawn_rings(void)
     check_moons_outside_drawn_rings(BODY_ID_SATURN, SOLAR_SATURN_RING_OUTER_RADIUS_M, 7); /* Mimas through Iapetus */
     check_moons_outside_drawn_rings(BODY_ID_URANUS, render_ring_system(BODY_ID_URANUS)->extent_m, 5); /* Miranda-Oberon (A122) */
     check_moons_outside_drawn_rings(BODY_ID_NEPTUNE, render_ring_system(BODY_ID_NEPTUNE)->extent_m, 1); /* Triton (A126) */
-    check_moons_outside_drawn_rings(BODY_ID_JUPITER, render_ring_system(BODY_ID_JUPITER)->extent_m, 4); /* Galileans (A126) */
+    /* Moons beyond every drawn ring (Jupiter's gossamer rings reach 3.1 radii)
+     * clear all of them, not only the main ring (review fix). */
+    check_moons_outside_drawn_rings(BODY_ID_JUPITER, render_ring_system(BODY_ID_JUPITER)->outer_m, 4); /* Galileans (A126) */
 }
 
 /* Pluto-Charon shadow events happen only near Pluto's equinoxes (1985-90,
@@ -513,8 +518,13 @@ static void test_navigation_neighbors_hop_through_the_family_tree(void)
     assert(renderer_navigation_neighbor(&system, (size_t)sun, RENDER_NAV_UP) == -1);
     int first = renderer_navigation_neighbor(&system, (size_t)sun, RENDER_NAV_DOWN);
     assert(first >= 0 && system.bodies[first].id == BODY_ID_MERCURY);
-    /* The Sun has no siblings: left/right go to its first child. */
+    /* The Sun has no siblings: right goes to its first child, left wraps to
+     * its last (review fix). */
     assert(renderer_navigation_neighbor(&system, (size_t)sun, RENDER_NAV_NEXT) == first);
+    int last = renderer_navigation_neighbor(&system, (size_t)sun, RENDER_NAV_PREVIOUS);
+    assert(last >= 0 && last != first && solar_system_parent_index(&system, (size_t)last) == sun);
+    for (size_t i = (size_t)last + 1; i < system.body_count; ++i)
+        assert(solar_system_parent_index(&system, i) != sun || system.bodies[i].radius_quality == PHYSICAL_UNKNOWN);
 }
 
 /* Scale morph (SPEC A125): while switching scale the renderer blends from
