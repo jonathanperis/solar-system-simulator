@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 import { test, expect, analyticsUrl } from './fixtures';
 
-const base = '/solar-system-simulator/';
+const base = '/';
 
 /** Record CSP violations from both the DOM event and the console report. */
 async function watchPolicy(page: Page): Promise<string[]> {

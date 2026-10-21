@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { test, expect } from './fixtures';
 
-const base = '/solar-system-simulator/';
+const base = '/';
 type Shard = { index: { file: string }; minId: number; maxId: number };
 const manifest = JSON.parse(readFileSync(new URL('../public/catalog/manifest.json', import.meta.url), 'utf8')) as { shards: Shard[] };
 const order = new Map(manifest.shards.map((shard, index) => [shard.index.file, index]));

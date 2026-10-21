@@ -1,7 +1,7 @@
 export const siteName = 'Solar System Simulator';
 export const authorName = 'Jonathan Peris';
 export const repoUrl = 'https://github.com/jonathanperis/solar-system-simulator';
-export const liveUrl = 'https://jonathanperis.github.io/solar-system-simulator/';
+export const liveUrl = 'https://solar-system-simulator.jonathanperis.tech/';
 export const buildRevision = import.meta.env.PUBLIC_BUILD_SHA || 'local build';
 
 /** The four routes of the site (DESIGN.md, SPEC A99). The simulator is home. */

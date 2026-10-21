@@ -18,7 +18,7 @@ C5: expansion one body/concept per milestone.
 
 C6: new behavior tests RED before implementation.
 
-C7: GitHub Pages static output under `/solar-system-simulator/`; no SSR-only surface.
+C7: GitHub Pages static output at the custom-domain root `/`; no SSR-only surface.
 
 C8: public site follows `DESIGN.md`. The 2026-10-07 overhaul (A99–A105) replaces the archival-atlas direction with a simulator-first instrument and lab-notebook pages.
 
@@ -114,7 +114,7 @@ V11: camera focus covers ∀ bodies; wheel changes clamped distance only; pitch 
 
 V12: web `InitWindow()` dimensions derive from served `.canvas-wrap` before WebGL creation; canvas fills frame.
 
-V13: ∀ Pages links/assets base-path-safe under `/solar-system-simulator/`. Self-hosted fonts and the page CSP use base-path-safe URLs; pages make no third-party requests except analytics under V17.
+V13: ∀ Pages links/assets base-path-safe at `/`. Self-hosted fonts and the page CSP use base-path-safe URLs; pages make no third-party requests except analytics under V17.
 
 V14: Pages deploy only after successful native tests and WASM validation from this repository's `main` branch, triggered by a push or explicit manual run. Fork/PR-origin code must never execute with deployment write permissions; a matching branch name alone is not trusted origin.
 

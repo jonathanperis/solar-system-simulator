@@ -20,7 +20,8 @@ from urllib.parse import unquote, urlsplit
 from xml.etree import ElementTree
 
 
-BASE_PATH = "/solar-system-simulator/"
+SITE_ORIGIN = "https://solar-system-simulator.jonathanperis.tech"
+BASE_PATH = "/"
 
 
 ROUTES: dict[str, list[str]] = {
@@ -237,7 +238,7 @@ def check_sitemap(dist: Path) -> None:
     # Derive the canonical page inventory from output, so a new route cannot be
     # silently omitted from both the hand-maintained sitemap and ROUTES above.
     expected = {
-        "https://jonathanperis.github.io" + BASE_PATH +
+        SITE_ORIGIN + BASE_PATH +
         page.relative_to(dist).as_posix().removesuffix("index.html")
         for page in dist.rglob("index.html")
         # Redirect stubs for retired URLs are noindex and stay out of the sitemap.
@@ -277,7 +278,7 @@ def check_legacy_redirects(dist: Path) -> None:
             fail(f"{old}/ redirect must be noindex")
 
 
-SOCIAL_IMAGE = "https://jonathanperis.github.io" + BASE_PATH + "social-preview.png"
+SOCIAL_IMAGE = SITE_ORIGIN + BASE_PATH + "social-preview.png"
 
 
 def check_site_images(dist: Path) -> None:

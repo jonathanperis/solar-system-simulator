@@ -24,11 +24,11 @@ const defaultDescription = 'A C11 and raylib solar system simulator running in t
 const description = Astro.props.description || (pageTitle ? `${pageTitle}. ${defaultDescription}` : defaultDescription);
 const redirectTarget = Astro.props.redirectTo !== undefined ? withBase(base, Astro.props.redirectTo) : undefined;
 const notFound = Astro.props.notFound === true;
-const canonicalUrl = new URL(redirectTarget ?? (notFound ? base : Astro.url.pathname), 'https://jonathanperis.github.io').href;
+const canonicalUrl = new URL(redirectTarget ?? (notFound ? base : Astro.url.pathname), 'https://solar-system-simulator.jonathanperis.tech').href;
 const csp = contentSecurityPolicy(Boolean(import.meta.env.PUBLIC_GA_ID));
 // Link previews (WhatsApp, Slack, social sites) need an absolute image URL.
 // tools/site_images.mjs renders the card and the icons into docs/public/.
-const socialImage = new URL(`${base}social-preview.png`, 'https://jonathanperis.github.io').href;
+const socialImage = new URL(`${base}social-preview.png`, 'https://solar-system-simulator.jonathanperis.tech').href;
 const socialImageAlt = 'Solar System Simulator: Jupiter and the Galilean moons rendered by the simulator, beside the title on warm paper.';
 const currentPath = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
 const activeRoute = primaryRoutes.find(route => currentPath.startsWith(withBase(base, route.href)));
