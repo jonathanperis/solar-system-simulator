@@ -186,6 +186,11 @@ static const char fragment_shader_lit[] =
     /* Direct sunlight, the ocean glint and the lit air of the rim all dim. */
     "    lit *= sunlight;\n"
     "    vec3 color = albedo * (0.004 + lit);\n"
+    /* Dusk: sunlight grazing the terminator crosses a long path of air that
+     * scatters away blue, so planets with air redden there. Gaussian band in
+     * the Sun's elevation, scaled by the atmosphere's strength. */
+    "    float dusk = ndl / 0.12;\n"
+    "    color *= mix(vec3(1.0), vec3(1.45, 0.82, 0.55), exp(-dusk * dusk) * min(atmosphere.a * 1.2, 0.8));\n"
     /* Limb darkening for bodies with air: near the edge the sight line meets
      * the haze high up, above most of the reflecting cloud deck, so giant
      * planets look round rather than like flat discs. Airless bodies skip it
