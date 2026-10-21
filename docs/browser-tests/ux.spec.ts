@@ -67,7 +67,8 @@ test('the instrument stays lean and every page keeps readable text', async ({ pa
   await page.goto(base);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   // DESIGN.md: the simulator shows controls and readouts, not prose.
-  const words = await page.evaluate(() => document.body.innerText.split(/\s+/).filter(Boolean).length);
+  // A reading bound by no-break spaces ("1 416 488 183 km", "5.68 × 10²⁶ kg") is one token.
+  const words = await page.evaluate(() => document.body.innerText.split(/[^\S\u00a0\u202f]+/).filter(Boolean).length);
   expect(words).toBeLessThan(150);
   for (const path of ['', 'learn/', 'catalog/', 'about/']) {
     for (const width of [320, 1280]) {
@@ -102,7 +103,7 @@ test('catalog search hands a body to the simulator, and Learn links open their l
   await expect(page.locator('[data-active-scene]')).toContainText('2 active bodies · DART impact');
   await expect(page.locator('[data-lesson-strip]')).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'Lesson', exact: true })).toHaveValue(/\d+/);
-  await expect(page.locator('[data-inspector-period]')).toContainText('hours');
+  await expect(page.locator('[data-inspector-period]')).toHaveText(/^\d+\.\d{3}\u00a0h$/); // a period under a day reads in hours
 });
 
 test('comparison starts with a question and points invalid spacing to its field', async ({ page }) => {
