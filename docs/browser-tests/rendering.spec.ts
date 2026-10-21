@@ -126,3 +126,40 @@ test('hovering names a body and clicking selects it', async ({ page }) => {
   await page.mouse.up();
   await expect(page.locator('[data-inspector-name]')).not.toHaveText(before!);
 });
+
+// SPEC A119: from a close-up, off-screen planets are marked at the view's
+// edge; clicking one flies there, and Escape steps back out to the Sun.
+test('edge markers navigate between planets and Escape steps back out', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(`${base}?body=venus`);
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
+  await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  await page.getByRole('button', { name: 'Frame body', exact: true }).click();
+  const canvas = page.locator('canvas').first();
+  const box = (await canvas.boundingBox())!;
+  const hovering = () => canvas.evaluate(element => 'hover' in (element as HTMLElement).dataset);
+  let hit: [number, number] | null = null;
+  // Walk the left and right edges, where markers for off-screen planets sit.
+  for (const x of [box.x + 30, box.x + 45, box.x + box.width - 30, box.x + box.width - 45]) {
+    for (let y = box.y + 20; y < box.y + box.height - 20 && !hit; y += 8) {
+      await page.mouse.move(x, y);
+      await page.waitForTimeout(20);
+      if (await hovering()) hit = [x, y];
+    }
+    if (hit) break;
+  }
+  expect(hit).not.toBeNull();
+  await page.mouse.down();
+  await page.waitForTimeout(80);
+  await page.mouse.up();
+  const name = page.locator('[data-inspector-name]');
+  await expect(name).not.toHaveText('Venus');
+  await canvas.focus();
+  for (let step = 0; step < 2; step++) {
+    await page.keyboard.down('Escape');
+    await page.waitForTimeout(80);
+    await page.keyboard.up('Escape');
+    await page.waitForTimeout(150);
+  }
+  await expect(name).toHaveText('Sun');
+});

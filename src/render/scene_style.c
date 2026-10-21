@@ -630,3 +630,27 @@ double render_hover_ring_radius(double radius_pixels)
     double ring = radius_pixels * 1.1 + 5.0;
     return ring > RENDER_RING_MARKER_RADIUS_PIXELS + 2.0 ? ring : RENDER_RING_MARKER_RADIUS_PIXELS + 2.0;
 }
+
+void render_edge_anchor(double dx, double dy, double half_width, double half_height, double inset, double *x, double *y)
+{
+    double w = fmax(half_width - inset, 1.0), h = fmax(half_height - inset, 1.0);
+    if (fabs(dx) < 1e-12 && fabs(dy) < 1e-12) dy = 1.0;
+    /* Scale the direction until it touches the first edge it meets. */
+    double t = fmin(fabs(dx) > 1e-12 ? w / fabs(dx) : 1e300, fabs(dy) > 1e-12 ? h / fabs(dy) : 1e300);
+    *x = dx * t;
+    *y = dy * t;
+}
+
+double render_slide_past(double x, double y, double w, double h, const double blocker[4], bool vertical,
+    double lo, double hi)
+{
+    const double gap = 6.0;
+    bool overlaps = x < blocker[0] + blocker[2] && x + w > blocker[0] && y < blocker[1] + blocker[3] && y + h > blocker[1];
+    if (!overlaps) return 0;
+    double start = vertical ? y : x, size = vertical ? h : w;
+    double before = (vertical ? blocker[1] : blocker[0]) - gap - size;            /* new start above/left */
+    double after = (vertical ? blocker[1] + blocker[3] : blocker[0] + blocker[2]) + gap; /* below/right */
+    bool before_fits = before >= lo && before + size <= hi, after_fits = after >= lo && after + size <= hi;
+    if (before_fits && (!after_fits || start - before <= after - start)) return before - start;
+    return after_fits ? after - start : 0;
+}
