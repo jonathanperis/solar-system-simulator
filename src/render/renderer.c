@@ -628,6 +628,42 @@ static Vec3d orbit_guide_vertex(const Body *body, const Body *parent, Vec3d pare
     return spread ? visible_satellite_position(body, parent, position, parent_render, mode) : position;
 }
 
+/* Screen rectangles that select a body when clicked (A119): visible labels
+ * and off-screen markers, rebuilt every frame by the marker and label passes. */
+#define CLICK_TARGET_CAPACITY (SOLAR_SYSTEM_BODY_CAPACITY + 64)
+typedef struct ClickTarget {
+    float x, y, width, height;
+    int body;
+} ClickTarget;
+static ClickTarget click_targets[CLICK_TARGET_CAPACITY];
+static size_t click_target_count;
+static double blockers[RENDER_MAX_BLOCKERS][4];
+static int blocker_count;
+
+void renderer_set_blockers(const float *rects, int count)
+{
+    blocker_count = count < 0 ? 0 : count > RENDER_MAX_BLOCKERS ? RENDER_MAX_BLOCKERS : count;
+    for (int k = 0; k < blocker_count; ++k)
+        for (int c = 0; c < 4; ++c) blockers[k][c] = rects[k * 4 + c];
+}
+
+static void add_click_target(float x, float y, float width, float height, size_t body)
+{
+    if (click_target_count < CLICK_TARGET_CAPACITY)
+        click_targets[click_target_count++] = (ClickTarget){x, y, width, height, (int)body};
+}
+
+int renderer_pick_target(Vector2 pointer)
+{
+    const float pad = 3.0f * pixel_scale;
+    for (size_t k = click_target_count; k-- > 0;) {
+        const ClickTarget *t = &click_targets[k];
+        if (pointer.x >= t->x - pad && pointer.x <= t->x + t->width + pad && pointer.y >= t->y - pad
+            && pointer.y <= t->y + t->height + pad) return t->body;
+    }
+    return -1;
+}
+
 void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d origin,
     const RenderResources *resources, Camera3D camera, size_t selected, int hovered, bool all)
 {
@@ -704,12 +740,204 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
         /* A soft drop shadow keeps pale text readable over bright planets. */
         DrawTextEx(font, body->name, (Vector2){boxes[k].x + s, boxes[k].y + s}, size, spacing, (Color){0, 0, 0, 170});
         DrawTextEx(font, body->name, (Vector2){boxes[k].x, boxes[k].y}, size, spacing, color);
+        add_click_target(boxes[k].x, boxes[k].y, boxes[k].width, boxes[k].height, body_of[k]);
     }
 }
 
-void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Camera3D camera, size_t selected,
-    int hovered)
+/* Off-screen markers (A119): the Sun, planets, dwarf planets and the
+ * selection's parent, when outside the view (or behind the camera), get a
+ * chevron and their name at the edge, in the direction to turn toward them.
+ * Clicking one flies there. Decluttered like labels; presentation only. */
+static void draw_offscreen_markers(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Font font,
+    Camera3D camera, size_t selected)
 {
+    static RenderLabelBox boxes[SOLAR_SYSTEM_BODY_CAPACITY];
+    static size_t body_of[SOLAR_SYSTEM_BODY_CAPACITY];
+    static Vector2 tips[SOLAR_SYSTEM_BODY_CAPACITY], directions[SOLAR_SYSTEM_BODY_CAPACITY];
+    const float s = pixel_scale, size = 13.0f * s, spacing = 0.4f * s;
+    float width = (float)GetScreenWidth(), height = (float)GetScreenHeight();
+    Vector3 forward = unit_vector((Vector3){camera.target.x - camera.position.x, camera.target.y - camera.position.y,
+        camera.target.z - camera.position.z}, (Vector3){0, 0, -1});
+    Vector3 right = unit_vector((Vector3){forward.y * camera.up.z - forward.z * camera.up.y,
+        forward.z * camera.up.x - forward.x * camera.up.z, forward.x * camera.up.y - forward.y * camera.up.x}, (Vector3){1, 0, 0});
+    Vector3 up = {right.y * forward.z - right.z * forward.y, right.z * forward.x - right.x * forward.z,
+        right.x * forward.y - right.y * forward.x};
+    int selected_parent = selected < system->body_count ? solar_system_parent_index(system, selected) : -1;
+    /* Bodies large enough on screen to hide another (usually one to three),
+     * found once per frame: testing all 300 bodies for every planet cost
+     * the Saturn family 3 fps on the throttled phone. */
+    static size_t occluder_index[SOLAR_SYSTEM_BODY_CAPACITY];
+    static double occluder_distance[SOLAR_SYSTEM_BODY_CAPACITY], occluder_radius[SOLAR_SYSTEM_BODY_CAPACITY];
+    static Vector2 occluder_screen[SOLAR_SYSTEM_BODY_CAPACITY];
+    size_t occluders = 0;
+    for (size_t j = 0; j < system->body_count && j < SOLAR_SYSTEM_BODY_CAPACITY; ++j) {
+        if (system->bodies[j].radius_quality == PHYSICAL_UNKNOWN) continue;
+        Vector3 pj = renderer_relative_vector(renderer_body_position(system, j, mode), origin);
+        Vector3 oj = {pj.x - camera.position.x, pj.y - camera.position.y, pj.z - camera.position.z};
+        if (oj.x * forward.x + oj.y * forward.y + oj.z * forward.z <= 0) continue;
+        double dj = sqrt(oj.x * oj.x + oj.y * oj.y + oj.z * oj.z);
+        double rj = render_projected_radius_pixels(renderer_body_visual_radius(&system->bodies[j], mode), dj, camera.fovy,
+            (double)height);
+        if (rj <= 8.0 * s) continue;
+        occluder_index[occluders] = j;
+        occluder_distance[occluders] = dj;
+        occluder_radius[occluders] = rj;
+        occluder_screen[occluders++] = GetWorldToScreen(pj, camera);
+    }
+    size_t count = 0;
+    for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
+        const Body *body = &system->bodies[i];
+        bool major = body->kind == BODY_KIND_STAR || body->kind == BODY_KIND_PLANET || body->kind == BODY_KIND_DWARF_PLANET;
+        if (i == selected || !(major || (int)i == selected_parent)) continue;
+        Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
+        Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
+        bool in_front = offset.x * forward.x + offset.y * forward.y + offset.z * forward.z > 0;
+        double ax, ay;
+        Vector2 unit, tip;
+        bool behind_body = false;
+        if (in_front) {
+            Vector2 at = GetWorldToScreen(position, camera);
+            if (at.x >= 0 && at.x <= width && at.y >= 0 && at.y <= height) {
+                /* On screen: it has its own marks, unless a nearer body large
+                 * on screen hides it (marked at that body's edge, on the side
+                 * where it lies: "behind here") or a page panel covers it. */
+                double distance = sqrt(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z);
+                int occluder = -1;
+                double occluder_px = 0;
+                Vector2 occluder_at = {0, 0};
+                for (size_t k = 0; k < occluders; ++k) {
+                    if (occluder_index[k] == i || occluder_distance[k] >= distance) continue;
+                    Vector2 sj = occluder_screen[k];
+                    if (occluder_radius[k] > occluder_px && hypot(at.x - sj.x, at.y - sj.y) < occluder_radius[k]) {
+                        occluder = (int)occluder_index[k]; occluder_px = occluder_radius[k]; occluder_at = sj;
+                    }
+                }
+                int panel = -1;
+                for (int b = 0; b < blocker_count && panel < 0; ++b)
+                    if (at.x >= blockers[b][0] && at.x <= blockers[b][0] + blockers[b][2] && at.y >= blockers[b][1]
+                        && at.y <= blockers[b][1] + blockers[b][3]) panel = b;
+                if (occluder >= 0) {
+                    double ux = at.x - occluder_at.x, uy = at.y - occluder_at.y, ul = hypot(ux, uy);
+                    unit = ul > 1e-6 ? (Vector2){(float)(ux / ul), (float)(uy / ul)} : (Vector2){0, -1};
+                    tip = (Vector2){occluder_at.x + unit.x * (float)(occluder_px + 16.0 * s),
+                        occluder_at.y + unit.y * (float)(occluder_px + 16.0 * s)};
+                } else if (panel >= 0) {
+                    /* Under a page panel: marked just outside the panel edge
+                     * nearest to it that faces into the view, pointing in. */
+                    const double *r = blockers[panel];
+                    double edges[4] = {r[0] > 1 ? at.x - r[0] : 1e30, r[0] + r[2] < width - 1 ? r[0] + r[2] - at.x : 1e30,
+                        r[1] > 1 ? at.y - r[1] : 1e30, r[1] + r[3] < height - 1 ? r[1] + r[3] - at.y : 1e30};
+                    int e = 0;
+                    for (int k = 1; k < 4; ++k) if (edges[k] < edges[e]) e = k;
+                    if (edges[e] >= 1e29) continue;
+                    const float gap = 8.0f * s;
+                    if (e == 0) { tip = (Vector2){(float)r[0] - gap, at.y}; unit = (Vector2){1, 0}; }
+                    else if (e == 1) { tip = (Vector2){(float)(r[0] + r[2]) + gap, at.y}; unit = (Vector2){-1, 0}; }
+                    else if (e == 2) { tip = (Vector2){at.x, (float)r[1] - gap}; unit = (Vector2){0, 1}; }
+                    else { tip = (Vector2){at.x, (float)(r[1] + r[3]) + gap}; unit = (Vector2){0, -1}; }
+                } else {
+                    continue; /* visible: its own dot, ring and label serve */
+                }
+                ax = tip.x - width / 2.0; ay = tip.y - height / 2.0;
+                behind_body = true;
+            }
+        }
+        if (!behind_body) {
+            double dx = offset.x * right.x + offset.y * right.y + offset.z * right.z;
+            double dy = -(offset.x * up.x + offset.y * up.y + offset.z * up.z);
+            render_edge_anchor(dx, dy, width / 2.0, height / 2.0, 18.0 * s, &ax, &ay);
+            double length = hypot(ax, ay);
+            unit = length > 0 ? (Vector2){(float)(ax / length), (float)(ay / length)} : (Vector2){0, 1};
+            tip = (Vector2){width / 2.0f + (float)ax, height / 2.0f + (float)ay};
+        }
+        Vector2 text = MeasureTextEx(font, body->name, size, spacing);
+        /* The name sits inward of the chevron, toward the view's centre. */
+        float cx = tip.x - unit.x * (12.0f * s + text.x / 2), cy = tip.y - unit.y * (10.0f * s + text.y / 2);
+        int priority = body->kind == BODY_KIND_STAR ? 900 : (int)i == selected_parent ? 850
+            : body->kind == BODY_KIND_PLANET ? 800 - (int)i : 600 - (int)i;
+        boxes[count] = (RenderLabelBox){cx - text.x / 2 - 4 * s, cy - text.y / 2 - 2 * s, text.x + 8 * s, text.y + 4 * s, priority, false};
+        /* Slide along the edge past page panels floating over the canvas. */
+        bool side = fabs(ax) / fmax(width / 2.0 - 18.0 * s, 1) >= fabs(ay) / fmax(height / 2.0 - 18.0 * s, 1);
+        for (int pass = 0; pass < 2; ++pass) {
+            for (int k = 0; k < blocker_count; ++k) {
+                double shift = render_slide_past(boxes[count].x, boxes[count].y, boxes[count].width, boxes[count].height,
+                    blockers[k], side, 8.0 * s, side ? height - 8.0 * s : width - 8.0 * s);
+                if (side) { boxes[count].y += (float)shift; tip.y += (float)shift; }
+                else { boxes[count].x += (float)shift; tip.x += (float)shift; }
+            }
+        }
+        tips[count] = tip;
+        directions[count] = unit;
+        body_of[count++] = i;
+    }
+    /* Place in priority order. A marker that would overlap one already placed
+     * (or a page panel) steps along its edge, alternating sides, until it
+     * fits: every off-screen planet stays reachable instead of being hidden. */
+    static size_t order[SOLAR_SYSTEM_BODY_CAPACITY];
+    static bool sides[SOLAR_SYSTEM_BODY_CAPACITY];
+    for (size_t k = 0; k < count; ++k) order[k] = k;
+    for (size_t a = 1; a < count; ++a)
+        for (size_t b = a; b > 0 && boxes[order[b]].priority > boxes[order[b - 1]].priority; --b) {
+            size_t t = order[b]; order[b] = order[b - 1]; order[b - 1] = t;
+        }
+    for (size_t k = 0; k < count; ++k) {
+        float tx = tips[k].x - width / 2.0f, ty = tips[k].y - height / 2.0f;
+        sides[k] = fabsf(tx) / fmaxf(width / 2.0f - 18.0f * s, 1) >= fabsf(ty) / fmaxf(height / 2.0f - 18.0f * s, 1);
+    }
+    for (size_t n = 0; n < count; ++n) {
+        size_t k = order[n];
+        RenderLabelBox start = boxes[k];
+        float step = (sides[k] ? start.height : start.width) + 4.0f * s;
+        boxes[k].visible = false;
+        /* Enough steps to walk the whole edge in both directions. */
+        int attempts = 2 * (int)ceilf((sides[k] ? height : width) / step) + 1;
+        for (int attempt = 0; attempt < attempts && !boxes[k].visible; ++attempt) {
+            float offset = step * (float)((attempt + 1) / 2) * (attempt % 2 ? 1.0f : -1.0f);
+            RenderLabelBox trial = start;
+            if (sides[k]) trial.y += offset; else trial.x += offset;
+            if (trial.x < 4 * s || trial.y < 4 * s || trial.x + trial.width > width - 4 * s || trial.y + trial.height > height - 4 * s)
+                continue;
+            bool clear = true;
+            for (size_t m = 0; m < n && clear; ++m) {
+                const RenderLabelBox *o = &boxes[order[m]];
+                clear = !o->visible || trial.x >= o->x + o->width || trial.x + trial.width <= o->x
+                    || trial.y >= o->y + o->height || trial.y + trial.height <= o->y;
+            }
+            for (int b = 0; b < blocker_count && clear; ++b)
+                clear = trial.x >= blockers[b][0] + blockers[b][2] || trial.x + trial.width <= blockers[b][0]
+                    || trial.y >= blockers[b][1] + blockers[b][3] || trial.y + trial.height <= blockers[b][1];
+            if (clear) {
+                if (sides[k]) tips[k].y += offset; else tips[k].x += offset;
+                boxes[k] = trial;
+                boxes[k].visible = true;
+            }
+        }
+    }
+    for (size_t k = 0; k < count; ++k) {
+        if (!boxes[k].visible) continue;
+        const Body *body = &system->bodies[body_of[k]];
+        Color color = renderer_body_color(body);
+        Color ink = {(unsigned char)((color.r + 2 * 228) / 3), (unsigned char)((color.g + 2 * 222) / 3),
+            (unsigned char)((color.b + 2 * 206) / 3), 230};
+        /* A chevron pointing out of the view, toward the body. */
+        Vector2 u = directions[k], n = {-u.y, u.x}, tip = tips[k];
+        Vector2 back = {tip.x - u.x * 8.0f * s, tip.y - u.y * 8.0f * s};
+        DrawLineEx((Vector2){back.x + n.x * 5.0f * s, back.y + n.y * 5.0f * s}, tip, 1.5f * s, ink);
+        DrawLineEx((Vector2){back.x - n.x * 5.0f * s, back.y - n.y * 5.0f * s}, tip, 1.5f * s, ink);
+        DrawRectangleRec((Rectangle){boxes[k].x, boxes[k].y, boxes[k].width, boxes[k].height}, (Color){10, 12, 18, 150});
+        DrawTextEx(font, body->name, (Vector2){boxes[k].x + 4 * s, boxes[k].y + 2 * s}, size, spacing, ink);
+        add_click_target(boxes[k].x, boxes[k].y, boxes[k].width, boxes[k].height, body_of[k]);
+        /* The chevron itself is clickable too. */
+        add_click_target(tip.x - 10.0f * s, tip.y - 10.0f * s, 20.0f * s, 20.0f * s, body_of[k]);
+    }
+}
+
+void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3d origin,
+    const RenderResources *resources, Camera3D camera, size_t selected, int hovered)
+{
+    click_target_count = 0;
+    Font font = resources->label_font_ready ? resources->label_font : GetFontDefault();
+    draw_offscreen_markers(system, mode, origin, font, camera, selected);
     Vector3 forward = unit_vector((Vector3){camera.target.x - camera.position.x, camera.target.y - camera.position.y,
         camera.target.z - camera.position.z}, (Vector3){0, 0, -1});
     double viewport_height = css_viewport_height();
