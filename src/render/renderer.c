@@ -652,12 +652,14 @@ typedef struct ClickTarget {
 } ClickTarget;
 static ClickTarget click_targets[CLICK_TARGET_CAPACITY];
 static size_t click_target_count;
-static double blockers[RENDER_MAX_BLOCKERS][4];
-static int blocker_count;
+/* One extra slot holds the scale bar's box (A123), set every frame. */
+static double blockers[RENDER_MAX_BLOCKERS + 1][4];
+static int blocker_count, page_blocker_count;
 
 void renderer_set_blockers(const float *rects, int count)
 {
-    blocker_count = count < 0 ? 0 : count > RENDER_MAX_BLOCKERS ? RENDER_MAX_BLOCKERS : count;
+    page_blocker_count = count < 0 ? 0 : count > RENDER_MAX_BLOCKERS ? RENDER_MAX_BLOCKERS : count;
+    blocker_count = page_blocker_count;
     for (int k = 0; k < blocker_count; ++k)
         for (int c = 0; c < 4; ++c) blockers[k][c] = rects[k * 4 + c];
 }
@@ -757,6 +759,39 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
         DrawTextEx(font, body->name, (Vector2){boxes[k].x, boxes[k].y}, size, spacing, color);
         add_click_target(boxes[k].x, boxes[k].y, boxes[k].width, boxes[k].height, body_of[k]);
     }
+}
+
+/* Scale bar (SPEC A123), bottom left of the view: a round distance measured
+ * at the depth of the point the camera orbits (the selected body or family),
+ * so it reads true there; nearer or farther things scale with perspective.
+ * In illustrative scale distances are true but bodies are enlarged, so the
+ * bar measures space, not sizes. Its box is an obstacle for edge markers. */
+static void draw_scale_bar(Font font, Camera3D camera)
+{
+    page_blocker_count = page_blocker_count > RENDER_MAX_BLOCKERS ? RENDER_MAX_BLOCKERS : page_blocker_count;
+    blocker_count = page_blocker_count;
+    const float s = pixel_scale;
+    double depth = sqrt(pow(camera.target.x - camera.position.x, 2) + pow(camera.target.y - camera.position.y, 2)
+        + pow(camera.target.z - camera.position.z, 2));
+    double units_per_pixel = render_world_units_per_pixel(depth, camera.fovy, css_viewport_height());
+    double units_per_meter = meters_to_render_units(1.0e9) / 1.0e9;
+    RenderScaleBar bar;
+    if (!(units_per_meter > 0) || !render_scale_bar(units_per_pixel / units_per_meter, 110.0, &bar)) return;
+    const float size = 12.0f * s, spacing = 0.4f * s;
+    Vector2 text = MeasureTextEx(font, bar.label, size, spacing);
+    float length = (float)bar.pixels * s;
+    float x = 16.0f * s, baseline = (float)GetScreenHeight() - 18.0f * s;
+    const Color ink = {228, 222, 206, 200};
+    DrawLineEx((Vector2){x, baseline}, (Vector2){x + length, baseline}, 1.5f * s, ink);
+    DrawLineEx((Vector2){x, baseline - 5 * s}, (Vector2){x, baseline + 1 * s}, 1.5f * s, ink);
+    DrawLineEx((Vector2){x + length, baseline - 5 * s}, (Vector2){x + length, baseline + 1 * s}, 1.5f * s, ink);
+    DrawTextEx(font, bar.label, (Vector2){x, baseline - 8 * s - text.y}, size, spacing, ink);
+    float width = fmaxf(length, text.x);
+    blockers[blocker_count][0] = x - 6 * s;
+    blockers[blocker_count][1] = baseline - 12 * s - text.y;
+    blockers[blocker_count][2] = width + 12 * s;
+    blockers[blocker_count][3] = text.y + 18 * s;
+    ++blocker_count;
 }
 
 /* Off-screen markers (A119): the Sun, planets, dwarf planets and the
@@ -952,6 +987,7 @@ void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3
 {
     click_target_count = 0;
     Font font = resources->label_font_ready ? resources->label_font : GetFontDefault();
+    draw_scale_bar(font, camera);
     draw_offscreen_markers(system, mode, origin, font, camera, selected);
     Vector3 forward = unit_vector((Vector3){camera.target.x - camera.position.x, camera.target.y - camera.position.y,
         camera.target.z - camera.position.z}, (Vector3){0, 0, -1});
