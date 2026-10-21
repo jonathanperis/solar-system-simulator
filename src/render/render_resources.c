@@ -77,6 +77,9 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "uniform float bodyRadius;\n"
     "uniform vec3 ringNormal;\n"      /* Saturn's pole: the ring plane's normal */
     "uniform vec2 ringRadii;\n"       /* ring inner/outer edge in Saturn radii */
+    "uniform vec4 occluders[4];\n"    /* eclipse casters: centre (xyz) and drawn radius (w) */
+    "uniform float occluderCount;\n"
+    "uniform float sunRadius;\n"      /* the Sun's angular radius from this body, radians */
     SHADER_OUTPUT
     "vec3 toLinear(vec3 c) { return pow(c, vec3(2.2)); }\n"
     "vec3 toDisplay(vec3 c) { return pow(clamp(c, 0.0, 1.0), vec3(1.0 / 2.2)); }\n"
@@ -109,7 +112,11 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "        vec3 photosphere = surface.rgb * (0.7 + 0.75 * sqrt(mu));\n"
     "        FRAG_COLOR = vec4(min(mix(photosphere, vec3(1.0, 0.95, 0.82), 0.45 * mu * mu), vec3(1.0)), 1.0);\n"
     "        return;\n"
-    "    }\n"
+    "    }\n";
+
+/* ISO C caps a string literal at 4095 characters, so main() continues in a
+ * second literal; renderer_resources_init joins the two. */
+static const char fragment_shader_lit[] =
     /* Lambert's law: brightness follows the cosine of the Sun's angle; a 5%
      * wrap stands in for light scattered just past the terminator. */
     "    vec3 albedo = toLinear(surface.rgb);\n"
@@ -152,6 +159,27 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "    float u = (hitRadius - ringRadii.x) / max(ringRadii.y - ringRadii.x, 0.000001);\n"
     "    float ringAlpha = TEX(texture2, vec2(clamp(u, 0.0, 1.0), 0.5)).a;\n"
     "    if (ringShadow > 0.5 && abs(facing) > 0.0001 && t > 0.0 && u > 0.0 && u < 1.0) lit *= 1.0 - 0.85 * ringAlpha;\n"
+    /* Eclipses (SPEC A111): a moon's shadow on its planet, the planet's on
+     * its moons. From this point the Sun is a disc of angular radius
+     * sunRadius; each caster is a disc of angular radius R/t at angular
+     * distance miss/t from it (t along the Sun direction). The light lost is
+     * the overlap, as render_eclipse_fraction computes in C. */
+    "    float sunlight = 1.0;\n"
+    "    for (int k = 0; k < 4; ++k) {\n"
+    "        if (float(k) >= occluderCount) break;\n"
+    "        vec3 d = occluders[k].xyz - fragPosition;\n"
+    "        float along = dot(d, lightDir);\n"
+    "        if (along > 0.0) {\n"
+    "            float theta = sqrt(max(dot(d, d) - along * along, 0.0)) / along;\n"
+    "            float rho = occluders[k].w / along;\n"
+    "            float inner = abs(rho - sunRadius);\n"
+    "            float s = clamp((theta - inner) / max(rho + sunRadius - inner, 1e-12), 0.0, 1.0);\n"
+    "            float area = min(rho * rho / max(sunRadius * sunRadius, 1e-24), 1.0);\n"
+    "            sunlight *= 1.0 - (1.0 - s * s * (3.0 - 2.0 * s)) * area;\n"
+    "        }\n"
+    "    }\n"
+    /* Direct sunlight, the ocean glint and the lit air of the rim all dim. */
+    "    lit *= sunlight;\n"
     "    vec3 color = albedo * (0.004 + lit);\n"
     /* Limb darkening for bodies with air: near the edge the sight line meets
      * the haze high up, above most of the reflecting cloud deck, so giant
@@ -170,12 +198,12 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "        vec3 h = normalize(lightDir + v);\n"
     "        float nh = max(dot(n, h), 0.0);\n"
     /* A sharp core plus a faint wide sheen, like sunlight on a rippled sea. */
-    "        color += vec3(1.0, 0.93, 0.8) * (pow(nh, 300.0) * 1.2 + pow(nh, 24.0) * 0.05) * water * max(ndl, 0.0);\n"
+    "        color += vec3(1.0, 0.93, 0.8) * (pow(nh, 300.0) * 1.2 + pow(nh, 24.0) * 0.05) * water * max(ndl, 0.0) * sunlight;\n"
     "    }\n"
     /* Atmosphere rim: grazing sight lines cross more air (Fresnel-like
      * falloff), lit mostly on the day side. */
     "    float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);\n"
-    "    color += toLinear(atmosphere.rgb) * atmosphere.a * rim * smoothstep(-0.3, 0.45, ndl);\n"
+    "    color += toLinear(atmosphere.rgb) * atmosphere.a * rim * smoothstep(-0.3, 0.45, ndl) * sunlight;\n"
     /* A soft shoulder instead of a hard clip: values above ~0.8 roll toward
      * white, so bright cloud tops, glints and city lights keep their detail. */
     "    color = mix(color, 1.0 - 0.04 / max(color - 0.6, vec3(0.2)), step(0.8, color));\n"
@@ -259,7 +287,9 @@ static Texture2D build_glow(void)
 bool renderer_resources_init(RenderResources *resources)
 {
     *resources = (RenderResources){0};
-    resources->shader = LoadShaderFromMemory(vertex_shader, fragment_shader);
+    static char fragment_source[sizeof(fragment_shader) + sizeof(fragment_shader_lit)];
+    snprintf(fragment_source, sizeof(fragment_source), "%s%s", fragment_shader, fragment_shader_lit);
+    resources->shader = LoadShaderFromMemory(vertex_shader, fragment_source);
     /* A compile failure yields id 0, but a link failure makes raylib quietly
      * substitute its default shader. Treat both as unavailable so the flat
      * colour fallback is used instead of an unlit, white-haloed scene. */
@@ -274,6 +304,9 @@ bool renderer_resources_init(RenderResources *resources)
     resources->loc_body_radius = GetShaderLocation(resources->shader, "bodyRadius");
     resources->loc_ring_normal = GetShaderLocation(resources->shader, "ringNormal");
     resources->loc_ring_radii = GetShaderLocation(resources->shader, "ringRadii");
+    resources->loc_occluders = GetShaderLocation(resources->shader, "occluders");
+    resources->loc_occluder_count = GetShaderLocation(resources->shader, "occluderCount");
+    resources->loc_sun_radius = GetShaderLocation(resources->shader, "sunRadius");
     if (resources->loc_mode < 0 || resources->loc_light_dir < 0) {
         UnloadShader(resources->shader);
         resources->shader = (Shader){0};

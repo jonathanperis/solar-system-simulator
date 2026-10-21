@@ -185,6 +185,16 @@ Vec3d render_orbit_guide_point(const RenderOrbitGuide *guide, double cos_e, doub
 #define RENDER_ORBIT_GUIDE_MAX_SEGMENTS 360
 int render_orbit_guide_segments(double semi_major_pixels);
 
+/* Eclipse shadows (SPEC A111). Seen from a surface point, an occluding sphere
+ * of angular radius `occluder_radius` sits `separation` radians from the
+ * Sun's centre, whose disc has angular radius `sun_radius`. Returns the
+ * fraction of sunlight it removes: 1 in the umbra, 0 outside the penumbra,
+ * a smooth ramp between, and at most (rho / sigma)^2 when the occluder is
+ * smaller than the Sun (an annular eclipse). The lighting shader evaluates the
+ * same expression; keep the two identical. */
+double render_eclipse_fraction(double separation, double occluder_radius, double sun_radius);
+#define RENDER_MAX_SHADOW_CASTERS 4
+
 /* Screen markers (SPEC A108), drawn after the 3D scene. A planet or dwarf
  * planet smaller than RENDER_RING_MARKER_MAX_RADIUS_PIXELS on screen gets a
  * thin ring around its dot so it can be found among the stars; the selected
