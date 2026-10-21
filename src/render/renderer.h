@@ -64,6 +64,7 @@ typedef struct RenderView {
     size_t selected;
     bool show_belt;        /* small-body cloud (A121): dated scenes only */
     double days_since_epoch; /* scene time for the belt, days after JD 2461200.5 */
+    bool show_constellations; /* IAU stick figures on the sky (A124) */
 } RenderView;
 
 bool renderer_resources_init(RenderResources *resources);
