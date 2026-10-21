@@ -76,6 +76,13 @@ typedef struct RenderOrientation {
 /* IAU WGCCRE 2015 rotation model at `days_since_j2000` (TDB days, d in the
  * report). Periodic correction terms are omitted except Neptune's N term. */
 RenderOrientation render_body_orientation(BodyId id, double days_since_j2000);
+/* Orientation of the Milky Way backdrop sphere (SPEC A117). The map is an
+ * all-sky image in galactic coordinates, longitude increasing leftward from
+ * the Galactic Centre at its middle, south galactic pole at the top; this
+ * frame (prime meridian toward the Galactic Centre, pole toward the south
+ * galactic pole, from their ICRF directions) puts every star of the map in
+ * its true direction, so the backdrop is the real sky. */
+RenderOrientation render_sky_orientation(void);
 
 /* Opacity of trail point `index` of `count` (0 = oldest): old history fades
  * toward a floor so recent motion reads first without hiding the past. */

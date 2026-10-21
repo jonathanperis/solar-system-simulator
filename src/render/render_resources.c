@@ -99,10 +99,10 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "        FRAG_COLOR = vec4(atmosphere.rgb * atmosphere.a * graze * day * 1.6, 1.0);\n"
     "        return;\n"
     "    }\n"
-    /* Sky backdrop: squaring the map's values is a contrast curve that sends
-     * the faint JPEG noise between stars to black while bright stars and the
-     * Milky Way's core keep their light, so the sky reads as depth, not grain. */
-    "    if (mode > 3.5) { vec3 sky = surface.rgb * surface.rgb; FRAG_COLOR = vec4(min(sky * 2.4, vec3(1.0)), 1.0); return; }\n"
+    /* Sky backdrop (the real sky, A117): a contrast curve with a black point
+     * just above the JPEG grain between stars, then a square, so the noise
+     * goes black while stars and the Milky Way's band keep their light. */
+    "    if (mode > 3.5) { vec3 sky = max(surface.rgb - 0.035, 0.0); FRAG_COLOR = vec4(min(sky * sky * 2.2 + sky * 0.55, vec3(1.0)), 1.0); return; }\n"
     /* Star: emissive, darker toward the limb where we look through more of
      * the cooler outer photosphere (limb darkening). */
     "    if (mode > 0.5 && mode < 1.5) {\n"

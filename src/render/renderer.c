@@ -932,7 +932,7 @@ static void draw_orbit_guides(const FrameContext *ctx)
 /* Phase 1. Milky Way backdrop: a huge inside-out sphere centred on the camera,
  * drawn first without writing depth, so everything else draws over it and it
  * never moves as the camera translates (stars are effectively at infinity).
- * Illustrative, not a sky ephemeris. */
+ * It is a real all-sky map, oriented into simulation axes (SPEC A117). */
 static void draw_backdrop(const FrameContext *ctx)
 {
     const RenderResources *resources = ctx->resources;
@@ -940,8 +940,9 @@ static void draw_backdrop(const FrameContext *ctx)
     rlDrawRenderBatchActive();
     rlDisableDepthMask();
     rlDisableBackfaceCulling();
-    RenderOrientation ecliptic = {.pole = {0, 1, 0}, .prime_meridian = {1, 0, 0}, .spin_rate_degrees_per_day = 0, .known = false};
-    Matrix sky = body_matrix(ecliptic, ctx->camera.position, ctx->view->far_plane * 0.5f);
+    /* The map is the real sky in galactic coordinates; oriented, its stars
+     * and the Milky Way sit in their true directions (A117). */
+    Matrix sky = body_matrix(render_sky_orientation(), ctx->camera.position, ctx->view->far_plane * 0.5f);
     draw_shaded(resources, &resources->sphere_detailed, &sky, SHADE_SKY, resources->textures[RENDER_TEXTURE_STARS],
         WHITE, (Vector3){0, 1, 0}, (RenderAtmosphere){0}, NULL, NULL);
     rlEnableBackfaceCulling();
