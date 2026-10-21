@@ -37,12 +37,15 @@ interface RuntimeControls {
   filterStatus: Readout;
   pause: HTMLButtonElement;
   step: HTMLButtonElement;
-  rotate: HTMLInputElement;
+  /* A128: on/off controls are role="switch" buttons (aria-checked). */
+  rotate: Switch;
   body: HTMLSelectElement;
   /* Speed slider over C's five presets (A120). */
   speed: HTMLInputElement;
   speedLabel?: Readout;
-  view: HTMLButtonElement;
+  /* Scale and trail-frame segmented buttons (A128). */
+  scale?: HTMLButtonElement[];
+  trailFrames?: HTMLButtonElement[];
   search: HTMLInputElement;
   group: HTMLSelectElement;
   lesson: HTMLSelectElement;
@@ -50,16 +53,15 @@ interface RuntimeControls {
   method: HTMLSelectElement;
   dt: HTMLInputElement;
   factor: HTMLInputElement;
-  trails: HTMLButtonElement;
-  vectors: HTMLButtonElement;
-  grid: HTMLButtonElement;
-  labels: HTMLButtonElement;
-  orbits: HTMLButtonElement;
+  vectors: Switch;
+  grid: Switch;
+  labels: Switch;
+  orbits: Switch;
   contact: HTMLButtonElement;
-  follow?: HTMLButtonElement;
+  follow?: Switch;
   tour?: HTMLButtonElement;
-  belt?: HTMLButtonElement;
-  constellations?: HTMLButtonElement;
+  belt?: Switch;
+  constellations?: Switch;
   /* Called with the selected body's name whenever C's selection changes. */
   onSelection?: (name: string) => void;
 }
@@ -203,6 +205,19 @@ export function parsePreparedExperiment(stored: string | null): PreparedExperime
   if (new TextEncoder().encode(prepared.text).length >= experimentTextLimitBytes)
     throw new Error(`Prepared experiment is too large (limit ${experimentTextLimitBytes.toLocaleString('en-US')} bytes). Prepare it again in the atlas.`);
   return { text: prepared.text, snapshot: prepared.snapshot, count: prepared.count! };
+}
+
+/** An on/off control: a role="switch" button with aria-checked (A128). */
+export type Switch = Pick<HTMLElement, 'setAttribute' | 'getAttribute'>;
+export function setSwitch(element: Switch | undefined, on: boolean): void {
+  if (element && element.getAttribute('aria-checked') !== String(on)) element.setAttribute('aria-checked', String(on));
+}
+/** Mark the one pressed button of a segmented control. */
+export function setSegment(buttons: HTMLButtonElement[] | undefined, pressed: (button: HTMLButtonElement) => boolean): void {
+  for (const button of buttons ?? []) {
+    const on = String(pressed(button));
+    if (button.getAttribute('aria-pressed') !== on) button.setAttribute('aria-pressed', on);
+  }
 }
 
 function setText(element: Readout, text: string): void {
@@ -454,31 +469,18 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       const contact = state.contactSeconds ? ` · Contact sphere crossed at ${Number(state.contactSeconds.toPrecision(12))} s: a step's straight-line drift passed within the bodies' radii (may be a coarse-step artifact); lesson errors are withheld` : '';
       setText(readouts.scene, `${activeBodyCount} active bodies · ${lessonNames[state.lesson] ?? 'Catalog epoch JD 2461200.5 TDB'}${contact}`);
       setText(controls.step, `Step +${state.dt} s`);
-      setText(controls.trails, `Trails: ${state.trailFrame ? 'Parent-relative' : 'Absolute'}`);
-      setText(controls.vectors, `Vector directions: ${state.vectors ? 'On' : 'Off'}`);
-      controls.vectors.setAttribute('aria-pressed', String(state.vectors));
-      setText(controls.grid, `Grid: ${state.grid === false ? 'Off' : 'On'}`);
-      controls.grid.setAttribute('aria-pressed', String(state.grid !== false));
-      setText(controls.labels, `Labels: ${state.labels === false ? 'Off' : 'On'}`);
-      controls.labels.setAttribute('aria-pressed', String(state.labels !== false));
-      setText(controls.orbits, `Orbits: ${state.orbits === false ? 'Off' : 'On'}`);
-      if (controls.constellations) {
-        setText(controls.constellations, `Constellations: ${state.constellations ? 'On' : 'Off'}`);
-        controls.constellations.setAttribute('aria-pressed', String(Boolean(state.constellations)));
-      }
-      if (controls.belt) {
-        setText(controls.belt, `Belt: ${state.belt === false ? 'Off' : 'On'}`);
-        controls.belt.setAttribute('aria-pressed', String(state.belt !== false));
-      }
-      if (controls.follow) {
-        setText(controls.follow, `Follow: ${state.follow ? 'On' : 'Off'}`);
-        controls.follow.setAttribute('aria-pressed', String(Boolean(state.follow)));
-      }
+      setSegment(controls.trailFrames, button => Number(button.dataset.trailFrame) === (state.trailFrame ? 1 : 0));
+      setSwitch(controls.vectors, Boolean(state.vectors));
+      setSwitch(controls.grid, state.grid !== false);
+      setSwitch(controls.labels, state.labels !== false);
+      setSwitch(controls.orbits, state.orbits !== false);
+      setSwitch(controls.constellations, Boolean(state.constellations));
+      setSwitch(controls.belt, state.belt !== false);
+      setSwitch(controls.follow, Boolean(state.follow));
       if (controls.tour) {
         setText(controls.tour, state.touring ? 'Stop tour' : 'Tour');
         controls.tour.setAttribute('aria-pressed', String(Boolean(state.touring)));
       }
-      controls.orbits.setAttribute('aria-pressed', String(state.orbits !== false));
       controls.contact.hidden = state.lesson !== collisionLesson;
       setText(controls.contact, `Contact: ${state.contactMode === 2 ? 'Inelastic merge' : 'Elastic bounce'} (restart)`);
       setText(readouts.acceleration, hasParent ? `${state.acceleration.toExponential(6)} m/s²` : 'N/A — no parent');
@@ -502,8 +504,8 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       controls.panels.forEach(panel => { panel.disabled = false; });
       controls.step.disabled = !state.paused;
       setText(controls.pause, state.paused ? 'Resume' : 'Pause');
-      setText(controls.view, `View: ${state.view}`);
-      controls.rotate.checked = state.autoRotate;
+      setSegment(controls.scale, button => button.dataset.scale === state.view);
+      setSwitch(controls.rotate, state.autoRotate);
       // A native select may expose a tentative arrow-key value before change.
       // Sync only when C state changes, not on every animation-frame report.
       if (reportedBody !== state.selected) {
@@ -579,7 +581,7 @@ export function mountSimulator(root: HTMLElement): void {
     filterStatus: root.querySelector<HTMLElement>('[data-body-filter-status]')!,
     pause: root.querySelector<HTMLButtonElement>('[data-command="pause"]')!,
     step: root.querySelector<HTMLButtonElement>('[data-command="step"]')!,
-    rotate: root.querySelector<HTMLInputElement>('[data-runtime-rotate]')!,
+    rotate: root.querySelector<HTMLButtonElement>('[data-runtime-rotate]')!,
     body: root.querySelector<HTMLSelectElement>('[data-runtime-body]')!,
     speed: root.querySelector<HTMLInputElement>('[data-runtime-speed]')!,
     speedLabel: root.querySelector<HTMLElement>('[data-speed-label]') ?? undefined,
@@ -587,7 +589,8 @@ export function mountSimulator(root: HTMLElement): void {
     belt: root.querySelector<HTMLButtonElement>('[data-command="belt"]') ?? undefined,
     constellations: root.querySelector<HTMLButtonElement>('[data-command="constellations"]') ?? undefined,
     tour: root.querySelector<HTMLButtonElement>('[data-command="tour"]') ?? undefined,
-    view: root.querySelector<HTMLButtonElement>('[data-command="view"]')!,
+    scale: [...root.querySelectorAll<HTMLButtonElement>('[data-scale]')],
+    trailFrames: [...root.querySelectorAll<HTMLButtonElement>('[data-trail-frame]')],
     search: root.querySelector<HTMLInputElement>('[data-runtime-search]')!,
     group: root.querySelector<HTMLSelectElement>('[data-runtime-group]')!,
     lesson: root.querySelector<HTMLSelectElement>('[data-lesson]')!,
@@ -595,7 +598,6 @@ export function mountSimulator(root: HTMLElement): void {
     method: root.querySelector<HTMLSelectElement>('[data-integrator]')!,
     dt: root.querySelector<HTMLInputElement>('[data-dt]')!,
     factor: root.querySelector<HTMLInputElement>('[data-velocity-factor]')!,
-    trails: root.querySelector<HTMLButtonElement>('[data-command="trails"]')!,
     vectors: root.querySelector<HTMLButtonElement>('[data-command="vectors"]')!,
     grid: root.querySelector<HTMLButtonElement>('[data-command="grid"]')!,
     labels: root.querySelector<HTMLButtonElement>('[data-command="labels"]')!,
@@ -686,7 +688,27 @@ export function mountSimulator(root: HTMLElement): void {
   });
   root.querySelector('[data-whole-system]')!.addEventListener('click', () => { send('select', 0); send('frame'); });
   root.querySelectorAll<HTMLButtonElement>('[data-open-panel]').forEach(button => {
-    button.addEventListener('click', () => root.querySelector<HTMLDialogElement>(`#${button.dataset.openPanel}`)!.showModal());
+    const panel = root.querySelector<HTMLDialogElement>(`#${button.dataset.openPanel}`)!;
+    if (!panel.classList.contains('popover')) {
+      button.addEventListener('click', () => panel.showModal());
+      return;
+    }
+    // A128: popover panels are non-modal so the scene stays visible and
+    // usable; the opener toggles them and Escape closes them (non-modal
+    // dialogs get no cancel event), returning focus to the opener.
+    button.setAttribute('aria-expanded', 'false');
+    button.addEventListener('click', () => {
+      if (panel.open) panel.close();
+      else { panel.show(); panel.querySelector<HTMLElement>('button:not([data-close-panel])')?.focus(); }
+      button.setAttribute('aria-expanded', String(panel.open));
+    });
+    panel.addEventListener('close', () => button.setAttribute('aria-expanded', 'false'));
+    panel.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      panel.close();
+      button.focus();
+    });
   });
   root.querySelectorAll<HTMLElement>('[data-close-panel]').forEach(button => {
     button.addEventListener('click', () => {
@@ -696,10 +718,14 @@ export function mountSimulator(root: HTMLElement): void {
     });
   });
   const sceneStatus = root.querySelector<HTMLElement>('[data-scene-status]')!;
+  let sceneStatusTimer = 0;
   root.querySelector('[data-load-scene]')!.addEventListener('click', () => {
     if (!controls.scene.value) return;
     const accepted = runtime.ccall?.('solar_web_lesson', 'number', ['number', 'number', 'number', 'number'],
       [Number(controls.scene.value), 1, 0, 15]);
+    // The note fades after a few seconds instead of lingering over the view.
+    window.clearTimeout(sceneStatusTimer);
+    sceneStatusTimer = window.setTimeout(() => { sceneStatus.textContent = ''; }, 6000);
     sceneStatus.textContent = accepted ? `${controls.scene.selectedOptions[0].text} loaded from its initial state.`
       : 'The scene could not be loaded.';
   });
@@ -711,7 +737,13 @@ export function mountSimulator(root: HTMLElement): void {
       }
     });
   }
-  controls.rotate.addEventListener('change', () => send('rotate'));
+  // Segmented controls send C's toggle only when the other option is chosen.
+  controls.scale?.forEach(button => button.addEventListener('click', () => {
+    if (button.getAttribute('aria-pressed') !== 'true') send('view');
+  }));
+  controls.trailFrames?.forEach(button => button.addEventListener('click', () => {
+    if (button.getAttribute('aria-pressed') !== 'true') send('trails');
+  }));
 
   document.addEventListener('visibilitychange', () => send('background', document.hidden ? 1 : 0));
   const setLessonDefaults = () => {

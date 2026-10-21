@@ -115,27 +115,47 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
       </fieldset>
     </dialog>
 
-    <dialog id="view-panel" class="sheet" aria-labelledby="view-heading">
+    <dialog id="view-panel" class="sheet popover" aria-labelledby="view-heading">
       <header><h2 id="view-heading">View</h2><button type="button" data-close-panel aria-label="Close view">Close</button></header>
-      <fieldset class="body" data-runtime-panel disabled>
+      {/* Non-modal (A128): the scene stays visible while it changes. */}
+      <fieldset class="body view-groups" data-runtime-panel disabled>
         <legend class="sr-only">View</legend>
-        <div class="row">
-          <button type="button" data-command="view">View: Illustrative</button>
-          <button type="button" data-command="zoom" data-value="1">Zoom in</button>
-          <button type="button" data-command="zoom" data-value="-1">Zoom out</button>
-          <label class="check"><input type="checkbox" data-runtime-rotate checked /> Rotate</label>
+        <div class="view-group">
+          <span class="group-label" id="scale-label">Scale</span>
+          <div class="segmented" role="group" aria-labelledby="scale-label">
+            <button type="button" data-scale="Illustrative" aria-pressed="true">Illustrative</button>
+            <button type="button" data-scale="Real scale" aria-pressed="false">Real</button>
+          </div>
         </div>
-        <div class="row">
-          <button type="button" data-command="orbits" aria-pressed="true">Orbits: On</button>
-          <button type="button" data-command="follow" aria-pressed="false">Follow: Off</button>
-          <button type="button" data-command="belt" aria-pressed="true">Belt: On</button>
-          <button type="button" data-command="constellations" aria-pressed="false">Constellations: Off</button>
-          <button type="button" data-command="trails">Trails: Parent-relative</button>
-          <button type="button" data-command="vectors" aria-pressed="false">Vector directions: Off</button>
-          <button type="button" data-command="grid" aria-pressed="true">Grid: On</button>
-          <button type="button" data-command="labels" aria-pressed="true">Labels: On</button>
+        <div class="view-group">
+          <span class="group-label">Show</span>
+          <div class="switches">
+            <button type="button" role="switch" aria-checked="true" data-command="orbits">Orbits</button>
+            <button type="button" role="switch" aria-checked="true" data-command="belt">Asteroids</button>
+            <button type="button" role="switch" aria-checked="false" data-command="constellations">Constellations</button>
+            <button type="button" role="switch" aria-checked="true" data-command="labels">Labels</button>
+            <button type="button" role="switch" aria-checked="true" data-command="grid">Grid</button>
+            <button type="button" role="switch" aria-checked="false" data-command="vectors">Vectors</button>
+          </div>
         </div>
-        <p>Illustrative scale enlarges bodies and spreads close moons; real scale uses physical sizes. Views never change the physics.</p>
+        <div class="view-group">
+          <span class="group-label" id="trails-label">Trails around</span>
+          <div class="segmented" role="group" aria-labelledby="trails-label">
+            <button type="button" data-trail-frame="1" aria-pressed="true">Parent</button>
+            <button type="button" data-trail-frame="0" aria-pressed="false">Sun</button>
+          </div>
+        </div>
+        <div class="view-group">
+          <span class="group-label">Camera</span>
+          <div class="camera-row">
+            <button type="button" role="switch" aria-checked="true" data-command="rotate" data-runtime-rotate>Rotate</button>
+            <button type="button" role="switch" aria-checked="false" data-command="follow">Follow</button>
+            <div class="segmented" role="group" aria-label="Zoom">
+              <button type="button" data-command="zoom" data-value="-1" aria-label="Zoom out">−</button>
+              <button type="button" data-command="zoom" data-value="1" aria-label="Zoom in">+</button>
+            </div>
+          </div>
+        </div>
       </fieldset>
     </dialog>
 
