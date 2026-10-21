@@ -150,9 +150,10 @@ jobs:
       - name: Prepare WebAssembly public assets
         run: python3 tools/prepare_wasm.py build/download-wasm docs/public/wasm
 
-      # The simulator fetches planet/backdrop maps from the site after its
-      # first frame; assets/textures/ is their single tracked source.
-      - name: Copy simulator textures into the site
+      # The simulator fetches its maps and the small-body sample from the site
+      # after its first frame; assets/textures/ and assets/belt/ are their
+      # single tracked sources.
+      - name: Copy simulator textures and small-body sample into the site
         run: make docs-textures
 
       - name: Set up Node.js

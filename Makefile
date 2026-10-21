@@ -134,6 +134,7 @@ test-core: build/catalog-orbits.dylib $(HEADLESS_TEST_BINS)
 	python3 tools/satellite_catalog.py --check
 	python3 tools/planet_epoch.py --check
 	python3 tools/scene_epoch.py --check
+	python3 tools/belt_sample.py --check
 	python3 tests/test_small_body_catalog.py
 	python3 tests/test_satellite_catalog.py
 	python3 tests/test_planet_epoch.py
@@ -172,8 +173,9 @@ docs-assets: web docs-textures
 
 # assets/textures/ is the single source; the site copy is an ignored build output.
 docs-textures:
-	@mkdir -p docs/public/textures
+	@mkdir -p docs/public/textures docs/public/belt
 	cp assets/textures/*.jpg assets/textures/*.png docs/public/textures/
+	cp assets/belt/small_bodies.bin docs/public/belt/
 
 raylib-web:
 	$(MAKE) PLATFORM=PLATFORM_WEB -C $(RAYLIB_WEB_SRC)

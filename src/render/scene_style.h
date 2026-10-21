@@ -283,6 +283,30 @@ void render_edge_anchor(double dx, double dy, double half_width, double half_hei
 double render_slide_past(double x, double y, double w, double h, const double blocker[4], bool vertical,
     double lo, double hi);
 
+/* Small-body cloud (SPEC A121): a sample of the atlas's heliocentric orbits
+ * (tools/belt_sample.py writes assets/belt/small_bodies.bin) drawn as points
+ * that move on their two-body conics about the Sun, the same model as the
+ * atlas (catalog_coordinate). Presentation only: never part of the N-body
+ * state, the CSV or the inspector. Angles in radians; `mean_anomaly0` at the
+ * scene epoch (JD 2461200.5). */
+#define RENDER_BELT_CAPACITY 65536
+typedef enum RenderBeltKind {
+    RENDER_BELT_MAIN = 0, RENDER_BELT_TROJAN = 1, RENDER_BELT_NEAR_EARTH = 2, RENDER_BELT_OUTER = 3, RENDER_BELT_MARS_CROSSER = 4
+} RenderBeltKind;
+typedef struct RenderBeltBody {
+    float a_au, e, inclination, node, periapsis, mean_anomaly0;
+    unsigned char kind;
+} RenderBeltBody;
+/* Decode the sample file; returns the number of bodies, 0 for a bad header,
+ * truncated data or more than `capacity` records. */
+size_t render_belt_decode(const unsigned char *bytes, size_t length, RenderBeltBody *out, size_t capacity);
+/* Mean motion (rad/day) of a heliocentric orbit with semi-major axis `a_au`. */
+double render_belt_mean_motion(double a_au);
+/* Heliocentric position in simulation axes (AU) `days` after the scene
+ * epoch. The vertex shader in render_resources.c computes the same thing in
+ * single precision; keep the two identical. */
+Vec3d render_belt_position(const RenderBeltBody *body, double days);
+
 /* Name labels drawn in the canvas (presentation only). The Sun, planets and
  * dwarf planets are always named; the selected body always is; moons and small bodies are
  * named once their family is zoomed in (at least
