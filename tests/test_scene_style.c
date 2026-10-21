@@ -671,6 +671,11 @@ static void test_ring_strips_follow_the_ring_tables(void)
         }
     }
     assert(render_ring_system(BODY_ID_SATURN) == NULL && render_ring_system(BODY_ID_EARTH) == NULL);
+    /* Backlit glow (A127): Jupiter's dust rings glow most, Uranus's least. */
+    assert(render_ring_system(BODY_ID_JUPITER)->dust_fraction > render_ring_system(BODY_ID_NEPTUNE)->dust_fraction);
+    assert(render_ring_system(BODY_ID_NEPTUNE)->dust_fraction > render_ring_system(BODY_ID_URANUS)->dust_fraction);
+    for (size_t s = 0; s < RENDER_RING_SYSTEM_COUNT; ++s)
+        assert(render_ring_system_at(s)->dust_fraction >= 0 && render_ring_system_at(s)->dust_fraction <= 1);
     /* Uranus: epsilon, 20-96 km wide and optically thick, is the densest
      * texel; the gap at 49,200 km is empty; every ring reads as a line. */
     const RenderRingSystem *uranus = render_ring_system(BODY_ID_URANUS);
