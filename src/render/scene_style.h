@@ -307,6 +307,29 @@ double render_belt_mean_motion(double a_au);
  * single precision; keep the two identical. */
 Vec3d render_belt_position(const RenderBeltBody *body, double days);
 
+/* Uranus's rings (SPEC A122), from the NASA NSSDC Uranian Rings Fact Sheet:
+ * the ten narrow rings' mean radius, width and normal optical depth. The
+ * dusty nu and mu rings are not drawn. Presentation only. */
+typedef struct RenderRing {
+    const char *name;
+    double radius_m, width_m, optical_depth;
+} RenderRing;
+#define RENDER_URANUS_RING_COUNT 10
+extern const RenderRing render_uranus_rings[RENDER_URANUS_RING_COUNT];
+/* The strip spans these radii (the ring mesh's inner and outer edges). */
+#define RENDER_URANUS_RING_INNER_M 41500e3
+#define RENDER_URANUS_RING_OUTER_M 51400e3
+#define RENDER_URANUS_RING_STRIP_WIDTH 1024
+/* Fill an RGBA strip (inner edge at x = 0): alpha is each pixel's share of
+ * ring times its opacity 1 - exp(-tau); colour is the rings' dark grey. */
+void render_uranus_ring_strip(unsigned char *rgba);
+/* Illustrative scale (A122): the same rings on a coarse strip where each ring
+ * fills the texel it falls in at opacity 0.25 + 0.75 (1 - exp(-tau)), so a
+ * 2 km ring still draws as a line about a pixel wide. Render-only widening,
+ * like enlarged illustrative bodies; real scale keeps the coverage strip. */
+#define RENDER_URANUS_RING_ILLUSTRATIVE_WIDTH 128
+void render_uranus_ring_strip_illustrative(unsigned char *rgba);
+
 /* Name labels drawn in the canvas (presentation only). The Sun, planets and
  * dwarf planets are always named; the selected body always is; moons and small bodies are
  * named once their family is zoomed in (at least

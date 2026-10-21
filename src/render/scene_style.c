@@ -700,3 +700,47 @@ Vec3d render_belt_position(const RenderBeltBody *body, double days)
     double Z = x * (sw * si) + y * (cw * si);
     return (Vec3d){X, Z, -Y};
 }
+
+const RenderRing render_uranus_rings[RENDER_URANUS_RING_COUNT] = {
+    {"6", 41837e3, 1.5e3, 0.3}, {"5", 42234e3, 2.0e3, 0.5}, {"4", 42571e3, 2.0e3, 0.3},
+    {"alpha", 44718e3, 7.15e3, 0.4}, {"beta", 45661e3, 8.15e3, 0.3}, {"eta", 47176e3, 1.55e3, 0.4},
+    {"gamma", 47627e3, 3.85e3, 1.5}, {"delta", 48300e3, 6.0e3, 0.5}, {"lambda", 50023e3, 2.0e3, 0.1},
+    {"epsilon", 51149e3, 58.1e3, 1.5},
+};
+
+void render_uranus_ring_strip(unsigned char *rgba)
+{
+    const double inner = RENDER_URANUS_RING_INNER_M;
+    const double step = (RENDER_URANUS_RING_OUTER_M - inner) / RENDER_URANUS_RING_STRIP_WIDTH;
+    for (int x = 0; x < RENDER_URANUS_RING_STRIP_WIDTH; ++x) {
+        double lo = inner + x * step, hi = lo + step, alpha = 0;
+        for (size_t k = 0; k < RENDER_URANUS_RING_COUNT; ++k) {
+            const RenderRing *r = &render_uranus_rings[k];
+            double a = fmax(lo, r->radius_m - r->width_m / 2), b = fmin(hi, r->radius_m + r->width_m / 2);
+            /* Area coverage: a 2 km ring fills a fifth of a 10 km pixel, so
+             * mipmapping thins it honestly instead of widening it. */
+            if (b > a) alpha += (b - a) / step * (1 - exp(-r->optical_depth));
+        }
+        alpha = alpha > 1 ? 1 : alpha;
+        /* Dark grey: the rings' albedo is only 0.02-0.03; the shader draws
+         * them brightened like a long exposure, or they would not show. */
+        rgba[x * 4] = 150; rgba[x * 4 + 1] = 148; rgba[x * 4 + 2] = 145;
+        rgba[x * 4 + 3] = (unsigned char)lround(alpha * 255);
+    }
+}
+
+void render_uranus_ring_strip_illustrative(unsigned char *rgba)
+{
+    const double inner = RENDER_URANUS_RING_INNER_M;
+    const double step = (RENDER_URANUS_RING_OUTER_M - inner) / RENDER_URANUS_RING_ILLUSTRATIVE_WIDTH;
+    for (int x = 0; x < RENDER_URANUS_RING_ILLUSTRATIVE_WIDTH; ++x) {
+        double lo = inner + x * step, hi = lo + step, alpha = 0;
+        for (size_t k = 0; k < RENDER_URANUS_RING_COUNT; ++k) {
+            const RenderRing *r = &render_uranus_rings[k];
+            if (r->radius_m + r->width_m / 2 > lo && r->radius_m - r->width_m / 2 < hi)
+                alpha = fmax(alpha, 0.25 + 0.75 * (1 - exp(-r->optical_depth)));
+        }
+        rgba[x * 4] = 150; rgba[x * 4 + 1] = 148; rgba[x * 4 + 2] = 145;
+        rgba[x * 4 + 3] = (unsigned char)lround(alpha * 255);
+    }
+}

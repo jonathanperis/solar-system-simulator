@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "render/scene_style.h"
@@ -643,6 +644,41 @@ static void test_belt_sample_decodes_and_matches_the_atlas_conic(void)
     }
 }
 
+/* Uranus's rings (SPEC A122): the opacity strip is rasterised from the ring
+ * table, so every ring sits at its radius with its width and depth, and the
+ * gaps between rings are empty. */
+static void test_uranian_ring_strip_follows_the_ring_table(void)
+{
+    static unsigned char strip[RENDER_URANUS_RING_STRIP_WIDTH * 4];
+    render_uranus_ring_strip(strip);
+    const double inner = RENDER_URANUS_RING_INNER_M, outer = RENDER_URANUS_RING_OUTER_M;
+    const double per_pixel = (outer - inner) / RENDER_URANUS_RING_STRIP_WIDTH;
+    int epsilon = (int)((51149e3 - inner) / per_pixel), gap = (int)((49200e3 - inner) / per_pixel);
+    /* Epsilon, 20-96 km wide and optically thick, is the most opaque ring. */
+    int densest = 0;
+    for (int x = 0; x < RENDER_URANUS_RING_STRIP_WIDTH; ++x) if (strip[x * 4 + 3] > strip[densest * 4 + 3]) densest = x;
+    assert(abs(densest - epsilon) <= 3);
+    assert(strip[gap * 4 + 3] == 0);
+    /* Integrated opacity equals the table's sum of width x (1 - e^-tau). */
+    double sum = 0;
+    for (int x = 0; x < RENDER_URANUS_RING_STRIP_WIDTH; ++x) sum += strip[x * 4 + 3] / 255.0 * per_pixel;
+    double expected = 0;
+    for (size_t k = 0; k < RENDER_URANUS_RING_COUNT; ++k)
+        expected += render_uranus_rings[k].width_m * (1 - exp(-render_uranus_rings[k].optical_depth));
+    assert(fabs(sum - expected) / expected < 0.03);
+
+    /* The illustrative strip: every ring owns at least one visible texel (a
+     * render-only widening, like illustrative body sizes); gaps stay empty. */
+    static unsigned char wide[RENDER_URANUS_RING_ILLUSTRATIVE_WIDTH * 4];
+    render_uranus_ring_strip_illustrative(wide);
+    const double coarse = (outer - inner) / RENDER_URANUS_RING_ILLUSTRATIVE_WIDTH;
+    for (size_t k = 0; k < RENDER_URANUS_RING_COUNT; ++k) {
+        int x = (int)((render_uranus_rings[k].radius_m - inner) / coarse);
+        assert(wide[x * 4 + 3] >= 60);
+    }
+    assert(wide[(int)((49200e3 - inner) / coarse) * 4 + 3] == 0);
+}
+
 int main(void)
 {
     test_texture_inventory_matches_assets();
@@ -674,6 +710,7 @@ int main(void)
     test_edge_anchor_follows_the_direction_to_the_body();
     test_markers_slide_past_floating_panels();
     test_belt_sample_decodes_and_matches_the_atlas_conic();
+    test_uranian_ring_strip_follows_the_ring_table();
     puts("test_scene_style passed");
     return 0;
 }
