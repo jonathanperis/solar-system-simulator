@@ -31,7 +31,7 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
         aria-label="Live solar system simulation" aria-describedby="canvas-keys runtime-control-state">
         Your browser needs canvas and WebGL to display the simulation.
       </canvas>
-      <p id="canvas-keys" class="sr-only">With the view focused: Space pauses, N steps while paused, R restarts, V switches scale, F frames the system, B frames the body, A toggles rotation, G grid, H labels, C cycles bodies, brackets change speed. Tab leaves the view.</p>
+      <p id="canvas-keys" class="sr-only">With the view focused: Space pauses, N steps, R restarts, V switches scale, F frames the system, B frames the body, A toggles rotation, G grid, H labels, C cycles bodies, O orbits, brackets change speed. Tab leaves the view.</p>
     </div>
 
     {/* The sky clock leads the view: the date is the one reading that always
@@ -131,7 +131,8 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
           <label class="check"><input type="checkbox" data-runtime-rotate checked /> Rotate</label>
         </div>
         <div class="row">
-          <button type="button" data-command="trails">Trails: Absolute</button>
+          <button type="button" data-command="orbits" aria-pressed="true">Orbits: On</button>
+          <button type="button" data-command="trails">Trails: Parent-relative</button>
           <button type="button" data-command="vectors" aria-pressed="false">Vector directions: Off</button>
           <button type="button" data-command="grid" aria-pressed="true">Grid: On</button>
           <button type="button" data-command="labels" aria-pressed="true">Labels: On</button>
@@ -151,7 +152,8 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
           <dt><kbd>C</kbd> <kbd>1</kbd>–<kbd>0</kbd></dt><dd>cycle or pick bodies</dd>
           <dt><kbd>F</kbd> <kbd>B</kbd></dt><dd>frame system, frame body</dd>
           <dt><kbd>V</kbd> <kbd>A</kbd></dt><dd>scale, camera rotation</dd>
-          <dt><kbd>T</kbd> <kbd>X</kbd> <kbd>G</kbd> <kbd>H</kbd></dt><dd>trails, vectors, grid, labels</dd>
+          <dt><kbd>O</kbd> <kbd>T</kbd> <kbd>X</kbd></dt><dd>orbits, trails, vectors</dd>
+          <dt><kbd>G</kbd> <kbd>H</kbd></dt><dd>grid, labels</dd>
           <dt>Wheel, drag</dt><dd>zoom, orbit</dd>
         </dl>
         <p>Keys work while the view has focus. Tab moves through the controls.</p>

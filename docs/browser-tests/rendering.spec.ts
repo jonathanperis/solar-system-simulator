@@ -14,7 +14,7 @@ test('the cinematic renderer loads every texture without console errors', async 
   await expect(canvas).toHaveAttribute('data-textures', /^(\d+)\/\1$/, { timeout: 45000 });
   const [loaded, total] = (await canvas.getAttribute('data-textures'))!.split('/').map(Number);
   expect(loaded).toBe(total);
-  expect(total).toBe(14);
+  expect(total).toBe(28); // 14 Solar System Scope maps + 14 USGS moon maps (A109)
   expect(problems).toEqual([]);
 });
 
@@ -23,7 +23,7 @@ test('missing textures fall back to lit colours and the simulation keeps running
   await page.goto(base);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   const canvas = page.locator('canvas').first();
-  await expect(canvas).toHaveAttribute('data-textures', '0/14', { timeout: 45000 });
+  await expect(canvas).toHaveAttribute('data-textures', '0/28', { timeout: 45000 });
   const elapsed = page.locator('[data-runtime-elapsed]');
   const before = await elapsed.textContent();
   await expect.poll(async () => elapsed.textContent(), { timeout: 10000 }).not.toBe(before);
@@ -47,4 +47,25 @@ test('the reference grid can be hidden and shown again through C', async ({ page
   await labels.click();
   await expect(labels).toHaveText('Labels: Off');
   await expect(labels).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('orbit guides start on with parent-relative trails and toggle through C', async ({ page }) => {
+  await page.goto(base);
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await expect(page.getByRole('button', { name: /^Trails: / })).toHaveText('Trails: Parent-relative');
+  const orbits = page.getByRole('button', { name: /^Orbits: (On|Off)$/ });
+  await expect(orbits).toHaveText('Orbits: On');
+  await expect(orbits).toHaveAttribute('aria-pressed', 'true');
+  await orbits.click();
+  await expect(orbits).toHaveText('Orbits: Off');
+  await expect(orbits).toHaveAttribute('aria-pressed', 'false');
+  await page.keyboard.press('Escape');
+  await page.locator('canvas').focus();
+  // raylib polls keys once a frame: hold the key across a few frames.
+  await page.keyboard.down('o');
+  await page.waitForTimeout(150);
+  await page.keyboard.up('o');
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await expect(orbits).toHaveText('Orbits: On');
 });

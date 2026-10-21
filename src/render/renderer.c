@@ -448,7 +448,7 @@ static void draw_reference_grid(Vec3d origin, double camera_distance, const Came
         (Vec3d){camera->target.x - camera->position.x, camera->target.y - camera->position.y, camera->target.z - camera->position.z},
         (Vec3d){camera->up.x, camera->up.y, camera->up.z}, camera->fovy, aspect, 0.05);
     const int pieces = 6;
-    const Color minor_color = {70, 92, 118, 70}, major_color = {92, 120, 150, 120};
+    const Color minor_color = {70, 92, 118, 34}, major_color = {92, 120, 150, 72};
     rlBegin(RL_LINES);
     for (int level = 0; level < 2; ++level) {
         double spacing = level ? grid.major_spacing : grid.minor_spacing;
@@ -587,6 +587,16 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
     rlEnd();
 }
 
+/* Drawn position of a guide point: the parent's current place plus the
+ * conic offset, then the same illustrative spreading as the body itself
+ * (renderer_body_position), so a guide always passes through its body. */
+static Vec3d orbit_guide_vertex(const Body *body, const Body *parent, Vec3d parent_render, Vec3d offset_m,
+    RenderScaleMode mode, bool spread)
+{
+    Vec3d position = meters_vec_to_render_vec3d(vec3d_add(parent->position_m, offset_m));
+    return spread ? visible_satellite_position(body, parent, position, parent_render, mode) : position;
+}
+
 void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d origin,
     const RenderResources *resources, Camera3D camera, size_t selected)
 {
@@ -640,8 +650,13 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
         Vector2 text = MeasureTextEx(font, body->name, size, spacing);
         int priority = i == selected ? 1000 : body->kind == BODY_KIND_STAR ? 900
             : body->kind == BODY_KIND_PLANET ? 800 - (int)i : body->kind == BODY_KIND_DWARF_PLANET ? 600 - (int)i : 400 - (int)i;
-        /* Above the body, but kept on screen when the body fills the view. */
-        float top = fmaxf(4.0f, screen[i].y - (float)radius_px - 6 - text.y);
+        /* Above the body (and its ring marker or selection brackets), but
+         * kept on screen when the body fills the view. */
+        double clearance = radius_px;
+        if (render_body_wants_ring_marker(body->kind, radius_px)) clearance = fmax(clearance, RENDER_RING_MARKER_RADIUS_PIXELS);
+        if (i == selected && render_selection_wants_brackets(radius_px))
+            clearance = fmax(clearance, render_selection_bracket_half_size(radius_px));
+        float top = fmaxf(4.0f, screen[i].y - (float)clearance - 4 - text.y);
         boxes[count] = (RenderLabelBox){screen[i].x - text.x / 2, top, text.x, text.y, priority, false};
         body_of[count++] = i;
     }
@@ -653,6 +668,45 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
         /* A soft drop shadow keeps pale text readable over bright planets. */
         DrawTextEx(font, body->name, (Vector2){boxes[k].x + 1, boxes[k].y + 1}, size, spacing, (Color){0, 0, 0, 170});
         DrawTextEx(font, body->name, (Vector2){boxes[k].x, boxes[k].y}, size, spacing, color);
+    }
+}
+
+void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Camera3D camera, size_t selected)
+{
+    Vector3 forward = unit_vector((Vector3){camera.target.x - camera.position.x, camera.target.y - camera.position.y,
+        camera.target.z - camera.position.z}, (Vector3){0, 0, -1});
+    double viewport_height = (double)GetScreenHeight();
+    for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
+        const Body *body = &system->bodies[i];
+        bool is_selected = i == selected;
+        if (!is_selected && body->kind != BODY_KIND_PLANET && body->kind != BODY_KIND_DWARF_PLANET) continue;
+        Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
+        Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
+        if (offset.x * forward.x + offset.y * forward.y + offset.z * forward.z <= 0) continue;
+        double distance = sqrt(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z);
+        double radius_px = body->radius_quality == PHYSICAL_UNKNOWN ? 0
+            : render_projected_radius_pixels(renderer_body_radius(body, mode), distance, camera.fovy, viewport_height);
+        Vector2 at = GetWorldToScreen(position, camera);
+        if (render_body_wants_ring_marker(body->kind, radius_px) && !is_selected) {
+            /* A thin ring in the body's colour: findable, but quieter than
+             * the dot it surrounds. */
+            Color ring = renderer_body_color(body);
+            ring.a = 120;
+            DrawRing(at, RENDER_RING_MARKER_RADIUS_PIXELS - 0.6f, RENDER_RING_MARKER_RADIUS_PIXELS + 0.6f, 0, 360, 40, ring);
+        }
+        if (is_selected && render_selection_wants_brackets(radius_px)) {
+            /* Four amber corner brackets, the instrument's one accent colour
+             * (DESIGN.md), outside the drawn disc at every zoom. */
+            float half = (float)render_selection_bracket_half_size(radius_px);
+            float arm = fminf(9.0f, half * 0.45f);
+            const Color amber = {240, 200, 120, 235};
+            for (int corner = 0; corner < 4; ++corner) {
+                float sx = corner & 1 ? 1.0f : -1.0f, sy = corner & 2 ? 1.0f : -1.0f;
+                Vector2 tip = {at.x + sx * half, at.y + sy * half};
+                DrawLineEx(tip, (Vector2){tip.x - sx * arm, tip.y}, 1.5f, amber);
+                DrawLineEx(tip, (Vector2){tip.x, tip.y - sy * arm}, 1.5f, amber);
+            }
+        }
     }
 }
 
@@ -710,6 +764,113 @@ static Vector3 light_toward_star(const FrameContext *ctx, size_t i)
 static double body_pixels(const FrameContext *ctx, size_t i, float radius)
 {
     return render_projected_radius_pixels(radius, ctx->distance[i], ctx->camera.fovy, ctx->viewport_height);
+}
+
+/* Orbit guides (SPEC A107): each body's osculating two-body ellipse about
+ * its parent, from this frame's SI state. Presentation only; nothing here is
+ * stored or fed back. The polyline starts at the body's own eccentric anomaly
+ * so a vertex sits exactly on the body, and E advances by a fixed rotation
+ * (two multiplies per vertex instead of cos/sin). When the camera is close to
+ * the orbit, an even step would leave long chords that visibly miss the body,
+ * so the spacing is cubic in the parameter: dense at the body, coarse on the
+ * far side, which is also farthest from the camera. */
+static void draw_orbit_guides(const FrameContext *ctx)
+{
+    const SolarSystem *system = ctx->system;
+    Vec3d camera_world = vec3d_add(ctx->origin, (Vec3d){ctx->camera.position.x, ctx->camera.position.y, ctx->camera.position.z});
+    RenderFrustum view = render_frustum(camera_world,
+        (Vec3d){ctx->forward.x, ctx->forward.y, ctx->forward.z},
+        (Vec3d){ctx->camera.up.x, ctx->camera.up.y, ctx->camera.up.z}, ctx->camera.fovy,
+        (double)GetRenderWidth() / ctx->viewport_height, 0.05);
+    const double pi = 3.14159265358979323846;
+    rlBegin(RL_LINES);
+    for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
+        const Body *body = &system->bodies[i];
+        int parent_index = ctx->cache.parent[i];
+        if (body->kind == BODY_KIND_STAR || parent_index < 0) continue;
+        const Body *parent = &system->bodies[parent_index];
+        Vec3d r = vec3d_sub(body->position_m, parent->position_m);
+        Vec3d v = vec3d_sub(body->velocity_mps, parent->velocity_mps);
+        RenderOrbitGuide guide;
+        if (!render_orbit_guide(r, v, SOLAR_G * (parent->mass_kg + body->mass_kg), &guide)) continue;
+
+        /* Screen size: the semi-major axis at the parent's distance, scaled
+         * by how far the illustrative view spreads this body from its parent. */
+        Vec3d parent_render = ctx->cache.position[parent_index];
+        double true_distance = meters_to_render_units(vec3d_length(r));
+        double drawn_distance = vec3d_length(vec3d_sub(ctx->cache.position[i], parent_render));
+        double spread_factor = true_distance > 0 ? drawn_distance / true_distance : 1.0;
+        double a_units = meters_to_render_units(guide.semi_major_m) * spread_factor;
+        double parent_distance = fmax(vec3d_length(vec3d_sub(parent_render, camera_world)), 1e-12);
+        double a_pixels = render_projected_radius_pixels(a_units, parent_distance, ctx->camera.fovy, ctx->viewport_height);
+        /* Faint guides (moons of unknown size, hundreds in the Saturn and
+         * Jupiter families) are drawn at half detail: at 7% opacity a
+         * coarser chord is invisible, and they dominate the vertex count. */
+        bool faint = body->radius_quality == PHYSICAL_UNKNOWN && i != ctx->view->selected;
+        int segments = a_pixels >= RENDER_ORBIT_GUIDE_MIN_PIXELS ? render_orbit_guide_segments(faint
+            ? fmax(a_pixels * 0.5, RENDER_ORBIT_GUIDE_MIN_PIXELS) : a_pixels) : 0;
+        if (!segments) continue;
+
+        /* Planets read first, then dwarf planets and moons; markers of
+         * unknown size (mostly tiny irregular moons) stay faint, so a 291-moon
+         * family is a haze of paths, not a scribble. Small guides fade in. */
+        float alpha = body->kind == BODY_KIND_PLANET ? 0.34f : body->kind == BODY_KIND_DWARF_PLANET ? 0.28f
+            : body->radius_quality == PHYSICAL_UNKNOWN ? 0.07f : 0.22f;
+        if (i == ctx->view->selected) alpha = 0.5f;
+        alpha *= (float)fmin(1.0, (a_pixels - RENDER_ORBIT_GUIDE_MIN_PIXELS) / 24.0 + 0.15);
+        Color color = renderer_body_color(body);
+
+        bool spread = ctx->mode != RENDER_SCALE_REAL && !(body->kind != BODY_KIND_MOON && parent->kind == BODY_KIND_STAR);
+        /* The illustrative spreading only moves points closer to the parent
+         * than the drawn surfaces (and the Moon). An orbit whose periapsis is
+         * already outside that never changes, so skip the per-vertex test. */
+        if (spread && body->id != BODY_ID_MOON) {
+            double clearance = renderer_body_radius(parent, ctx->mode) + renderer_body_radius(body, ctx->mode)
+                + SOLAR_ILLUSTRATIVE_SATELLITE_GAP_UNITS;
+            spread = meters_to_render_units(guide.semi_major_m * (1 - guide.eccentricity)) <= clearance;
+        }
+        /* The body's eccentric anomaly from its perifocal coordinates:
+         * x = a (cos E - e), y = b sin E. */
+        double cos0 = vec3d_dot(r, guide.periapsis) / guide.semi_major_m + guide.eccentricity;
+        double sin0 = vec3d_dot(r, guide.ahead) / guide.semi_minor_m;
+        double norm = hypot(cos0, sin0);
+        cos0 = norm > 0 ? cos0 / norm : 1.0;
+        sin0 = norm > 0 ? sin0 / norm : 0.0;
+        double e0 = atan2(sin0, cos0);
+        bool close = a_pixels > 2500.0;
+        double step_cos = cos(2 * pi / segments), step_sin = sin(2 * pi / segments);
+        double c = cos0, s = sin0;
+        Vec3d previous = orbit_guide_vertex(body, parent, parent_render, render_orbit_guide_point(&guide, c, s), ctx->mode, spread);
+        unsigned previous_code = render_frustum_outcode(&view, previous);
+        for (int k = 1; k <= segments; ++k) {
+            if (close) {
+                /* u in [-1, 1] around the orbit; E - E0 = pi u^3 is dense at the
+                 * body (u = 0, the two ends meet on the far side). */
+                double u = -1.0 + 2.0 * k / segments;
+                double e = e0 + pi * u * u * u;
+                c = cos(e); s = sin(e);
+                if (k == 1) {
+                    double e_start = e0 - pi;
+                    previous = orbit_guide_vertex(body, parent, parent_render,
+                        render_orbit_guide_point(&guide, cos(e_start), sin(e_start)), ctx->mode, spread);
+                    previous_code = render_frustum_outcode(&view, previous);
+                }
+            } else {
+                double next_c = c * step_cos - s * step_sin;
+                s = s * step_cos + c * step_sin;
+                c = next_c;
+            }
+            Vec3d point = orbit_guide_vertex(body, parent, parent_render, render_orbit_guide_point(&guide, c, s), ctx->mode, spread);
+            unsigned code = render_frustum_outcode(&view, point);
+            if (!(code & previous_code)) {
+                line_vertex(renderer_relative_vector(previous, ctx->origin), color, alpha);
+                line_vertex(renderer_relative_vector(point, ctx->origin), color, alpha);
+            }
+            previous = point;
+            previous_code = code;
+        }
+    }
+    rlEnd();
 }
 
 /* Phase 1. Milky Way backdrop: a huge inside-out sphere centred on the camera,
@@ -882,6 +1043,7 @@ static void draw_translucent_layers(const FrameContext *ctx)
     }
 
     BeginBlendMode(BLEND_ADDITIVE);
+    if (ctx->view->show_orbits) draw_orbit_guides(ctx);
     draw_trails(&ctx->cache, system, ctx->trails, ctx->mode, ctx->trail_frame, ctx->origin, &ctx->camera);
     /* Atmospheric halos: a shell a few percent above each body with air, so
      * the limb glows like Earth seen from orbit. Bodies too small on screen to
@@ -906,9 +1068,12 @@ static void draw_translucent_layers(const FrameContext *ctx)
 static void draw_sun_glow(const FrameContext *ctx)
 {
     if (ctx->star < 0) return;
+    /* Two layers: a tight bright corona and a wide, faint scattered halo
+     * (the glare a camera or eye sees around a bright star). */
     float size = fmaxf(ctx->radius[ctx->star] * 7.0f, (float)ctx->camera_distance * 0.05f);
     BeginBlendMode(BLEND_ADDITIVE);
     DrawBillboard(ctx->camera, ctx->resources->glow, ctx->star_position, size, WHITE);
+    DrawBillboard(ctx->camera, ctx->resources->glow, ctx->star_position, size * 4.0f, (Color){110, 92, 70, 255});
     EndBlendMode();
 }
 

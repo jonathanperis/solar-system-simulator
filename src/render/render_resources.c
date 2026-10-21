@@ -96,12 +96,18 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "        FRAG_COLOR = vec4(atmosphere.rgb * atmosphere.a * graze * day * 1.6, 1.0);\n"
     "        return;\n"
     "    }\n"
-    "    if (mode > 3.5) { FRAG_COLOR = vec4(surface.rgb * 1.7, 1.0); return; }\n"
+    /* Sky backdrop: squaring the map's values is a contrast curve that sends
+     * the faint JPEG noise between stars to black while bright stars and the
+     * Milky Way's core keep their light, so the sky reads as depth, not grain. */
+    "    if (mode > 3.5) { vec3 sky = surface.rgb * surface.rgb; FRAG_COLOR = vec4(min(sky * 2.4, vec3(1.0)), 1.0); return; }\n"
     /* Star: emissive, darker toward the limb where we look through more of
      * the cooler outer photosphere (limb darkening). */
     "    if (mode > 0.5 && mode < 1.5) {\n"
+    /* The disc centre is hot enough to read near white; the limb keeps the
+     * map's orange, as in white-light photographs of the photosphere. */
     "        float mu = max(dot(n, v), 0.0);\n"
-    "        FRAG_COLOR = vec4(surface.rgb * (0.55 + 0.6 * pow(mu, 0.5)), 1.0);\n"
+    "        vec3 photosphere = surface.rgb * (0.7 + 0.75 * sqrt(mu));\n"
+    "        FRAG_COLOR = vec4(min(mix(photosphere, vec3(1.0, 0.95, 0.82), 0.45 * mu * mu), vec3(1.0)), 1.0);\n"
     "        return;\n"
     "    }\n"
     /* Lambert's law: brightness follows the cosine of the Sun's angle; a 5%
@@ -147,6 +153,12 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "    float ringAlpha = TEX(texture2, vec2(clamp(u, 0.0, 1.0), 0.5)).a;\n"
     "    if (ringShadow > 0.5 && abs(facing) > 0.0001 && t > 0.0 && u > 0.0 && u < 1.0) lit *= 1.0 - 0.85 * ringAlpha;\n"
     "    vec3 color = albedo * (0.004 + lit);\n"
+    /* Limb darkening for bodies with air: near the edge the sight line meets
+     * the haze high up, above most of the reflecting cloud deck, so giant
+     * planets look round rather than like flat discs. Airless bodies skip it
+     * (strength 0); the full Moon really is nearly uniform. */
+    "    float muView = max(dot(n, v), 0.0);\n"
+    "    color *= mix(1.0, 0.35 + 0.65 * sqrt(muView), min(atmosphere.a * 1.6, 0.75));\n"
     "    if (nightLights > 0.5) {\n"
     /* City lights fade in across the terminator. */
     "        float night = 1.0 - smoothstep(-0.18, 0.06, ndl);\n"
@@ -164,6 +176,9 @@ static const char fragment_shader[] = SHADER_HEADER_FS
      * falloff), lit mostly on the day side. */
     "    float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);\n"
     "    color += toLinear(atmosphere.rgb) * atmosphere.a * rim * smoothstep(-0.3, 0.45, ndl);\n"
+    /* A soft shoulder instead of a hard clip: values above ~0.8 roll toward
+     * white, so bright cloud tops, glints and city lights keep their detail. */
+    "    color = mix(color, 1.0 - 0.04 / max(color - 0.6, vec3(0.2)), step(0.8, color));\n"
     "    FRAG_COLOR = vec4(toDisplay(color), 1.0);\n"
     "}\n";
 
