@@ -130,6 +130,7 @@ typedef struct SolarApp {
     float pointer_travel;
     float pinch_spread;
     float interaction_hold_seconds;
+    float shown_seconds; /* wall time the view has been on screen (startup cuts, A112) */
     float pixel_scale; /* backing pixels per CSS pixel (A114) */
 #if defined(PLATFORM_WEB)
     RenderResolutionGovernor governor; /* steps HiDPI down on slow GPUs (A116) */
@@ -245,10 +246,15 @@ static void handle_pointer(SolarApp *state)
 /* Start easing from the view on screen to whatever framing the caller sets
  * next (A112). With reduced motion the flight has zero length: a cut. */
 #define SOLAR_FLIGHT_SECONDS 1.6f
+#define SOLAR_FLIGHT_STARTUP_SECONDS 1.0f
 static void begin_camera_flight(SolarApp *state)
 {
     double from[3] = {state->shown_origin.x, state->shown_origin.y, state->shown_origin.z};
-    orbit_camera_flight_begin(&state->flight, from, &state->shown_camera, state->reduced_motion ? 0.0f : SOLAR_FLIGHT_SECONDS);
+    /* A deep link (?body=, ?lesson=) frames its body while the page starts:
+     * open there directly instead of flying in from the default view. */
+    bool starting = state->shown_seconds < SOLAR_FLIGHT_STARTUP_SECONDS;
+    orbit_camera_flight_begin(&state->flight, from, &state->shown_camera,
+        state->reduced_motion || starting ? 0.0f : SOLAR_FLIGHT_SECONDS);
 }
 
 /* Framing turns the camera to the framed body's sunlit side (about 40 degrees
@@ -699,6 +705,7 @@ static void solar_app_update_draw(void *user_data)
     }
     state->shown_origin = origin;
     state->shown_camera = shown;
+    if (!stalled && state->shown_seconds < SOLAR_FLIGHT_STARTUP_SECONDS) state->shown_seconds += frame_time;
     apply_orbit_camera(&state->camera, &shown, (Vector3){0,0,0});
 
 #if defined(PLATFORM_WEB)
