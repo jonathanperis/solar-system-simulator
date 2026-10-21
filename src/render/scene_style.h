@@ -32,7 +32,22 @@ typedef enum RenderTextureSlot {
     RENDER_TEXTURE_URANUS = 11,
     RENDER_TEXTURE_NEPTUNE = 12,
     RENDER_TEXTURE_STARS = 13,
-    RENDER_TEXTURE_COUNT = 14
+    /* Moon and small-world maps: USGS mosaics, public domain (A109). */
+    RENDER_TEXTURE_PHOBOS = 14,
+    RENDER_TEXTURE_VESTA = 15,
+    RENDER_TEXTURE_IO = 16,
+    RENDER_TEXTURE_EUROPA = 17,
+    RENDER_TEXTURE_GANYMEDE = 18,
+    RENDER_TEXTURE_CALLISTO = 19,
+    RENDER_TEXTURE_ENCELADUS = 20,
+    RENDER_TEXTURE_TETHYS = 21,
+    RENDER_TEXTURE_DIONE = 22,
+    RENDER_TEXTURE_RHEA = 23,
+    RENDER_TEXTURE_IAPETUS = 24,
+    RENDER_TEXTURE_TRITON = 25,
+    RENDER_TEXTURE_PLUTO = 26,
+    RENDER_TEXTURE_CHARON = 27,
+    RENDER_TEXTURE_COUNT = 28
 } RenderTextureSlot;
 
 /* File name (no directory) of a slot, or NULL for an invalid slot. */
@@ -133,6 +148,57 @@ unsigned render_frustum_outcode(const RenderFrustum *frustum, Vec3d point);
  * poking out of it. Returns false when the whole segment lies inside. Assumes
  * at most one endpoint is inside, which holds for a body's own trail. */
 bool render_clip_segment_outside_sphere(Vec3d *a, Vec3d *b, Vec3d center, double radius);
+
+/* Orbit guides (SPEC A107): the closed two-body conic (Kepler ellipse)
+ * through a body's current parent-relative position and velocity, drawn as a
+ * faint full orbit so the shape of every path reads at a glance. This is the
+ * osculating orbit: it is what the body would follow if only its parent pulled
+ * on it, so perturbations make it drift slowly; the trail is the measured
+ * path. Presentation only, recomputed from SI state every frame and never
+ * written back (V10).
+ *
+ * `periapsis` and `ahead` are unit vectors in the orbit plane: toward
+ * periapsis and 90 degrees further along the motion. A point at eccentric
+ * anomaly E sits at a (cos E - e) periapsis + b sin E ahead from the focus
+ * (the parent), with b = a sqrt(1 - e^2). Meters. */
+typedef struct RenderOrbitGuide {
+    double semi_major_m, semi_minor_m, eccentricity;
+    Vec3d periapsis, ahead;
+} RenderOrbitGuide;
+/* Fills `out` and returns true for a bound, non-degenerate orbit; open
+ * (parabolic/hyperbolic), radial or massless cases return false and are not
+ * drawn. mu = G (M_parent + m_body) in m^3/s^2. */
+bool render_orbit_guide(Vec3d relative_position_m, Vec3d relative_velocity_mps, double mu, RenderOrbitGuide *out);
+/* Focus-relative point (meters) at eccentric anomaly E, given cos E and
+ * sin E: the renderer steps E with a rotation instead of calling cos/sin for
+ * every vertex (WebAssembly trig is slow). */
+Vec3d render_orbit_guide_point(const RenderOrbitGuide *guide, double cos_e, double sin_e);
+/* Segments for a guide whose semi-major axis spans `semi_major_pixels` on
+ * screen: about one per RENDER_ORBIT_GUIDE_PIXELS_PER_SEGMENT of
+ * circumference within [MIN, MAX]; 0 when the orbit is too small to show a
+ * shape (it would be a smudge over the body's dot). */
+#define RENDER_ORBIT_GUIDE_MIN_PIXELS 6.0
+/* A chord s pixels long on a curve of radius R strays s^2 / 8R from it: 10 px
+ * chords stay within a quarter pixel once an orbit is 50 px across. */
+#define RENDER_ORBIT_GUIDE_PIXELS_PER_SEGMENT 10.0
+#define RENDER_ORBIT_GUIDE_MIN_SEGMENTS 24
+#define RENDER_ORBIT_GUIDE_MAX_SEGMENTS 360
+int render_orbit_guide_segments(double semi_major_pixels);
+
+/* Screen markers (SPEC A108), drawn after the 3D scene. A planet or dwarf
+ * planet smaller than RENDER_RING_MARKER_MAX_RADIUS_PIXELS on screen gets a
+ * thin ring around its dot so it can be found among the stars; the selected
+ * body gets four corner brackets `render_selection_bracket_half_size` pixels
+ * from its centre (always outside its drawn disc). */
+#define RENDER_RING_MARKER_MAX_RADIUS_PIXELS 4.0
+#define RENDER_RING_MARKER_RADIUS_PIXELS 7.0
+#define RENDER_SELECTION_MIN_HALF_PIXELS 13.0
+/* Brackets around a body already filling much of the view only add noise;
+ * the amber label and the inspector name it. */
+#define RENDER_SELECTION_MAX_RADIUS_PIXELS 90.0
+bool render_selection_wants_brackets(double radius_pixels);
+bool render_body_wants_ring_marker(BodyKind kind, double radius_pixels);
+double render_selection_bracket_half_size(double radius_pixels);
 
 /* Name labels drawn in the canvas (presentation only). The Sun, planets and
  * dwarf planets are always named; the selected body always is; moons and small bodies are

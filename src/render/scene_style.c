@@ -26,6 +26,20 @@ static const char *const texture_files[RENDER_TEXTURE_COUNT] = {
     [RENDER_TEXTURE_URANUS] = "uranus.jpg",
     [RENDER_TEXTURE_NEPTUNE] = "neptune.jpg",
     [RENDER_TEXTURE_STARS] = "stars_milky_way.jpg",
+    [RENDER_TEXTURE_PHOBOS] = "phobos.jpg",
+    [RENDER_TEXTURE_VESTA] = "vesta.jpg",
+    [RENDER_TEXTURE_IO] = "io.jpg",
+    [RENDER_TEXTURE_EUROPA] = "europa.jpg",
+    [RENDER_TEXTURE_GANYMEDE] = "ganymede.jpg",
+    [RENDER_TEXTURE_CALLISTO] = "callisto.jpg",
+    [RENDER_TEXTURE_ENCELADUS] = "enceladus.jpg",
+    [RENDER_TEXTURE_TETHYS] = "tethys.jpg",
+    [RENDER_TEXTURE_DIONE] = "dione.jpg",
+    [RENDER_TEXTURE_RHEA] = "rhea.jpg",
+    [RENDER_TEXTURE_IAPETUS] = "iapetus.jpg",
+    [RENDER_TEXTURE_TRITON] = "triton.jpg",
+    [RENDER_TEXTURE_PLUTO] = "pluto.jpg",
+    [RENDER_TEXTURE_CHARON] = "charon.jpg",
 };
 
 const char *render_texture_file(RenderTextureSlot slot)
@@ -36,7 +50,8 @@ const char *render_texture_file(RenderTextureSlot slot)
 
 RenderTextureSlot render_texture_for_body(BodyId id)
 {
-    switch (id) {
+    /* An int switch: moons without a named BodyId use their NAIF number. */
+    switch ((int)id) {
         case BODY_ID_SUN: return RENDER_TEXTURE_SUN;
         case BODY_ID_MERCURY: return RENDER_TEXTURE_MERCURY;
         /* Venus's surface is hidden under cloud; the visible map is its
@@ -49,6 +64,22 @@ RenderTextureSlot render_texture_for_body(BodyId id)
         case BODY_ID_SATURN: return RENDER_TEXTURE_SATURN;
         case BODY_ID_URANUS: return RENDER_TEXTURE_URANUS;
         case BODY_ID_NEPTUNE: return RENDER_TEXTURE_NEPTUNE;
+        /* USGS global mosaics (A109). Titan keeps its flat haze colour: its
+         * surface maps are infrared and radar views no eye would see. */
+        case BODY_ID_PHOBOS: return RENDER_TEXTURE_PHOBOS;
+        case BODY_ID_VESTA: return RENDER_TEXTURE_VESTA;
+        case BODY_ID_IO: return RENDER_TEXTURE_IO;
+        case BODY_ID_EUROPA: return RENDER_TEXTURE_EUROPA;
+        case BODY_ID_GANYMEDE: return RENDER_TEXTURE_GANYMEDE;
+        case BODY_ID_CALLISTO: return RENDER_TEXTURE_CALLISTO;
+        case BODY_ID_ENCELADUS: return RENDER_TEXTURE_ENCELADUS;
+        case 603: return RENDER_TEXTURE_TETHYS;
+        case 604: return RENDER_TEXTURE_DIONE;
+        case 605: return RENDER_TEXTURE_RHEA;
+        case 608: return RENDER_TEXTURE_IAPETUS;
+        case BODY_ID_TRITON: return RENDER_TEXTURE_TRITON;
+        case BODY_ID_PLUTO: return RENDER_TEXTURE_PLUTO;
+        case BODY_ID_CHARON: return RENDER_TEXTURE_CHARON;
         default: return RENDER_TEXTURE_NONE;
     }
 }
@@ -74,7 +105,7 @@ RenderAtmosphere render_atmosphere_for_body(BodyId id)
  * alpha0 = alpha + alpha_rate*T and declination delta0 = delta + delta_rate*T;
  * the prime meridian sits W = w0 + w_rate*d degrees east of the node where the
  * body's equator crosses the ICRF equator. T is Julian centuries and d is days
- * since J2000 TDB. Periodic terms are omitted; for the planets they move these axes by well
+ * since J2000 TDB. Periodic terms are omitted unless noted below; for the planets they move these axes by well
  * under a degree. The Moon's are larger (pole ~1.5 deg, prime meridian ~3.6
  * deg), acceptable for an illustrative texture orientation. */
 typedef struct RotationModel {
@@ -95,6 +126,24 @@ static const RotationModel rotation_models[] = {
     {BODY_ID_SATURN, 40.589, -0.036, 83.537, -0.004, 38.90, 810.7939024},
     {BODY_ID_URANUS, 257.311, 0, -15.175, 0, 203.81, -501.1600928},
     {BODY_ID_NEPTUNE, 299.36, 0, 43.46, 0, 249.978, 541.1397757},
+    /* Moons with maps (SPEC A109). Synchronous rotators: W advances once per
+     * orbit and longitude 0 is near the sub-planet point. NAIF ids. */
+    {BODY_ID_PHOBOS, 317.67071657, -0.10844326, 52.88627266, -0.06134706, 35.18774440, 1128.84475928},
+    {BODY_ID_VESTA, 309.031, -0.008, 42.235, 0, 285.39, 1617.3329428},
+    {BODY_ID_IO, 268.05, -0.009, 64.50, 0.003, 200.39, 203.4889538},
+    {BODY_ID_EUROPA, 268.08, -0.009, 64.51, 0.003, 36.022, 101.3747235},
+    {BODY_ID_GANYMEDE, 268.20, -0.009, 64.57, 0.003, 44.064, 50.3176081},
+    {BODY_ID_CALLISTO, 268.72, -0.009, 64.83, 0.003, 259.51, 21.5710715},
+    {BODY_ID_ENCELADUS, 40.66, -0.036, 83.52, -0.004, 6.32, 262.7318996},
+    {(BodyId)603, 40.66, -0.036, 83.52, -0.004, 8.95, 190.6979085},   /* Tethys */
+    {(BodyId)604, 40.66, -0.036, 83.52, -0.004, 357.6, 131.5349316},  /* Dione */
+    {(BodyId)605, 40.38, -0.036, 83.55, -0.004, 235.16, 79.6900478},  /* Rhea */
+    {(BodyId)608, 318.16, -3.949, 75.03, -1.143, 355.2, 4.5379572},   /* Iapetus */
+    /* Triton orbits retrograde, so it spins with negative W rate. */
+    {BODY_ID_TRITON, 299.36, 0, 41.17, 0, 296.53, -61.2572637},
+    /* Pluto and Charon are locked to each other: one pole, meridians 180 deg apart. */
+    {BODY_ID_PLUTO, 132.993, 0, -6.163, 0, 302.695, 56.3625225},
+    {BODY_ID_CHARON, 132.993, 0, -6.163, 0, 122.695, 56.3625225},
 };
 
 /* ICRF (equatorial) vector -> J2000 ecliptic -> simulation axes. Rotating by
@@ -125,6 +174,30 @@ RenderOrientation render_body_orientation(BodyId id, double days_since_j2000)
         alpha += 0.70 * sin(n);
         delta -= 0.51 * cos(n);
         w -= 0.48 * sin(n);
+    } else if (id == BODY_ID_TRITON) {
+        /* Triton's pole circles Neptune's every ~688 years by tens of
+         * degrees; keep the series through 4 N7 (the rest is < 0.3 deg). */
+        double n = (177.85 + 52.316 * T) * DEG;
+        alpha += -32.35 * sin(n) - 6.28 * sin(2 * n) - 2.08 * sin(3 * n) - 0.74 * sin(4 * n);
+        delta += 22.55 * cos(n) + 2.10 * cos(2 * n) + 0.55 * cos(3 * n) + 0.16 * cos(4 * n);
+        w += 22.25 * sin(n) + 6.73 * sin(2 * n) + 2.05 * sin(3 * n) + 0.74 * sin(4 * n);
+    } else if (id == BODY_ID_PHOBOS) {
+        /* Phobos's forced libration (M1) and its secular tidal speed-up. */
+        double m1 = (190.72646643 + 15917.10818695 * T) * DEG;
+        alpha -= 1.78428399 * sin(m1);
+        delta -= 1.07516537 * cos(m1);
+        w += 1.42421769 * sin(m1) + 12.72192797 * T * T;
+    } else if ((int)id == 603) {
+        /* Tethys: the Voyager-era S4/S5 librations, ~10 degrees in W. */
+        double s4 = (300.00 - 7225.9 * T) * DEG, s5 = (316.45 + 506.2 * T) * DEG;
+        alpha += 9.66 * sin(s4);
+        delta -= 1.09 * cos(s4);
+        w += -9.60 * sin(s4) + 2.23 * sin(s5);
+    } else if ((int)id == 605) {
+        double s6 = (345.20 - 1016.3 * T) * DEG; /* Rhea */
+        alpha += 3.10 * sin(s6);
+        delta -= 0.35 * cos(s6);
+        w -= 3.08 * sin(s6);
     }
     alpha *= DEG;
     delta *= DEG;
@@ -404,4 +477,61 @@ bool render_build_ring(int segments, float inner_radius, float outer_radius, flo
         for (int j = 0; j < 6; ++j) indices[n++] = quad[j];
     }
     return true;
+}
+
+bool render_orbit_guide(Vec3d relative_position_m, Vec3d relative_velocity_mps, double mu, RenderOrbitGuide *out)
+{
+    double r = vec3d_length(relative_position_m), speed = vec3d_length(relative_velocity_mps);
+    if (!(mu > 0) || !(r > 0) || !(speed > 0)) return false;
+    /* Specific angular momentum h = r x v fixes the orbit plane; a radial
+     * velocity leaves no plane to draw in. */
+    Vec3d h = vec3d_cross(relative_position_m, relative_velocity_mps);
+    double h_length = vec3d_length(h);
+    if (!(h_length > 1e-9 * r * speed)) return false;
+    /* Vis-viva energy v^2/2 - mu/r is negative only for a closed orbit, whose
+     * semi-major axis is then a = -mu / (2 energy). */
+    double energy = 0.5 * speed * speed - mu / r;
+    if (!(energy < 0)) return false;
+    double a = -mu / (2 * energy);
+    /* Eccentricity vector (v x h)/mu - r/|r| points at periapsis; its length
+     * is e. A near-circular orbit has no defined periapsis, so it starts at
+     * the body's current position instead. */
+    Vec3d e_vector = vec3d_sub(vec3d_scale(vec3d_cross(relative_velocity_mps, h), 1.0 / mu),
+        vec3d_scale(relative_position_m, 1.0 / r));
+    double e = vec3d_length(e_vector);
+    if (!(e < 1)) return false;
+    Vec3d periapsis = e > 1e-10 ? vec3d_scale(e_vector, 1.0 / e) : vec3d_scale(relative_position_m, 1.0 / r);
+    Vec3d ahead = vec3d_cross(vec3d_scale(h, 1.0 / h_length), periapsis);
+    *out = (RenderOrbitGuide){a, a * sqrt(1 - e * e), e, periapsis, ahead};
+    return true;
+}
+
+Vec3d render_orbit_guide_point(const RenderOrbitGuide *guide, double cos_e, double sin_e)
+{
+    return vec3d_add(vec3d_scale(guide->periapsis, guide->semi_major_m * (cos_e - guide->eccentricity)),
+        vec3d_scale(guide->ahead, guide->semi_minor_m * sin_e));
+}
+
+int render_orbit_guide_segments(double semi_major_pixels)
+{
+    if (!(semi_major_pixels >= RENDER_ORBIT_GUIDE_MIN_PIXELS)) return 0;
+    double segments = ceil(2 * 3.14159265358979323846 * semi_major_pixels / RENDER_ORBIT_GUIDE_PIXELS_PER_SEGMENT);
+    if (segments < RENDER_ORBIT_GUIDE_MIN_SEGMENTS) return RENDER_ORBIT_GUIDE_MIN_SEGMENTS;
+    return segments > RENDER_ORBIT_GUIDE_MAX_SEGMENTS ? RENDER_ORBIT_GUIDE_MAX_SEGMENTS : (int)segments;
+}
+
+bool render_body_wants_ring_marker(BodyKind kind, double radius_pixels)
+{
+    return (kind == BODY_KIND_PLANET || kind == BODY_KIND_DWARF_PLANET) && radius_pixels < RENDER_RING_MARKER_MAX_RADIUS_PIXELS;
+}
+
+double render_selection_bracket_half_size(double radius_pixels)
+{
+    double half = radius_pixels * 1.15 + 7.0;
+    return half > RENDER_SELECTION_MIN_HALF_PIXELS ? half : RENDER_SELECTION_MIN_HALF_PIXELS;
+}
+
+bool render_selection_wants_brackets(double radius_pixels)
+{
+    return radius_pixels < RENDER_SELECTION_MAX_RADIUS_PIXELS;
 }

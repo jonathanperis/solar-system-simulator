@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "render/scene_style.h"
+#include "sim/orbit.h"
 
 static const double DEG = 3.14159265358979323846 / 180.0;
 
@@ -37,10 +38,19 @@ static void test_texture_inventory_matches_assets(void)
     assert(render_texture_for_body(BODY_ID_EARTH) == RENDER_TEXTURE_EARTH_DAY);
     assert(render_texture_for_body(BODY_ID_SATURN) == RENDER_TEXTURE_SATURN);
     assert(render_texture_for_body(BODY_ID_SUN) == RENDER_TEXTURE_SUN);
-    /* No source-backed maps: these stay lit colours instead of borrowed art. */
-    assert(render_texture_for_body(BODY_ID_IO) == RENDER_TEXTURE_NONE);
-    assert(render_texture_for_body(BODY_ID_PHOBOS) == RENDER_TEXTURE_NONE);
-    assert(render_texture_for_body(BODY_ID_VESTA) == RENDER_TEXTURE_NONE);
+    /* Moon maps (A109); every mapped body has an IAU spin model so its map
+     * is oriented, not spun at random. */
+    assert(render_texture_for_body(BODY_ID_IO) == RENDER_TEXTURE_IO);
+    assert(render_texture_for_body(BODY_ID_PHOBOS) == RENDER_TEXTURE_PHOBOS);
+    assert(render_texture_for_body((BodyId)605) == RENDER_TEXTURE_RHEA);
+    assert(render_texture_for_body(BODY_ID_PLUTO) == RENDER_TEXTURE_PLUTO);
+    for (int id = -2; id < 1000; ++id)
+        if (render_texture_for_body((BodyId)id) >= 0 && render_texture_for_body((BodyId)id) != RENDER_TEXTURE_STARS)
+            assert(render_body_orientation((BodyId)id, 0).known);
+    /* No visible-light map: these stay lit colours instead of borrowed art. */
+    assert(render_texture_for_body(BODY_ID_TITAN) == RENDER_TEXTURE_NONE);
+    assert(render_texture_for_body(BODY_ID_DEIMOS) == RENDER_TEXTURE_NONE);
+    assert(render_texture_for_body((BodyId)601) == RENDER_TEXTURE_NONE);
 }
 
 static void test_atmospheres_only_where_bodies_have_air(void)
@@ -57,7 +67,8 @@ static void test_atmospheres_only_where_bodies_have_air(void)
 static void test_orientation_vectors_are_orthonormal(void)
 {
     const BodyId ids[] = {BODY_ID_SUN, BODY_ID_MERCURY, BODY_ID_VENUS, BODY_ID_EARTH, BODY_ID_MOON,
-        BODY_ID_MARS, BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE};
+        BODY_ID_MARS, BODY_ID_JUPITER, BODY_ID_SATURN, BODY_ID_URANUS, BODY_ID_NEPTUNE,
+        BODY_ID_IO, BODY_ID_TRITON, BODY_ID_PHOBOS, (BodyId)603, (BodyId)605, BODY_ID_PLUTO};
     for (size_t i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
         for (double d = -5000; d <= 15000; d += 2500) {
             RenderOrientation o = render_body_orientation(ids[i], d);
@@ -67,7 +78,7 @@ static void test_orientation_vectors_are_orthonormal(void)
             assert(fabs(vec3d_dot(o.pole, o.prime_meridian)) < 1e-12);
         }
     }
-    RenderOrientation unknown = render_body_orientation(BODY_ID_IO, 0);
+    RenderOrientation unknown = render_body_orientation(BODY_ID_TITAN, 0);
     assert(!unknown.known);
     assert(unknown.pole.y == 1 && unknown.prime_meridian.x == 1);
 }
@@ -347,6 +358,85 @@ static void test_ring_annulus_spans_requested_radii(void)
     assert(!render_build_ring(segments, 2.4f, 1.15f, positions, normals, texcoords, index));
 }
 
+/* Orbit guides (SPEC A107): the two-body conic through a body's current
+ * parent-relative state, drawn for reading only. */
+static void test_orbit_guide_reproduces_the_conic_through_the_state(void)
+{
+    const double mu = 1.32712440018e20, q = 4.6e10, e = 0.2056;
+    OrbitState perihelion;
+    assert(orbit_state(q, e, mu, 0.0, &perihelion));
+    /* Tilt the orbit so the guide is checked off the reference plane too. */
+    Vec3d r = orbit_orient(perihelion.position_m, 7.0, 48.3, 29.1);
+    Vec3d v = orbit_orient(perihelion.velocity_mps, 7.0, 48.3, 29.1);
+    RenderOrbitGuide guide;
+    assert(render_orbit_guide(r, v, mu, &guide));
+    double a = q / (1 - e);
+    assert(fabs(guide.semi_major_m - a) / a < 1e-9);
+    assert(fabs(guide.eccentricity - e) < 1e-9);
+    /* E = 0 is periapsis (where the body is), E = pi is apoapsis. */
+    Vec3d periapsis = render_orbit_guide_point(&guide, 1.0, 0.0);
+    assert(vec3d_length(vec3d_sub(periapsis, r)) / q < 1e-9);
+    assert(fabs(vec3d_length(render_orbit_guide_point(&guide, -1.0, 0.0)) - a * (1 + e)) / a < 1e-9);
+    /* Every point lies in the orbit plane (normal r x v) at the conic radius
+     * a (1 - e cos E). */
+    Vec3d normal = vec3d_cross(r, v);
+    for (int k = 0; k < 16; ++k) {
+        double E = k * 2 * 3.14159265358979323846 / 16;
+        Vec3d point = render_orbit_guide_point(&guide, cos(E), sin(E));
+        assert(fabs(vec3d_dot(point, normal)) / (vec3d_length(point) * vec3d_length(normal)) < 1e-9);
+        assert(fabs(vec3d_length(point) - a * (1 - e * cos(E))) / a < 1e-9);
+    }
+    /* Seen from the orbit normal the guide turns the way the body moves:
+     * a quarter turn after periapsis points along the velocity there. */
+    Vec3d ahead = render_orbit_guide_point(&guide, 0.0, 1.0);
+    assert(vec3d_dot(vec3d_sub(ahead, periapsis), v) > 0);
+}
+
+static void test_orbit_guide_skips_open_or_degenerate_orbits(void)
+{
+    RenderOrbitGuide guide;
+    const double mu = 3.986004418e14, r = 7.0e6;
+    double escape = sqrt(2 * mu / r);
+    assert(!render_orbit_guide((Vec3d){r, 0, 0}, (Vec3d){0, 0, -1.01 * escape}, mu, &guide));
+    assert(!render_orbit_guide((Vec3d){r, 0, 0}, (Vec3d){0, 0, -escape}, mu, &guide));
+    assert(!render_orbit_guide((Vec3d){r, 0, 0}, (Vec3d){-1000, 0, 0}, mu, &guide)); /* radial: no plane */
+    assert(!render_orbit_guide((Vec3d){r, 0, 0}, (Vec3d){0, 0, -7000}, 0.0, &guide));
+    assert(!render_orbit_guide((Vec3d){0, 0, 0}, (Vec3d){0, 0, -7000}, mu, &guide));
+    assert(render_orbit_guide((Vec3d){r, 0, 0}, (Vec3d){0, 0, -sqrt(mu / r)}, mu, &guide));
+    assert(guide.eccentricity < 1e-9 && fabs(guide.semi_major_m - r) < 1e-3);
+}
+
+static void test_orbit_guide_detail_follows_screen_size(void)
+{
+    assert(render_orbit_guide_segments(0.0) == 0);
+    assert(render_orbit_guide_segments(RENDER_ORBIT_GUIDE_MIN_PIXELS * 0.99) == 0);
+    int small = render_orbit_guide_segments(RENDER_ORBIT_GUIDE_MIN_PIXELS);
+    int large = render_orbit_guide_segments(2000.0);
+    assert(small >= RENDER_ORBIT_GUIDE_MIN_SEGMENTS && large <= RENDER_ORBIT_GUIDE_MAX_SEGMENTS && large > small);
+    assert(render_orbit_guide_segments(1e9) == RENDER_ORBIT_GUIDE_MAX_SEGMENTS);
+    for (double px = 10; px < 5000; px *= 1.7)
+        assert(render_orbit_guide_segments(px * 1.7) >= render_orbit_guide_segments(px));
+}
+
+/* Screen markers (SPEC A108): ring markers keep dot-sized planets findable;
+ * the selection brackets always clear the drawn body. */
+static void test_markers_find_small_planets_and_frame_the_selection(void)
+{
+    assert(render_body_wants_ring_marker(BODY_KIND_PLANET, 1.0));
+    assert(render_body_wants_ring_marker(BODY_KIND_DWARF_PLANET, 2.0));
+    assert(!render_body_wants_ring_marker(BODY_KIND_PLANET, RENDER_RING_MARKER_MAX_RADIUS_PIXELS));
+    assert(!render_body_wants_ring_marker(BODY_KIND_MOON, 1.0));
+    assert(!render_body_wants_ring_marker(BODY_KIND_STAR, 1.0));
+    double previous = 0;
+    for (double radius = 0; radius < 400; radius += 7) {
+        double half = render_selection_bracket_half_size(radius);
+        assert(half > radius && half >= RENDER_SELECTION_MIN_HALF_PIXELS && half >= previous);
+        previous = half;
+    }
+    assert(render_selection_wants_brackets(0) && render_selection_wants_brackets(40));
+    assert(!render_selection_wants_brackets(RENDER_SELECTION_MAX_RADIUS_PIXELS));
+}
+
 int main(void)
 {
     test_texture_inventory_matches_assets();
@@ -366,6 +456,10 @@ int main(void)
     test_trail_segments_stop_at_the_body_surface();
     test_sphere_matches_simulation_handedness_and_map_layout();
     test_ring_annulus_spans_requested_radii();
+    test_orbit_guide_reproduces_the_conic_through_the_state();
+    test_orbit_guide_skips_open_or_degenerate_orbits();
+    test_orbit_guide_detail_follows_screen_size();
+    test_markers_find_small_planets_and_frame_the_selection();
     puts("test_scene_style passed");
     return 0;
 }

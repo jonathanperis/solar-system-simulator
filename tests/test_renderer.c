@@ -10,6 +10,8 @@
 #include "render/renderer.h"
 #include "sim/constants.h"
 #include "sim/lessons.h"
+#include "sim/scene_epoch.h"
+#include "sim/solar_system.h"
 #include "sim/solar_system.h"
 #include "render/render_scale.h"
 
@@ -400,8 +402,45 @@ static void test_cached_trail_points_match_uncached_exactly(void)
     body_trails_destroy(&trails);
 }
 
+/* Moon maps (SPEC A109) are oriented by the IAU rotation models. For a
+ * synchronously rotating moon the IAU prime meridian is (close to) the
+ * sub-planet point, so in the real 2026-06-09 sky every mapped moon's
+ * longitude 0 must face its parent, and Pluto's must face Charon. This checks
+ * both the table values and the ICRF-to-simulation conversion. */
+static void test_tidally_locked_maps_face_their_parent(void)
+{
+    SolarSystem system = solar_system_create_current();
+    double days = SOLAR_SCENE_EPOCH_JD - RENDER_J2000_JD;
+    const int ids[] = {4, 501, 502, 503, 504, 602, 603, 604, 605, 608, 801, 901, 999, 6};
+    for (size_t k = 0; k < sizeof(ids) / sizeof(ids[0]); ++k) {
+        int index = -1, facing = -1;
+        for (size_t i = 0; i < system.body_count; ++i) if ((int)system.bodies[i].id == ids[k]) index = (int)i;
+        assert(index >= 0);
+        if (ids[k] == 999) {
+            for (size_t i = 0; i < system.body_count; ++i) if (system.bodies[i].id == BODY_ID_CHARON) facing = (int)i;
+        } else {
+            facing = solar_system_parent_index(&system, (size_t)index);
+        }
+        assert(facing >= 0);
+        RenderOrientation orientation = render_body_orientation(system.bodies[index].id, days);
+        assert(orientation.known);
+        Vec3d toward = vec3d_sub(system.bodies[facing].position_m, system.bodies[index].position_m);
+        /* Compare within the equator plane: the sub-planet point's longitude. */
+        Vec3d flat = vec3d_sub(toward, vec3d_scale(orientation.pole, vec3d_dot(toward, orientation.pole)));
+        double c = vec3d_dot(flat, orientation.prime_meridian) / vec3d_length(flat);
+        double degrees = acos(c > 1 ? 1 : c < -1 ? -1 : c) * 180.0 / 3.14159265358979323846;
+        /* The Moon librates by several degrees (its periodic terms are omitted);
+         * the other moons land within 3 degrees on 2026-06-09. */
+        if (degrees > 9.0) {
+            fprintf(stderr, "body %d: prime meridian %.1f deg from its parent\n", ids[k], degrees);
+            assert(degrees <= 9.0);
+        }
+    }
+}
+
 int main(void)
 {
+    test_tidally_locked_maps_face_their_parent();
     test_cached_trail_points_match_uncached_exactly();
     test_moving_sun_history_preserves_parent_relative_frames();
     test_encounter_probe_is_visible_and_frames_its_parent();
