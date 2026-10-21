@@ -265,4 +265,21 @@ test('the View panel is non-modal, with switches and segmented controls', async 
   await expect(panel).toBeHidden();
   await expect(opener).toBeFocused();
   await expect(opener).toHaveAttribute('aria-expanded', 'false');
+  // The Close button also hands focus back (non-modal dialogs do not).
+  await opener.click();
+  await page.getByRole('button', { name: 'Close view' }).click();
+  await expect(panel).toBeHidden();
+  await expect(opener).toBeFocused();
+});
+
+// The View panel is a bottom sheet on short landscape screens, where the
+// instrument stacks its panels.
+test('the View panel is a bottom sheet on a short landscape screen', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 420 });
+  await page.goto(base);
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  const box = (await page.locator('#view-panel').boundingBox())!;
+  expect(box.width).toBeGreaterThan(880);
+  expect(Math.abs(box.y + box.height - 420)).toBeLessThan(2);
 });

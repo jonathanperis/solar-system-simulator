@@ -187,6 +187,9 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
 }
 
 @media (max-width: 760px), (max-height: 520px) {
+  /* Short landscape screens stack the instrument too: the View panel is a
+   * bottom sheet there as well, never a floating box over the stack. */
+  .sheet.popover { inset: auto 0 0 0; width: 100%; max-width: none; max-height: 75dvh; overflow-y: auto; }
   /* Phones and short landscape screens: the panels stop floating over the
    * view and stack around it, so none can cover another. The canvas takes the
    * height left over but never less than 12rem; if the panels still do not
