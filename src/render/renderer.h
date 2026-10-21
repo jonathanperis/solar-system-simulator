@@ -30,6 +30,7 @@ typedef struct RenderResources {
     Shader shader;
     int loc_mode, loc_light_dir, loc_view_pos, loc_atmosphere, loc_night_lights;
     int loc_body_center, loc_body_radius, loc_ring_normal, loc_ring_radii, loc_ring_shadow;
+    int loc_occluders, loc_occluder_count, loc_sun_radius;
     Mesh sphere_detailed, sphere_simple, ring;
     Material material;
     Texture2D textures[RENDER_TEXTURE_COUNT];

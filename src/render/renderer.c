@@ -942,6 +942,68 @@ static void draw_wire_marker(Vector3 center, float radius, Color color)
     rlEnd();
 }
 
+/* Eclipse casters for body i (SPEC A111): up to RENDER_MAX_SHADOW_CASTERS
+ * bodies of its own family (its parent, its moons, its siblings) whose
+ * spheres can block part of the Sun as seen from any point of body i. Uses
+ * the drawn positions, so shadows fall where the drawing says they should;
+ * the Sun's angular size comes from SI distances. Presentation only. */
+static void set_eclipse_casters(const FrameContext *ctx, size_t i)
+{
+    const RenderResources *resources = ctx->resources;
+    float casters[RENDER_MAX_SHADOW_CASTERS * 4] = {0};
+    float scores[RENDER_MAX_SHADOW_CASTERS];
+    int count = 0;
+    float sun_radius = 0;
+    if (ctx->star >= 0 && resources->loc_occluders >= 0 && ctx->system->bodies[i].radius_m > 0) {
+        const SolarSystem *system = ctx->system;
+        const Body *body = &system->bodies[i];
+        double sun_distance = vec3d_length(vec3d_sub(body->position_m, system->bodies[ctx->star].position_m));
+        sun_radius = sun_distance > 0 ? (float)(system->bodies[ctx->star].radius_m / sun_distance) : 0;
+        Vector3 light = light_toward_star(ctx, i);
+        int parent = ctx->cache.parent[i];
+        for (size_t j = 0; j < system->body_count && j < SOLAR_SYSTEM_BODY_CAPACITY; ++j) {
+            const Body *other = &system->bodies[j];
+            if (j == i || other->kind == BODY_KIND_STAR || other->radius_quality == PHYSICAL_UNKNOWN) continue;
+            int other_parent = ctx->cache.parent[j];
+            bool family = other_parent == (int)i || parent == (int)j
+                || (parent >= 0 && other_parent == parent && system->bodies[parent].kind != BODY_KIND_STAR);
+            if (!family) continue;
+            /* Illustrative scale draws moons far larger next to their planet
+             * than they are; a shadow keeps the true size ratio to the body it
+             * falls on (Io's is a dot on Jupiter, not a quarter of the disc).
+             * In real scale both terms are equal. */
+            float caster = fminf(ctx->radius[j], ctx->radius[i] * (float)(other->radius_m / body->radius_m));
+            Vector3 d = {ctx->position[j].x - ctx->position[i].x, ctx->position[j].y - ctx->position[i].y,
+                ctx->position[j].z - ctx->position[i].z};
+            float along = d.x * light.x + d.y * light.y + d.z * light.z;
+            if (along <= 0) continue;
+            float miss = sqrtf(fmaxf(d.x * d.x + d.y * d.y + d.z * d.z - along * along, 0));
+            /* The shadow cylinder (widened by the penumbra) must reach the body. */
+            float gap = miss - caster - ctx->radius[i] - sun_radius * along;
+            if (gap > 0) continue;
+            int slot = count < RENDER_MAX_SHADOW_CASTERS ? count++ : -1;
+            if (slot < 0) {
+                /* Keep the casters closest to the shadow line. */
+                slot = 0;
+                for (int k = 1; k < RENDER_MAX_SHADOW_CASTERS; ++k) if (scores[k] > scores[slot]) slot = k;
+                if (gap >= scores[slot]) continue;
+            }
+            scores[slot] = gap;
+            casters[slot * 4 + 0] = ctx->position[j].x;
+            casters[slot * 4 + 1] = ctx->position[j].y;
+            casters[slot * 4 + 2] = ctx->position[j].z;
+            casters[slot * 4 + 3] = caster;
+        }
+    }
+    float count_value = (float)count;
+    if (resources->loc_occluder_count >= 0)
+        SetShaderValue(resources->shader, resources->loc_occluder_count, &count_value, SHADER_UNIFORM_FLOAT);
+    if (resources->loc_sun_radius >= 0)
+        SetShaderValue(resources->shader, resources->loc_sun_radius, &sun_radius, SHADER_UNIFORM_FLOAT);
+    if (count && resources->loc_occluders >= 0)
+        SetShaderValueV(resources->shader, resources->loc_occluders, casters, SHADER_UNIFORM_VEC4, count);
+}
+
 /* Phase 3. Opaque bodies. Each mesh draw costs dozens of WebGL calls, so
  * bodies behind the camera are skipped and sub-pixel bodies become one
  * batched dot (presentation only: their SI state is untouched). */
@@ -992,6 +1054,7 @@ static void draw_opaque_bodies(const FrameContext *ctx)
         /* The rings' shadow on Saturn needs the ring opacity map. */
         RingShadow saturn_rings;
         bool ringed = body->id == BODY_ID_SATURN && saturn_ring_shadow(resources, orientation, position, radius, &saturn_rings);
+        set_eclipse_casters(ctx, i);
         draw_shaded(resources, mesh, &transform, SHADE_LIT, texture_or_white(resources, slot), tint, light_toward_star(ctx, i),
             render_atmosphere_for_body(body->id), city_lights ? &resources->textures[RENDER_TEXTURE_EARTH_NIGHT] : NULL,
             ringed ? &saturn_rings : NULL);

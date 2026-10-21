@@ -437,6 +437,27 @@ static void test_markers_find_small_planets_and_frame_the_selection(void)
     assert(!render_selection_wants_brackets(RENDER_SELECTION_MAX_RADIUS_PIXELS));
 }
 
+/* Eclipse shadows (SPEC A111): the fraction of the Sun's disc an occluding
+ * sphere hides, as the lighting shader computes it. */
+static void test_eclipse_fraction_covers_umbra_penumbra_and_annulus(void)
+{
+    const double sun = 0.0025; /* ~ the Sun's angular radius at Earth, rad */
+    /* A large occluder centred on the Sun: total eclipse (umbra). */
+    assert(fabs(render_eclipse_fraction(0, 0.01, sun) - 1) < 1e-12);
+    /* Separated by more than both radii: no shadow. */
+    assert(render_eclipse_fraction(0.01 + sun + 1e-6, 0.01, sun) == 0);
+    /* Smaller than the Sun and centred: an annulus hides (rho/sigma)^2. */
+    assert(fabs(render_eclipse_fraction(0, 0.5 * sun, sun) - 0.25) < 1e-12);
+    /* The fraction never grows as the occluder moves away. */
+    double previous = 1;
+    for (double theta = 0; theta < 0.02; theta += 0.0002) {
+        double f = render_eclipse_fraction(theta, 0.01, sun);
+        assert(f >= 0 && f <= previous + 1e-15);
+        previous = f;
+    }
+    assert(render_eclipse_fraction(0, 0, sun) == 0 && render_eclipse_fraction(0, 0.01, 0) == 1);
+}
+
 int main(void)
 {
     test_texture_inventory_matches_assets();
@@ -460,6 +481,7 @@ int main(void)
     test_orbit_guide_skips_open_or_degenerate_orbits();
     test_orbit_guide_detail_follows_screen_size();
     test_markers_find_small_planets_and_frame_the_selection();
+    test_eclipse_fraction_covers_umbra_penumbra_and_annulus();
     puts("test_scene_style passed");
     return 0;
 }

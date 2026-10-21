@@ -535,3 +535,17 @@ bool render_selection_wants_brackets(double radius_pixels)
 {
     return radius_pixels < RENDER_SELECTION_MAX_RADIUS_PIXELS;
 }
+
+double render_eclipse_fraction(double separation, double occluder_radius, double sun_radius)
+{
+    if (!(occluder_radius > 0)) return 0;
+    if (!(sun_radius > 0)) return separation < occluder_radius ? 1 : 0;
+    /* 1 - smoothstep(|rho - sigma|, rho + sigma, theta): full overlap while
+     * one disc lies inside the other, none once their edges part. */
+    double inner = fabs(occluder_radius - sun_radius), outer = occluder_radius + sun_radius;
+    double t = (separation - inner) / (outer - inner);
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    double covered = 1 - t * t * (3 - 2 * t);
+    double area = occluder_radius * occluder_radius / (sun_radius * sun_radius);
+    return covered * (area < 1 ? area : 1);
+}

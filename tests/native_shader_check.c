@@ -72,7 +72,13 @@ int main(void)
     glViewport(0, 0, W, H); glClearColor(3/255.f, 5/255.f, 10/255.f, 1); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); glEnable(GL_DEPTH_TEST); glEnable(GL_CULL_FACE);
 
     GLuint prog = glCreateProgram();
-    glAttachShader(prog, compile(GL_VERTEX_SHADER, vertex_shader)); glAttachShader(prog, compile(GL_FRAGMENT_SHADER, fragment_shader));
+    glAttachShader(prog, compile(GL_VERTEX_SHADER, vertex_shader)); {
+        /* The fragment shader spans two literals (C's string-length limit),
+         * joined exactly as renderer_resources_init does. */
+        static char fragment_source[sizeof(fragment_shader) + sizeof(fragment_shader_lit)];
+        snprintf(fragment_source, sizeof(fragment_source), "%s%s", fragment_shader, fragment_shader_lit);
+        glAttachShader(prog, compile(GL_FRAGMENT_SHADER, fragment_source));
+    }
     glBindAttribLocation(prog, 0, "vertexPosition"); glBindAttribLocation(prog, 1, "vertexTexCoord"); glBindAttribLocation(prog, 2, "vertexNormal");
     glLinkProgram(prog); glUseProgram(prog);
 
@@ -109,7 +115,24 @@ int main(void)
     glUniform4f(glGetUniformLocation(prog, "atmosphere"), air.r, air.g, air.b, air.strength);
     glUniform1f(glGetUniformLocation(prog, "nightLights"), 1);
     glUniform1f(glGetUniformLocation(prog, "ringShadow"), 0);
+    glUniform1f(glGetUniformLocation(prog, "occluderCount"), 0);
+    glUniform1f(glGetUniformLocation(prog, "sunRadius"), 0.0047f);
     glDrawElements(GL_TRIANGLES, (GLsizei)ni, GL_UNSIGNED_SHORT, 0);
+    unsigned char *eclipsed = malloc((size_t)W * H * 4);
+    {
+        /* Eclipse (SPEC A111): a sphere of radius 2 ten units sunward puts the
+         * whole disc in its umbra. Rendered separately, then the main frame
+         * is redrawn so the checks below see the uneclipsed Earth. */
+        float caster[4] = {lx * 10.0f, 0.0f, lz * 10.0f, 2.0f};
+        glUniform4fv(glGetUniformLocation(prog, "occluders"), 1, caster);
+        glUniform1f(glGetUniformLocation(prog, "occluderCount"), 1);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glDrawElements(GL_TRIANGLES, (GLsizei)ni, GL_UNSIGNED_SHORT, 0);
+        glReadPixels(0, 0, W, H, GL_RGBA, GL_UNSIGNED_BYTE, eclipsed);
+        glUniform1f(glGetUniformLocation(prog, "occluderCount"), 0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glDrawElements(GL_TRIANGLES, (GLsizei)ni, GL_UNSIGNED_SHORT, 0);
+    }
 
     unsigned char *px = malloc((size_t)W * H * 4); glReadPixels(0, 0, W, H, GL_RGBA, GL_UNSIGNED_BYTE, px);
     if (glGetError() != GL_NO_ERROR) { fputs("GL error during render\n", stderr); return 1; }
@@ -122,12 +145,14 @@ int main(void)
         const unsigned char *p = &px[((H - 1 - (300 + dy)) * W + (290 + dx)) * 4];
         africa_r += p[0]; africa_b += p[2];
     }
-    printf("GL %s | background %.0f day %.0f night %.0f glint %.0f\n", glGetString(GL_VERSION), background, day, night, glint);
+    double eclipsed_day = luma(eclipsed, W, H, 400, 330);
+    printf("GL %s | background %.0f day %.0f night %.0f glint %.0f eclipsed %.0f\n", glGetString(GL_VERSION), background, day, night, glint, eclipsed_day);
     int failures = 0;
     #define EXPECT(cond, what) do { if (!(cond)) { fprintf(stderr, "FAIL: %s\n", what); ++failures; } } while (0)
     EXPECT(background < 20, "space behind the planet stays dark");
     EXPECT(day > night * 1.8, "the sunward side is clearly brighter than the far side (Lambert lighting)");
     EXPECT(glint > day, "the ocean sun glint is brighter than the surrounding sea");
+    EXPECT(eclipsed_day < day * 0.35, "a sunward caster puts the day side in umbra (eclipse shadows)");
     EXPECT(africa_r > africa_b, "30 E faces the camera: central Africa reads land-coloured, so the map is not mirrored");
     if (getenv("SOLAR_SHADER_PPM")) {
         FILE *out = fopen(getenv("SOLAR_SHADER_PPM"), "wb"); fprintf(out, "P6 %d %d 255\n", W, H);
