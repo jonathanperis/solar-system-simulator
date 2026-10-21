@@ -446,6 +446,7 @@ typedef struct RingShadow {
     Vector3 center, ring_normal;
     float radius, ring_inner, ring_outer; /* ring edges in planet radii */
     Texture2D ring_opacity;
+    float dust; /* forward-scattering dust fraction (A127); Saturn's icy main rings 0.05 */
 } RingShadow;
 
 /* raylib allocates MAX_MATERIAL_MAPS (12, an internal config.h value) maps
@@ -470,6 +471,8 @@ static void draw_shaded(const RenderResources *resources, const Mesh *mesh, cons
         SetShaderValue(resources->shader, resources->loc_body_radius, &rings->radius, SHADER_UNIFORM_FLOAT);
         SetShaderValue(resources->shader, resources->loc_ring_normal, normal, SHADER_UNIFORM_VEC3);
         SetShaderValue(resources->shader, resources->loc_ring_radii, radii, SHADER_UNIFORM_VEC2);
+        if (resources->loc_ring_dust >= 0)
+            SetShaderValue(resources->shader, resources->loc_ring_dust, &rings->dust, SHADER_UNIFORM_FLOAT);
     }
     float mode_value = (float)mode, night_value = night ? 1.0f : 0.0f;
     float light[3] = {light_direction.x, light_direction.y, light_direction.z};
@@ -520,6 +523,7 @@ static bool planet_ring_shadow(const RenderResources *resources, BodyId id, Rend
         .ring_outer = table ? (float)(table->outer_m / table->planet_radius_m)
             : (float)(SOLAR_SATURN_RING_OUTER_RADIUS_M / SOLAR_SATURN_RADIUS_M),
         .ring_opacity = !ring_map ? resources->white : table ? ring_strip(resources, faint, mode) : resources->textures[RENDER_TEXTURE_SATURN_RING],
+        .dust = table ? (float)table->dust_fraction : 0.05f,
     };
     return ring_map;
 }

@@ -323,6 +323,11 @@ typedef struct RenderRingSystem {
      * gossamer rings are dust from Amalthea and Thebe, which orbit inside
      * them, so they do not count. */
     double extent_m;
+    /* Fraction of the rings' light from fine dust, which scatters forward:
+     * it sets the backlit glow (SPEC A127). Approximate, from the Voyager and
+     * Galileo photometry (Jupiter's rings are dust; Neptune's 20-70 %, 0.5
+     * drawn; Uranus's narrow rings are dust-poor). */
+    double dust_fraction;
     const RenderRing *rings;
     size_t count;
     unsigned char rgb[3];

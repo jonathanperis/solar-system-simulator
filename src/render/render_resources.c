@@ -77,6 +77,7 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "uniform float bodyRadius;\n"
     "uniform vec3 ringNormal;\n"      /* Saturn's pole: the ring plane's normal */
     "uniform vec2 ringRadii;\n"       /* ring inner/outer edge in Saturn radii */
+    "uniform float ringDust;\n"       /* rings' dust fraction: forward-scattering glow (A127) */
     "uniform vec4 occluders[4];\n"    /* eclipse casters: centre (xyz) and drawn radius (w) */
     "uniform float occluderCount;\n"
     "uniform float sunRadius;\n"      /* the Sun's angular radius from this body, radians */
@@ -140,7 +141,15 @@ static const char fragment_shader_lit[] =
      * the Cassini division) glow, as in Cassini's views from the night side. */
     "        float sunSide = step(0.0, dot(n, lightDir) * dot(n, v));\n"
     "        float through = mix(0.12 + 1.5 * (1.0 - surface.a), 1.0, sunSide);\n"
-    "        FRAG_COLOR = vec4(toDisplay(albedo * (0.02 + 0.98 * abs(ndl)) * shade * through), surface.a);\n"
+    /* Fine dust scatters forward: looking back toward the Sun through a dusty
+     * ring it glows (Henyey-Greenstein lobe, g = 0.7: about 3.4 x the dust
+     * fraction dead ahead, 0.05 x side-on). Its brightness comes from the dust's optical
+     * depth along the light path, not from blocking the background, so the
+     * glow also raises the drawn opacity (A127). */
+    "        float ahead = dot(v, -lightDir);\n"
+    "        float glow = ringDust * 3.0 * 0.06 * 0.51 / pow(1.49 - 1.4 * ahead, 1.5);\n"
+    "        vec3 reflected = albedo * (0.02 + 0.98 * abs(ndl)) * shade * through * (1.0 - 0.5 * ringDust);\n"
+    "        FRAG_COLOR = vec4(toDisplay(reflected + albedo * glow * shade), clamp(surface.a * (1.0 + glow), 0.0, 1.0));\n"
     "        return;\n"
     "    }\n"
     "    if (mode > 1.5) {\n" /* clouds: the map's brightness is its opacity */
@@ -395,6 +404,7 @@ bool renderer_resources_init(RenderResources *resources)
     resources->loc_body_radius = GetShaderLocation(resources->shader, "bodyRadius");
     resources->loc_ring_normal = GetShaderLocation(resources->shader, "ringNormal");
     resources->loc_ring_radii = GetShaderLocation(resources->shader, "ringRadii");
+    resources->loc_ring_dust = GetShaderLocation(resources->shader, "ringDust");
     resources->loc_occluders = GetShaderLocation(resources->shader, "occluders");
     resources->loc_occluder_count = GetShaderLocation(resources->shader, "occluderCount");
     resources->loc_sun_radius = GetShaderLocation(resources->shader, "sunRadius");
