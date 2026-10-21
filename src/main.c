@@ -109,12 +109,12 @@ EM_JS(void, solar_web_report_lab, (int lesson, int method, double dt, double tic
     double acceleration, double specific_energy, double energy, double energy_change, int isolated,
     double momentum, double angular_momentum, double magnification, int trail_frame, int vectors,
     double px, double py, double pz, double vx, double vy, double vz, int contact_mode,
-    double min_factor, double contact_seconds, int grid, int labels, int orbits, int follow, int touring), {
+    double min_factor, double contact_seconds, int grid, int labels, int orbits, int follow, int touring, int belt), {
     Module.reportLabState({lesson, method, dt, ticks, factor, acceleration, specificEnergy: specific_energy,
         energy, energyChange: energy_change, isolated: !!isolated, momentum, angularMomentum: angular_momentum,
         magnification, trailFrame: trail_frame, vectors: !!vectors, position: [px, py, pz], velocity: [vx, vy, vz], contactMode: contact_mode,
         minFactor: min_factor, contactSeconds: contact_seconds, grid: !!grid, labels: !!labels, orbits: !!orbits,
-        follow: !!follow, touring: !!touring});
+        follow: !!follow, touring: !!touring, belt: !!belt});
 })
 
 EM_JS(void, solar_web_download_csv, (const char *data, int length), {
@@ -164,6 +164,7 @@ typedef struct SolarApp {
     bool grid; /* reference grid visibility (presentation only) */
     bool labels; /* in-canvas body names (presentation only) */
     bool orbits; /* osculating orbit guides (presentation only, A107) */
+    bool belt;   /* small-body cloud (presentation only, A121) */
     /* Camera presentation (A112): the view actually shown (eased toward the
      * framing in orbit_camera during a fly-to), pointer state for drag, pinch
      * and click-to-select, and a pause of auto-rotation after interaction. */
@@ -215,7 +216,7 @@ typedef enum SolarCommand {
     SOLAR_COMMAND_SPEED, SOLAR_COMMAND_SELECT, SOLAR_COMMAND_VIEW,
     SOLAR_COMMAND_ZOOM, SOLAR_COMMAND_ROTATE, SOLAR_COMMAND_FRAME, SOLAR_COMMAND_FRAME_BODY,
     SOLAR_COMMAND_TRAILS, SOLAR_COMMAND_VECTORS, SOLAR_COMMAND_BACKGROUND, SOLAR_COMMAND_CONTACT, SOLAR_COMMAND_GRID, SOLAR_COMMAND_LABELS,
-    SOLAR_COMMAND_ORBITS, SOLAR_COMMAND_FOLLOW, SOLAR_COMMAND_TOUR
+    SOLAR_COMMAND_ORBITS, SOLAR_COMMAND_FOLLOW, SOLAR_COMMAND_TOUR, SOLAR_COMMAND_BELT
 } SolarCommand;
 
 static SolarApp app;
@@ -625,6 +626,7 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
             state->steered = true; /* capture the current angle as the offset */
             break;
         }
+        case SOLAR_COMMAND_BELT: state->belt = !state->belt; break;
         case SOLAR_COMMAND_TOUR:
             state->touring = !state->touring;
             state->tour_step = -1;
@@ -683,7 +685,7 @@ static void report_web_state(const SolarApp *state)
         selected->velocity_mps.x, selected->velocity_mps.y, selected->velocity_mps.z, session->clock.collision_mode,
         lesson_minimum_velocity_factor(session->lesson),
         (double)session->clock.contact_tick * simulation_clock_step_seconds(&session->clock), state->grid, state->labels,
-        state->orbits, state->follow, state->touring);
+        state->orbits, state->follow, state->touring, state->belt);
     ForceContribution forces[SOLAR_SYSTEM_BODY_CAPACITY];
     size_t count = physics_force_breakdown(&session->system, session->selected_body_index, forces, SOLAR_SYSTEM_BODY_CAPACITY);
     solar_web_begin_forces(session->system.elapsed_seconds);
@@ -751,6 +753,12 @@ EMSCRIPTEN_KEEPALIVE const char *solar_web_texture_file(int slot)
 {
     const char *file = render_texture_file((RenderTextureSlot)slot);
     return file ? file : "";
+}
+/* The small-body sample (A121), fetched by the page after the textures. */
+EMSCRIPTEN_KEEPALIVE int solar_web_load_belt(const unsigned char *bytes, int length)
+{
+    if (!app.render.ready || length <= 0) return 0;
+    return renderer_load_belt_memory(&app.render, bytes, (size_t)length);
 }
 EMSCRIPTEN_KEEPALIVE int solar_web_load_texture(int slot, const unsigned char *bytes, int length)
 {
@@ -869,6 +877,7 @@ static void solar_app_update_draw(void *user_data)
         if (IsKeyPressed(KEY_O)) solar_app_command(state, SOLAR_COMMAND_ORBITS, 0);
         if (IsKeyPressed(KEY_ESCAPE)) step_out(state);
         if (IsKeyPressed(KEY_Y)) solar_app_command(state, SOLAR_COMMAND_FOLLOW, 0);
+        if (IsKeyPressed(KEY_Q)) solar_app_command(state, SOLAR_COMMAND_BELT, 0);
         /* Arrow keys hop through the family tree (A120): siblings left and
          * right, parent up, first moon down; each hop flies to the body. */
         const int arrows[4] = {KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN};
@@ -981,7 +990,10 @@ static void solar_app_update_draw(void *user_data)
     RenderView view = {.camera = state->camera,
         .orientation_days = epoch_days + state->session.system.elapsed_seconds / SOLAR_DAY_SECONDS,
         .far_plane = (float)far_plane, .show_grid = state->grid, .show_orbits = state->orbits,
-        .selected = state->session.selected_body_index};
+        .selected = state->session.selected_body_index,
+        /* The cloud is the real sky's small bodies: dated scenes only. */
+        .show_belt = state->belt && dated,
+        .days_since_epoch = state->session.system.elapsed_seconds / SOLAR_DAY_SECONDS};
     BeginMode3D(state->camera);
     renderer_draw_solar_system(&state->session.system, &state->session.trails, state->render_mode, state->trail_frame,
         origin, &state->render, &view);
@@ -1072,7 +1084,18 @@ static void load_native_textures(RenderResources *render)
         if (!candidates[i] || !render->ready || !DirectoryExists(candidates[i])) continue;
         int loaded = renderer_load_textures_from_directory(render, candidates[i]);
         TraceLog(LOG_INFO, "Loaded %d of %d textures from %s", loaded, RENDER_TEXTURE_COUNT, candidates[i]);
-        if (loaded > 0) return;
+        if (loaded > 0) break;
+    }
+    /* The small-body sample (A121) sits beside the textures. */
+    const char *belts[2] = {"assets/belt/small_bodies.bin", TextFormat("%s../assets/belt/small_bodies.bin", GetApplicationDirectory())};
+    for (int i = 0; i < 2; ++i) {
+        if (!render->ready || !FileExists(belts[i])) continue;
+        int size = 0;
+        unsigned char *bytes = LoadFileData(belts[i], &size);
+        bool loaded = bytes && size > 0 && renderer_load_belt_memory(render, bytes, (size_t)size);
+        UnloadFileData(bytes);
+        TraceLog(LOG_INFO, "Small-body cloud %s from %s", loaded ? "loaded" : "unavailable", belts[i]);
+        if (loaded) return;
     }
 }
 #endif
@@ -1140,6 +1163,7 @@ int main(int argc, char **argv)
     app.grid = true;
     app.labels = true;
     app.orbits = true;
+    app.belt = true;
     /* Moon trails relative to their planet trace the same ellipse as the
      * orbit guides; absolute (heliocentric) spirals stay one key away (T). */
     app.trail_frame = RENDER_TRAILS_PARENT;

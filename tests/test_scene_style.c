@@ -602,6 +602,47 @@ static void test_markers_slide_past_floating_panels(void)
     assert(dy != 0 && (150 + dy + 20 <= 90 || 150 + dy >= 350)); /* clear above or below */
 }
 
+/* Small-body cloud (SPEC A121): the binary sample decodes, and the position
+ * the vertex shader computes (render_belt_position mirrors it) is the same
+ * heliocentric conic the atlas uses (catalog_coordinate). */
+static void test_belt_sample_decodes_and_matches_the_atlas_conic(void)
+{
+    FILE *file = fopen("assets/belt/small_bodies.bin", "rb");
+    assert(file);
+    static unsigned char bytes[2 * 1024 * 1024];
+    size_t length = fread(bytes, 1, sizeof(bytes), file);
+    fclose(file);
+    static RenderBeltBody bodies[RENDER_BELT_CAPACITY];
+    size_t count = render_belt_decode(bytes, length, bodies, RENDER_BELT_CAPACITY);
+    assert(count > 40000 && count <= RENDER_BELT_CAPACITY);
+    size_t trojans = 0, belt = 0;
+    for (size_t k = 0; k < count; ++k) {
+        assert(bodies[k].a_au > 0.1f && bodies[k].a_au <= 1000.0f && bodies[k].e >= 0 && bodies[k].e < 0.97f);
+        trojans += bodies[k].kind == RENDER_BELT_TROJAN;
+        belt += bodies[k].kind == RENDER_BELT_MAIN && bodies[k].a_au > 2.1f && bodies[k].a_au < 3.3f;
+    }
+    assert(trojans > 5000 && belt > 15000);
+    /* Corrupt input is refused, not half-read. */
+    assert(render_belt_decode(bytes, 10, bodies, RENDER_BELT_CAPACITY) == 0);
+    bytes[0] = 'X';
+    assert(render_belt_decode(bytes, length, bodies, RENDER_BELT_CAPACITY) == 0);
+
+    /* 588 Achilles from the atlas, propagated 0 and 3,000 days. */
+    const double q = 4.443339755266702, e = 0.148117524873686, inc = 10.31507282705955;
+    const double node = 316.5298906019931, peri = 134.3146427558605, tp = 2460072.687722241, epoch = 2461200.5;
+    double a = q / (1 - e), n = render_belt_mean_motion(a);
+    RenderBeltBody achilles = {(float)a, (float)e, (float)(inc * DEG), (float)(node * DEG), (float)(peri * DEG),
+        (float)fmod(n * (epoch - tp), 2 * 3.14159265358979323846), RENDER_BELT_TROJAN};
+    for (double days = 0; days <= 3000; days += 1500) {
+        Vec3d mine = render_belt_position(&achilles, days);
+        for (int c = 0; c < 3; ++c) {
+            double expected = catalog_coordinate(q, e, inc, node, peri, tp, epoch + days, c) / 149597870700.0;
+            double got = c == 0 ? mine.x : c == 1 ? mine.y : mine.z;
+            assert(fabs(got - expected) < 2e-5); /* float elements: ~3,000 km at 5 AU */
+        }
+    }
+}
+
 int main(void)
 {
     test_texture_inventory_matches_assets();
@@ -632,6 +673,7 @@ int main(void)
     test_sky_map_puts_stars_in_their_true_directions();
     test_edge_anchor_follows_the_direction_to_the_body();
     test_markers_slide_past_floating_panels();
+    test_belt_sample_decodes_and_matches_the_atlas_conic();
     puts("test_scene_style passed");
     return 0;
 }

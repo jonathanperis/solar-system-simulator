@@ -81,6 +81,19 @@ int main(void)
     }
     glBindAttribLocation(prog, 0, "vertexPosition"); glBindAttribLocation(prog, 1, "vertexTexCoord"); glBindAttribLocation(prog, 2, "vertexNormal");
     glLinkProgram(prog); glUseProgram(prog);
+    {
+        /* The small-body cloud's shader pair (A121) must compile and link too. */
+        GLuint belt = glCreateProgram();
+        glAttachShader(belt, compile(GL_VERTEX_SHADER, belt_vertex_shader));
+        glAttachShader(belt, compile(GL_FRAGMENT_SHADER, belt_fragment_shader));
+        glBindAttribLocation(belt, 0, "vertexPosition"); glBindAttribLocation(belt, 1, "vertexTexCoord");
+        glBindAttribLocation(belt, 2, "vertexNormal"); glBindAttribLocation(belt, 5, "vertexTexCoord2");
+        glLinkProgram(belt);
+        GLint linked = 0; glGetProgramiv(belt, GL_LINK_STATUS, &linked);
+        if (!linked) { char log[2048]; glGetProgramInfoLog(belt, 2048, NULL, log); fprintf(stderr, "belt link: %s\n", log); return 1; }
+        glDeleteProgram(belt);
+        glUseProgram(prog);
+    }
 
     int slices = 96, rings = 48; size_t nv = render_sphere_vertex_count(slices, rings), ni = render_sphere_index_count(slices, rings);
     float *pos = malloc(nv * 12), *nor = malloc(nv * 12), *uv = malloc(nv * 8); unsigned short *idx = malloc(ni * 2);
