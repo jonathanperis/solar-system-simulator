@@ -7,6 +7,7 @@
 
 #include "../sim/constants.h"
 #include "../sim/orbit.h"
+#include "constellation_lines.inc"
 
 #define PI 3.14159265358979323846
 #define DEG (PI / 180.0)
@@ -773,5 +774,19 @@ bool render_scale_bar(double meters_per_pixel, double max_pixels, RenderScaleBar
         out->label[o++] = digits[k];
     }
     snprintf(out->label + o, sizeof(out->label) - o, " km");
+    return true;
+}
+
+size_t render_constellation_count(void)
+{
+    return RENDER_CONSTELLATION_SEGMENTS;
+}
+
+bool render_constellation_segment(size_t index, Vec3d *a, Vec3d *b)
+{
+    if (index >= RENDER_CONSTELLATION_SEGMENTS) return false;
+    const float *s = constellation_segments[index];
+    *a = orbit_icrf_direction(s[0], s[1]);
+    *b = orbit_icrf_direction(s[2], s[3]);
     return true;
 }

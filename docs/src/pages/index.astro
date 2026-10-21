@@ -129,6 +129,7 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
           <button type="button" data-command="orbits" aria-pressed="true">Orbits: On</button>
           <button type="button" data-command="follow" aria-pressed="false">Follow: Off</button>
           <button type="button" data-command="belt" aria-pressed="true">Belt: On</button>
+          <button type="button" data-command="constellations" aria-pressed="false">Constellations: Off</button>
           <button type="button" data-command="trails">Trails: Parent-relative</button>
           <button type="button" data-command="vectors" aria-pressed="false">Vector directions: Off</button>
           <button type="button" data-command="grid" aria-pressed="true">Grid: On</button>
@@ -156,7 +157,8 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
           <dt>Point, click</dt><dd>name a body, fly to it</dd>
           <dt><kbd>Esc</kbd> <kbd>Backspace</kbd></dt><dd>step out, go back</dd>
           <dt><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></dt><dd>next body, parent, moons</dd>
-          <dt><kbd>/</kbd> <kbd>Y</kbd> <kbd>Q</kbd></dt><dd>search, follow orbit, asteroid belt</dd>
+          <dt><kbd>/</kbd> <kbd>Y</kbd></dt><dd>search, follow orbit</dd>
+          <dt><kbd>Q</kbd> <kbd>S</kbd></dt><dd>asteroid belt, constellations</dd>
           <dt>Double-click</dt><dd>whole family</dd>
         </dl>
         <p>Keys work while the view has focus. Tab moves through the controls.</p>

@@ -1247,10 +1247,35 @@ static void draw_belt(const FrameContext *ctx)
  * drawn first without writing depth, so everything else draws over it and it
  * never moves as the camera translates (stars are effectively at infinity).
  * It is a real all-sky map, oriented into simulation axes (SPEC A117). */
+/* Constellation lines (SPEC A124) on a sphere just inside the sky's, centred
+ * on the camera like it, so they sit on the map's stars at infinity. */
+static void draw_constellations(const FrameContext *ctx)
+{
+    const float radius = ctx->view->far_plane * 0.45f;
+    const Vector3 c = ctx->camera.position;
+    rlBegin(RL_LINES);
+    rlColor4ub(120, 150, 205, 70);
+    for (size_t k = 0; k < render_constellation_count(); ++k) {
+        Vec3d a, b;
+        render_constellation_segment(k, &a, &b);
+        rlVertex3f(c.x + radius * (float)a.x, c.y + radius * (float)a.y, c.z + radius * (float)a.z);
+        rlVertex3f(c.x + radius * (float)b.x, c.y + radius * (float)b.y, c.z + radius * (float)b.z);
+    }
+    rlEnd();
+    rlDrawRenderBatchActive();
+}
+
 static void draw_backdrop(const FrameContext *ctx)
 {
     const RenderResources *resources = ctx->resources;
-    if (!resources->ready || !resources->texture_loaded[RENDER_TEXTURE_STARS]) return;
+    if (!resources->ready || !resources->texture_loaded[RENDER_TEXTURE_STARS]) {
+        if (ctx->view->show_constellations) {
+            rlDisableDepthMask();
+            draw_constellations(ctx);
+            rlEnableDepthMask();
+        }
+        return;
+    }
     rlDrawRenderBatchActive();
     rlDisableDepthMask();
     rlDisableBackfaceCulling();
@@ -1259,6 +1284,7 @@ static void draw_backdrop(const FrameContext *ctx)
     Matrix sky = body_matrix(render_sky_orientation(), ctx->camera.position, ctx->view->far_plane * 0.5f);
     draw_shaded(resources, &resources->sphere_detailed, &sky, SHADE_SKY, resources->textures[RENDER_TEXTURE_STARS],
         WHITE, (Vector3){0, 1, 0}, (RenderAtmosphere){0}, NULL, NULL);
+    if (ctx->view->show_constellations) draw_constellations(ctx);
     rlEnableBackfaceCulling();
     rlEnableDepthMask();
 }

@@ -19,6 +19,7 @@ const sources = [
   ['Didymos and Dimorphos', 'Horizons DART s547 reconstruction', 'https://ssd.jpl.nasa.gov/horizons/'],
   ['Patroclus and Menoetius', 'Horizons asteroid-satellite solution JPL#82', 'https://ssd.jpl.nasa.gov/horizons/'],
   ['Textures', 'Solar System Scope, CC BY 4.0', 'https://www.solarsystemscope.com/textures/'],
+  ['Constellation lines', 'd3-celestial by Olaf Frohn, BSD 3-Clause', 'https://github.com/ofrohn/d3-celestial'],
   ['Uranus rings', 'NASA NSSDC Uranian Rings Fact Sheet', 'https://nssdc.gsfc.nasa.gov/planetary/factsheet/uranringfact.html'],
   ['Moon maps', 'USGS Astrogeology global mosaics, public domain', 'https://astrogeology.usgs.gov/search?pmi-target=&facets=Product+Type%3A%3AMosaic']
 ];
@@ -89,6 +90,6 @@ const sources = [
     <p>Every moon system with a JPL ephemeris now has a scene, most recently the Patroclus–Menoetius trojan binary. Moons of other asteroids have only literature orbits, so they wait for an ephemeris. Open work is tracked in <a href={`${repoUrl}/blob/main/SPEC.md`}>SPEC.md</a>.</p>
 
     <h2 id="credits">Credits</h2>
-    <p>Made by {authorName}. Code under the MIT licence; data are transformed extracts of NASA/JPL products; textures by Solar System Scope (CC BY 4.0); moon maps from USGS Astrogeology mosaics of NASA, ESA and DLR data (public domain); fonts Cormorant Garamond and JetBrains Mono (OFL). Usage analytics run only on the deployed site, and only when configured. <a href={repoUrl}>Source on GitHub</a>.</p>
+    <p>Made by {authorName}. Code under the MIT licence; data are transformed extracts of NASA/JPL products; textures by Solar System Scope (CC BY 4.0); moon maps from USGS Astrogeology mosaics of NASA, ESA and DLR data (public domain); constellation lines from d3-celestial, © 2015 Olaf Frohn, BSD 3-Clause (licence text in the source repository's assets/sky/); fonts Cormorant Garamond and JetBrains Mono (OFL). Usage analytics run only on the deployed site, and only when configured. <a href={repoUrl}>Source on GitHub</a>.</p>
   </div>
 </BaseLayout>

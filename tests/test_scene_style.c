@@ -702,6 +702,25 @@ static void test_scale_bar_picks_a_round_distance(void)
     assert(!render_scale_bar(0, 120, &bar) && !render_scale_bar(1e3, 0, &bar));
 }
 
+/* Constellation lines (SPEC A124): every endpoint is a unit direction in
+ * simulation axes, and Orion's figure has Betelgeuse at its true position. */
+static void test_constellation_lines_sit_on_their_stars(void)
+{
+    size_t count = render_constellation_count();
+    assert(count == 743);
+    Vec3d betelgeuse = orbit_icrf_direction(88.7929, 7.4071);
+    double nearest = 1;
+    for (size_t k = 0; k < count; ++k) {
+        Vec3d a, b;
+        assert(render_constellation_segment(k, &a, &b));
+        assert(fabs(vec3d_length(a) - 1) < 1e-9 && fabs(vec3d_length(b) - 1) < 1e-9);
+        nearest = fmin(nearest, angle_degrees(a, betelgeuse));
+    }
+    assert(nearest < 0.01);
+    Vec3d a, b;
+    assert(!render_constellation_segment(count, &a, &b));
+}
+
 int main(void)
 {
     test_texture_inventory_matches_assets();
@@ -735,6 +754,7 @@ int main(void)
     test_belt_sample_decodes_and_matches_the_atlas_conic();
     test_uranian_ring_strip_follows_the_ring_table();
     test_scale_bar_picks_a_round_distance();
+    test_constellation_lines_sit_on_their_stars();
     puts("test_scene_style passed");
     return 0;
 }

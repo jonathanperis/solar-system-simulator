@@ -218,3 +218,15 @@ test('the small-body cloud loads and toggles', async ({ page }) => {
   await expect(belt).toHaveText('Belt: Off');
   await expect(belt).toHaveAttribute('aria-pressed', 'false');
 });
+
+// SPEC A124: constellation lines start off and toggle through C.
+test('constellation lines toggle through C', async ({ page }) => {
+  await page.goto(base);
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  const lines = page.getByRole('button', { name: /^Constellations: (On|Off)$/ });
+  await expect(lines).toHaveText('Constellations: Off');
+  await lines.click();
+  await expect(lines).toHaveText('Constellations: On');
+  await expect(lines).toHaveAttribute('aria-pressed', 'true');
+});
