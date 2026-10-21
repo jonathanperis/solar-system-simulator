@@ -39,7 +39,9 @@ typedef struct RenderResources {
     int belt_mesh_count;
     size_t belt_count;
     Material belt_material;
-    Mesh sphere_detailed, sphere_simple, ring;
+    Mesh sphere_detailed, sphere_simple, ring, uranus_ring;
+    Texture2D uranus_ring_strip;              /* coverage, from the ring table (A122) */
+    Texture2D uranus_ring_strip_illustrative; /* every ring at least a texel wide */
     Material material;
     Texture2D textures[RENDER_TEXTURE_COUNT];
     bool texture_loaded[RENDER_TEXTURE_COUNT];
