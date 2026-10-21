@@ -330,6 +330,17 @@ void render_uranus_ring_strip(unsigned char *rgba);
 #define RENDER_URANUS_RING_ILLUSTRATIVE_WIDTH 128
 void render_uranus_ring_strip_illustrative(unsigned char *rgba);
 
+/* Scale bar (SPEC A123): given metres per pixel at the camera target's depth
+ * and the widest bar wanted (pixels), the longest round distance that fits:
+ * 1, 2 or 5 times a power of ten in km, or in AU once that is at least
+ * 0.1 AU. Fills the bar's true length, its width in pixels and a label with
+ * grouped digits ("100 000 km", "2 AU"). False for degenerate input. */
+typedef struct RenderScaleBar {
+    double length_m, pixels;
+    char label[32];
+} RenderScaleBar;
+bool render_scale_bar(double meters_per_pixel, double max_pixels, RenderScaleBar *out);
+
 /* Name labels drawn in the canvas (presentation only). The Sun, planets and
  * dwarf planets are always named; the selected body always is; moons and small bodies are
  * named once their family is zoomed in (at least

@@ -679,6 +679,29 @@ static void test_uranian_ring_strip_follows_the_ring_table(void)
     assert(wide[(int)((49200e3 - inner) / coarse) * 4 + 3] == 0);
 }
 
+/* Scale bar (SPEC A123): the longest round distance (1, 2 or 5 x 10^n km, or
+ * in AU from 0.1 AU) that fits the target width, with its label. */
+static void test_scale_bar_picks_a_round_distance(void)
+{
+    RenderScaleBar bar;
+    /* 1,000 km per pixel, 120 px available: 100,000 km is 100 px. */
+    assert(render_scale_bar(1e6, 120, &bar));
+    assert(fabs(bar.length_m - 1e8) < 1 && fabs(bar.pixels - 100) < 1e-9);
+    assert(strcmp(bar.label, "100 000 km") == 0);
+    /* 2 km per pixel: 200 km (100 px). */
+    assert(render_scale_bar(2e3, 120, &bar) && strcmp(bar.label, "200 km") == 0);
+    /* Planetary distances switch to AU: 1e7 km per pixel x 120 px is 8 AU, so 5 AU (75 px). */
+    assert(render_scale_bar(1e10, 120, &bar) && strcmp(bar.label, "5 AU") == 0);
+    assert(bar.pixels > 60 && bar.pixels <= 120);
+    assert(render_scale_bar(3e9, 120, &bar) && strcmp(bar.label, "2 AU") == 0);
+    /* Never wider than asked, and at least half of it. */
+    for (double mpp = 1; mpp < 1e13; mpp *= 1.37) {
+        assert(render_scale_bar(mpp, 120, &bar));
+        assert(bar.pixels <= 120 + 1e-9 && bar.pixels >= 120 * 0.4);
+    }
+    assert(!render_scale_bar(0, 120, &bar) && !render_scale_bar(1e3, 0, &bar));
+}
+
 int main(void)
 {
     test_texture_inventory_matches_assets();
@@ -711,6 +734,7 @@ int main(void)
     test_markers_slide_past_floating_panels();
     test_belt_sample_decodes_and_matches_the_atlas_conic();
     test_uranian_ring_strip_follows_the_ring_table();
+    test_scale_bar_picks_a_round_distance();
     puts("test_scene_style passed");
     return 0;
 }
