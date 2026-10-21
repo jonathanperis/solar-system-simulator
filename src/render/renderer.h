@@ -93,6 +93,9 @@ float renderer_body_visual_radius(const Body *body, RenderScaleMode mode);
 Vector3 renderer_relative_vector(Vec3d position, Vec3d origin);
 /* Name labels in screen space (call after EndMode3D): the Sun, planets, the
  * selected body, and moons of a zoomed-in family, decluttered by priority. */
+/* Backing pixels per CSS pixel (1 natively; the browser's devicePixelRatio,
+ * capped at 2). Presentation only. */
+void renderer_set_pixel_scale(float scale);
 /* Screen-space markers after the 3D pass (SPEC A108): rings around dot-sized
  * planets and corner brackets on the selected body. Presentation only. */
 void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Camera3D camera, size_t selected);

@@ -12,6 +12,27 @@
 #define SOLAR_ILLUSTRATIVE_SATELLITE_GAP_UNITS 0.03
 #define SOLAR_ILLUSTRATIVE_SMALL_MOON_RADIUS 0.012f
 
+/* Backing pixels per CSS pixel (HiDPI, SPEC A114). Detail budgets, size
+ * thresholds and 2D marks are designed in CSS pixels: budgets divide the
+ * viewport by this scale, drawn text and marks multiply by it. */
+static float pixel_scale = 1.0f;
+
+void renderer_set_pixel_scale(float scale)
+{
+    pixel_scale = scale >= 1.0f && scale <= 4.0f ? scale : 1.0f;
+}
+
+/* Viewport height in CSS pixels, for every pixel-based budget. */
+static double css_viewport_height(void)
+{
+    return (double)GetRenderHeight() / pixel_scale;
+}
+
+static double render_aspect(void)
+{
+    return (double)GetRenderWidth() / (double)GetRenderHeight();
+}
+
 Vector3 renderer_relative_vector(Vec3d position, Vec3d origin)
 {
     Vec3d vector = vec3d_sub(position, origin);
@@ -528,14 +549,14 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
     RenderScaleMode mode, RenderTrailFrame trail_frame, Vec3d origin, const Camera3D *camera)
 {
     Vec3d camera_world = vec3d_add(origin, (Vec3d){camera->position.x, camera->position.y, camera->position.z});
-    double viewport_height = (double)GetRenderHeight();
+    double viewport_height = css_viewport_height();
     /* Segments wholly outside one side of the view are skipped: around a
      * framed moon, most of a distant moon's history lies off screen, and
      * submitting it vertex by vertex was the largest trail cost. */
     Vec3d forward = {camera->target.x - camera->position.x, camera->target.y - camera->position.y,
         camera->target.z - camera->position.z};
     RenderFrustum view = render_frustum(camera_world, forward, (Vec3d){camera->up.x, camera->up.y, camera->up.z},
-        camera->fovy, (double)GetRenderWidth() / viewport_height, 0.05);
+        camera->fovy, render_aspect(), 0.05);
     ++trail_extent_frame;
     rlBegin(RL_LINES);
     for (size_t i = 0; i < system->body_count; ++i) {
@@ -605,12 +626,12 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
     static Vector2 screen[SOLAR_SYSTEM_BODY_CAPACITY];
     static bool on_screen[SOLAR_SYSTEM_BODY_CAPACITY], in_front[SOLAR_SYSTEM_BODY_CAPACITY];
     static double occluder_distance[SOLAR_SYSTEM_BODY_CAPACITY], occluder_radius[SOLAR_SYSTEM_BODY_CAPACITY];
-    const float size = 15.0f, spacing = 0.5f;
+    const float s = pixel_scale, size = 15.0f * s, spacing = 0.5f * s;
     Font font = resources->label_font_ready ? resources->label_font : GetFontDefault();
     Vector3 forward = unit_vector((Vector3){camera.target.x - camera.position.x, camera.target.y - camera.position.y,
         camera.target.z - camera.position.z}, (Vector3){0, 0, -1});
     float width = (float)GetScreenWidth(), height = (float)GetScreenHeight();
-    double viewport_height = (double)height;
+    double viewport_height = (double)height, css_height = viewport_height / s;
 
     /* Project every body once; labels then only read the cached results. */
     for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
@@ -631,11 +652,12 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
         Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
         Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
         double distance = sqrt(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z);
-        double radius_px = render_projected_radius_pixels(renderer_body_radius(body, mode), distance, camera.fovy, viewport_height);
+        /* Label decisions use CSS pixels; occluders and boxes stay in screen pixels. */
+        double radius_px = render_projected_radius_pixels(renderer_body_radius(body, mode), distance, camera.fovy, css_height);
         int parent = solar_system_parent_index(system, i);
         double separation = 1e9;
         if (parent >= 0 && system->bodies[parent].kind != BODY_KIND_STAR)
-            separation = hypot(screen[i].x - screen[parent].x, screen[i].y - screen[parent].y);
+            separation = hypot(screen[i].x - screen[parent].x, screen[i].y - screen[parent].y) / s;
         if (!render_body_wants_label(body->kind, i == selected, body->radius_quality != PHYSICAL_UNKNOWN, radius_px, separation))
             continue;
         /* Hidden behind a nearer body that is large on screen: no label. */
@@ -643,7 +665,7 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
         for (size_t j = 0; j < system->body_count && !hidden; ++j) {
             /* A large nearer body can hide a label even when its own centre
              * is just off screen, so occluders only need to be in front. */
-            if (j == i || !in_front[j] || occluder_radius[j] < 8.0 || occluder_distance[j] >= distance) continue;
+            if (j == i || !in_front[j] || occluder_radius[j] < 8.0 * s || occluder_distance[j] >= distance) continue;
             hidden = hypot(screen[i].x - screen[j].x, screen[i].y - screen[j].y) < occluder_radius[j];
         }
         if (hidden) continue;
@@ -656,7 +678,7 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
         if (render_body_wants_ring_marker(body->kind, radius_px)) clearance = fmax(clearance, RENDER_RING_MARKER_RADIUS_PIXELS);
         if (i == selected && render_selection_wants_brackets(radius_px))
             clearance = fmax(clearance, render_selection_bracket_half_size(radius_px));
-        float top = fmaxf(4.0f, screen[i].y - (float)clearance - 4 - text.y);
+        float top = fmaxf(4.0f * s, screen[i].y - (float)clearance * s - 4.0f * s - text.y);
         boxes[count] = (RenderLabelBox){screen[i].x - text.x / 2, top, text.x, text.y, priority, false};
         body_of[count++] = i;
     }
@@ -666,7 +688,7 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
         const Body *body = &system->bodies[body_of[k]];
         Color color = body_of[k] == selected ? (Color){240, 200, 120, 255} : (Color){228, 222, 206, 225};
         /* A soft drop shadow keeps pale text readable over bright planets. */
-        DrawTextEx(font, body->name, (Vector2){boxes[k].x + 1, boxes[k].y + 1}, size, spacing, (Color){0, 0, 0, 170});
+        DrawTextEx(font, body->name, (Vector2){boxes[k].x + s, boxes[k].y + s}, size, spacing, (Color){0, 0, 0, 170});
         DrawTextEx(font, body->name, (Vector2){boxes[k].x, boxes[k].y}, size, spacing, color);
     }
 }
@@ -675,7 +697,8 @@ void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3
 {
     Vector3 forward = unit_vector((Vector3){camera.target.x - camera.position.x, camera.target.y - camera.position.y,
         camera.target.z - camera.position.z}, (Vector3){0, 0, -1});
-    double viewport_height = (double)GetScreenHeight();
+    double viewport_height = css_viewport_height();
+    const float s = pixel_scale;
     for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
         const Body *body = &system->bodies[i];
         bool is_selected = i == selected;
@@ -692,19 +715,19 @@ void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3
              * the dot it surrounds. */
             Color ring = renderer_body_color(body);
             ring.a = 120;
-            DrawRing(at, RENDER_RING_MARKER_RADIUS_PIXELS - 0.6f, RENDER_RING_MARKER_RADIUS_PIXELS + 0.6f, 0, 360, 40, ring);
+            DrawRing(at, (RENDER_RING_MARKER_RADIUS_PIXELS - 0.6f) * s, (RENDER_RING_MARKER_RADIUS_PIXELS + 0.6f) * s, 0, 360, 40, ring);
         }
         if (is_selected && render_selection_wants_brackets(radius_px)) {
             /* Four amber corner brackets, the instrument's one accent colour
              * (DESIGN.md), outside the drawn disc at every zoom. */
-            float half = (float)render_selection_bracket_half_size(radius_px);
-            float arm = fminf(9.0f, half * 0.45f);
+            float half = (float)render_selection_bracket_half_size(radius_px) * s;
+            float arm = fminf(9.0f * s, half * 0.45f);
             const Color amber = {240, 200, 120, 235};
             for (int corner = 0; corner < 4; ++corner) {
                 float sx = corner & 1 ? 1.0f : -1.0f, sy = corner & 2 ? 1.0f : -1.0f;
                 Vector2 tip = {at.x + sx * half, at.y + sy * half};
-                DrawLineEx(tip, (Vector2){tip.x - sx * arm, tip.y}, 1.5f, amber);
-                DrawLineEx(tip, (Vector2){tip.x, tip.y - sy * arm}, 1.5f, amber);
+                DrawLineEx(tip, (Vector2){tip.x - sx * arm, tip.y}, 1.5f * s, amber);
+                DrawLineEx(tip, (Vector2){tip.x, tip.y - sy * arm}, 1.5f * s, amber);
             }
         }
     }
@@ -715,7 +738,7 @@ int renderer_pick_body(const SolarSystem *system, RenderScaleMode mode, Vec3d or
     static RenderPickCandidate candidates[SOLAR_SYSTEM_BODY_CAPACITY];
     Vector3 forward = unit_vector((Vector3){camera.target.x - camera.position.x, camera.target.y - camera.position.y,
         camera.target.z - camera.position.z}, (Vector3){0, 0, -1});
-    double viewport_height = (double)GetScreenHeight();
+    double viewport_height = css_viewport_height();
     size_t count = system->body_count < SOLAR_SYSTEM_BODY_CAPACITY ? system->body_count : SOLAR_SYSTEM_BODY_CAPACITY;
     for (size_t i = 0; i < count; ++i) {
         const Body *body = &system->bodies[i];
@@ -726,9 +749,10 @@ int renderer_pick_body(const SolarSystem *system, RenderScaleMode mode, Vec3d or
         double distance = sqrt(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z);
         float radius = body->radius_quality == PHYSICAL_UNKNOWN ? 0
             : (float)render_projected_radius_pixels(renderer_body_radius(body, mode), distance, camera.fovy, viewport_height);
-        candidates[i] = (RenderPickCandidate){at.x, at.y, radius, body->kind, in_front};
+        /* Picking works in CSS pixels, like its slop. */
+        candidates[i] = (RenderPickCandidate){at.x / pixel_scale, at.y / pixel_scale, radius, body->kind, in_front};
     }
-    return render_pick_body(candidates, count, pointer.x, pointer.y);
+    return render_pick_body(candidates, count, pointer.x / pixel_scale, pointer.y / pixel_scale);
 }
 
 /* Everything the drawing phases share in one frame, computed once: camera
@@ -760,7 +784,7 @@ static void frame_context_build(FrameContext *ctx)
     Vector3 to_camera = {camera.position.x - camera.target.x, camera.position.y - camera.target.y, camera.position.z - camera.target.z};
     ctx->camera_distance = sqrt(to_camera.x * to_camera.x + to_camera.y * to_camera.y + to_camera.z * to_camera.z);
     ctx->forward = unit_vector((Vector3){-to_camera.x, -to_camera.y, -to_camera.z}, (Vector3){0, 0, -1});
-    ctx->viewport_height = (double)GetRenderHeight();
+    ctx->viewport_height = css_viewport_height();
     renderer_frame_cache_build(&ctx->cache, ctx->system, ctx->mode);
     ctx->star = -1;
     for (size_t i = 0; i < ctx->system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
@@ -802,7 +826,7 @@ static void draw_orbit_guides(const FrameContext *ctx)
     RenderFrustum view = render_frustum(camera_world,
         (Vec3d){ctx->forward.x, ctx->forward.y, ctx->forward.z},
         (Vec3d){ctx->camera.up.x, ctx->camera.up.y, ctx->camera.up.z}, ctx->camera.fovy,
-        (double)GetRenderWidth() / ctx->viewport_height, 0.05);
+        render_aspect(), 0.05);
     const double pi = 3.14159265358979323846;
     rlBegin(RL_LINES);
     for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
@@ -921,7 +945,7 @@ static void draw_grid(const FrameContext *ctx)
     rlDrawRenderBatchActive();
     rlDisableDepthMask();
     if (ctx->view->show_grid)
-        draw_reference_grid(ctx->origin, ctx->camera_distance, &ctx->camera, (double)GetRenderWidth() / ctx->viewport_height);
+        draw_reference_grid(ctx->origin, ctx->camera_distance, &ctx->camera, render_aspect());
     rlDrawRenderBatchActive();
     rlEnableDepthMask();
 }
