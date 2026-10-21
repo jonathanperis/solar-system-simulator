@@ -27,6 +27,8 @@ const lessons = [
     <ul class="lessons">
       {lessons.map(([name, question, watch]) => (
         <li>
+          {/* A frame of the lesson running (tools/lesson_previews.mjs, A129). */}
+          <span class="lesson-preview"><img src={`${base}lessons/${name}.jpg`} width="480" height="300" alt="" loading="lazy" decoding="async" /></span>
           <strong>{question}</strong>
           <p>{watch}</p>
           <a class="button" href={`${base}?lesson=${name}`}>Run</a>
