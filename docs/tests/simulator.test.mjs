@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, clockNote, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod } from '../src/lib/simulator.ts';
+import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, clockNote, speedLabels, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod } from '../src/lib/simulator.ts';
 import { errorMessage, downloadText } from '../src/lib/browser.ts';
 
 test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolling', () => {
@@ -277,4 +277,15 @@ test('inspector readouts group digits and carry readable units (SPEC A113)', () 
   assert.equal(formatPeriod(10765.1427 * 86400), `10${nb}765.14\u00a0d · 29.47\u00a0yr`);
   assert.equal(formatPeriod(27.3217 * 86400), '27.322\u00a0d');
   assert.equal(formatPeriod(13.942 * 3600), '13.942\u00a0h');
+});
+
+test('arrow keys reach the simulator without scrolling, and the speed slider reads its preset (SPEC A120)', () => {
+  for (const [key, focused, prevented] of [['ArrowLeft', true, true], ['ArrowDown', true, true], ['ArrowLeft', false, false], ['a', true, false]]) {
+    let cancelled = false, stopped = false;
+    routeSimulatorKeyboard({ key, preventDefault() { cancelled = true; }, stopImmediatePropagation() { stopped = true; } }, focused);
+    assert.equal(cancelled, prevented, `${key}, focused=${focused}`);
+    assert.equal(stopped, false);
+  }
+  assert.deepEqual(speedLabels(false).short, ['1 h/s', '1 d/s', '5 d/s', '10 d/s', '15 d/s']);
+  assert.equal(speedLabels(true).spoken[4], '50 seconds / second');
 });
