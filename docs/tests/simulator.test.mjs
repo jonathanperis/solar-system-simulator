@@ -47,7 +47,7 @@ test('C state drives playback, precise SI readouts, asset pairing, and permanent
     .map(key => [key, { textContent: '' }]));
   let modalClosed = false;
   const controls = { panels: [{ disabled: true, closest: () => null }, { disabled: true, closest: () => ({ close: () => { modalClosed = true; } }) }], filterStatus: { textContent: '' }, pause: { textContent: '' }, step: { disabled: true },
-    rotate: { checked: true }, body: { value: '', replaceChildren() {} }, speed: { value: '' }, view: { textContent: '' }, search: { value: '' }, group: { value: '' } };
+    rotate: { attrs: {}, setAttribute(name, value) { this.attrs[name] = value; }, getAttribute(name) { return this.attrs[name] ?? null; } }, body: { value: '', replaceChildren() {} }, speed: { value: '' }, search: { value: '' }, group: { value: '' } };
   const runtime = createSimulatorModule({}, readouts,
     new URL('https://example.test/solar-system-simulator/wasm/solar-system-simulator.js?revision=abc123'), controls);
   assert.equal(runtime.locateFile('solar-system-simulator.wasm'),
@@ -69,7 +69,7 @@ test('C state drives playback, precise SI readouts, asset pairing, and permanent
   assert.ok(controls.panels.every(panel => !panel.disabled));
   assert.equal(controls.step.disabled, false);
   assert.equal(controls.pause.textContent, 'Resume');
-  assert.equal(controls.rotate.checked, false);
+  assert.equal(controls.rotate.getAttribute('aria-checked'), 'false');
   controls.body.value = '7';
   controls.speed.value = '2';
   runtime.reportState(state);
@@ -119,7 +119,7 @@ test('lesson diagnostics distinguish physical units, normalized energy, and edit
     'integration', 'magnification', 'position', 'velocity'];
   const readouts = Object.fromEntries(keys.map(key => [key, { textContent: '' }]));
   const controls = { lesson: { value: '' }, scene: { value: '' }, method: { value: '' }, dt: { value: '' }, factor: { value: '' },
-    step: { textContent: '' }, trails: { textContent: '' }, vectors: { textContent: '', setAttribute() {} }, grid: { textContent: '', pressed: '', setAttribute(name, value) { this.pressed = value; } }, labels: { textContent: '', setAttribute() {} }, orbits: { textContent: '', pressed: '', setAttribute(name, value) { this.pressed = value; } }, contact: { textContent: '', hidden: true }, panel: { disabled: false } };
+    step: { textContent: '' }, vectors: { attrs: {}, setAttribute(name, value) { this.attrs[name] = value; }, getAttribute(name) { return this.attrs[name] ?? null; } }, grid: { attrs: {}, setAttribute(name, value) { this.attrs[name] = value; }, getAttribute(name) { return this.attrs[name] ?? null; } }, labels: { attrs: {}, setAttribute(name, value) { this.attrs[name] = value; }, getAttribute(name) { return this.attrs[name] ?? null; } }, orbits: { attrs: {}, setAttribute(name, value) { this.attrs[name] = value; }, getAttribute(name) { return this.attrs[name] ?? null; } }, contact: { textContent: '', hidden: true }, panel: { disabled: false } };
   const runtime = createSimulatorModule({}, readouts, new URL('https://example.test/runtime.js'), controls);
   const state = { lesson: 4, method: 1, dt: 30, ticks: 2, factor: 1.1, acceleration: .002,
     specificEnergy: -1000, energy: -2e28, energyChange: .001, isolated: true, momentum: 0, angularMomentum: 4e34,
@@ -130,15 +130,15 @@ test('lesson diagnostics distinguish physical units, normalized energy, and edit
   assert.match(readouts.momentum.textContent, /isolated/);
   assert.equal(controls.lesson.value, '4');
   assert.equal(controls.step.textContent, 'Step +30 s');
-  assert.equal(controls.grid.textContent, 'Grid: On');
+  // A128: on/off controls are switches; their names never change.
+  assert.equal(controls.grid.getAttribute('aria-checked'), 'true');
   runtime.reportLabState({ ...state, grid: false });
-  assert.equal(controls.grid.textContent, 'Grid: Off');
-  assert.equal(controls.grid.pressed, 'false');
-  assert.equal(controls.labels.textContent, 'Labels: On');
-  assert.equal(controls.orbits.textContent, 'Orbits: On');
+  assert.equal(controls.grid.getAttribute('aria-checked'), 'false');
+  assert.equal(controls.labels.getAttribute('aria-checked'), 'true');
+  assert.equal(controls.orbits.getAttribute('aria-checked'), 'true');
   runtime.reportLabState({ ...state, orbits: false });
-  assert.equal(controls.orbits.textContent, 'Orbits: Off');
-  assert.equal(controls.orbits.pressed, 'false');
+  assert.equal(controls.orbits.getAttribute('aria-checked'), 'false');
+  assert.equal(controls.vectors.getAttribute('aria-checked'), 'true');
   controls.factor.value = '1.2';
   runtime.reportLabState(state);
   assert.equal(controls.factor.value, '1.2');
@@ -159,7 +159,7 @@ test('recoverable Emscripten stderr is logged without disabling the runtime; fat
     .map(key => [key, { textContent: '' }]));
   const panels = [{ disabled: true, closest: () => null }];
   const controls = { panels, filterStatus: { textContent: '' }, pause: { textContent: '' }, step: { disabled: true },
-    rotate: { checked: true }, body: { value: '', replaceChildren() {} }, speed: { value: '' }, view: { textContent: '' }, search: { value: '' }, group: { value: '' } };
+    rotate: { attrs: {}, setAttribute(name, value) { this.attrs[name] = value; }, getAttribute(name) { return this.attrs[name] ?? null; } }, body: { value: '', replaceChildren() {} }, speed: { value: '' }, search: { value: '' }, group: { value: '' } };
   const runtime = createSimulatorModule({}, readouts, new URL('https://example.test/runtime.js'), controls);
   const logged = [], original = console.warn;
   console.warn = message => logged.push(message);

@@ -34,32 +34,32 @@ test('the reference grid can be hidden and shown again through C', async ({ page
   await page.goto(base);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   await page.getByRole('button', { name: 'View', exact: true }).click();
-  const grid = page.getByRole('button', { name: /^Grid: (On|Off)$/ });
-  await expect(grid).toHaveText('Grid: On');
-  await expect(grid).toHaveAttribute('aria-pressed', 'true');
+  const grid = page.getByRole('switch', { name: 'Grid', exact: true });
+  await expect(grid).toBeChecked();
+  await expect(grid).toBeChecked();
   await grid.click();
-  await expect(grid).toHaveText('Grid: Off');
-  await expect(grid).toHaveAttribute('aria-pressed', 'false');
+  await expect(grid).not.toBeChecked();
+  await expect(grid).not.toBeChecked();
   await grid.click();
-  await expect(grid).toHaveText('Grid: On');
-  const labels = page.getByRole('button', { name: /^Labels: (On|Off)$/ });
-  await expect(labels).toHaveText('Labels: On');
+  await expect(grid).toBeChecked();
+  const labels = page.getByRole('switch', { name: 'Labels', exact: true });
+  await expect(labels).toBeChecked();
   await labels.click();
-  await expect(labels).toHaveText('Labels: Off');
-  await expect(labels).toHaveAttribute('aria-pressed', 'false');
+  await expect(labels).not.toBeChecked();
+  await expect(labels).not.toBeChecked();
 });
 
 test('orbit guides start on with parent-relative trails and toggle through C', async ({ page }) => {
   await page.goto(base);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   await page.getByRole('button', { name: 'View', exact: true }).click();
-  await expect(page.getByRole('button', { name: /^Trails: / })).toHaveText('Trails: Parent-relative');
-  const orbits = page.getByRole('button', { name: /^Orbits: (On|Off)$/ });
-  await expect(orbits).toHaveText('Orbits: On');
-  await expect(orbits).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Parent', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const orbits = page.getByRole('switch', { name: 'Orbits', exact: true });
+  await expect(orbits).toBeChecked();
+  await expect(orbits).toBeChecked();
   await orbits.click();
-  await expect(orbits).toHaveText('Orbits: Off');
-  await expect(orbits).toHaveAttribute('aria-pressed', 'false');
+  await expect(orbits).not.toBeChecked();
+  await expect(orbits).not.toBeChecked();
   await page.keyboard.press('Escape');
   await page.locator('canvas').focus();
   // raylib polls keys once a frame: hold the key across a few frames.
@@ -67,7 +67,7 @@ test('orbit guides start on with parent-relative trails and toggle through C', a
   await page.waitForTimeout(150);
   await page.keyboard.up('o');
   await page.getByRole('button', { name: 'View', exact: true }).click();
-  await expect(orbits).toHaveText('Orbits: On');
+  await expect(orbits).toBeChecked();
 });
 
 // SPEC A112: reduced motion stops auto-rotation (and fly-to animation), and
@@ -77,7 +77,7 @@ test('reduced motion starts still, and a drag turns the paused view', async ({ p
   await page.goto(base);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   await page.getByRole('button', { name: 'View', exact: true }).click();
-  await expect(page.locator('[data-runtime-rotate]')).not.toBeChecked();
+  await expect(page.getByRole('switch', { name: 'Rotate', exact: true })).not.toBeChecked();
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Pause', exact: true }).click();
   await expect(page.locator('[data-runtime-status]')).toHaveText('Paused');
@@ -206,10 +206,10 @@ test('arrows, address, Back, search, tour and follow drive navigation', async ({
   await tour.click();
   await expect(tour).toHaveText('Tour');
   await page.getByRole('button', { name: 'View', exact: true }).click();
-  const follow = page.getByRole('button', { name: /^Follow: (On|Off)$/ });
+  const follow = page.getByRole('switch', { name: 'Follow', exact: true });
   await follow.click();
-  await expect(follow).toHaveText('Follow: On');
-  await expect(follow).toHaveAttribute('aria-pressed', 'true');
+  await expect(follow).toBeChecked();
+  await expect(follow).toBeChecked();
 });
 
 // SPEC A121: the small-body sample loads after the textures and the cloud
@@ -219,11 +219,11 @@ test('the small-body cloud loads and toggles', async ({ page }) => {
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   await expect(page.locator('canvas').first()).toHaveAttribute('data-belt', 'loaded', { timeout: 60000 });
   await page.getByRole('button', { name: 'View', exact: true }).click();
-  const belt = page.getByRole('button', { name: /^Belt: (On|Off)$/ });
-  await expect(belt).toHaveText('Belt: On');
+  const belt = page.getByRole('switch', { name: 'Asteroids', exact: true });
+  await expect(belt).toBeChecked();
   await belt.click();
-  await expect(belt).toHaveText('Belt: Off');
-  await expect(belt).toHaveAttribute('aria-pressed', 'false');
+  await expect(belt).not.toBeChecked();
+  await expect(belt).not.toBeChecked();
 });
 
 // SPEC A124: constellation lines start off and toggle through C.
@@ -231,9 +231,38 @@ test('constellation lines toggle through C', async ({ page }) => {
   await page.goto(base);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   await page.getByRole('button', { name: 'View', exact: true }).click();
-  const lines = page.getByRole('button', { name: /^Constellations: (On|Off)$/ });
-  await expect(lines).toHaveText('Constellations: Off');
+  const lines = page.getByRole('switch', { name: 'Constellations', exact: true });
+  await expect(lines).not.toBeChecked();
   await lines.click();
-  await expect(lines).toHaveText('Constellations: On');
-  await expect(lines).toHaveAttribute('aria-pressed', 'true');
+  await expect(lines).toBeChecked();
+  await expect(lines).toBeChecked();
+});
+
+// SPEC A128: the View panel is non-modal: the canvas stays usable behind it,
+// Escape closes it and focus returns to its opener; the scale is a segmented
+// control and on/off controls are switches.
+test('the View panel is non-modal, with switches and segmented controls', async ({ page }) => {
+  await page.goto(base);
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
+  const opener = page.getByRole('button', { name: 'View', exact: true });
+  await opener.click();
+  const panel = page.locator('#view-panel');
+  await expect(panel).toBeVisible();
+  await expect(opener).toHaveAttribute('aria-expanded', 'true');
+  // Not modal: the dialog is open without a backdrop, and the dock stays clickable.
+  expect(await panel.evaluate(element => element.matches(':modal'))).toBe(false);
+  await page.getByRole('button', { name: /^(Pause|Resume)$/ }).click();
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Paused');
+  const real = page.getByRole('button', { name: 'Real', exact: true });
+  await real.click();
+  await expect(real).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Illustrative', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  const sun = page.getByRole('button', { name: 'Sun', exact: true });
+  await sun.click();
+  await expect(sun).toHaveAttribute('aria-pressed', 'true');
+  await panel.getByRole('switch', { name: 'Grid', exact: true }).focus();
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeHidden();
+  await expect(opener).toBeFocused();
+  await expect(opener).toHaveAttribute('aria-expanded', 'false');
 });
