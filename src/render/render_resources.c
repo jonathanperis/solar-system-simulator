@@ -337,11 +337,12 @@ static Mesh build_ring(int segments, float inner, float outer)
 }
 
 /* A ring opacity strip rasterised in C (A122), four rows tall for the GPU. */
-static Texture2D ring_strip_texture(void (*fill)(unsigned char *), int width)
+static Texture2D ring_strip_texture(const RenderRingSystem *system,
+    void (*fill)(const RenderRingSystem *, unsigned char *), int width)
 {
-    static unsigned char strip[RENDER_URANUS_RING_STRIP_WIDTH * 4 * 4];
-    if (width > RENDER_URANUS_RING_STRIP_WIDTH) return (Texture2D){0};
-    fill(strip);
+    static unsigned char strip[RENDER_RING_STRIP_WIDTH * 4 * 4];
+    if (width > RENDER_RING_STRIP_WIDTH) return (Texture2D){0};
+    fill(system, strip);
     for (int row = 1; row < 4; ++row) memcpy(strip + row * width * 4, strip, (size_t)width * 4);
     Image image = {strip, width, 4, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
     Texture2D texture = LoadTextureFromImage(image);
@@ -408,13 +409,16 @@ bool renderer_resources_init(RenderResources *resources)
     resources->sphere_simple = build_sphere(32, 16);
     resources->ring = build_ring(192, (float)SOLAR_SATURN_RING_VISUAL_INNER_RATIO,
         (float)(SOLAR_SATURN_RING_OUTER_RADIUS_M / SOLAR_SATURN_RADIUS_M));
-    /* Uranus's rings (A122): mesh from the ring table's span, opacity strip
-     * rasterised from the table itself (no image file). */
-    resources->uranus_ring = build_ring(256, (float)(RENDER_URANUS_RING_INNER_M / SOLAR_URANUS_RADIUS_M),
-        (float)(RENDER_URANUS_RING_OUTER_M / SOLAR_URANUS_RADIUS_M));
-    resources->uranus_ring_strip = ring_strip_texture(render_uranus_ring_strip, RENDER_URANUS_RING_STRIP_WIDTH);
-    resources->uranus_ring_strip_illustrative = ring_strip_texture(render_uranus_ring_strip_illustrative,
-        RENDER_URANUS_RING_ILLUSTRATIVE_WIDTH);
+    /* Faint ring systems (A122, A126): meshes from each table's span,
+     * opacity strips rasterised from the tables (no image files). */
+    for (size_t k = 0; k < RENDER_RING_SYSTEM_COUNT; ++k) {
+        const RenderRingSystem *system = render_ring_system_at(k);
+        resources->ring_meshes[k] = build_ring(256, (float)(system->inner_m / system->planet_radius_m),
+            (float)(system->outer_m / system->planet_radius_m));
+        resources->ring_strips[k] = ring_strip_texture(system, render_ring_strip, RENDER_RING_STRIP_WIDTH);
+        resources->ring_strips_illustrative[k] = ring_strip_texture(system, render_ring_strip_illustrative,
+            RENDER_RING_ILLUSTRATIVE_WIDTH);
+    }
     Image white = GenImageColor(2, 2, WHITE);
     resources->white = LoadTextureFromImage(white);
     UnloadImage(white);
@@ -450,9 +454,11 @@ void renderer_resources_unload(RenderResources *resources)
     if (resources->sphere_detailed.vertexCount) UnloadMesh(resources->sphere_detailed);
     if (resources->sphere_simple.vertexCount) UnloadMesh(resources->sphere_simple);
     if (resources->ring.vertexCount) UnloadMesh(resources->ring);
-    if (resources->uranus_ring.vertexCount) UnloadMesh(resources->uranus_ring);
-    if (resources->uranus_ring_strip.id) UnloadTexture(resources->uranus_ring_strip);
-    if (resources->uranus_ring_strip_illustrative.id) UnloadTexture(resources->uranus_ring_strip_illustrative);
+    for (size_t k = 0; k < RENDER_RING_SYSTEM_COUNT; ++k) {
+        if (resources->ring_meshes[k].vertexCount) UnloadMesh(resources->ring_meshes[k]);
+        if (resources->ring_strips[k].id) UnloadTexture(resources->ring_strips[k]);
+        if (resources->ring_strips_illustrative[k].id) UnloadTexture(resources->ring_strips_illustrative[k]);
+    }
     if (resources->white.id) UnloadTexture(resources->white);
     if (resources->glow.id) UnloadTexture(resources->glow);
     if (resources->label_font_ready) UnloadFont(resources->label_font);
