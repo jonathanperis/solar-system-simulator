@@ -100,7 +100,9 @@ html.instrument body { display: flex; flex-direction: column; }
 html.instrument main { position: relative; flex: 1; min-height: 0; }
 .instrument { position: absolute; inset: 0; }
 .canvas-wrap { position: absolute; inset: 0; background: #000; }
-.canvas-wrap canvas { display: block; width: 100%; height: 100%; outline-offset: -2px; }
+/* Drags turn the view and two fingers zoom (A112): the browser must not pan or zoom the page instead. */
+.canvas-wrap canvas { display: block; width: 100%; height: 100%; outline-offset: -2px; touch-action: none; cursor: grab; }
+.canvas-wrap canvas:active { cursor: grabbing; }
 .hud { position: absolute; left: 0.75rem; top: 0.6rem; right: 24rem; display: flex; flex-direction: column; gap: 0.15rem; pointer-events: none; font: 0.75rem/1.5 var(--mono); color: var(--text-2); text-shadow: 0 1px 3px #000; }
 .hud p { margin: 0; }
 .clock { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.75rem; }

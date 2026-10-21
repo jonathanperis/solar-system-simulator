@@ -210,6 +210,20 @@ bool render_selection_wants_brackets(double radius_pixels);
 bool render_body_wants_ring_marker(BodyKind kind, double radius_pixels);
 double render_selection_bracket_half_size(double radius_pixels);
 
+/* Click to select (SPEC A112). Each candidate is a body's projected centre,
+ * its drawn radius in pixels, its kind and whether it is in front of the
+ * camera. A click picks the body whose disc contains the pointer (the one
+ * nearest its centre if several do); otherwise the body whose edge is within
+ * RENDER_PICK_SLOP_PIXELS, where a planet beats a moon closer than 3 px of it
+ * in score. Returns -1 when nothing is near. */
+typedef struct RenderPickCandidate {
+    float x, y, radius_pixels;
+    BodyKind kind;
+    bool in_front;
+} RenderPickCandidate;
+#define RENDER_PICK_SLOP_PIXELS 14.0f
+int render_pick_body(const RenderPickCandidate *candidates, size_t count, float x, float y);
+
 /* Name labels drawn in the canvas (presentation only). The Sun, planets and
  * dwarf planets are always named; the selected body always is; moons and small bodies are
  * named once their family is zoomed in (at least

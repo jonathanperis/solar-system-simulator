@@ -160,6 +160,88 @@ static void test_sunlit_yaw_places_camera_on_the_day_side(void)
     assert(yaw >= 0.0f && yaw < 2.0f * pi);
 }
 
+/* Direct manipulation (SPEC A112): dragging turns the view, pinching zooms. */
+static void test_drag_turns_the_view_and_pitch_stays_short_of_the_poles(void)
+{
+    OrbitCameraState state = orbit_camera_default_state();
+    float yaw = state.yaw_radians, pitch = state.pitch_radians, distance = state.distance;
+    orbit_camera_drag(&state, 100.0f, 0.0f, 800.0f);
+    assert(state.yaw_radians != yaw && state.pitch_radians == pitch && state.distance == distance);
+    /* A drag right then the same drag left returns to the start. */
+    orbit_camera_drag(&state, -100.0f, 0.0f, 800.0f);
+    assert_close_float(state.yaw_radians, yaw, 1e-5f);
+    /* Dragging down raises the camera; it never flips over a pole. */
+    for (int i = 0; i < 50; ++i) orbit_camera_drag(&state, 0.0f, 400.0f, 800.0f);
+    assert(state.pitch_radians <= ORBIT_CAMERA_MAX_PITCH_RADIANS && state.pitch_radians > 1.0f);
+    for (int i = 0; i < 100; ++i) orbit_camera_drag(&state, 0.0f, -400.0f, 800.0f);
+    assert(state.pitch_radians >= -ORBIT_CAMERA_MAX_PITCH_RADIANS && state.pitch_radians < -1.0f);
+    assert(state.yaw_radians >= 0.0f && state.yaw_radians < 6.2832f);
+}
+
+static void test_pinch_zooms_by_ratio_within_limits(void)
+{
+    OrbitCameraState state = orbit_camera_default_state();
+    float distance = state.distance;
+    orbit_camera_pinch(&state, 2.0f); /* fingers twice as far apart: twice as close */
+    assert_close_float(state.distance, distance / 2.0f, 1e-4f);
+    orbit_camera_pinch(&state, 1000.0f);
+    assert(state.distance == state.min_distance);
+    orbit_camera_pinch(&state, 1e-6f);
+    assert(state.distance == state.max_distance);
+    orbit_camera_pinch(&state, 0.0f); /* degenerate input changes nothing */
+    assert(state.distance == state.max_distance);
+}
+
+/* Fly-to (SPEC A112): the camera eases from where it was to the new framing. */
+static void test_flight_eases_between_framings(void)
+{
+    OrbitCameraState from = orbit_camera_default_state(), to = from;
+    from.yaw_radians = 6.0f;
+    to.yaw_radians = 0.3f; /* shortest way is forward through 2 pi */
+    to.distance = from.distance / 1000.0f;
+    to.pitch_radians = 0.1f;
+    double origin_a[3] = {0, 0, 0}, origin_b[3] = {300, 0, 0};
+    OrbitCameraFlight flight;
+    orbit_camera_flight_begin(&flight, origin_a, &from, 1.5f);
+    assert(flight.active);
+    double origin[3];
+    OrbitCameraState view;
+    /* Start: exactly the old view. */
+    orbit_camera_flight_blend(&flight, 0.0f, origin_b, &to, origin, &view);
+    assert(origin[0] == 0 && view.distance == from.distance && view.yaw_radians == from.yaw_radians);
+    /* Midway: the yaw went the short way and the camera pulled back for the
+     * long hop, farther than either end. */
+    orbit_camera_flight_blend(&flight, 0.5f, origin_b, &to, origin, &view);
+    assert(origin[0] > 100 && origin[0] < 200);
+    assert(view.yaw_radians > 6.0f || view.yaw_radians < 0.3f);
+    assert(view.distance > 1.5f * sqrtf(from.distance * to.distance)); /* above the plain log path */
+    {
+        /* Between two framings at the same distance, a long hop pulls back
+         * beyond both; reframing in place does not move the distance. */
+        OrbitCameraState same = from;
+        same.yaw_radians = from.yaw_radians;
+        OrbitCameraState pulled;
+        double here[3];
+        orbit_camera_flight_blend(&flight, 0.5f, origin_b, &same, here, &pulled);
+        assert(pulled.distance > 2.0f * from.distance);
+        orbit_camera_flight_blend(&flight, 0.5f, origin_a, &same, here, &pulled);
+        assert_close_float(pulled.distance, from.distance, 1e-3f);
+    }
+    /* End: exactly the destination. */
+    orbit_camera_flight_blend(&flight, 1.0f, origin_b, &to, origin, &view);
+    assert(origin[0] == 300 && fabsf(view.distance - to.distance) < 1e-6f * to.distance);
+    assert_close_float(view.yaw_radians, to.yaw_radians, 1e-5f);
+    assert_close_float(view.pitch_radians, to.pitch_radians, 1e-6f);
+    /* Progress eases in and out and ends the flight. */
+    float p0 = orbit_camera_flight_advance(&flight, 0.15f);
+    float p1 = orbit_camera_flight_advance(&flight, 0.6f);
+    assert(p0 > 0 && p0 < 0.1f && p1 > 0.4f && p1 < 0.6f && flight.active);
+    assert(orbit_camera_flight_advance(&flight, 10.0f) == 1.0f && !flight.active);
+    /* A zero-length flight (reduced motion) lands at once. */
+    orbit_camera_flight_begin(&flight, origin_a, &from, 0.0f);
+    assert(orbit_camera_flight_advance(&flight, 0.016f) == 1.0f && !flight.active);
+}
+
 int main(void)
 {
     test_sunlit_yaw_places_camera_on_the_day_side();
@@ -172,6 +254,9 @@ int main(void)
     test_orbit_camera_zoom_clamps_at_minimum_without_changing_angle();
     test_orbit_camera_zoom_out_after_minimum_keeps_same_angle();
     test_orbit_camera_zoom_clamps_at_maximum_without_changing_angle();
+    test_drag_turns_the_view_and_pitch_stays_short_of_the_poles();
+    test_pinch_zooms_by_ratio_within_limits();
+    test_flight_eases_between_framings();
     puts("test_orbit_camera passed");
     return 0;
 }

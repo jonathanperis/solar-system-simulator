@@ -458,6 +458,27 @@ static void test_eclipse_fraction_covers_umbra_penumbra_and_annulus(void)
     assert(render_eclipse_fraction(0, 0, sun) == 0 && render_eclipse_fraction(0, 0.01, 0) == 1);
 }
 
+/* Click to select (SPEC A112): the body under the pointer, else the nearest
+ * one within a finger-sized slop; planets win over the moons beside them. */
+static void test_pick_prefers_the_body_under_the_pointer(void)
+{
+    RenderPickCandidate bodies[] = {
+        {100, 100, 40, BODY_KIND_PLANET, true},   /* 0: a big disc */
+        {130, 100, 2, BODY_KIND_MOON, true},      /* 1: a moon dot inside the disc's edge */
+        {300, 300, 0.5, BODY_KIND_PLANET, true},  /* 2: a dot-sized planet */
+        {306, 300, 0.5, BODY_KIND_MOON, true},    /* 3: its moon, 6 px away */
+        {500, 500, 1, BODY_KIND_MOON, false},     /* 4: behind the camera */
+    };
+    size_t n = sizeof(bodies) / sizeof(bodies[0]);
+    assert(render_pick_body(bodies, n, 100, 100) == 0);
+    assert(render_pick_body(bodies, n, 131, 100) == 1); /* the moon dot under the pointer */
+    assert(render_pick_body(bodies, n, 303, 301) == 2); /* between two dots: the planet */
+    assert(render_pick_body(bodies, n, 307, 300) == 3); /* right on the moon */
+    assert(render_pick_body(bodies, n, 500, 500) == -1);
+    assert(render_pick_body(bodies, n, 700, 50) == -1);
+    assert(render_pick_body(bodies, n, 306.5f + RENDER_PICK_SLOP_PIXELS + 1, 300) == -1);
+}
+
 int main(void)
 {
     test_texture_inventory_matches_assets();
@@ -482,6 +503,7 @@ int main(void)
     test_orbit_guide_detail_follows_screen_size();
     test_markers_find_small_planets_and_frame_the_selection();
     test_eclipse_fraction_covers_umbra_penumbra_and_annulus();
+    test_pick_prefers_the_body_under_the_pointer();
     puts("test_scene_style passed");
     return 0;
 }

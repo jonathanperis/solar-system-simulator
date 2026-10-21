@@ -549,3 +549,25 @@ double render_eclipse_fraction(double separation, double occluder_radius, double
     double area = occluder_radius * occluder_radius / (sun_radius * sun_radius);
     return covered * (area < 1 ? area : 1);
 }
+
+int render_pick_body(const RenderPickCandidate *candidates, size_t count, float x, float y)
+{
+    int best = -1;
+    float best_score = 1e30f;
+    for (size_t i = 0; i < count; ++i) {
+        const RenderPickCandidate *c = &candidates[i];
+        if (!c->in_front) continue;
+        float distance = hypotf(x - c->x, y - c->y);
+        float edge = distance - c->radius_pixels;
+        if (edge > RENDER_PICK_SLOP_PIXELS) continue;
+        /* Inside a disc scores below any near miss; among near misses the
+         * closest edge wins, with planets and dwarf planets given 3 px. */
+        float score = edge <= 0 ? -1000.0f + distance
+            : edge - (c->kind == BODY_KIND_PLANET || c->kind == BODY_KIND_DWARF_PLANET || c->kind == BODY_KIND_STAR ? 3.0f : 0.0f);
+        if (score < best_score) {
+            best_score = score;
+            best = (int)i;
+        }
+    }
+    return best;
+}
