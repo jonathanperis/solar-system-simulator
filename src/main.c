@@ -17,6 +17,13 @@ EM_JS(int, solar_web_initial_canvas_width, (void), {
     return Math.max(1, value);
 })
 
+/* Backing pixels per CSS pixel (A114): sharp on HiDPI screens, capped at 2 so
+ * a 3x phone does not shade 9 pixels for every CSS pixel. */
+EM_JS(double, solar_web_pixel_ratio, (void), {
+    const ratio = typeof devicePixelRatio === 'number' && devicePixelRatio > 0 ? devicePixelRatio : 1;
+    return Math.min(2, Math.max(1, ratio));
+})
+
 EM_JS(int, solar_web_prefers_reduced_motion, (void), {
     return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 0;
 })
@@ -123,6 +130,7 @@ typedef struct SolarApp {
     float pointer_travel;
     float pinch_spread;
     float interaction_hold_seconds;
+    float pixel_scale; /* backing pixels per CSS pixel (A114) */
     RenderResources render;
     char feedback[160];
 #if defined(PLATFORM_WEB)
@@ -204,7 +212,7 @@ static void handle_pointer(SolarApp *state)
     if (down) {
         if (state->pointer_down) {
             float dx = at.x - state->pointer_last.x, dy = at.y - state->pointer_last.y;
-            state->pointer_travel += fabsf(dx) + fabsf(dy);
+            state->pointer_travel += (fabsf(dx) + fabsf(dy)) / state->pixel_scale;
             if (state->pointer_travel > SOLAR_CLICK_SLOP_PIXELS && (dx != 0.0f || dy != 0.0f)) {
                 orbit_camera_drag(&state->orbit_camera, dx, dy, (float)GetScreenHeight());
                 state->interaction_hold_seconds = SOLAR_INTERACTION_HOLD_SECONDS;
@@ -571,9 +579,16 @@ static void solar_app_update_draw(void *user_data)
 
 #if defined(PLATFORM_WEB)
     /* CSS owns the frame; keep raylib's projection/backing size in sync after
-     * responsive layout changes instead of stretching the old framebuffer. */
-    int width = solar_web_initial_canvas_width();
-    int height = solar_web_initial_canvas_height();
+     * responsive layout changes instead of stretching the old framebuffer.
+     * The backing store has pixel_scale pixels per CSS pixel; the canvas keeps
+     * its CSS size (Emscripten clears any inline size when it resizes). */
+    float ratio = (float)solar_web_pixel_ratio();
+    int width = (int)lroundf((float)solar_web_initial_canvas_width() * ratio);
+    int height = (int)lroundf((float)solar_web_initial_canvas_height() * ratio);
+    if (ratio != state->pixel_scale) {
+        state->pixel_scale = ratio;
+        renderer_set_pixel_scale(ratio);
+    }
     if (width != GetScreenWidth() || height != GetScreenHeight()) {
         SetWindowSize(width, height);
         if (state->system_framed) frame_selected_system(state, false);
@@ -845,6 +860,7 @@ int main(int argc, char **argv)
     app.shown_camera = app.orbit_camera;
     app.session = simulation_session_create();
     app.auto_rotate = true;
+    app.pixel_scale = 1.0f;
 #if defined(PLATFORM_WEB)
     /* prefers-reduced-motion (DESIGN.md): no auto-rotation, and framing cuts
      * instead of flying. The page unticks its Rotate box to match. */
