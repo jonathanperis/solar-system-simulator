@@ -77,15 +77,22 @@ float renderer_body_radius(const Body *body, RenderScaleMode mode)
     return SOLAR_ILLUSTRATIVE_PLANET_RADIUS;
 }
 
+/* Outer edge of a planet's drawn rings in metres, or 0 for no rings. */
+static double ring_outer_radius_m(BodyId id)
+{
+    return id == BODY_ID_SATURN ? SOLAR_SATURN_RING_OUTER_RADIUS_M : id == BODY_ID_URANUS ? RENDER_URANUS_RING_OUTER_M : 0;
+}
+
 float renderer_body_visual_radius(const Body *body, RenderScaleMode mode)
 {
     float body_radius = renderer_body_radius(body, mode);
-    if (body->id != BODY_ID_SATURN) return body_radius;
+    double rings = ring_outer_radius_m(body->id);
+    if (rings <= 0) return body_radius;
 
     if (mode == RENDER_SCALE_REAL) {
-        return meters_to_render_units(SOLAR_SATURN_RING_OUTER_RADIUS_M);
+        return meters_to_render_units(rings);
     }
-    return body_radius * (float)(SOLAR_SATURN_RING_OUTER_RADIUS_M / SOLAR_SATURN_RADIUS_M);
+    return body_radius * (float)(rings / body->radius_m);
 }
 
 /* How far from its parent's centre a satellite must be drawn so the two
@@ -96,7 +103,8 @@ float renderer_body_visual_radius(const Body *body, RenderScaleMode mode)
 static double satellite_clearance(const Body *body, const Body *parent, double true_distance, RenderScaleMode mode)
 {
     double parent_extent = renderer_body_radius(parent, mode);
-    if (parent->id == BODY_ID_SATURN && true_distance > meters_to_render_units(SOLAR_SATURN_RING_OUTER_RADIUS_M))
+    double rings = ring_outer_radius_m(parent->id);
+    if (rings > 0 && true_distance > meters_to_render_units(rings))
         parent_extent = renderer_body_visual_radius(parent, mode);
     return parent_extent + renderer_body_radius(body, mode) + SOLAR_ILLUSTRATIVE_SATELLITE_GAP_UNITS;
 }
@@ -423,17 +431,24 @@ static void draw_shaded(const RenderResources *resources, const Mesh *mesh, cons
 /* Ring geometry for the shadow tests, matching the ring mesh (radii in planet
  * radii, plane normal = Saturn's pole). Always filled; returns whether the
  * ring opacity map exists, which only the rings' shadow on Saturn needs. */
-static bool saturn_ring_shadow(const RenderResources *resources, RenderOrientation orientation, Vector3 position,
-    float radius, RingShadow *out)
+static Texture2D uranus_strip(const RenderResources *resources, RenderScaleMode mode)
 {
-    bool ring_map = resources->texture_loaded[RENDER_TEXTURE_SATURN_RING];
+    return mode == RENDER_SCALE_REAL ? resources->uranus_ring_strip : resources->uranus_ring_strip_illustrative;
+}
+
+static bool planet_ring_shadow(const RenderResources *resources, BodyId id, RenderOrientation orientation, Vector3 position,
+    float radius, RenderScaleMode mode, RingShadow *out)
+{
+    bool uranus = id == BODY_ID_URANUS;
+    bool ring_map = uranus ? resources->uranus_ring_strip.id != 0 : resources->texture_loaded[RENDER_TEXTURE_SATURN_RING];
     *out = (RingShadow){
         .center = position,
         .ring_normal = {(float)orientation.pole.x, (float)orientation.pole.y, (float)orientation.pole.z},
         .radius = radius,
-        .ring_inner = (float)SOLAR_SATURN_RING_VISUAL_INNER_RATIO,
-        .ring_outer = (float)(SOLAR_SATURN_RING_OUTER_RADIUS_M / SOLAR_SATURN_RADIUS_M),
-        .ring_opacity = ring_map ? resources->textures[RENDER_TEXTURE_SATURN_RING] : resources->white,
+        .ring_inner = uranus ? (float)(RENDER_URANUS_RING_INNER_M / SOLAR_URANUS_RADIUS_M) : (float)SOLAR_SATURN_RING_VISUAL_INNER_RATIO,
+        .ring_outer = uranus ? (float)(RENDER_URANUS_RING_OUTER_M / SOLAR_URANUS_RADIUS_M)
+            : (float)(SOLAR_SATURN_RING_OUTER_RADIUS_M / SOLAR_SATURN_RADIUS_M),
+        .ring_opacity = !ring_map ? resources->white : uranus ? uranus_strip(resources, mode) : resources->textures[RENDER_TEXTURE_SATURN_RING],
     };
     return ring_map;
 }
@@ -1366,9 +1381,10 @@ static void draw_opaque_bodies(const FrameContext *ctx)
             continue;
         }
         bool city_lights = body->id == BODY_ID_EARTH && resources->texture_loaded[RENDER_TEXTURE_EARTH_NIGHT];
-        /* The rings' shadow on Saturn needs the ring opacity map. */
+        /* The rings' shadow on Saturn or Uranus needs the ring opacity map. */
         RingShadow saturn_rings;
-        bool ringed = body->id == BODY_ID_SATURN && saturn_ring_shadow(resources, orientation, position, radius, &saturn_rings);
+        bool ringed = (body->id == BODY_ID_SATURN || body->id == BODY_ID_URANUS)
+            && planet_ring_shadow(resources, body->id, orientation, position, radius, ctx->mode, &saturn_rings);
         set_eclipse_casters(ctx, i);
         draw_shaded(resources, mesh, &transform, SHADE_LIT, texture_or_white(resources, slot), tint, light_toward_star(ctx, i),
             render_atmosphere_for_body(body->id), city_lights ? &resources->textures[RENDER_TEXTURE_EARTH_NIGHT] : NULL,
@@ -1390,7 +1406,7 @@ static void draw_translucent_layers(const FrameContext *ctx)
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
         if (body->radius_quality == PHYSICAL_UNKNOWN) continue;
-        bool saturn = body->id == BODY_ID_SATURN;
+        bool saturn = body->id == BODY_ID_SATURN || (body->id == BODY_ID_URANUS && resources->uranus_ring.vertexCount);
         bool clouds = body->id == BODY_ID_EARTH && resources->texture_loaded[RENDER_TEXTURE_EARTH_CLOUDS];
         if (!saturn && !clouds) continue;
         if (body_pixels(ctx, i, renderer_body_visual_radius(body, ctx->mode)) < RENDER_MESH_MIN_RADIUS_PIXELS * 2) continue;
@@ -1403,13 +1419,14 @@ static void draw_translucent_layers(const FrameContext *ctx)
              * outer extent matches renderer_body_visual_radius (framing).
              * Saturn's shadow on them needs only geometry, so it is cast even
              * when the ring map is missing. */
-            bool ring_map = resources->texture_loaded[RENDER_TEXTURE_SATURN_RING];
             RingShadow planet_shadow;
-            saturn_ring_shadow(resources, orientation, position, radius, &planet_shadow);
+            bool ring_map = planet_ring_shadow(resources, body->id, orientation, position, radius, ctx->mode, &planet_shadow);
             Matrix ring_transform = body_matrix(orientation, position, radius);
             rlDisableBackfaceCulling();
-            draw_shaded(resources, &resources->ring, &ring_transform, SHADE_RING,
-                texture_or_white(resources, RENDER_TEXTURE_SATURN_RING), ring_map ? WHITE : (Color){205, 184, 145, 150},
+            bool uranus = body->id == BODY_ID_URANUS;
+            draw_shaded(resources, uranus ? &resources->uranus_ring : &resources->ring, &ring_transform, SHADE_RING,
+                uranus ? uranus_strip(resources, ctx->mode) : texture_or_white(resources, RENDER_TEXTURE_SATURN_RING),
+                ring_map ? WHITE : (Color){205, 184, 145, 150},
                 light_toward_star(ctx, i), (RenderAtmosphere){0}, NULL, &planet_shadow);
             rlEnableBackfaceCulling();
         }

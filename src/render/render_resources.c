@@ -321,20 +321,36 @@ static Mesh build_sphere(int slices, int rings)
     return mesh;
 }
 
-static Mesh build_ring(int segments)
+static Mesh build_ring(int segments, float inner, float outer)
 {
     size_t vertices = render_ring_vertex_count(segments), indices = render_ring_index_count(segments);
     float *positions = malloc(vertices * 3 * sizeof(float)), *normals = malloc(vertices * 3 * sizeof(float));
     float *texcoords = malloc(vertices * 2 * sizeof(float));
     unsigned short *index = malloc(indices * sizeof(unsigned short));
     Mesh mesh = {0};
-    /* Unit annulus: the renderer scales it by Saturn's drawn radius. */
-    float outer = (float)(SOLAR_SATURN_RING_OUTER_RADIUS_M / SOLAR_SATURN_RADIUS_M);
+    /* Unit annulus in planet radii: the renderer scales it by the planet's drawn radius. */
     if (positions && normals && texcoords && index &&
-        render_build_ring(segments, (float)SOLAR_SATURN_RING_VISUAL_INNER_RATIO, outer, positions, normals, texcoords, index))
+        render_build_ring(segments, inner, outer, positions, normals, texcoords, index))
         mesh = upload_mesh(vertices, indices, positions, normals, texcoords, index);
     free(positions); free(normals); free(texcoords); free(index);
     return mesh;
+}
+
+/* A ring opacity strip rasterised in C (A122), four rows tall for the GPU. */
+static Texture2D ring_strip_texture(void (*fill)(unsigned char *), int width)
+{
+    static unsigned char strip[RENDER_URANUS_RING_STRIP_WIDTH * 4 * 4];
+    if (width > RENDER_URANUS_RING_STRIP_WIDTH) return (Texture2D){0};
+    fill(strip);
+    for (int row = 1; row < 4; ++row) memcpy(strip + row * width * 4, strip, (size_t)width * 4);
+    Image image = {strip, width, 4, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8};
+    Texture2D texture = LoadTextureFromImage(image);
+    if (texture.id) {
+        GenTextureMipmaps(&texture);
+        SetTextureFilter(texture, TEXTURE_FILTER_TRILINEAR);
+        SetTextureWrap(texture, TEXTURE_WRAP_CLAMP);
+    }
+    return texture;
 }
 
 /* A soft radial halo for the Sun, drawn with additive blending: each pixel's
@@ -390,7 +406,15 @@ bool renderer_resources_init(RenderResources *resources)
      * cheaper 32 x 16 one so the 128-body scene stays light on phones. */
     resources->sphere_detailed = build_sphere(96, 48);
     resources->sphere_simple = build_sphere(32, 16);
-    resources->ring = build_ring(192);
+    resources->ring = build_ring(192, (float)SOLAR_SATURN_RING_VISUAL_INNER_RATIO,
+        (float)(SOLAR_SATURN_RING_OUTER_RADIUS_M / SOLAR_SATURN_RADIUS_M));
+    /* Uranus's rings (A122): mesh from the ring table's span, opacity strip
+     * rasterised from the table itself (no image file). */
+    resources->uranus_ring = build_ring(256, (float)(RENDER_URANUS_RING_INNER_M / SOLAR_URANUS_RADIUS_M),
+        (float)(RENDER_URANUS_RING_OUTER_M / SOLAR_URANUS_RADIUS_M));
+    resources->uranus_ring_strip = ring_strip_texture(render_uranus_ring_strip, RENDER_URANUS_RING_STRIP_WIDTH);
+    resources->uranus_ring_strip_illustrative = ring_strip_texture(render_uranus_ring_strip_illustrative,
+        RENDER_URANUS_RING_ILLUSTRATIVE_WIDTH);
     Image white = GenImageColor(2, 2, WHITE);
     resources->white = LoadTextureFromImage(white);
     UnloadImage(white);
@@ -426,6 +450,9 @@ void renderer_resources_unload(RenderResources *resources)
     if (resources->sphere_detailed.vertexCount) UnloadMesh(resources->sphere_detailed);
     if (resources->sphere_simple.vertexCount) UnloadMesh(resources->sphere_simple);
     if (resources->ring.vertexCount) UnloadMesh(resources->ring);
+    if (resources->uranus_ring.vertexCount) UnloadMesh(resources->uranus_ring);
+    if (resources->uranus_ring_strip.id) UnloadTexture(resources->uranus_ring_strip);
+    if (resources->uranus_ring_strip_illustrative.id) UnloadTexture(resources->uranus_ring_strip_illustrative);
     if (resources->white.id) UnloadTexture(resources->white);
     if (resources->glow.id) UnloadTexture(resources->glow);
     if (resources->label_font_ready) UnloadFont(resources->label_font);
