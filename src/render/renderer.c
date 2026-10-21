@@ -121,7 +121,7 @@ static double satellite_clearance(const Body *body, const Body *parent, double t
     double rings = ring_outer_radius_m(parent->id);
     const RenderRingSystem *table = render_ring_system(parent->id);
     double drawn_outer = table ? table->outer_m : rings;
-    if (drawn_outer > 0 && true_distance > meters_to_render_units(drawn_outer))
+    if (drawn_outer > 0 && true_distance > meters_to_render_units(drawn_outer * RENDER_RING_CLEARANCE_MARGIN))
         parent_extent = body_radius_raw(parent, mode) * drawn_outer / parent->radius_m;
     else if (rings > 0 && true_distance > meters_to_render_units(rings))
         parent_extent = visual_radius_raw(parent, mode);

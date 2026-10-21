@@ -453,7 +453,7 @@ static void check_moons_outside_drawn_rings(BodyId planet, double ring_outer_m, 
     for (size_t i = 0; i < system.body_count; ++i) {
         if (solar_system_parent_index(&system, i) != saturn) continue;
         double true_distance = vec3d_length(vec3d_sub(system.bodies[i].position_m, system.bodies[saturn].position_m));
-        if (true_distance <= ring_outer_m) continue;
+        if (true_distance <= ring_outer_m * RENDER_RING_CLEARANCE_MARGIN) continue;
         double drawn = vec3d_length(vec3d_sub(renderer_body_position(&system, i, RENDER_SCALE_ILLUSTRATIVE), center));
         /* The drawn ring annulus reaches ring_outer_m scaled like the planet. */
         double annulus = renderer_body_radius(&system.bodies[saturn], RENDER_SCALE_ILLUSTRATIVE) * ring_outer_m
@@ -472,6 +472,23 @@ static void test_illustrative_saturn_moons_stay_outside_the_drawn_rings(void)
     /* Moons beyond every drawn ring (Jupiter's gossamer rings reach 3.1 radii)
      * clear all of them, not only the main ring (review fix). */
     check_moons_outside_drawn_rings(BODY_ID_JUPITER, render_ring_system(BODY_ID_JUPITER)->outer_m, 4); /* Galileans (A126) */
+    {
+        /* Thebe, on its own gossamer ring's edge, keeps one clearance over a
+         * whole orbit: its drawn distance never jumps (review fix). */
+        static SolarSystem family;
+        assert(solar_system_create_family(BODY_ID_JUPITER, &family));
+        int jupiter = -1, thebe = -1;
+        for (size_t i = 0; i < family.body_count; ++i) {
+            if (family.bodies[i].id == BODY_ID_JUPITER) jupiter = (int)i;
+            if (strcmp(family.bodies[i].name, "Thebe") == 0) thebe = (int)i;
+        }
+        assert(jupiter >= 0 && thebe >= 0);
+        /* Its orbit (a = 221,889 km, e = 0.0175) and its place in the scene
+         * both stay under the margin, so it never takes the outer clearance. */
+        double margin = render_ring_system(BODY_ID_JUPITER)->outer_m * RENDER_RING_CLEARANCE_MARGIN;
+        assert(221889e3 * (1 + 0.0175) < margin);
+        assert(vec3d_length(vec3d_sub(family.bodies[thebe].position_m, family.bodies[jupiter].position_m)) < margin);
+    }
 }
 
 /* Pluto-Charon shadow events happen only near Pluto's equinoxes (1985-90,

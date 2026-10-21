@@ -634,9 +634,19 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
             break;
         case SOLAR_COMMAND_VIEW:
             begin_camera_flight(state);
-            /* Morph from the old scale's sizes and places (A125). */
-            state->morph_from = state->render_mode;
-            state->morph_seconds = state->reduced_motion ? SOLAR_FLIGHT_SECONDS : 0.0f;
+            /* The target body glides with the morph itself: the camera looks
+             * straight at it rather than easing toward an eased point. */
+            state->flight.track_origin = true;
+            /* Morph from the old scale's sizes and places (A125). Pressed
+             * again mid-morph, it reverses from where things are: the eased
+             * blend is symmetric, so restarting at 1 - t continues smoothly. */
+            if (state->morph_seconds < SOLAR_FLIGHT_SECONDS && !state->reduced_motion) {
+                state->morph_from = state->render_mode;
+                state->morph_seconds = SOLAR_FLIGHT_SECONDS - state->morph_seconds;
+            } else {
+                state->morph_from = state->render_mode;
+                state->morph_seconds = state->reduced_motion ? SOLAR_FLIGHT_SECONDS : 0.0f;
+            }
             state->render_mode = next_render_scale_mode(state->render_mode);
             if (state->system_framed) frame_selected_system(state, false);
             else if (state->body_framed) frame_selected_body(state, false);

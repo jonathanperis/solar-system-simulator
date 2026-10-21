@@ -333,6 +333,11 @@ typedef struct RenderRingSystem {
     unsigned char rgb[3];
 } RenderRingSystem;
 #define RENDER_RING_SYSTEM_COUNT 3
+/* A moon counts as beyond a planet's drawn rings only past this factor of
+ * their outer edge: Thebe's eccentric orbit straddles Jupiter's gossamer edge
+ * (the ring is its own dust), and must not flip between clearances each
+ * revolution (review fix). */
+#define RENDER_RING_CLEARANCE_MARGIN 1.1
 const RenderRingSystem *render_ring_system_at(size_t index);
 /* The table-driven ring system of a planet, or NULL (Saturn has its map). */
 const RenderRingSystem *render_ring_system(BodyId planet);
