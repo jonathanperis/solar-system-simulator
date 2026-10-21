@@ -59,6 +59,8 @@ static void test_atmospheres_only_where_bodies_have_air(void)
     assert(render_atmosphere_for_body(BODY_ID_VENUS).strength > 0);
     assert(render_atmosphere_for_body(BODY_ID_NEPTUNE).strength > 0);
     assert(render_atmosphere_for_body(BODY_ID_MOON).strength == 0);
+    assert(render_atmosphere_for_body(BODY_ID_TITAN).strength > 0);
+    assert(render_atmosphere_for_body(BODY_ID_GANYMEDE).strength == 0);
     assert(render_atmosphere_for_body(BODY_ID_MERCURY).strength == 0);
     RenderAtmosphere earth = render_atmosphere_for_body(BODY_ID_EARTH);
     assert(earth.b > earth.r); /* Rayleigh scattering reads blue */

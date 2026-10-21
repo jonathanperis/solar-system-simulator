@@ -96,6 +96,9 @@ RenderAtmosphere render_atmosphere_for_body(BodyId id)
         case BODY_ID_SATURN: return (RenderAtmosphere){0.95f, 0.87f, 0.62f, 0.22f};
         case BODY_ID_URANUS: return (RenderAtmosphere){0.62f, 0.90f, 1.00f, 0.38f};
         case BODY_ID_NEPTUNE: return (RenderAtmosphere){0.40f, 0.62f, 1.00f, 0.38f};
+        /* Titan: a 1.5-bar nitrogen atmosphere under thick orange haze, the
+         * only moon whose limb glows. */
+        case BODY_ID_TITAN: return (RenderAtmosphere){1.00f, 0.72f, 0.38f, 0.55f};
         default: return (RenderAtmosphere){0, 0, 0, 0};
     }
 }
