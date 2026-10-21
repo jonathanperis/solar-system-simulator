@@ -593,3 +593,21 @@ float render_resolution_governor_update(RenderResolutionGovernor *governor, floa
     }
     return governor->scale;
 }
+
+bool render_eclipse_caster(Vec3d receiver_m, double receiver_radius_m, Vec3d caster_m, double caster_radius_m,
+    Vec3d sun_m, double sun_radius_m, double scale, RenderEclipseCaster *out)
+{
+    Vec3d to_sun = vec3d_sub(sun_m, receiver_m);
+    double sun_distance = vec3d_length(to_sun);
+    if (!(sun_distance > 0) || !(caster_radius_m > 0)) return false;
+    Vec3d light = vec3d_scale(to_sun, 1.0 / sun_distance);
+    Vec3d d = vec3d_sub(caster_m, receiver_m);
+    double along = vec3d_dot(d, light);
+    if (!(along > 0)) return false;
+    double miss = sqrt(fmax(vec3d_dot(d, d) - along * along, 0));
+    /* The penumbra widens by the Sun's angular radius per metre travelled. */
+    double gap = miss - caster_radius_m - receiver_radius_m - sun_radius_m / sun_distance * along;
+    if (gap > 0) return false;
+    *out = (RenderEclipseCaster){vec3d_scale(d, scale), caster_radius_m * scale, gap * scale};
+    return true;
+}
