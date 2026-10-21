@@ -180,6 +180,8 @@ typedef struct SolarApp {
     float pinch_spread;
     float interaction_hold_seconds;
     float shown_seconds; /* wall time the view has been on screen (startup cuts, A112) */
+    RenderScaleMode morph_from; /* scale morph (A125): mode being left */
+    float morph_seconds;        /* time into the morph; >= SOLAR_FLIGHT_SECONDS when none */
     float pixel_scale; /* backing pixels per CSS pixel (A114) */
     int hovered;       /* body under a mouse pointer, -1 for none (A118) */
     /* A120: double-click, phone gestures, follow camera and the tour. */
@@ -608,6 +610,9 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
             break;
         case SOLAR_COMMAND_VIEW:
             begin_camera_flight(state);
+            /* Morph from the old scale's sizes and places (A125). */
+            state->morph_from = state->render_mode;
+            state->morph_seconds = state->reduced_motion ? SOLAR_FLIGHT_SECONDS : 0.0f;
             state->render_mode = next_render_scale_mode(state->render_mode);
             if (state->system_framed) frame_selected_system(state, false);
             else if (state->body_framed) frame_selected_body(state, false);
@@ -955,6 +960,16 @@ static void solar_app_update_draw(void *user_data)
      * the shown view toward it (A112). The target keeps moving during the
      * flight, so the blend reads its current position every frame. */
     Vec3d origin = renderer_body_position(&state->session.system, camera_target_index(state), state->render_mode);
+    /* Scale morph (A125), timed and eased like the camera flight, set before
+     * any position is read this frame. */
+    if (state->morph_seconds < SOLAR_FLIGHT_SECONDS) {
+        state->morph_seconds += stalled ? 0.0f : frame_time;
+        float t = fminf(state->morph_seconds / SOLAR_FLIGHT_SECONDS, 1.0f);
+        renderer_set_scale_morph(state->morph_from, t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f));
+        origin = renderer_body_position(&state->session.system, camera_target_index(state), state->render_mode);
+    } else {
+        renderer_set_scale_morph(state->render_mode, 1.0f);
+    }
     OrbitCameraState shown = state->orbit_camera;
     if (state->flight.active) {
         float progress = orbit_camera_flight_advance(&state->flight, stalled ? 0.0f : frame_time);
@@ -1156,6 +1171,7 @@ int main(int argc, char **argv)
     app.auto_rotate = true;
     app.pixel_scale = 1.0f;
     app.hovered = -1;
+    app.morph_seconds = SOLAR_FLIGHT_SECONDS; /* no morph at start */
 #if defined(PLATFORM_WEB)
     render_resolution_governor_init(&app.governor, 2.0f);
 #endif
