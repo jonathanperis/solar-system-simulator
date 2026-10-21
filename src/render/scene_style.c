@@ -611,3 +611,16 @@ bool render_eclipse_caster(Vec3d receiver_m, double receiver_radius_m, Vec3d cas
     *out = (RenderEclipseCaster){vec3d_scale(d, scale), caster_radius_m * scale, gap * scale};
     return true;
 }
+
+RenderOrientation render_sky_orientation(void)
+{
+    /* IAU galactic frame in ICRF (Hipparcos definition): Galactic Centre at
+     * RA 266.40499, Dec -28.93617; north galactic pole at RA 192.85948,
+     * Dec 27.12825, so the south pole is its antipode. */
+    Vec3d centre = orbit_icrf_direction(266.40499, -28.93617);
+    Vec3d south = orbit_icrf_direction(192.85948 - 180.0, -27.12825);
+    /* Remove the tiny rounding overlap so the frame is exactly orthonormal. */
+    south = vec3d_sub(south, vec3d_scale(centre, vec3d_dot(south, centre)));
+    south = vec3d_scale(south, 1.0 / vec3d_length(south));
+    return (RenderOrientation){south, centre, 0, true};
+}
