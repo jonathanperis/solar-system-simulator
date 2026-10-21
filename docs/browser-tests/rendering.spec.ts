@@ -183,10 +183,17 @@ test('arrows, address, Back, search, tour and follow drive navigation', async ({
   await press('ArrowDown');
   await expect(name).toHaveText('Moon');
   await expect(page).toHaveURL(/\?body=moon$/);
-  await page.goBack();
+  // Backspace on the view goes back one body (review fix: it used to be
+  // swallowed by the GLFW key filter), and the browser's Back goes further.
+  await press('Backspace');
   await expect(name).toHaveText('Earth');
   await page.goBack();
   await expect(name).toHaveText('Venus');
+  // The deep link's own entry survived (review fix): Venus is not replaced
+  // by the Sun, and Backspace does not leave the site from the first entry.
+  await expect(page).toHaveURL(/\?body=venus$/);
+  await press('Backspace');
+  await expect(page).toHaveURL(/\?body=venus$/);
   await canvas.focus();
   await page.keyboard.press('/');
   await expect(page.locator('#find-panel')).toBeVisible();

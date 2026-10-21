@@ -184,6 +184,9 @@ typedef struct SolarApp {
     float morph_seconds;        /* time into the morph; >= SOLAR_FLIGHT_SECONDS when none */
     float pixel_scale; /* backing pixels per CSS pixel (A114) */
     int hovered;       /* body under a mouse pointer, -1 for none (A118) */
+    bool gesture;      /* a two-finger gesture is in progress (never a tap) */
+    Vector2 hover_at;  /* where the last hover pick looked */
+    unsigned hover_frame;
     /* A120: double-click, phone gestures, follow camera and the tour. */
     double last_click_time;
     Vector2 last_click_at;
@@ -267,6 +270,17 @@ static void handle_pointer(SolarApp *state)
 {
     int touches = GetTouchPointCount();
     if (touches > 0) state->touch_seen = true;
+    /* A two-finger gesture stays a gesture until every finger is up: lifting
+     * them one at a time must not end in a tap (review fix). */
+    if (touches >= 2) state->gesture = true;
+    else if (touches == 0 && !IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        if (state->gesture) state->pointer_down = false;
+        state->gesture = false;
+    }
+    if (state->gesture && touches == 1) {
+        state->pinch_spread = 0.0f;
+        return;
+    }
     if (touches >= 2) {
         Vector2 a = GetTouchPosition(0), b = GetTouchPosition(1);
         float spread = hypotf(a.x - b.x, a.y - b.y);
@@ -329,9 +343,19 @@ static void handle_pointer(SolarApp *state)
      * screens keep a long-press tag until the next touch. */
     int hovered = state->touch_seen ? state->hovered : -1;
     if (!state->touch_seen && IsCursorOnScreen()) {
-        hovered = renderer_pick_target(GetMousePosition());
-        if (hovered < 0) hovered = renderer_pick_body(&state->session.system, state->render_mode, state->shown_origin,
-            state->camera, GetMousePosition());
+        /* Picking projects every body: redo it when the mouse moves, and
+         * otherwise every fourth frame (bodies and the camera drift only a
+         * pixel or two in that time). */
+        Vector2 at = GetMousePosition();
+        bool moved = at.x != state->hover_at.x || at.y != state->hover_at.y || (++state->hover_frame & 3) == 0;
+        if (moved) {
+            hovered = renderer_pick_target(at);
+            if (hovered < 0) hovered = renderer_pick_body(&state->session.system, state->render_mode, state->shown_origin,
+                state->camera, at);
+            state->hover_at = at;
+        } else {
+            hovered = state->hovered;
+        }
     }
     if (hovered != state->hovered) {
         state->hovered = hovered;

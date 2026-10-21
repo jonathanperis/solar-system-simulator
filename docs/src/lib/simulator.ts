@@ -651,11 +651,15 @@ export function mountSimulator(root: HTMLElement): void {
     const slug = implementedBodies.find(body => body.name === name)?.slug;
     if (!addressed() || !slug) return;
     const url = new URL(location.href);
-    const unaddressedStart = firstSelection && !url.searchParams.has('body');
+    const requested = url.searchParams.get('body');
+    // A deep link opens on the Sun for a frame before its body is selected:
+    // leave the link's own entry alone until its body arrives.
+    if (firstSelection && requested && requested !== slug && implementedBodies.some(body => body.slug === requested)) return;
+    const unaddressedStart = firstSelection && !requested;
     if (!unaddressedStart) url.searchParams.set('body', slug);
-    const entry = { solarBody: slug };
-    if (firstSelection || fromHistory || url.href === location.href) history.replaceState(entry, '', url);
-    else history.pushState(entry, '', url);
+    const depth: number = history.state?.solarDepth ?? 0;
+    if (firstSelection || fromHistory || url.href === location.href) history.replaceState({ solarBody: slug, solarDepth: depth }, '', url);
+    else history.pushState({ solarBody: slug, solarDepth: depth + 1 }, '', url);
     firstSelection = false;
     fromHistory = false;
   };
@@ -812,21 +816,23 @@ export function mountSimulator(root: HTMLElement): void {
   // Both assets use the page revision so cached builds cannot mix their ABI.
   window.Module = runtime;
   const routeKeyboard = (event: KeyboardEvent): void => routeSimulatorKeyboard(event, document.activeElement === canvas);
-  window.addEventListener('keydown', routeKeyboard, true);
   // A120: "/" opens body search from the view; Backspace on the view goes
-  // back to the previously viewed body (browser history, below).
+  // back to the previously viewed body (browser history, below). Registered
+  // before routeKeyboard, which stops Backspace from reaching GLFW.
   window.addEventListener('keydown', event => {
-    if (event.type !== 'keydown' || document.activeElement !== canvas) return;
+    if (document.activeElement !== canvas) return;
     if (event.key === '/') {
       event.preventDefault();
       event.stopImmediatePropagation();
       root.querySelector<HTMLDialogElement>('#find-panel')!.showModal();
       controls.search.focus();
-    } else if (event.key === 'Backspace' && history.state?.solarBody) {
+    } else if (event.key === 'Backspace' && (history.state?.solarDepth ?? 0) > 0) {
+      // Only within the simulator's own path: never back out of the site.
       event.preventDefault();
       history.back();
     }
   }, true);
+  window.addEventListener('keydown', routeKeyboard, true);
   window.addEventListener('keypress', routeKeyboard, true);
   // raylib's web backend needs WebGL. Probe a detached canvas so the runtime's
   // own canvas keeps the context attributes Emscripten requests.
