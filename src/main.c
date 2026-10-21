@@ -346,13 +346,13 @@ static void handle_pointer(SolarApp *state)
         /* Picking projects every body: redo it when the mouse moves, and
          * otherwise every fourth frame (bodies and the camera drift only a
          * pixel or two in that time). */
-        Vector2 at = GetMousePosition();
-        bool moved = at.x != state->hover_at.x || at.y != state->hover_at.y || (++state->hover_frame & 3) == 0;
+        Vector2 mouse = GetMousePosition();
+        bool moved = mouse.x != state->hover_at.x || mouse.y != state->hover_at.y || (++state->hover_frame & 3) == 0;
         if (moved) {
-            hovered = renderer_pick_target(at);
+            hovered = renderer_pick_target(mouse);
             if (hovered < 0) hovered = renderer_pick_body(&state->session.system, state->render_mode, state->shown_origin,
-                state->camera, at);
-            state->hover_at = at;
+                state->camera, mouse);
+            state->hover_at = mouse;
         } else {
             hovered = state->hovered;
         }
