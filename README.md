@@ -288,7 +288,7 @@ Rendering code lives under `src/render/` and converts simulation state at the bo
 - Physics units are isolated from rendering units.
 - Position scale: `1 AU = 10 render units`.
 - Physical radii remain real in simulation data.
-- Neptune's and Jupiter's faint rings are drawn the same way from their NSSDC tables. Jupiter's dusty rings are nearly invisible in 2026 sunlight, as they really are.
+- Neptune's and Jupiter's faint rings are drawn the same way from their NSSDC tables. Jupiter's dusty rings are nearly invisible with the Sun behind you, as they really are, and glow when you look back toward the Sun through them (forward scattering by their dust, as in the Galileo images).
 - Uranus's ten narrow rings are drawn from the NASA NSSDC ring table (radius, width, optical depth) in its tilted equatorial plane: honestly faint in real scale, widened to about a pixel in illustrative scale.
 - Saturn's textured rings are renderer-only. Their source-backed outer extent affects camera framing, while the physical body radius and all simulation state remain unchanged.
 - **Cinematic look (presentation only).** Bodies are lit by the rendered Sun in linear light (Lambert shading, small ambient fill); Earth shows night-side city lights, clouds and an ocean sun glint, bodies with air get a glowing limb, Saturn and its rings shadow each other, and the Sun is emissive with limb darkening and an additive halo over a Milky Way backdrop. Framing a body turns the camera to its sunlit side. Decluttered labels name the Sun, planets, the selected body and visible moons of a zoomed family (JetBrains Mono subset embedded at build time, SIL OFL; see `assets/fonts/README.md`). One shader pair serves desktop (GLSL 330) and WebGL (GLSL 100); 4× multisampling smooths edges.

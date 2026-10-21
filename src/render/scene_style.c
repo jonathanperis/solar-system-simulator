@@ -720,9 +720,9 @@ static const RenderRing jupiter_rings[] = {
     {"Amalthea gossamer", 155145e3, 52410e3, 1e-7}, {"Thebe gossamer", 201625e3, 40550e3, 1e-7},
 };
 static const RenderRingSystem ring_systems[RENDER_RING_SYSTEM_COUNT] = {
-    {BODY_ID_URANUS, SOLAR_URANUS_RADIUS_M, 41500e3, 51400e3, 51400e3, uranus_rings, sizeof(uranus_rings) / sizeof(uranus_rings[0]), {150, 148, 145}},
-    {BODY_ID_NEPTUNE, SOLAR_NEPTUNE_RADIUS_M, 40800e3, 63100e3, 63100e3, neptune_rings, sizeof(neptune_rings) / sizeof(neptune_rings[0]), {150, 138, 132}},
-    {BODY_ID_JUPITER, SOLAR_JUPITER_RADIUS_M, 89400e3, 221900e3, 128940e3, jupiter_rings, sizeof(jupiter_rings) / sizeof(jupiter_rings[0]), {175, 140, 110}},
+    {BODY_ID_URANUS, SOLAR_URANUS_RADIUS_M, 41500e3, 51400e3, 51400e3, 0.05, uranus_rings, sizeof(uranus_rings) / sizeof(uranus_rings[0]), {150, 148, 145}},
+    {BODY_ID_NEPTUNE, SOLAR_NEPTUNE_RADIUS_M, 40800e3, 63100e3, 63100e3, 0.5, neptune_rings, sizeof(neptune_rings) / sizeof(neptune_rings[0]), {150, 138, 132}},
+    {BODY_ID_JUPITER, SOLAR_JUPITER_RADIUS_M, 89400e3, 221900e3, 128940e3, 0.95, jupiter_rings, sizeof(jupiter_rings) / sizeof(jupiter_rings[0]), {175, 140, 110}},
 };
 
 const RenderRingSystem *render_ring_system_at(size_t index)
