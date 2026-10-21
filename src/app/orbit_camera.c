@@ -137,7 +137,7 @@ void orbit_camera_flight_blend(const OrbitCameraFlight *flight, float progress, 
     double travel = 0;
     for (int k = 0; k < 3; ++k) {
         double delta = to_origin[k] - flight->from_origin[k];
-        out_origin[k] = e >= 1.0f ? to_origin[k] : flight->from_origin[k] + delta * e;
+        out_origin[k] = e >= 1.0f || flight->track_origin ? to_origin[k] : flight->from_origin[k] + delta * e;
         travel += delta * delta;
     }
     *out = *to;

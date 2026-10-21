@@ -237,6 +237,14 @@ static void test_flight_eases_between_framings(void)
     float p1 = orbit_camera_flight_advance(&flight, 0.6f);
     assert(p0 > 0 && p0 < 0.1f && p1 > 0.4f && p1 < 0.6f && flight.active);
     assert(orbit_camera_flight_advance(&flight, 10.0f) == 1.0f && !flight.active);
+    /* A flight that tracks its origin (a scale change, where the target body
+     * itself glides) looks straight at the destination origin at every step,
+     * so the eased body is not eased a second time (review fix). */
+    orbit_camera_flight_begin(&flight, origin_a, &from, 1.5f);
+    flight.track_origin = true;
+    orbit_camera_flight_blend(&flight, 0.3f, origin_b, &to, origin, &view);
+    assert(origin[0] == 300 && origin[1] == 0 && origin[2] == 0);
+    assert(view.distance != to.distance); /* distance and angles still ease */
     /* A zero-length flight (reduced motion) lands at once. */
     orbit_camera_flight_begin(&flight, origin_a, &from, 0.0f);
     assert(orbit_camera_flight_advance(&flight, 0.016f) == 1.0f && !flight.active);
