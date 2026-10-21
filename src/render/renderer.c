@@ -88,6 +88,19 @@ float renderer_body_visual_radius(const Body *body, RenderScaleMode mode)
     return body_radius * (float)(SOLAR_SATURN_RING_OUTER_RADIUS_M / SOLAR_SATURN_RADIUS_M);
 }
 
+/* How far from its parent's centre a satellite must be drawn so the two
+ * drawn spheres (plus a gap) do not touch. A moon that really orbits outside
+ * Saturn's rings also clears the drawn rings, so the enlarged ring plane never
+ * slices through it (SPEC A115); ring-gap moons such as Pan keep the planet's
+ * radius. `true_distance` is the undisplaced distance in render units. */
+static double satellite_clearance(const Body *body, const Body *parent, double true_distance, RenderScaleMode mode)
+{
+    double parent_extent = renderer_body_radius(parent, mode);
+    if (parent->id == BODY_ID_SATURN && true_distance > meters_to_render_units(SOLAR_SATURN_RING_OUTER_RADIUS_M))
+        parent_extent = renderer_body_visual_radius(parent, mode);
+    return parent_extent + renderer_body_radius(body, mode) + SOLAR_ILLUSTRATIVE_SATELLITE_GAP_UNITS;
+}
+
 static Vec3d visible_satellite_position(const Body *body, const Body *parent, Vec3d position, Vec3d parent_position, RenderScaleMode mode)
 {
     Vec3d relative_position = vec3d_sub(position, parent_position);
@@ -96,10 +109,7 @@ static Vec3d visible_satellite_position(const Body *body, const Body *parent, Ve
         return position;
     }
 
-    double required_distance =
-        renderer_body_radius(parent, mode) +
-        renderer_body_radius(body, mode) +
-        SOLAR_ILLUSTRATIVE_SATELLITE_GAP_UNITS;
+    double required_distance = satellite_clearance(body, parent, current_distance, mode);
 
     if (body->id == BODY_ID_MOON) {
         Vec3d expanded = vec3d_scale(relative_position, SOLAR_ILLUSTRATIVE_MOON_DISTANCE_FACTOR);
@@ -870,9 +880,10 @@ static void draw_orbit_guides(const FrameContext *ctx)
          * than the drawn surfaces (and the Moon). An orbit whose periapsis is
          * already outside that never changes, so skip the per-vertex test. */
         if (spread && body->id != BODY_ID_MOON) {
-            double clearance = renderer_body_radius(parent, ctx->mode) + renderer_body_radius(body, ctx->mode)
-                + SOLAR_ILLUSTRATIVE_SATELLITE_GAP_UNITS;
-            spread = meters_to_render_units(guide.semi_major_m * (1 - guide.eccentricity)) <= clearance;
+            /* The largest clearance any point of the orbit can need. */
+            double apoapsis = meters_to_render_units(guide.semi_major_m * (1 + guide.eccentricity));
+            spread = meters_to_render_units(guide.semi_major_m * (1 - guide.eccentricity))
+                <= satellite_clearance(body, parent, apoapsis, ctx->mode);
         }
         /* The body's eccentric anomaly from its perifocal coordinates:
          * x = a (cos E - e), y = b sin E. */
@@ -1163,7 +1174,8 @@ static void draw_translucent_layers(const FrameContext *ctx)
         if (body_pixels(ctx, i, ctx->radius[i]) < 6.0) continue;
         /* Giant planets have no surface to frame their air against; a softer
          * halo keeps them from looking blurred. */
-        if (body->id != BODY_ID_EARTH && body->id != BODY_ID_VENUS && body->id != BODY_ID_MARS) air.strength *= 0.55f;
+        if (body->id != BODY_ID_EARTH && body->id != BODY_ID_VENUS && body->id != BODY_ID_MARS && body->id != BODY_ID_TITAN)
+            air.strength *= 0.55f;
         Matrix halo = body_matrix(render_body_orientation(body->id, ctx->view->orientation_days), ctx->position[i], ctx->radius[i] * 1.035f);
         draw_shaded(resources, &resources->sphere_detailed, &halo, SHADE_HALO, resources->white, WHITE, light_toward_star(ctx, i), air, NULL, NULL);
     }
