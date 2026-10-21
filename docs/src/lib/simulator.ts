@@ -135,8 +135,8 @@ export const experimentTextLimitBytes = 16384;
 interface PreparedExperiment { text: string; snapshot: string; count: number }
 
 /** Validate a prepared catalog experiment read from sessionStorage before any
- * of it reaches C. Session storage is shared by every page on the github.io
- * origin, so its content is untrusted: the shape is checked here and the text
+ * of it reaches C. Session storage is writable by any script on this origin,
+ * so its content is untrusted: the shape is checked here and the text
  * is bounded by the C parser limit. ccall('string') copies the argument onto
  * the 256 KiB WebAssembly stack, so an unbounded value could exhaust it before
  * C can reject it. C still performs the authoritative parse. */

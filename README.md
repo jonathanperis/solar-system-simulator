@@ -2,14 +2,14 @@
 
 A hands-on orbital mechanics and engineering laboratory written in C11 with [raylib](https://www.raylib.com/).
 
-**[Run the simulator](https://jonathanperis.github.io/solar-system-simulator/)** · **[Lessons](https://jonathanperis.github.io/solar-system-simulator/learn/)** · **[Catalog](https://jonathanperis.github.io/solar-system-simulator/catalog/)** · **[About](https://jonathanperis.github.io/solar-system-simulator/about/)**
+**[Run the simulator](https://solar-system-simulator.jonathanperis.tech/)** · **[Lessons](https://solar-system-simulator.jonathanperis.tech/learn/)** · **[Catalog](https://solar-system-simulator.jonathanperis.tech/catalog/)** · **[About](https://solar-system-simulator.jonathanperis.tech/about/)**
 
 ## Start here
 
-- **Explore:** a 32-body main scene — the Sun, all eight planets, Vesta, Pluto, Earth's Moon, Phobos, Deimos and the 18 major moons of the giant planets and Pluto — plus system scenes with every catalogued moon of Jupiter (115), Saturn (291), Uranus (29), Neptune (16) and Pluto (5), the Didymos–Dimorphos binary asteroid from NASA's DART mission, and the Patroclus–Menoetius binary Jupiter trojan that NASA's Lucy mission will visit. The separate [small-body atlas](https://jonathanperis.github.io/solar-system-simulator/catalog/small-bodies/) contains 1,564,244 pinned records; it does not load them all into the physics scene.
-- **Learn:** use [guided lessons](https://jonathanperis.github.io/solar-system-simulator/learn/) and matched A/B comparisons, then export SI measurements as CSV.
+- **Explore:** a 32-body main scene — the Sun, all eight planets, Vesta, Pluto, Earth's Moon, Phobos, Deimos and the 18 major moons of the giant planets and Pluto — plus system scenes with every catalogued moon of Jupiter (115), Saturn (291), Uranus (29), Neptune (16) and Pluto (5), the Didymos–Dimorphos binary asteroid from NASA's DART mission, and the Patroclus–Menoetius binary Jupiter trojan that NASA's Lucy mission will visit. The separate [small-body atlas](https://solar-system-simulator.jonathanperis.tech/catalog/small-bodies/) contains 1,564,244 pinned records; it does not load them all into the physics scene.
+- **Learn:** use [guided lessons](https://solar-system-simulator.jonathanperis.tech/learn/) and matched A/B comparisons, then export SI measurements as CSV.
 - **Run locally:** start with the [raylib-free CLI](#learning-laboratory), or check [prerequisites](#build-prerequisites) before `make && make run` for the 3D app.
-- **Contribute:** read [the code map](https://jonathanperis.github.io/solar-system-simulator/about/#code), [build and tests](https://jonathanperis.github.io/solar-system-simulator/about/#build), and the [project layout](#project-layout). [Data provenance](data/README.md) distinguishes pinned measurements, estimates, and unknowns.
+- **Contribute:** read [the code map](https://solar-system-simulator.jonathanperis.tech/about/#code), [build and tests](https://solar-system-simulator.jonathanperis.tech/about/#build), and the [project layout](#project-layout). [Data provenance](data/README.md) distinguishes pinned measurements, estimates, and unknowns.
 
 ## Goal
 
@@ -17,7 +17,7 @@ This project is intentionally physics-first. The renderer exists to show the sim
 
 ## Learning laboratory
 
-Start with [guided lessons](https://jonathanperis.github.io/solar-system-simulator/learn/): predict, configure, run, measure, compare, explain. The same C core runs with graphics, in WebAssembly, and through a raylib-free CLI.
+Start with [guided lessons](https://solar-system-simulator.jonathanperis.tech/learn/): predict, configure, run, measure, compare, explain. The same C core runs with graphics, in WebAssembly, and through a raylib-free CLI.
 
 ```sh
 make headless
@@ -34,7 +34,7 @@ Both visual runtimes offer SI snapshot export, parent-relative history, optional
 
 ### Comparison school
 
-The [A/B comparison lab](https://jonathanperis.github.io/solar-system-simulator/learn/compare/) runs identical initial conditions through two C integrators at matched checkpoints. Live charts show overlaid ecliptic-plane trajectories seen from north, energy change, distance, speed, analytical phase error where applicable, A/B position discrepancy and the resonant angle. Both the browser and CLI use `src/app/comparison.c`; JavaScript only presents C measurements.
+The [A/B comparison lab](https://solar-system-simulator.jonathanperis.tech/learn/compare/) runs identical initial conditions through two C integrators at matched checkpoints. Live charts show overlaid ecliptic-plane trajectories seen from north, energy change, distance, speed, analytical phase error where applicable, A/B position discrepancy and the resonant angle. Both the browser and CLI use `src/app/comparison.c`; JavaScript only presents C measurements.
 
 ```sh
 make headless
@@ -62,7 +62,7 @@ The 3D collision preset defaults to real scale and slower 1/5/10/25/50 simulated
 
 ## Complete small-body atlas and all eight planets
 
-The main scene contains the 32 large bodies through Pluto; the system scenes add every catalogued moon of the giant planets and Pluto, and the Didymos and Patroclus binaries. The separate [small-body atlas](https://jonathanperis.github.io/solar-system-simulator/catalog/small-bodies/) exposes all 1,564,244 qualifying entries in the pinned JPL snapshot, including main-belt asteroids, near-Earth asteroids, Trojans, Centaurs and trans-Neptunian bodies. Select up to 16 objects for a C-owned experiment with the Sun and all eight planets.
+The main scene contains the 32 large bodies through Pluto; the system scenes add every catalogued moon of the giant planets and Pluto, and the Didymos and Patroclus binaries. The separate [small-body atlas](https://solar-system-simulator.jonathanperis.tech/catalog/small-bodies/) exposes all 1,564,244 qualifying entries in the pinned JPL snapshot, including main-belt asteroids, near-Earth asteroids, Trojans, Centaurs and trans-Neptunian bodies. Select up to 16 objects for a C-owned experiment with the Sun and all eight planets.
 
 ### Small-body catalog and experiments
 
@@ -375,7 +375,7 @@ Local tests use installed Chrome in isolated contexts; CI installs pinned Chromi
 
 ## Browser runtime
 
-The [live simulator](https://jonathanperis.github.io/solar-system-simulator/) is the site's home page: an Astro page whose canvas fills the window under one dock, an inspector and small Find/View/Keys/Data sheets. Emscripten compiles the same C source into a JavaScript loader and `.wasm` binary; Astro owns the canvas, accessible readouts and loading errors. Explanations live on Learn, Catalog and About. Retired addresses (`/simulator/`, `/compare/`, `/docs/…`, `/wasm/solar-system-simulator.html` and others) are Astro redirect pages that keep `?body=` and fragments.
+The [live simulator](https://solar-system-simulator.jonathanperis.tech/) is the site's home page: an Astro page whose canvas fills the window under one dock, an inspector and small Find/View/Keys/Data sheets. Emscripten compiles the same C source into a JavaScript loader and `.wasm` binary; Astro owns the canvas, accessible readouts and loading errors. Explanations live on Learn, Catalog and About. Retired addresses (`/simulator/`, `/compare/`, `/docs/…`, `/wasm/solar-system-simulator.html` and others) are Astro redirect pages that keep `?body=` and fragments.
 
 Every published page is an Astro page, including that compatibility redirect (rendered from `docs/src/pages/wasm/solar-system-simulator.html.astro` and published at its historic filename) and the generated `sitemap.xml`. `make docs-check` fails if a generated HTML file lacks the layout's Astro generator marker or if `docs/public/` contains HTML, a sitemap, or a robots file; scriptable SVG/XHTML/SHTML files need an explicit allow-list, and the noindex `404.html` comes from `docs/src/pages/404.astro`. Each page also carries a strict Content-Security-Policy (same-origin scripts, styles, fonts and connections plus `'wasm-unsafe-eval'`; Google Analytics hosts only on deployed `main`), and fonts are self-hosted under the SIL Open Font License.
 
@@ -391,7 +391,7 @@ make docs-check
 npm run preview --prefix docs
 ```
 
-Open the printed loopback URL under `/solar-system-simulator/`. Run commands from the repository root. `make docs-assets` validates and stages all five runtime files — `solar-system-simulator.js`, `solar-system-simulator.wasm`, `catalog-orbits.wasm`, `learning-lab.mjs`, and `learning-lab.wasm` — plus `build-info.json`. The manifest records source revision and checksums. `make dist-wasm RAYLIB_WEB_SRC=/absolute/path/to/raylib/src` optionally packages the same six files into a ZIP; Astro supplies the HTML pages.
+Open the printed loopback URL at `/`. Run commands from the repository root. `make docs-assets` validates and stages all five runtime files — `solar-system-simulator.js`, `solar-system-simulator.wasm`, `catalog-orbits.wasm`, `learning-lab.mjs`, and `learning-lab.wasm` — plus `build-info.json`. The manifest records source revision and checksums. `make dist-wasm RAYLIB_WEB_SRC=/absolute/path/to/raylib/src` optionally packages the same six files into a ZIP; Astro supplies the HTML pages.
 
 Upgrading an older checkout? Move any legacy generated `docs/public/wasm/solar-system-simulator.html` outside `docs/public/` before building. `make docs-check` rejects any HTML file under `docs/public/`.
 

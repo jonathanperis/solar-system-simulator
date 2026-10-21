@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures';
 
-const base = '/solar-system-simulator/';
+const base = '/';
 
 test('phone simulator keeps every panel clear of the view, with object handoffs, filtering and dialog focus', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

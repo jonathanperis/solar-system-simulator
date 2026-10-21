@@ -6,7 +6,7 @@
 //
 // Usage: build the site, serve it, then pass its base URL, e.g.
 //   python3 tools/serve_site.py docs/dist --port 4400 &
-//   node tools/site_images.mjs http://127.0.0.1:4400/solar-system-simulator/
+//   node tools/site_images.mjs http://127.0.0.1:4400/
 // then rebuild (npm run build --prefix docs) so docs/dist/ picks the images up.
 // Uses the pinned project Playwright with installed Chrome (WebGL needs it).
 import { createRequire } from 'node:module';

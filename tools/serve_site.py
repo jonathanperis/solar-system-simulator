@@ -12,7 +12,7 @@ parser.add_argument("--port", type=int, default=4318)
 parser.add_argument("--test-fixtures", action="store_true")
 args = parser.parse_args()
 root = args.directory.resolve()
-base = "/solar-system-simulator/"
+base = "/"
 
 
 class Handler(SimpleHTTPRequestHandler):

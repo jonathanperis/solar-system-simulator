@@ -31,8 +31,8 @@ function legacyHtmlRouteFiles() {
 }
 
 export default defineConfig({
-  site: 'https://jonathanperis.github.io',
-  base: '/solar-system-simulator',
+  site: 'https://solar-system-simulator.jonathanperis.tech',
+  base: '/',
   output: 'static',
   integrations: [legacyHtmlRouteFiles()],
   // Emit every stylesheet and processed script as a file. With no inline

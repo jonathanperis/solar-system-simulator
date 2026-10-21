@@ -84,5 +84,5 @@ opaque, not translucent.
   computes physics.
 - Old URLs keep working through Astro redirect pages that preserve
   `?body=` and fragments.
-- Static Astro output under `/solar-system-simulator/`, CSP without inline
+- Static Astro output at `/`, CSP without inline
   code, base-path-safe links.
