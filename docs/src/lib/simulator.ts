@@ -702,12 +702,17 @@ export function mountSimulator(root: HTMLElement): void {
       else { panel.show(); panel.querySelector<HTMLElement>('button:not([data-close-panel])')?.focus(); }
       button.setAttribute('aria-expanded', String(panel.open));
     });
-    panel.addEventListener('close', () => button.setAttribute('aria-expanded', 'false'));
+    // However it closes (Close, Escape, the opener), focus left inside the
+    // panel goes back to the opener: non-modal dialogs do not restore it.
+    panel.addEventListener('close', () => {
+      button.setAttribute('aria-expanded', 'false');
+      const focused = document.activeElement;
+      if (!focused || focused === document.body || panel.contains(focused)) button.focus();
+    });
     panel.addEventListener('keydown', event => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
       panel.close();
-      button.focus();
     });
   });
   root.querySelectorAll<HTMLElement>('[data-close-panel]').forEach(button => {
