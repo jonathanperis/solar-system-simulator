@@ -43,7 +43,7 @@ Vector3 renderer_relative_vector(Vec3d position, Vec3d origin)
     };
 }
 
-float renderer_body_radius(const Body *body, RenderScaleMode mode)
+static float body_radius_raw(const Body *body, RenderScaleMode mode)
 {
     /* Unknown radii use an explicitly nonphysical wire marker in either view. */
     if (body->radius_quality == PHYSICAL_UNKNOWN) return SOLAR_ILLUSTRATIVE_SMALL_MOON_RADIUS;
@@ -83,15 +83,25 @@ static double ring_outer_radius_m(BodyId id)
     return id == BODY_ID_SATURN ? SOLAR_SATURN_RING_OUTER_RADIUS_M : id == BODY_ID_URANUS ? RENDER_URANUS_RING_OUTER_M : 0;
 }
 
+static float visual_radius_from(const Body *body, RenderScaleMode mode, float body_radius);
+
 float renderer_body_visual_radius(const Body *body, RenderScaleMode mode)
 {
-    float body_radius = renderer_body_radius(body, mode);
+    return visual_radius_from(body, mode, renderer_body_radius(body, mode));
+}
+
+static float visual_radius_raw(const Body *body, RenderScaleMode mode)
+{
+    return visual_radius_from(body, mode, body_radius_raw(body, mode));
+}
+
+static float visual_radius_from(const Body *body, RenderScaleMode mode, float body_radius)
+{
+    (void)mode;
     double rings = ring_outer_radius_m(body->id);
     if (rings <= 0) return body_radius;
-
-    if (mode == RENDER_SCALE_REAL) {
-        return meters_to_render_units(rings);
-    }
+    /* The rings scale with the drawn planet, so they follow a scale morph;
+     * in real scale this is exactly their physical outer radius. */
     return body_radius * (float)(rings / body->radius_m);
 }
 
@@ -102,11 +112,11 @@ float renderer_body_visual_radius(const Body *body, RenderScaleMode mode)
  * radius. `true_distance` is the undisplaced distance in render units. */
 static double satellite_clearance(const Body *body, const Body *parent, double true_distance, RenderScaleMode mode)
 {
-    double parent_extent = renderer_body_radius(parent, mode);
+    double parent_extent = body_radius_raw(parent, mode);
     double rings = ring_outer_radius_m(parent->id);
     if (rings > 0 && true_distance > meters_to_render_units(rings))
-        parent_extent = renderer_body_visual_radius(parent, mode);
-    return parent_extent + renderer_body_radius(body, mode) + SOLAR_ILLUSTRATIVE_SATELLITE_GAP_UNITS;
+        parent_extent = visual_radius_raw(parent, mode);
+    return parent_extent + body_radius_raw(body, mode) + SOLAR_ILLUSTRATIVE_SATELLITE_GAP_UNITS;
 }
 
 static Vec3d visible_satellite_position(const Body *body, const Body *parent, Vec3d position, Vec3d parent_position, RenderScaleMode mode)
@@ -133,7 +143,7 @@ static Vec3d visible_satellite_position(const Body *body, const Body *parent, Ve
     return position;
 }
 
-Vec3d renderer_body_position(const SolarSystem *system, size_t body_index, RenderScaleMode mode)
+static Vec3d body_position_raw(const SolarSystem *system, size_t body_index, RenderScaleMode mode)
 {
     if (system->body_count == 0 || body_index >= system->body_count) {
         return vec3d_zero();
@@ -157,7 +167,7 @@ Vec3d renderer_body_position(const SolarSystem *system, size_t body_index, Rende
 }
 
 /* Trail sample position with the parent already resolved (-1 = none). */
-static Vec3d trail_point_with_parent(const SolarSystem *system, const BodyTrails *trails, size_t body_index,
+static inline Vec3d trail_point_raw(const SolarSystem *system, const BodyTrails *trails, size_t body_index,
     size_t point_index, RenderScaleMode mode, int parent_index)
 {
     if (system->body_count == 0 || body_index >= system->body_count || body_index >= SOLAR_SYSTEM_BODY_CAPACITY) {
@@ -178,6 +188,57 @@ static Vec3d trail_point_with_parent(const SolarSystem *system, const BodyTrails
     if (body->kind != BODY_KIND_MOON && parent->kind == BODY_KIND_STAR) return position;
     Vec3d parent_position = meters_vec_to_render_vec3d(body_trails_point_at(trails, (size_t)parent_index, point_index));
     return visible_satellite_position(body, parent, position, parent_position, mode);
+}
+
+/* Scale morph (SPEC A125). While the view switches scale, sizes and places
+ * asked for in the new mode blend from the old mode's (`progress` 0 -> 1,
+ * eased by the caller): radii in log space, since the two scales differ by
+ * factors up to thousands, positions linearly. Presentation only; outside a
+ * morph (progress 1) every mode draws exactly as before. */
+static RenderScaleMode morph_from = RENDER_SCALE_ILLUSTRATIVE;
+static float morph_progress = 1.0f;
+
+void renderer_set_scale_morph(RenderScaleMode from, float progress)
+{
+    morph_from = from;
+    morph_progress = progress < 0 ? 0 : progress > 1 ? 1 : progress;
+}
+
+static inline bool morphing(RenderScaleMode mode)
+{
+    return morph_progress < 1.0f && mode != morph_from;
+}
+
+static Vec3d blend_place(Vec3d from, Vec3d to)
+{
+    return vec3d_add(from, vec3d_scale(vec3d_sub(to, from), morph_progress));
+}
+
+float renderer_body_radius(const Body *body, RenderScaleMode mode)
+{
+    float to = body_radius_raw(body, mode);
+    if (!morphing(mode)) return to;
+    float from = body_radius_raw(body, morph_from);
+    if (morph_progress <= 0.0f) return from;
+    return from > 0 && to > 0 ? expf(logf(from) + (logf(to) - logf(from)) * morph_progress) : to;
+}
+
+Vec3d renderer_body_position(const SolarSystem *system, size_t body_index, RenderScaleMode mode)
+{
+    Vec3d to = body_position_raw(system, body_index, mode);
+    if (!morphing(mode)) return to;
+    Vec3d from = body_position_raw(system, body_index, morph_from);
+    return morph_progress <= 0.0f ? from : blend_place(from, to);
+}
+
+static inline Vec3d trail_point_with_parent(const SolarSystem *system, const BodyTrails *trails, size_t body_index,
+    size_t point_index, RenderScaleMode mode, int parent_index)
+{
+    /* Hot path (every trail sample, every frame): no morph, original code. */
+    if (!morphing(mode)) return trail_point_raw(system, trails, body_index, point_index, mode, parent_index);
+    Vec3d to = trail_point_raw(system, trails, body_index, point_index, mode, parent_index);
+    Vec3d from = trail_point_raw(system, trails, body_index, point_index, morph_from, parent_index);
+    return morph_progress <= 0.0f ? from : blend_place(from, to);
 }
 
 Vec3d renderer_trail_point_position(const SolarSystem *system, const BodyTrails *trails, size_t body_index, size_t point_index, RenderScaleMode mode)
@@ -239,7 +300,7 @@ Vec3d renderer_trail_point_in_frame(const SolarSystem *system, const BodyTrails 
 double renderer_radius_magnification(const Body *body, RenderScaleMode mode)
 {
     return body->radius_quality == PHYSICAL_UNKNOWN || body->radius_m <= 0 ? 0
-        : (double)renderer_body_radius(body, mode) / meters_to_render_units(body->radius_m);
+        : (double)body_radius_raw(body, mode) / meters_to_render_units(body->radius_m);
 }
 
 Vec3d renderer_vector_tip(const SolarSystem *system, size_t body_index, RenderScaleMode mode, bool acceleration)
