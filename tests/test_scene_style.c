@@ -481,6 +481,40 @@ static void test_pick_prefers_the_body_under_the_pointer(void)
     assert(render_pick_body(bodies, n, 306.5f + RENDER_PICK_SLOP_PIXELS + 1, 300) == -1);
 }
 
+/* Resolution governor (SPEC A116): sustained slow frames step the HiDPI
+ * backing scale down, never below 1; fast devices keep it. */
+static void test_resolution_governor_steps_down_only_under_sustained_load(void)
+{
+    RenderResolutionGovernor g;
+    render_resolution_governor_init(&g, 2.0f);
+    /* Warm-up (texture uploads, first layout) is ignored. */
+    for (int i = 0; i < 60; ++i) render_resolution_governor_update(&g, 0.05f);
+    assert(render_resolution_governor_update(&g, 0.016f) == 2.0f);
+    /* A fast device stays sharp indefinitely, a brief hitch changes nothing,
+     * and stalls (hidden tab, debugger) are ignored. */
+    for (int i = 0; i < 3600; ++i) render_resolution_governor_update(&g, 1.0f / 60.0f);
+    for (int i = 0; i < 20; ++i) render_resolution_governor_update(&g, 0.04f);
+    render_resolution_governor_update(&g, 5.0f);
+    assert(render_resolution_governor_update(&g, 1.0f / 60.0f) == 2.0f);
+    /* Sustained 30 fps: one step down, then another, never below 1. */
+    float scale = 2.0f;
+    for (int i = 0; i < 90; ++i) scale = render_resolution_governor_update(&g, 1.0f / 30.0f);
+    assert(scale == 1.5f);
+    for (int i = 0; i < 1000; ++i) scale = render_resolution_governor_update(&g, 1.0f / 20.0f);
+    assert(scale == 1.0f);
+    {
+        /* A device at 2 fps (0.5 s frames) is slow, not stalled: it steps down. */
+        RenderResolutionGovernor slow;
+        render_resolution_governor_init(&slow, 2.0f);
+        float s2 = 2.0f;
+        for (int i = 0; i < 20; ++i) s2 = render_resolution_governor_update(&slow, 0.5f);
+        assert(s2 < 2.0f);
+    }
+    /* It does not climb back (no oscillation). */
+    for (int i = 0; i < 3600; ++i) scale = render_resolution_governor_update(&g, 1.0f / 120.0f);
+    assert(scale == 1.0f);
+}
+
 int main(void)
 {
     test_texture_inventory_matches_assets();
@@ -506,6 +540,7 @@ int main(void)
     test_markers_find_small_planets_and_frame_the_selection();
     test_eclipse_fraction_covers_umbra_penumbra_and_annulus();
     test_pick_prefers_the_body_under_the_pointer();
+    test_resolution_governor_steps_down_only_under_sustained_load();
     puts("test_scene_style passed");
     return 0;
 }

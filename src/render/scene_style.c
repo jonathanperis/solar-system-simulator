@@ -574,3 +574,22 @@ int render_pick_body(const RenderPickCandidate *candidates, size_t count, float 
     }
     return best;
 }
+
+void render_resolution_governor_init(RenderResolutionGovernor *governor, float max_scale)
+{
+    *governor = (RenderResolutionGovernor){max_scale > 1.0f ? max_scale : 1.0f, 0.0f, 0.0f};
+}
+
+float render_resolution_governor_update(RenderResolutionGovernor *governor, float frame_seconds)
+{
+    if (!(frame_seconds > 0.0f) || frame_seconds > RENDER_GOVERNOR_STALL_SECONDS) return governor->scale;
+    governor->elapsed_seconds += frame_seconds;
+    if (governor->elapsed_seconds < RENDER_GOVERNOR_WARMUP_SECONDS || governor->scale <= 1.0f) return governor->scale;
+    if (frame_seconds > RENDER_GOVERNOR_SLOW_FRAME_SECONDS) governor->debt_seconds += frame_seconds;
+    else governor->debt_seconds = fmaxf(0.0f, governor->debt_seconds - 2.0f * frame_seconds);
+    if (governor->debt_seconds >= RENDER_GOVERNOR_DEBT_SECONDS) {
+        governor->scale = fmaxf(1.0f, governor->scale - 0.5f);
+        governor->debt_seconds = 0.0f;
+    }
+    return governor->scale;
+}
