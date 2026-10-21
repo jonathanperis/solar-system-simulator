@@ -99,8 +99,15 @@ void renderer_set_pixel_scale(float scale);
 /* Screen-space markers after the 3D pass (SPEC A108): rings around dot-sized
  * planets, corner brackets on the selected body and a ring on the body under
  * the pointer (`hovered`, -1 for none; A118). Presentation only. */
-void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Camera3D camera, size_t selected,
-    int hovered);
+void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3d origin,
+    const RenderResources *resources, Camera3D camera, size_t selected, int hovered);
+/* The body whose label or off-screen marker (A119) covers a screen point in
+ * the last drawn frame, or -1. Clicks try this before renderer_pick_body. */
+int renderer_pick_target(Vector2 pointer);
+/* Rectangles (x, y, width, height in screen pixels) of page panels floating
+ * over the canvas; off-screen markers slide past them (A119). */
+#define RENDER_MAX_BLOCKERS 12
+void renderer_set_blockers(const float *rects, int count);
 /* The body under a screen point (click to select, SPEC A112), or -1. */
 int renderer_pick_body(const SolarSystem *system, RenderScaleMode mode, Vec3d origin, Camera3D camera, Vector2 pointer);
 /* Body names. With `all` false (labels hidden) only the hovered body is

@@ -30,6 +30,44 @@ EM_JS(void, solar_web_set_hover, (int on), {
     if (Module.canvas) { if (on) Module.canvas.dataset.hover = ''; else delete Module.canvas.dataset.hover; }
 })
 
+/* Page panels floating over the canvas (HUD, inspector, dock, lesson strip),
+ * as canvas-local rectangles in backing pixels; off-screen markers slide past
+ * them (A119). Panels laid out beside the canvas (phones) do not overlap it. */
+EM_JS(int, solar_web_overlay_rects, (float *out, int max), {
+    const canvas = Module.canvas;
+    if (!canvas) return 0;
+    const c = canvas.getBoundingClientRect();
+    const sx = canvas.width / Math.max(1, c.width), sy = canvas.height / Math.max(1, c.height);
+    let n = 0;
+    /* The HUD is a wide block holding a few short lines of text: block only
+     * the text itself, line by line. Panels block their whole box. */
+    const boxes = [];
+    for (const element of document.querySelectorAll('.hud, .dock, .inspector, .lesson-strip')) {
+        if (element.hidden || !element.offsetParent) continue;
+        if (!element.classList.contains('hud')) { boxes.push(element.getBoundingClientRect()); continue; }
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+        const range = document.createRange();
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            if (!node.textContent.trim() || !node.parentElement.offsetParent) continue;
+            range.selectNodeContents(node);
+            const r = range.getBoundingClientRect();
+            if (r.width && r.height) boxes.push(r);
+        }
+    }
+    for (const r of boxes) {
+        if (n >= max) break;
+        const left = Math.max(r.left, c.left), top = Math.max(r.top, c.top);
+        const right = Math.min(r.right, c.right), bottom = Math.min(r.bottom, c.bottom);
+        if (right <= left || bottom <= top) continue;
+        HEAPF32[(out >> 2) + n * 4] = (left - c.left) * sx;
+        HEAPF32[(out >> 2) + n * 4 + 1] = (top - c.top) * sy;
+        HEAPF32[(out >> 2) + n * 4 + 2] = (right - left) * sx;
+        HEAPF32[(out >> 2) + n * 4 + 3] = (bottom - top) * sy;
+        n++;
+    }
+    return n;
+})
+
 EM_JS(int, solar_web_prefers_reduced_motion, (void), {
     return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 0;
 })
@@ -239,9 +277,11 @@ static void handle_pointer(SolarApp *state)
     }
     /* Hover (A118): a mouse resting on a body names and rings it. */
     int hovered = -1;
-    if (!state->touch_seen && IsCursorOnScreen())
-        hovered = renderer_pick_body(&state->session.system, state->render_mode, state->shown_origin, state->camera,
-            GetMousePosition());
+    if (!state->touch_seen && IsCursorOnScreen()) {
+        hovered = renderer_pick_target(GetMousePosition());
+        if (hovered < 0) hovered = renderer_pick_body(&state->session.system, state->render_mode, state->shown_origin,
+            state->camera, GetMousePosition());
+    }
     if (hovered != state->hovered) {
         state->hovered = hovered;
 #if defined(PLATFORM_WEB)
@@ -249,9 +289,15 @@ static void handle_pointer(SolarApp *state)
 #endif
     }
     if (state->pointer_down && state->pointer_travel <= SOLAR_CLICK_SLOP_PIXELS) {
-        int picked = renderer_pick_body(&state->session.system, state->render_mode, state->shown_origin, state->camera,
-            state->pointer_last);
-        if (picked >= 0 && (size_t)picked != state->session.selected_body_index) {
+        /* Labels and off-screen markers first (A119), then the bodies. */
+        int picked = renderer_pick_target(state->pointer_last);
+        if (picked < 0) picked = renderer_pick_body(&state->session.system, state->render_mode, state->shown_origin,
+            state->camera, state->pointer_last);
+        if (picked >= 0 && (size_t)picked == state->session.selected_body_index && !state->body_framed
+            && state->session.system.bodies[picked].radius_quality != PHYSICAL_UNKNOWN) {
+            /* Clicking the selection again zooms in to it. */
+            solar_app_command(state, SOLAR_COMMAND_FRAME_BODY, 0);
+        } else if (picked >= 0 && (size_t)picked != state->session.selected_body_index) {
             solar_app_command(state, SOLAR_COMMAND_SELECT, picked);
             /* Clicking a body means "take me there": fly in to frame it.
              * Unknown-radius markers are only selected; a close-up of a
@@ -316,6 +362,25 @@ static void frame_selected_body(SolarApp *state, bool face_sun)
         (float)GetScreenWidth() / (float)GetScreenHeight());
     state->system_framed = false;
     state->body_framed = true;
+}
+
+/* Escape steps back out (A119): a framed body widens to its family (a moon
+ * to its planet's system, a planet to its moons), and from a family view to
+ * the whole scene. */
+static void step_out(SolarApp *state)
+{
+    const SolarSystem *system = &state->session.system;
+    size_t selected = state->session.selected_body_index;
+    int parent = solar_system_parent_index(system, selected);
+    bool has_family = parent >= 0 && system->bodies[parent].kind != BODY_KIND_STAR;
+    for (size_t i = 0; i < system->body_count && !has_family; ++i)
+        has_family = solar_system_parent_index(system, i) == (int)selected;
+    if (state->body_framed && has_family) {
+        frame_selected_system(state, true);
+        return;
+    }
+    if (selected != 0) solar_app_command(state, SOLAR_COMMAND_SELECT, 0);
+    frame_selected_system(state, true);
 }
 
 static bool start_app_lesson(SolarApp *state, LessonPreset lesson, double factor, PhysicsIntegrator method, double dt)
@@ -657,6 +722,7 @@ static void solar_app_update_draw(void *user_data)
         if (IsKeyPressed(KEY_G)) solar_app_command(state, SOLAR_COMMAND_GRID, 0);
         if (IsKeyPressed(KEY_H)) solar_app_command(state, SOLAR_COMMAND_LABELS, 0);
         if (IsKeyPressed(KEY_O)) solar_app_command(state, SOLAR_COMMAND_ORBITS, 0);
+        if (IsKeyPressed(KEY_ESCAPE)) step_out(state);
         if (IsKeyPressed(KEY_M)) solar_app_command(state, SOLAR_COMMAND_CONTACT, 0);
         if (IsKeyPressed(KEY_E)) {
             char name[64];
@@ -734,6 +800,10 @@ static void solar_app_update_draw(void *user_data)
      * and recomputes the Data sheet's diagnostics and force breakdown. Web
      * commands still report at once, so controls answer immediately. */
     if (state->web_report_frame++ % SOLAR_WEB_REPORT_FRAMES == 0) report_web_state(state);
+    if (state->web_report_frame % 15 == 1) {
+        float rects[RENDER_MAX_BLOCKERS * 4];
+        renderer_set_blockers(rects, solar_web_overlay_rects(rects, RENDER_MAX_BLOCKERS));
+    }
 #endif
 
     BeginDrawing();
@@ -757,7 +827,7 @@ static void solar_app_update_draw(void *user_data)
         origin, &state->render, &view);
     if (state->vectors) renderer_draw_vectors(&state->session.system, state->session.selected_body_index, state->render_mode, origin);
     EndMode3D();
-    renderer_draw_markers(&state->session.system, state->render_mode, origin, state->camera,
+    renderer_draw_markers(&state->session.system, state->render_mode, origin, &state->render, state->camera,
         state->session.selected_body_index, state->hovered);
     if (state->labels || state->hovered >= 0) renderer_draw_labels(&state->session.system, state->render_mode, origin,
         &state->render, state->camera, state->session.selected_body_index, state->hovered, state->labels);

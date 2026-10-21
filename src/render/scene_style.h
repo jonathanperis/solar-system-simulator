@@ -268,6 +268,21 @@ typedef struct RenderResolutionGovernor {
 void render_resolution_governor_init(RenderResolutionGovernor *governor, float max_scale);
 float render_resolution_governor_update(RenderResolutionGovernor *governor, float frame_seconds);
 
+/* Off-screen markers (SPEC A119): a body outside the view is marked at the
+ * edge, where the direction toward it (dx right, dy down, in any units) leaves
+ * the rectangle of half-size (half_width, half_height) shrunk by `inset`.
+ * Writes the point relative to the view's centre. No direction (a body dead
+ * behind the camera) points down. */
+void render_edge_anchor(double dx, double dy, double half_width, double half_height, double inset, double *x, double *y);
+
+/* Slide an off-screen marker's box (x, y, w, h) along the view edge it sits
+ * on until it clears `blocker` (the rectangle of a page panel floating over
+ * the canvas), staying within [lo, hi] on the sliding axis. `vertical` slides
+ * along a left or right edge. Returns the offset applied (0 when clear or when
+ * no position fits). */
+double render_slide_past(double x, double y, double w, double h, const double blocker[4], bool vertical,
+    double lo, double hi);
+
 /* Name labels drawn in the canvas (presentation only). The Sun, planets and
  * dwarf planets are always named; the selected body always is; moons and small bodies are
  * named once their family is zoomed in (at least

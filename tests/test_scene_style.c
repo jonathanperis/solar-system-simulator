@@ -568,6 +568,40 @@ static void test_sky_map_puts_stars_in_their_true_directions(void)
     }
 }
 
+/* Off-screen markers (SPEC A119) sit where the direction toward the body
+ * leaves an inset rectangle around the view's centre. */
+static void test_edge_anchor_follows_the_direction_to_the_body(void)
+{
+    double x, y;
+    render_edge_anchor(10, 0, 600, 400, 30, &x, &y);
+    assert(fabs(x - 570) < 1e-9 && fabs(y) < 1e-9);
+    render_edge_anchor(0, -5, 600, 400, 30, &x, &y);
+    assert(fabs(x) < 1e-9 && fabs(y + 370) < 1e-9);
+    /* Diagonal: it meets the nearer (top/bottom) edge first on a wide view. */
+    render_edge_anchor(1, 1, 600, 400, 30, &x, &y);
+    assert(fabs(y - 370) < 1e-9 && fabs(x - 370) < 1e-9);
+    /* Straight behind (no lateral offset): pointed down, never NaN. */
+    render_edge_anchor(0, 0, 600, 400, 30, &x, &y);
+    assert(fabs(x) < 1e-9 && fabs(y - 370) < 1e-9);
+}
+
+/* Off-screen markers slide past page panels floating over the canvas (A119). */
+static void test_markers_slide_past_floating_panels(void)
+{
+    const double dock[4] = {300, 700, 600, 80}; /* bottom dock */
+    /* A marker on the bottom edge under the dock moves sideways to the nearer free side. */
+    double dx = render_slide_past(400, 740, 80, 20, dock, false, 10, 1270);
+    assert(dx < 0 && 400 + dx + 80 <= 300);
+    double dx2 = render_slide_past(820, 740, 80, 20, dock, false, 10, 1270);
+    assert(dx2 > 0 && 820 + dx2 >= 900);
+    /* Clear of the panel: unchanged. */
+    assert(render_slide_past(100, 740, 80, 20, dock, false, 10, 1270) == 0);
+    /* A right-edge marker under a top-right panel slides down below it. */
+    const double inspector[4] = {920, 90, 350, 260};
+    double dy = render_slide_past(1180, 150, 90, 20, inspector, true, 10, 790);
+    assert(dy != 0 && (150 + dy + 20 <= 90 || 150 + dy >= 350)); /* clear above or below */
+}
+
 int main(void)
 {
     test_texture_inventory_matches_assets();
@@ -596,6 +630,8 @@ int main(void)
     test_resolution_governor_steps_down_only_under_sustained_load();
     test_eclipse_caster_is_a_scaled_copy_of_the_true_geometry();
     test_sky_map_puts_stars_in_their_true_directions();
+    test_edge_anchor_follows_the_direction_to_the_body();
+    test_markers_slide_past_floating_panels();
     puts("test_scene_style passed");
     return 0;
 }
