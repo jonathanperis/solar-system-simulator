@@ -115,8 +115,15 @@ static float visual_radius_from(const Body *body, RenderScaleMode mode, float bo
 static double satellite_clearance(const Body *body, const Body *parent, double true_distance, RenderScaleMode mode)
 {
     double parent_extent = body_radius_raw(parent, mode);
+    /* The ring edge the moon really lies beyond: all drawn rings, or (for a
+     * moon inside Jupiter's gossamer rings, made of its own dust) the main
+     * rings that set the framing extent. */
     double rings = ring_outer_radius_m(parent->id);
-    if (rings > 0 && true_distance > meters_to_render_units(rings))
+    const RenderRingSystem *table = render_ring_system(parent->id);
+    double drawn_outer = table ? table->outer_m : rings;
+    if (drawn_outer > 0 && true_distance > meters_to_render_units(drawn_outer))
+        parent_extent = body_radius_raw(parent, mode) * drawn_outer / parent->radius_m;
+    else if (rings > 0 && true_distance > meters_to_render_units(rings))
         parent_extent = visual_radius_raw(parent, mode);
     return parent_extent + body_radius_raw(body, mode) + SOLAR_ILLUSTRATIVE_SATELLITE_GAP_UNITS;
 }
@@ -711,10 +718,23 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
 /* Drawn position of a guide point: the parent's current place plus the
  * conic offset, then the same illustrative spreading as the body itself
  * (renderer_body_position), so a guide always passes through its body. */
-static Vec3d orbit_guide_vertex(const Body *body, const Body *parent, Vec3d parent_render, Vec3d offset_m,
-    RenderScaleMode mode, bool spread)
+static Vec3d orbit_guide_vertex(const SolarSystem *system, int parent_index, const Body *body, const Body *parent,
+    Vec3d parent_render, Vec3d offset_m, RenderScaleMode mode, bool spread)
 {
     Vec3d position = meters_vec_to_render_vec3d(vec3d_add(parent->position_m, offset_m));
+    if (morphing(mode)) {
+        /* During a scale morph (A125) the bodies are drawn between the two
+         * scales' places; the guide follows the same blend so it keeps
+         * passing through its body (review fix). */
+        Vec3d place[2];
+        RenderScaleMode modes[2] = {morph_from, mode};
+        for (int k = 0; k < 2; ++k) {
+            bool spreads = modes[k] != RENDER_SCALE_REAL && !(body->kind != BODY_KIND_MOON && parent->kind == BODY_KIND_STAR);
+            place[k] = spreads ? visible_satellite_position(body, parent, position,
+                body_position_raw(system, (size_t)parent_index, modes[k]), modes[k]) : position;
+        }
+        return morph_progress <= 0.0f ? place[0] : blend_place(place[0], place[1]);
+    }
     return spread ? visible_satellite_position(body, parent, position, parent_render, mode) : position;
 }
 
@@ -901,8 +921,11 @@ static void draw_offscreen_markers(const SolarSystem *system, RenderScaleMode mo
         Vector3 oj = {pj.x - camera.position.x, pj.y - camera.position.y, pj.z - camera.position.z};
         if (oj.x * forward.x + oj.y * forward.y + oj.z * forward.z <= 0) continue;
         double dj = sqrt(oj.x * oj.x + oj.y * oj.y + oj.z * oj.z);
-        double rj = render_projected_radius_pixels(renderer_body_visual_radius(&system->bodies[j], mode), dj, camera.fovy,
-            (double)height);
+        /* Only Saturn's rings are opaque enough to hide a planet; the faint
+         * ring systems are nearly transparent (review fix). */
+        double hide = system->bodies[j].id == BODY_ID_SATURN ? renderer_body_visual_radius(&system->bodies[j], mode)
+            : renderer_body_radius(&system->bodies[j], mode);
+        double rj = render_projected_radius_pixels(hide, dj, camera.fovy, (double)height);
         if (rj <= 8.0 * s) continue;
         occluder_index[occluders] = j;
         occluder_distance[occluders] = dj;
@@ -1259,7 +1282,7 @@ static void draw_orbit_guides(const FrameContext *ctx)
         bool close = a_pixels > 2500.0;
         double step_cos = cos(2 * pi / segments), step_sin = sin(2 * pi / segments);
         double c = cos0, s = sin0;
-        Vec3d previous = orbit_guide_vertex(body, parent, parent_render, render_orbit_guide_point(&guide, c, s), ctx->mode, spread);
+        Vec3d previous = orbit_guide_vertex(system, parent_index, body, parent, parent_render, render_orbit_guide_point(&guide, c, s), ctx->mode, spread);
         unsigned previous_code = render_frustum_outcode(&view, previous);
         for (int k = 1; k <= segments; ++k) {
             if (close) {
@@ -1270,7 +1293,7 @@ static void draw_orbit_guides(const FrameContext *ctx)
                 c = cos(e); s = sin(e);
                 if (k == 1) {
                     double e_start = e0 - pi;
-                    previous = orbit_guide_vertex(body, parent, parent_render,
+                    previous = orbit_guide_vertex(system, parent_index, body, parent, parent_render,
                         render_orbit_guide_point(&guide, cos(e_start), sin(e_start)), ctx->mode, spread);
                     previous_code = render_frustum_outcode(&view, previous);
                 }
@@ -1279,7 +1302,7 @@ static void draw_orbit_guides(const FrameContext *ctx)
                 s = s * step_cos + c * step_sin;
                 c = next_c;
             }
-            Vec3d point = orbit_guide_vertex(body, parent, parent_render, render_orbit_guide_point(&guide, c, s), ctx->mode, spread);
+            Vec3d point = orbit_guide_vertex(system, parent_index, body, parent, parent_render, render_orbit_guide_point(&guide, c, s), ctx->mode, spread);
             unsigned code = render_frustum_outcode(&view, point);
             if (!(code & previous_code)) {
                 line_vertex(renderer_relative_vector(previous, ctx->origin), color, alpha);
@@ -1544,7 +1567,10 @@ static void draw_translucent_layers(const FrameContext *ctx)
         const Body *body = &system->bodies[i];
         if (body->radius_quality == PHYSICAL_UNKNOWN) continue;
         int faint_rings = ring_system_index(body->id);
-        bool saturn = body->id == BODY_ID_SATURN || (faint_rings >= 0 && resources->ring_meshes[faint_rings].vertexCount);
+        /* Faint rings need their opacity strip: without it they are not drawn
+         * (a flat tinted annulus would misrepresent near-transparent dust). */
+        bool saturn = body->id == BODY_ID_SATURN || (faint_rings >= 0 && resources->ring_meshes[faint_rings].vertexCount
+            && ring_strip(resources, faint_rings, ctx->mode).id);
         bool clouds = body->id == BODY_ID_EARTH && resources->texture_loaded[RENDER_TEXTURE_EARTH_CLOUDS];
         if (!saturn && !clouds) continue;
         if (body_pixels(ctx, i, renderer_body_visual_radius(body, ctx->mode)) < RENDER_MESH_MIN_RADIUS_PIXELS * 2) continue;
@@ -1650,7 +1676,14 @@ int renderer_navigation_neighbor(const SolarSystem *system, size_t index, Render
     for (size_t i = 0; i < system->body_count && first_child < 0; ++i)
         if (solar_system_parent_index(system, i) == (int)index && system->bodies[i].radius_quality != PHYSICAL_UNKNOWN)
             first_child = (int)i;
-    if (direction == RENDER_NAV_DOWN || parent < 0) return first_child;
+    if (direction == RENDER_NAV_DOWN || (parent < 0 && direction == RENDER_NAV_NEXT)) return first_child;
+    if (parent < 0) {
+        /* Left from a parentless body wraps to its last child. */
+        for (size_t i = system->body_count; i-- > 0;)
+            if (solar_system_parent_index(system, i) == (int)index && system->bodies[i].radius_quality != PHYSICAL_UNKNOWN)
+                return (int)i;
+        return -1;
+    }
     size_t n = system->body_count;
     for (size_t k = 1; k < n; ++k) {
         size_t i = direction == RENDER_NAV_NEXT ? (index + k) % n : (index + n - k) % n;
