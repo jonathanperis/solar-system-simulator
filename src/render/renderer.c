@@ -1458,3 +1458,23 @@ void renderer_draw_solar_system(const SolarSystem *system, const BodyTrails *tra
     rlDrawRenderBatchActive();
     rlEnableDepthMask();
 }
+
+int renderer_navigation_neighbor(const SolarSystem *system, size_t index, RenderNavigation direction)
+{
+    if (index >= system->body_count) return -1;
+    int parent = solar_system_parent_index(system, index);
+    if (direction == RENDER_NAV_UP) return parent;
+    /* Children of `of` in catalog order, skipping unknown-radius markers. */
+    int first_child = -1;
+    for (size_t i = 0; i < system->body_count && first_child < 0; ++i)
+        if (solar_system_parent_index(system, i) == (int)index && system->bodies[i].radius_quality != PHYSICAL_UNKNOWN)
+            first_child = (int)i;
+    if (direction == RENDER_NAV_DOWN || parent < 0) return first_child;
+    size_t n = system->body_count;
+    for (size_t k = 1; k < n; ++k) {
+        size_t i = direction == RENDER_NAV_NEXT ? (index + k) % n : (index + n - k) % n;
+        if (solar_system_parent_index(system, i) == parent && system->bodies[i].radius_quality != PHYSICAL_UNKNOWN)
+            return (int)i;
+    }
+    return -1;
+}

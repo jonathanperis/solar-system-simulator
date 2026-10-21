@@ -120,6 +120,10 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
 .dock { position: absolute; left: 0; right: 0; bottom: 0.75rem; width: max-content; margin-inline: auto; display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem; padding: 0.5rem; max-width: calc(100% - 1.5rem); }
 .dock fieldset { display: contents; }
 .dock input[type="search"] { width: 11rem; }
+/* Speed slider over C's five presets (A120); the readout keeps its width as labels change. */
+.dock .speed-row { display: flex; align-items: center; gap: 0.4rem; min-height: 2rem; }
+.instrument .dock input[type="range"] { width: 7rem; padding: 0; border: 0; background: transparent; accent-color: var(--amber); min-height: 2rem; }
+.dock output[data-speed-label] { min-width: 6ch; font-variant-numeric: tabular-nums; text-transform: none; color: var(--text); font-size: 0.8125rem; }
 .inspector { position: absolute; right: 0.75rem; top: 2.5rem; width: min(22rem, calc(100% - 1.5rem)); max-height: calc(100% - 11rem); overflow: auto; padding: 0.75rem; }
 .inspector h2 { margin: 0 0 0.2rem; font: 600 1rem var(--mono); color: var(--amber); }
 .inspector dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.2rem 0.75rem; margin: 0.5rem 0; }

@@ -26,7 +26,7 @@ BASE_PATH = "/"
 
 ROUTES: dict[str, list[str]] = {
     # The simulator is the home page (SPEC A100): instrument markers only.
-    "index.html": ["data-simulator", "runtime-control-state", "canvas", "favicon.ico", "data-runtime-panel", "data-runtime-body", "data-runtime-speed", "data-runtime-scene", "data-lesson-strip", "data-inspector-distance", "data-inspector-speed", "data-inspector-period", "data-runtime-search", "data-runtime-group", "data-runtime-achieved", "data-body-filter-status", "15 d/s", "10 d/s", "Frame system", "Frame body"],
+    "index.html": ["data-simulator", "runtime-control-state", "canvas", "favicon.ico", "data-runtime-panel", "data-runtime-body", "data-runtime-speed", "data-runtime-scene", "data-lesson-strip", "data-inspector-distance", "data-inspector-speed", "data-inspector-period", "data-runtime-search", "data-runtime-group", "data-runtime-achieved", "data-body-filter-status", "data-speed-label", "1 d/s", "Frame system", "Frame body"],
     "learn/index.html": ["Learn", "?lesson=dart", "?lesson=pluto-charon", "?lesson=circular", "learn/compare/"],
     "learn/compare/index.html": ["Compare two runs", "data-comparison", "learning-lab.mjs", "Guided challenges", "Force-contribution inspector", "data-config-error"],
     "catalog/index.html": ["Catalog", "data-body-search", "data-body-family", "data-core-body", "catalog/small-bodies/", "Phobos", "Titan", "Dimorphos", "Menoetius"],

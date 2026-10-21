@@ -109,11 +109,12 @@ EM_JS(void, solar_web_report_lab, (int lesson, int method, double dt, double tic
     double acceleration, double specific_energy, double energy, double energy_change, int isolated,
     double momentum, double angular_momentum, double magnification, int trail_frame, int vectors,
     double px, double py, double pz, double vx, double vy, double vz, int contact_mode,
-    double min_factor, double contact_seconds, int grid, int labels, int orbits), {
+    double min_factor, double contact_seconds, int grid, int labels, int orbits, int follow, int touring), {
     Module.reportLabState({lesson, method, dt, ticks, factor, acceleration, specificEnergy: specific_energy,
         energy, energyChange: energy_change, isolated: !!isolated, momentum, angularMomentum: angular_momentum,
         magnification, trailFrame: trail_frame, vectors: !!vectors, position: [px, py, pz], velocity: [vx, vy, vz], contactMode: contact_mode,
-        minFactor: min_factor, contactSeconds: contact_seconds, grid: !!grid, labels: !!labels, orbits: !!orbits});
+        minFactor: min_factor, contactSeconds: contact_seconds, grid: !!grid, labels: !!labels, orbits: !!orbits,
+        follow: !!follow, touring: !!touring});
 })
 
 EM_JS(void, solar_web_download_csv, (const char *data, int length), {
@@ -145,6 +146,7 @@ EM_JS(int, solar_web_canvas_has_focus, (void), {
 #include "app/input_file.h"
 #include "sim/constants.h"
 #include "sim/solar_system.h"
+#include "render/render_scale.h"
 #include "render/renderer.h"
 #include "sim/experiment.h"
 #include "sim/scene_epoch.h"
@@ -177,6 +179,18 @@ typedef struct SolarApp {
     float shown_seconds; /* wall time the view has been on screen (startup cuts, A112) */
     float pixel_scale; /* backing pixels per CSS pixel (A114) */
     int hovered;       /* body under a mouse pointer, -1 for none (A118) */
+    /* A120: double-click, phone gestures, follow camera and the tour. */
+    double last_click_time;
+    Vector2 last_click_at;
+    float twist_angle;
+    float press_seconds;
+    bool long_pressed;
+    bool follow;
+    float follow_offset;
+    bool steered;
+    bool touring;
+    int tour_step;
+    float tour_seconds;
     bool touch_seen;   /* touch devices have no hover */
 #if defined(PLATFORM_WEB)
     RenderResolutionGovernor governor; /* steps HiDPI down on slow GPUs (A116) */
@@ -201,7 +215,7 @@ typedef enum SolarCommand {
     SOLAR_COMMAND_SPEED, SOLAR_COMMAND_SELECT, SOLAR_COMMAND_VIEW,
     SOLAR_COMMAND_ZOOM, SOLAR_COMMAND_ROTATE, SOLAR_COMMAND_FRAME, SOLAR_COMMAND_FRAME_BODY,
     SOLAR_COMMAND_TRAILS, SOLAR_COMMAND_VECTORS, SOLAR_COMMAND_BACKGROUND, SOLAR_COMMAND_CONTACT, SOLAR_COMMAND_GRID, SOLAR_COMMAND_LABELS,
-    SOLAR_COMMAND_ORBITS
+    SOLAR_COMMAND_ORBITS, SOLAR_COMMAND_FOLLOW, SOLAR_COMMAND_TOUR
 } SolarCommand;
 
 static SolarApp app;
@@ -242,6 +256,8 @@ static size_t camera_target_index(const SolarApp *state)
 #define SOLAR_INTERACTION_HOLD_SECONDS 4.0f
 #define SOLAR_CLICK_SLOP_PIXELS 5.0f
 static void solar_app_command(SolarApp *state, SolarCommand command, int value);
+static void frame_selected_system(SolarApp *state, bool face_sun);
+static void step_out(SolarApp *state);
 static void handle_pointer(SolarApp *state)
 {
     int touches = GetTouchPointCount();
@@ -250,7 +266,18 @@ static void handle_pointer(SolarApp *state)
         Vector2 a = GetTouchPosition(0), b = GetTouchPosition(1);
         float spread = hypotf(a.x - b.x, a.y - b.y);
         if (state->pinch_spread > 0.0f && spread > 0.0f) orbit_camera_pinch(&state->orbit_camera, spread / state->pinch_spread);
+        /* Two fingers turning about each other turn the view (A120). */
+        float angle = atan2f(b.y - a.y, b.x - a.x);
+        if (state->pinch_spread > 0.0f) {
+            float turn = angle - state->twist_angle;
+            if (turn > PI) turn -= 2 * PI;
+            if (turn < -PI) turn += 2 * PI;
+            orbit_camera_drag(&state->orbit_camera, -turn * (float)GetScreenHeight() / PI, 0.0f, (float)GetScreenHeight());
+        }
+        state->twist_angle = angle;
         state->pinch_spread = spread;
+        state->steered = true;
+        state->touring = false;
         /* A pinch is never a click, and lifting one finger must not jump. */
         state->pointer_down = false;
         state->pointer_travel = 1e9f;
@@ -261,22 +288,41 @@ static void handle_pointer(SolarApp *state)
     bool down = touches == 1 || IsMouseButtonDown(MOUSE_BUTTON_LEFT);
     Vector2 at = touches == 1 ? GetTouchPosition(0) : GetMousePosition();
     if (down) {
+        state->touring = false; /* any press ends the tour */
         if (state->pointer_down) {
             float dx = at.x - state->pointer_last.x, dy = at.y - state->pointer_last.y;
             state->pointer_travel += (fabsf(dx) + fabsf(dy)) / state->pixel_scale;
             if (state->pointer_travel > SOLAR_CLICK_SLOP_PIXELS && (dx != 0.0f || dy != 0.0f)) {
                 orbit_camera_drag(&state->orbit_camera, dx, dy, (float)GetScreenHeight());
                 state->interaction_hold_seconds = SOLAR_INTERACTION_HOLD_SECONDS;
+                state->steered = true;
+            }
+            /* A finger held still on a body for half a second shows its
+             * name and numbers, like a mouse hover (A120). */
+            state->press_seconds += GetFrameTime();
+            if (touches == 1 && !state->long_pressed && state->pointer_travel <= SOLAR_CLICK_SLOP_PIXELS
+                && state->press_seconds >= 0.5f) {
+                int under = renderer_pick_target(at);
+                if (under < 0) under = renderer_pick_body(&state->session.system, state->render_mode, state->shown_origin,
+                    state->camera, at);
+                if (under >= 0) {
+                    state->hovered = under;
+                    state->long_pressed = true;
+                }
             }
         } else {
             state->pointer_travel = 0.0f;
+            state->press_seconds = 0.0f;
+            state->long_pressed = false;
+            if (touches == 1) state->hovered = -1; /* a new touch clears a long-press tag */
         }
         state->pointer_last = at;
         state->pointer_down = true;
         return;
     }
-    /* Hover (A118): a mouse resting on a body names and rings it. */
-    int hovered = -1;
+    /* Hover (A118): a mouse resting on a body names and rings it. Touch
+     * screens keep a long-press tag until the next touch. */
+    int hovered = state->touch_seen ? state->hovered : -1;
     if (!state->touch_seen && IsCursorOnScreen()) {
         hovered = renderer_pick_target(GetMousePosition());
         if (hovered < 0) hovered = renderer_pick_body(&state->session.system, state->render_mode, state->shown_origin,
@@ -288,12 +334,23 @@ static void handle_pointer(SolarApp *state)
         solar_web_set_hover(hovered >= 0);
 #endif
     }
-    if (state->pointer_down && state->pointer_travel <= SOLAR_CLICK_SLOP_PIXELS) {
+    if (state->pointer_down && state->pointer_travel <= SOLAR_CLICK_SLOP_PIXELS && !state->long_pressed) {
         /* Labels and off-screen markers first (A119), then the bodies. */
         int picked = renderer_pick_target(state->pointer_last);
         if (picked < 0) picked = renderer_pick_body(&state->session.system, state->render_mode, state->shown_origin,
             state->camera, state->pointer_last);
-        if (picked >= 0 && (size_t)picked == state->session.selected_body_index && !state->body_framed
+        double now = GetTime();
+        bool double_click = now - state->last_click_time < 0.35
+            && hypotf(state->pointer_last.x - state->last_click_at.x, state->pointer_last.y - state->last_click_at.y)
+                < 8.0f * state->pixel_scale;
+        state->last_click_time = double_click ? -1.0 : now;
+        state->last_click_at = state->pointer_last;
+        if (double_click) {
+            /* Double-click (A120): on a body, show its whole family; on empty
+             * space, step back out like Esc. */
+            if (picked >= 0) frame_selected_system(state, true);
+            else step_out(state);
+        } else if (picked >= 0 && (size_t)picked == state->session.selected_body_index && !state->body_framed
             && state->session.system.bodies[picked].radius_quality != PHYSICAL_UNKNOWN) {
             /* Clicking the selection again zooms in to it. */
             solar_app_command(state, SOLAR_COMMAND_FRAME_BODY, 0);
@@ -362,6 +419,80 @@ static void frame_selected_body(SolarApp *state, bool face_sun)
         (float)GetScreenWidth() / (float)GetScreenHeight());
     state->system_framed = false;
     state->body_framed = true;
+}
+
+/* Hover tooltip (A120): the pointed-at (or long-pressed) body's distance
+ * from its parent and orbital period, beside the pointer, without changing
+ * the selection. Numbers are C's own inspection of SI state. */
+static void format_reading(char *out, size_t size, const BodyInspection *body)
+{
+    if (!body->has_parent) { snprintf(out, size, "no parent"); return; }
+    double km = body->distance_m / 1000.0;
+    char distance[48], period[32] = "";
+    if (km >= 1e6) snprintf(distance, sizeof(distance), "%.3f AU", body->distance_m / SOLAR_AU_METERS);
+    else snprintf(distance, sizeof(distance), "%.0f km", km);
+    double days = body->orbital_period_s / SOLAR_DAY_SECONDS;
+    if (isfinite(days)) {
+        if (days >= 730.5) snprintf(period, sizeof(period), ", %.1f yr", days / 365.25);
+        else if (days >= 1) snprintf(period, sizeof(period), ", %.1f d", days);
+        else snprintf(period, sizeof(period), ", %.1f h", days * 24);
+    }
+    snprintf(out, size, "%s from %s%s", distance, body->parent_name, period);
+}
+
+static void draw_hover_tooltip(const SolarApp *state)
+{
+    if (state->hovered < 0 || (size_t)state->hovered >= state->session.system.body_count) return;
+    if ((size_t)state->hovered == state->session.selected_body_index) return; /* the inspector shows it */
+    BodyInspection body = simulation_session_inspect_body(&state->session, (size_t)state->hovered);
+    char line[160];
+    format_reading(line, sizeof(line), &body);
+    const float s = state->pixel_scale, size = 13.0f * s, spacing = 0.4f * s;
+    Font font = state->render.label_font_ready ? state->render.label_font : GetFontDefault();
+    Vector2 text = MeasureTextEx(font, line, size, spacing);
+    Vector2 at = state->touch_seen ? state->pointer_last : GetMousePosition();
+    float x = at.x + 16 * s, y = at.y + 18 * s;
+    if (x + text.x + 12 * s > GetScreenWidth()) x = at.x - text.x - 20 * s;
+    if (y + text.y + 8 * s > GetScreenHeight()) y = at.y - text.y - 22 * s;
+    DrawRectangleRec((Rectangle){x, y, text.x + 12 * s, text.y + 8 * s}, (Color){14, 17, 24, 225});
+    DrawRectangleLinesEx((Rectangle){x, y, text.x + 12 * s, text.y + 8 * s}, s, (Color){60, 66, 80, 255});
+    DrawTextEx(font, line, (Vector2){x + 6 * s, y + 4 * s}, size, spacing, (Color){228, 222, 206, 255});
+}
+
+/* Follow camera and tour (A120), once per frame before the view is built.
+ * Follow keeps the camera's yaw at a fixed offset from the selection's
+ * direction around its parent; steering resets the offset. The tour flies
+ * through the Sun, the planets and the dwarf planets, 7 s each, until any
+ * press or key ends it. Presentation only. */
+#define SOLAR_TOUR_SECONDS 7.0f
+static void update_follow_and_tour(SolarApp *state, float dt)
+{
+    const SolarSystem *system = &state->session.system;
+    size_t selected = state->session.selected_body_index;
+    int parent = solar_system_parent_index(system, selected);
+    if (state->follow && parent >= 0) {
+        Vec3d rel = vec3d_sub(system->bodies[selected].position_m, system->bodies[parent].position_m);
+        float angle = (float)atan2(rel.x, rel.z);
+        if (state->steered) state->follow_offset = state->orbit_camera.yaw_radians - angle;
+        else state->orbit_camera.yaw_radians = fmodf(state->follow_offset + angle + 4.0f * PI, 2.0f * PI);
+    }
+    state->steered = false;
+    if (!state->touring) return;
+    state->tour_seconds += dt;
+    if (state->tour_seconds < SOLAR_TOUR_SECONDS) return;
+    state->tour_seconds = 0.0f;
+    /* Next stop: the Sun, then each planet and dwarf planet in catalog order. */
+    for (size_t k = 1; k <= system->body_count; ++k) {
+        size_t i = (size_t)(state->tour_step + (int)k) % system->body_count;
+        BodyKind kind = system->bodies[i].kind;
+        if (kind != BODY_KIND_STAR && kind != BODY_KIND_PLANET && kind != BODY_KIND_DWARF_PLANET) continue;
+        state->tour_step = (int)i;
+        bool touring = state->touring;
+        solar_app_command(state, SOLAR_COMMAND_SELECT, (int)i);
+        solar_app_command(state, SOLAR_COMMAND_FRAME_BODY, 0);
+        state->touring = touring;
+        return;
+    }
 }
 
 /* Escape steps back out (A119): a framed body widens to its family (a moon
@@ -469,6 +600,8 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
             state->system_framed = false;
             state->body_framed = false;
             state->orbit_camera = orbit_camera_default_state();
+            state->steered = true;  /* follow: recapture the angle for the new body */
+            state->touring = false; /* a choice of body ends the tour (it restores its own) */
             break;
         case SOLAR_COMMAND_VIEW:
             begin_camera_flight(state);
@@ -485,6 +618,18 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
         case SOLAR_COMMAND_GRID: state->grid = !state->grid; break;
         case SOLAR_COMMAND_LABELS: state->labels = !state->labels; break;
         case SOLAR_COMMAND_ORBITS: state->orbits = !state->orbits; break;
+        case SOLAR_COMMAND_FOLLOW: {
+            /* Follow (A120): keep the camera's angle to the selection's orbit
+             * fixed, so a moon holds its place beside its planet on screen. */
+            state->follow = !state->follow;
+            state->steered = true; /* capture the current angle as the offset */
+            break;
+        }
+        case SOLAR_COMMAND_TOUR:
+            state->touring = !state->touring;
+            state->tour_step = -1;
+            state->tour_seconds = 1e9f; /* start at once */
+            break;
         case SOLAR_COMMAND_BACKGROUND: simulation_session_set_background(session, value != 0); break;
         case SOLAR_COMMAND_CONTACT:
             if (session->lesson == LESSON_COLLISION) {
@@ -538,7 +683,7 @@ static void report_web_state(const SolarApp *state)
         selected->velocity_mps.x, selected->velocity_mps.y, selected->velocity_mps.z, session->clock.collision_mode,
         lesson_minimum_velocity_factor(session->lesson),
         (double)session->clock.contact_tick * simulation_clock_step_seconds(&session->clock), state->grid, state->labels,
-        state->orbits);
+        state->orbits, state->follow, state->touring);
     ForceContribution forces[SOLAR_SYSTEM_BODY_CAPACITY];
     size_t count = physics_force_breakdown(&session->system, session->selected_body_index, forces, SOLAR_SYSTEM_BODY_CAPACITY);
     solar_web_begin_forces(session->system.elapsed_seconds);
@@ -723,6 +868,20 @@ static void solar_app_update_draw(void *user_data)
         if (IsKeyPressed(KEY_H)) solar_app_command(state, SOLAR_COMMAND_LABELS, 0);
         if (IsKeyPressed(KEY_O)) solar_app_command(state, SOLAR_COMMAND_ORBITS, 0);
         if (IsKeyPressed(KEY_ESCAPE)) step_out(state);
+        if (IsKeyPressed(KEY_Y)) solar_app_command(state, SOLAR_COMMAND_FOLLOW, 0);
+        /* Arrow keys hop through the family tree (A120): siblings left and
+         * right, parent up, first moon down; each hop flies to the body. */
+        const int arrows[4] = {KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN};
+        const RenderNavigation hops[4] = {RENDER_NAV_NEXT, RENDER_NAV_PREVIOUS, RENDER_NAV_UP, RENDER_NAV_DOWN};
+        for (int k = 0; k < 4; ++k) {
+            if (!IsKeyPressed(arrows[k])) continue;
+            int next = renderer_navigation_neighbor(&state->session.system, state->session.selected_body_index, hops[k]);
+            if (next < 0) continue;
+            solar_app_command(state, SOLAR_COMMAND_SELECT, next);
+            if (hops[k] == RENDER_NAV_UP) frame_selected_system(state, true);
+            else solar_app_command(state, SOLAR_COMMAND_FRAME_BODY, 0);
+        }
+        if (state->touring && GetKeyPressed() != 0) state->touring = false;
         if (IsKeyPressed(KEY_M)) solar_app_command(state, SOLAR_COMMAND_CONTACT, 0);
         if (IsKeyPressed(KEY_E)) {
             char name[64];
@@ -772,8 +931,9 @@ static void solar_app_update_draw(void *user_data)
     /* A stalled frame (sleep, debugger) is discarded by the simulation clock;
      * the camera skips it too instead of jumping to an arbitrary angle. Auto-
      * rotation also waits while someone is steering the view. */
-    if (state->auto_rotate && !stalled && state->interaction_hold_seconds <= 0.0f)
+    if (state->auto_rotate && !stalled && state->interaction_hold_seconds <= 0.0f && !state->follow)
         orbit_camera_advance(&state->orbit_camera, frame_time);
+    update_follow_and_tour(state, stalled ? 0.0f : frame_time);
     simulation_session_update(&state->session, frame_time);
 #if defined(PLATFORM_WEB)
     if (state->web_body_count != state->session.system.body_count) populate_web_bodies();
@@ -829,6 +989,7 @@ static void solar_app_update_draw(void *user_data)
     EndMode3D();
     renderer_draw_markers(&state->session.system, state->render_mode, origin, &state->render, state->camera,
         state->session.selected_body_index, state->hovered);
+    draw_hover_tooltip(state);
     if (state->labels || state->hovered >= 0) renderer_draw_labels(&state->session.system, state->render_mode, origin,
         &state->render, state->camera, state->session.selected_body_index, state->hovered, state->labels);
 
@@ -959,6 +1120,9 @@ int main(int argc, char **argv)
     app.camera.fovy = 45.0f;
     app.camera.projection = CAMERA_PERSPECTIVE;
     app.orbit_camera = orbit_camera_default_state();
+    /* Open on the inner planets out to Mars, with room around them (A120). */
+    orbit_camera_frame_sphere(&app.orbit_camera, meters_to_render_units(1.9 * SOLAR_AU_METERS), app.camera.fovy,
+        (float)GetScreenWidth() / (float)GetScreenHeight());
     app.shown_camera = app.orbit_camera;
     app.session = simulation_session_create();
     app.auto_rotate = true;

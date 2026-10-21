@@ -85,18 +85,13 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
         <legend class="sr-only">Playback and scene</legend>
         <button type="button" data-command="pause">Pause</button>
         <button type="button" data-command="reset">Restart</button>
-        <label>Speed <select data-runtime-speed>
-          <option value="0">1 h/s</option>
-          <option value="1" selected>1 d/s</option>
-          <option value="2">5 d/s</option>
-          <option value="3">10 d/s</option>
-          <option value="4">15 d/s</option>
-        </select></label>
+        <label class="speed">Speed <span class="speed-row"><input type="range" data-runtime-speed min="0" max="4" step="1" value="1" aria-valuetext="1 day / second" /> <output data-speed-label>1 d/s</output></span></label>
         <label>Scene <select data-runtime-scene>
           {sceneChoices.map(({ index, label }) => <option value={index}>{label}</option>)}
           <option value="" disabled>Lesson or experiment</option>
         </select></label>
         <button type="button" data-load-scene>Load scene</button>
+        <button type="button" data-command="tour" aria-pressed="false">Tour</button>
         <button type="button" data-open-panel="find-panel" aria-haspopup="dialog">Find</button>
         <button type="button" data-open-panel="view-panel" aria-haspopup="dialog">View</button>
         <button type="button" data-open-panel="keys-panel" aria-haspopup="dialog">Keys</button>
@@ -132,6 +127,7 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
         </div>
         <div class="row">
           <button type="button" data-command="orbits" aria-pressed="true">Orbits: On</button>
+          <button type="button" data-command="follow" aria-pressed="false">Follow: Off</button>
           <button type="button" data-command="trails">Trails: Parent-relative</button>
           <button type="button" data-command="vectors" aria-pressed="false">Vector directions: Off</button>
           <button type="button" data-command="grid" aria-pressed="true">Grid: On</button>
@@ -154,9 +150,13 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
           <dt><kbd>V</kbd> <kbd>A</kbd></dt><dd>scale, camera rotation</dd>
           <dt><kbd>O</kbd> <kbd>T</kbd> <kbd>X</kbd></dt><dd>orbits, trails, vectors</dd>
           <dt><kbd>G</kbd> <kbd>H</kbd></dt><dd>grid, labels</dd>
-          <dt>Wheel, drag, pinch</dt><dd>zoom, turn the view</dd>
+          <dt>Wheel, drag, pinch, twist</dt><dd>zoom, turn the view</dd>
+          <dt>Long press</dt><dd>a body's numbers</dd>
           <dt>Point, click</dt><dd>name a body, fly to it</dd>
-          <dt><kbd>Esc</kbd></dt><dd>step back out</dd>
+          <dt><kbd>Esc</kbd> <kbd>Backspace</kbd></dt><dd>step out, go back</dd>
+          <dt><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></dt><dd>next body, parent, moons</dd>
+          <dt><kbd>/</kbd> <kbd>Y</kbd></dt><dd>search, follow orbit</dd>
+          <dt>Double-click</dt><dd>whole family</dd>
         </dl>
         <p>Keys work while the view has focus. Tab moves through the controls.</p>
       </div>

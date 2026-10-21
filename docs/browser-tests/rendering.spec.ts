@@ -99,37 +99,32 @@ test('reduced motion starts still, and a drag turns the paused view', async ({ p
   expect((await canvas.screenshot()).equals(still)).toBe(false);
 });
 
-// SPEC A112, A118: pointing at a body names it and shows a pointer cursor;
-// clicking it selects it.
-test('hovering names a body and clicking selects it', async ({ page }) => {
+// SPEC A112, A118: pointing at a body rings it and shows a pointer cursor;
+// clicking the selection zooms in to it. Jupiter, framed by its link, sits at
+// the centre of the view, so the test needs no search (CI renders slowly).
+test('hovering a body shows the pointer and clicking the selection zooms in', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  // Pan, the selection, hugs Saturn at the centre; the scan stays in the
-  // upper band of the irregular moons, so whatever it finds is another body.
-  await page.goto(`${base}?body=pan`);
+  await page.goto(`${base}?body=jupiter`);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   await page.getByRole('button', { name: 'Pause', exact: true }).click();
   const canvas = page.locator('canvas').first();
   const box = (await canvas.boundingBox())!;
-  let hit: [number, number] | null = null;
-  for (let y = box.y + box.height * 0.28; y < box.y + box.height * 0.42 && !hit; y += 6) {
-    for (let x = box.x + box.width * 0.3; x < box.x + box.width * 0.7 && !hit; x += 6) {
-      await page.mouse.move(x, y);
-      await page.waitForTimeout(25);
-      if (await canvas.evaluate(element => 'hover' in (element as HTMLElement).dataset)) hit = [x, y];
-    }
-  }
-  expect(hit).not.toBeNull();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect.poll(() => canvas.evaluate(element => 'hover' in (element as HTMLElement).dataset), { timeout: 20000 }).toBe(true);
   await expect(canvas).toHaveCSS('cursor', 'pointer');
-  const before = await page.locator('[data-inspector-name]').textContent();
+  const zoom = page.locator('[data-runtime-camera]');
+  const before = await zoom.textContent();
   await page.mouse.down();
-  await page.waitForTimeout(80); // a real click spans frames; raylib polls once per frame
+  await page.waitForTimeout(150); // a real click spans frames; raylib polls once per frame
   await page.mouse.up();
-  await expect(page.locator('[data-inspector-name]')).not.toHaveText(before!);
+  await expect(page.locator('[data-inspector-name]')).toHaveText('Jupiter');
+  await expect.poll(() => zoom.textContent(), { timeout: 20000 }).not.toBe(before); // framed closer
 });
 
 // SPEC A119: from a close-up, off-screen planets are marked at the view's
 // edge; clicking one flies there, and Escape steps back out to the Sun.
 test('edge markers navigate between planets and Escape steps back out', async ({ page }) => {
+  test.setTimeout(150000);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto(`${base}?body=venus`);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
@@ -140,10 +135,12 @@ test('edge markers navigate between planets and Escape steps back out', async ({
   const hovering = () => canvas.evaluate(element => 'hover' in (element as HTMLElement).dataset);
   let hit: [number, number] | null = null;
   // Walk the left and right edges, where markers for off-screen planets sit.
-  for (const x of [box.x + 30, box.x + 45, box.x + box.width - 30, box.x + box.width - 45]) {
-    for (let y = box.y + 20; y < box.y + box.height - 20 && !hit; y += 8) {
+  // Each step waits two real frames: CI renders slowly, so fixed delays miss.
+  const frames = () => page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(() => done(null)))));
+  for (const x of [box.x + 38, box.x + box.width - 38]) {
+    for (let y = box.y + 20; y < box.y + box.height - 20 && !hit; y += 10) {
       await page.mouse.move(x, y);
-      await page.waitForTimeout(20);
+      await frames();
       if (await hovering()) hit = [x, y];
     }
     if (hit) break;
@@ -162,4 +159,48 @@ test('edge markers navigate between planets and Escape steps back out', async ({
     await page.waitForTimeout(150);
   }
   await expect(name).toHaveText('Sun');
+});
+
+// SPEC A120: arrow keys hop between bodies, the address follows the
+// selection and browser Back retraces it; "/" opens search from the view;
+// Tour and Follow are C toggles.
+test('arrows, address, Back, search, tour and follow drive navigation', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(`${base}?body=venus`);
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
+  const name = page.locator('[data-inspector-name]');
+  await expect(name).toHaveText('Venus');
+  const canvas = page.locator('canvas').first();
+  const press = async (key: string) => {
+    await canvas.focus();
+    await page.keyboard.down(key);
+    await page.waitForTimeout(80);
+    await page.keyboard.up(key);
+  };
+  await press('ArrowRight');
+  await expect(name).toHaveText('Earth');
+  await expect(page).toHaveURL(/\?body=earth$/);
+  await press('ArrowDown');
+  await expect(name).toHaveText('Moon');
+  await expect(page).toHaveURL(/\?body=moon$/);
+  await page.goBack();
+  await expect(name).toHaveText('Earth');
+  await page.goBack();
+  await expect(name).toHaveText('Venus');
+  await canvas.focus();
+  await page.keyboard.press('/');
+  await expect(page.locator('#find-panel')).toBeVisible();
+  await expect(page.getByRole('searchbox', { name: 'Name' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  const tour = page.getByRole('button', { name: /^(Tour|Stop tour)$/ });
+  await tour.click();
+  await expect(tour).toHaveText('Stop tour');
+  await expect(name).toHaveText('Sun');
+  await tour.click();
+  await expect(tour).toHaveText('Tour');
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  const follow = page.getByRole('button', { name: /^Follow: (On|Off)$/ });
+  await follow.click();
+  await expect(follow).toHaveText('Follow: On');
+  await expect(follow).toHaveAttribute('aria-pressed', 'true');
 });

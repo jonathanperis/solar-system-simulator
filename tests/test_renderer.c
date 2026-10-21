@@ -479,8 +479,39 @@ static void test_charon_casts_no_shadow_on_pluto_in_2026(void)
     assert(!render_eclipse_caster(ch->position_m, ch->radius_m, p->position_m, p->radius_m, sun->position_m, sun->radius_m, 1.0, &c));
 }
 
+/* Keyboard hopping (SPEC A120): left/right step through siblings (planets
+ * around the Sun, moons of one planet with known sizes), up to the parent,
+ * down to the first moon. */
+static void test_navigation_neighbors_hop_through_the_family_tree(void)
+{
+    SolarSystem system = solar_system_create_current();
+    int sun = 0, earth = -1, moon = -1, mars = -1, venus = -1, phobos = -1, deimos = -1;
+    for (size_t i = 0; i < system.body_count; ++i) {
+        BodyId id = system.bodies[i].id;
+        if (id == BODY_ID_EARTH) earth = (int)i;
+        if (id == BODY_ID_MOON) moon = (int)i;
+        if (id == BODY_ID_MARS) mars = (int)i;
+        if (id == BODY_ID_VENUS) venus = (int)i;
+        if (id == BODY_ID_PHOBOS) phobos = (int)i;
+        if (id == BODY_ID_DEIMOS) deimos = (int)i;
+    }
+    assert(renderer_navigation_neighbor(&system, (size_t)earth, RENDER_NAV_NEXT) == mars);
+    assert(renderer_navigation_neighbor(&system, (size_t)earth, RENDER_NAV_PREVIOUS) == venus);
+    assert(renderer_navigation_neighbor(&system, (size_t)earth, RENDER_NAV_UP) == sun);
+    assert(renderer_navigation_neighbor(&system, (size_t)earth, RENDER_NAV_DOWN) == moon);
+    assert(renderer_navigation_neighbor(&system, (size_t)phobos, RENDER_NAV_NEXT) == deimos);
+    assert(renderer_navigation_neighbor(&system, (size_t)deimos, RENDER_NAV_NEXT) == phobos); /* wraps */
+    assert(renderer_navigation_neighbor(&system, (size_t)moon, RENDER_NAV_DOWN) == -1);
+    assert(renderer_navigation_neighbor(&system, (size_t)sun, RENDER_NAV_UP) == -1);
+    int first = renderer_navigation_neighbor(&system, (size_t)sun, RENDER_NAV_DOWN);
+    assert(first >= 0 && system.bodies[first].id == BODY_ID_MERCURY);
+    /* The Sun has no siblings: left/right go to its first child. */
+    assert(renderer_navigation_neighbor(&system, (size_t)sun, RENDER_NAV_NEXT) == first);
+}
+
 int main(void)
 {
+    test_navigation_neighbors_hop_through_the_family_tree();
     test_charon_casts_no_shadow_on_pluto_in_2026();
     test_illustrative_saturn_moons_stay_outside_the_drawn_rings();
     test_tidally_locked_maps_face_their_parent();
