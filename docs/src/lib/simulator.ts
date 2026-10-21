@@ -87,9 +87,44 @@ export function clockNote(elapsedSeconds: number, dated: boolean): string {
   const days = elapsedSeconds / 86400;
   return dated ? `${days >= 0 ? '+' : ''}${days.toFixed(2)} days since 2026-06-09` : 'since the lesson started';
 }
+/* Inspector readouts (SPEC A113). C supplies SI values; these only choose how
+ * to print them: digits grouped in threes with narrow no-break spaces (the SI
+ * style), AU beside planetary distances, powers of ten as superscripts. A
+ * no-break space binds each value to its unit, so a narrow inspector wraps
+ * only at the " · " between two readings. */
+const nbsp = '\u00a0';
+const auMeters = 149597870700;
+function grouped(value: number, decimals: number): string {
+  const [whole, fraction] = value.toFixed(decimals).split('.');
+  const digits = whole.replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f');
+  return fraction === undefined ? digits : `${digits}.${fraction}`;
+}
+export function formatDistance(meters: number): string {
+  const km = meters / 1000;
+  if (km >= 1e6) return `${grouped(km, 0)}${nbsp}km · ${(meters / auMeters).toFixed(4)}${nbsp}AU`;
+  return km >= 100 ? `${grouped(km, 1)}${nbsp}km` : `${km.toFixed(3)}${nbsp}km`;
+}
+export function formatRadius(meters: number): string {
+  const km = meters / 1000;
+  return km >= 100 ? `${grouped(km, 1)}${nbsp}km` : `${km.toFixed(3)}${nbsp}km`;
+}
+export function formatSpeed(mps: number): string {
+  if (mps >= 1000) return `${(mps / 1000).toFixed(4)}${nbsp}km/s`;
+  return mps >= 1 ? `${mps.toFixed(2)}${nbsp}m/s` : `${mps.toFixed(3)}${nbsp}m/s`;
+}
+const superscript = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+export function formatMass(kg: number): string {
+  if (!(kg > 0) || !Number.isFinite(kg)) return `${kg}${nbsp}kg`;
+  let exponent = Math.floor(Math.log10(kg));
+  let mantissa = (kg / 10 ** exponent).toFixed(4);
+  if (mantissa.startsWith('10')) { exponent += 1; mantissa = (kg / 10 ** exponent).toFixed(4); }
+  const power = String(exponent).replace('-', '⁻').replace(/\d/g, digit => superscript[Number(digit)]);
+  return `${mantissa}${nbsp}×${nbsp}10${power}${nbsp}kg`;
+}
 export function formatPeriod(seconds: number): string {
   const days = seconds / 86400;
-  return days >= 1 ? `${days.toFixed(4)} days` : `${(seconds / 3600).toFixed(3)} hours`;
+  if (days >= 730.5) return `${grouped(days, 2)}${nbsp}d · ${(days / 365.25).toFixed(2)}${nbsp}yr`;
+  return days >= 1 ? `${days.toFixed(3)}${nbsp}d` : `${(seconds / 3600).toFixed(3)}${nbsp}h`;
 }
 /** Preset indices of the astronomy scenes (main and family), as C numbers them. */
 export const sceneIndices = lessonOptions.flatMap(([name], index) => sceneNames.includes(name) ? [index] : []);
@@ -426,12 +461,12 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
         : Number.isFinite(state.periodS) ? formatPeriod(state.periodS!) : 'Unbound (no closed orbit)');
       setText(readouts.interval, `${(state.intervalSeconds / 3600).toFixed(2)} simulated hours`);
       setText(readouts.parent, state.parent);
-      setText(readouts.distance, state.hasParent ? `${(state.distanceM / 1000).toFixed(3)} km` : 'N/A — no parent');
-      setText(readouts.speed, state.hasParent ? `${(state.speedMps / 1000).toFixed(6)} km/s` : 'N/A — no parent');
+      setText(readouts.distance, state.hasParent ? formatDistance(state.distanceM) : 'N/A — no parent');
+      setText(readouts.speed, state.hasParent ? formatSpeed(state.speedMps) : 'N/A — no parent');
       setText(readouts.mass, state.massQuality === 2 ? 'Unknown (test particle)'
-        : `${state.massKg.toExponential(6)} kg${state.massQuality === 1 ? ' (estimated)' : state.massQuality === 3 ? ' (published; quality unclassified)' : ''}`);
+        : `${formatMass(state.massKg)}${state.massQuality === 1 ? ' (estimated)' : state.massQuality === 3 ? ' (published; quality unclassified)' : ''}`);
       setText(readouts.radius, state.radiusQuality === 2 ? 'Unknown (marker only)'
-        : `${(state.radiusM / 1000).toFixed(3)} km${state.radiusQuality === 1 ? ' (estimated)' : state.radiusQuality === 3 ? ' (published; quality unclassified)' : ''}`);
+        : `${formatRadius(state.radiusM)}${state.radiusQuality === 1 ? ' (estimated)' : state.radiusQuality === 3 ? ' (published; quality unclassified)' : ''}`);
       setText(readouts.camera, `${state.cameraTarget} · ${state.zoom.toPrecision(4)} render units`);
       setText(readouts.achieved, shortTimescale ? `${(state.paused ? 0 : state.achievedTimeScale).toFixed(2)} seconds / second`
         : `${(state.paused ? 0 : state.achievedTimeScale / 86400).toFixed(2)} days / second`);
