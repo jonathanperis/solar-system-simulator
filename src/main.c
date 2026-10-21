@@ -17,6 +17,10 @@ EM_JS(int, solar_web_initial_canvas_width, (void), {
     return Math.max(1, value);
 })
 
+EM_JS(int, solar_web_prefers_reduced_motion, (void), {
+    return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 0;
+})
+
 EM_JS(int, solar_web_initial_canvas_height, (void), {
     const wrap = document.querySelector('.canvas-wrap');
     const canvas = Module.canvas;
@@ -107,6 +111,18 @@ typedef struct SolarApp {
     bool grid; /* reference grid visibility (presentation only) */
     bool labels; /* in-canvas body names (presentation only) */
     bool orbits; /* osculating orbit guides (presentation only, A107) */
+    /* Camera presentation (A112): the view actually shown (eased toward the
+     * framing in orbit_camera during a fly-to), pointer state for drag, pinch
+     * and click-to-select, and a pause of auto-rotation after interaction. */
+    OrbitCameraFlight flight;
+    Vec3d shown_origin;
+    OrbitCameraState shown_camera;
+    bool reduced_motion;
+    bool pointer_down;
+    Vector2 pointer_last;
+    float pointer_travel;
+    float pinch_spread;
+    float interaction_hold_seconds;
     RenderResources render;
     char feedback[160];
 #if defined(PLATFORM_WEB)
@@ -162,6 +178,68 @@ static size_t camera_target_index(const SolarApp *state)
         : state->session.selected_body_index;
 }
 
+/* Pointer input on the canvas (A112): one finger or the left mouse button
+ * turns the view, two fingers pinch-zoom, and a press released without
+ * moving selects the body under it. Presentation and selection only. */
+#define SOLAR_INTERACTION_HOLD_SECONDS 4.0f
+#define SOLAR_CLICK_SLOP_PIXELS 5.0f
+static void solar_app_command(SolarApp *state, SolarCommand command, int value);
+static void handle_pointer(SolarApp *state)
+{
+    int touches = GetTouchPointCount();
+    if (touches >= 2) {
+        Vector2 a = GetTouchPosition(0), b = GetTouchPosition(1);
+        float spread = hypotf(a.x - b.x, a.y - b.y);
+        if (state->pinch_spread > 0.0f && spread > 0.0f) orbit_camera_pinch(&state->orbit_camera, spread / state->pinch_spread);
+        state->pinch_spread = spread;
+        /* A pinch is never a click, and lifting one finger must not jump. */
+        state->pointer_down = false;
+        state->pointer_travel = 1e9f;
+        state->interaction_hold_seconds = SOLAR_INTERACTION_HOLD_SECONDS;
+        return;
+    }
+    state->pinch_spread = 0.0f;
+    bool down = touches == 1 || IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+    Vector2 at = touches == 1 ? GetTouchPosition(0) : GetMousePosition();
+    if (down) {
+        if (state->pointer_down) {
+            float dx = at.x - state->pointer_last.x, dy = at.y - state->pointer_last.y;
+            state->pointer_travel += fabsf(dx) + fabsf(dy);
+            if (state->pointer_travel > SOLAR_CLICK_SLOP_PIXELS && (dx != 0.0f || dy != 0.0f)) {
+                orbit_camera_drag(&state->orbit_camera, dx, dy, (float)GetScreenHeight());
+                state->interaction_hold_seconds = SOLAR_INTERACTION_HOLD_SECONDS;
+            }
+        } else {
+            state->pointer_travel = 0.0f;
+        }
+        state->pointer_last = at;
+        state->pointer_down = true;
+        return;
+    }
+    if (state->pointer_down && state->pointer_travel <= SOLAR_CLICK_SLOP_PIXELS) {
+        int picked = renderer_pick_body(&state->session.system, state->render_mode, state->shown_origin, state->camera,
+            state->pointer_last);
+        if (picked >= 0 && (size_t)picked != state->session.selected_body_index) {
+            solar_app_command(state, SOLAR_COMMAND_SELECT, picked);
+            /* Clicking a body means "take me there": fly in to frame it.
+             * Unknown-radius markers are only selected; a close-up of a
+             * nonphysical marker shows nothing. */
+            if (state->session.system.bodies[picked].radius_quality != PHYSICAL_UNKNOWN)
+                solar_app_command(state, SOLAR_COMMAND_FRAME_BODY, 0);
+        }
+    }
+    state->pointer_down = false;
+}
+
+/* Start easing from the view on screen to whatever framing the caller sets
+ * next (A112). With reduced motion the flight has zero length: a cut. */
+#define SOLAR_FLIGHT_SECONDS 1.6f
+static void begin_camera_flight(SolarApp *state)
+{
+    double from[3] = {state->shown_origin.x, state->shown_origin.y, state->shown_origin.z};
+    orbit_camera_flight_begin(&state->flight, from, &state->shown_camera, state->reduced_motion ? 0.0f : SOLAR_FLIGHT_SECONDS);
+}
+
 /* Framing turns the camera to the framed body's sunlit side (about 40 degrees
  * off the Sun line) so a newly selected planet is seen by day, not as a dark
  * night-side disc. Auto-rotation continues from there; physics is untouched. */
@@ -183,6 +261,7 @@ static void face_sunlit_side(SolarApp *state, size_t body_index)
  * viewing angle is kept. */
 static void frame_selected_system(SolarApp *state, bool face_sun)
 {
+    if (face_sun) begin_camera_flight(state);
     RenderSystemFrame frame = renderer_system_frame(&state->session.system, state->session.selected_body_index, state->render_mode);
     if (face_sun) face_sunlit_side(state, frame.root_index);
     orbit_camera_frame_sphere(&state->orbit_camera, (float)frame.radius, state->camera.fovy,
@@ -193,6 +272,7 @@ static void frame_selected_system(SolarApp *state, bool face_sun)
 
 static void frame_selected_body(SolarApp *state, bool face_sun)
 {
+    if (face_sun) begin_camera_flight(state);
     RenderSystemFrame frame = renderer_body_frame(&state->session.system, state->session.selected_body_index, state->render_mode);
     if (face_sun) face_sunlit_side(state, frame.root_index);
     orbit_camera_frame_sphere(&state->orbit_camera, (float)frame.radius, state->camera.fovy,
@@ -282,12 +362,14 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
             break;
         case SOLAR_COMMAND_SPEED: simulation_session_set_speed(session, value); break;
         case SOLAR_COMMAND_SELECT:
+            begin_camera_flight(state);
             simulation_session_select_body(session, value);
             state->system_framed = false;
             state->body_framed = false;
             state->orbit_camera = orbit_camera_default_state();
             break;
         case SOLAR_COMMAND_VIEW:
+            begin_camera_flight(state);
             state->render_mode = next_render_scale_mode(state->render_mode);
             if (state->system_framed) frame_selected_system(state, false);
             else if (state->body_framed) frame_selected_body(state, false);
@@ -569,16 +651,35 @@ static void solar_app_update_draw(void *user_data)
 #if !defined(PLATFORM_WEB)
     simulation_session_set_background(&state->session, IsWindowMinimized());
 #endif
-    orbit_camera_apply_zoom(&state->orbit_camera, GetMouseWheelMove());
+    float wheel = GetMouseWheelMove();
+    if (wheel != 0.0f) state->interaction_hold_seconds = SOLAR_INTERACTION_HOLD_SECONDS;
+    orbit_camera_apply_zoom(&state->orbit_camera, wheel);
+    handle_pointer(state);
+    bool stalled = simulation_frame_is_stall(frame_time);
+    if (state->interaction_hold_seconds > 0.0f && !stalled) state->interaction_hold_seconds -= frame_time;
     /* A stalled frame (sleep, debugger) is discarded by the simulation clock;
-     * the camera skips it too instead of jumping to an arbitrary angle. */
-    if (state->auto_rotate && !simulation_frame_is_stall(frame_time)) orbit_camera_advance(&state->orbit_camera, frame_time);
+     * the camera skips it too instead of jumping to an arbitrary angle. Auto-
+     * rotation also waits while someone is steering the view. */
+    if (state->auto_rotate && !stalled && state->interaction_hold_seconds <= 0.0f)
+        orbit_camera_advance(&state->orbit_camera, frame_time);
     simulation_session_update(&state->session, frame_time);
 #if defined(PLATFORM_WEB)
     if (state->web_body_count != state->session.system.body_count) populate_web_bodies();
 #endif
+    /* The framing lives in orbit_camera and the target body; a fly-to eases
+     * the shown view toward it (A112). The target keeps moving during the
+     * flight, so the blend reads its current position every frame. */
     Vec3d origin = renderer_body_position(&state->session.system, camera_target_index(state), state->render_mode);
-    apply_orbit_camera(&state->camera, &state->orbit_camera, (Vector3){0,0,0});
+    OrbitCameraState shown = state->orbit_camera;
+    if (state->flight.active) {
+        float progress = orbit_camera_flight_advance(&state->flight, stalled ? 0.0f : frame_time);
+        double to[3] = {origin.x, origin.y, origin.z}, at[3];
+        orbit_camera_flight_blend(&state->flight, progress, to, &state->orbit_camera, at, &shown);
+        origin = (Vec3d){at[0], at[1], at[2]};
+    }
+    state->shown_origin = origin;
+    state->shown_camera = shown;
+    apply_orbit_camera(&state->camera, &shown, (Vector3){0,0,0});
 
 #if defined(PLATFORM_WEB)
     /* Readouts for people: 15 updates a second read as live, and each report
@@ -594,8 +695,8 @@ static void solar_app_update_draw(void *user_data)
 
     /* Real-scale moon systems need a near plane smaller than raylib's default.
      * Clip distances follow the camera only; SI positions and radii stay intact. */
-    double far_plane = fmax(1000.0, state->orbit_camera.distance * 4.0);
-    rlSetClipPlanes(fmax(1e-9, state->orbit_camera.distance * 0.001), far_plane);
+    double far_plane = fmax(1000.0, state->shown_camera.distance * 4.0);
+    rlSetClipPlanes(fmax(1e-9, state->shown_camera.distance * 0.001), far_plane);
     /* Spin models count TDB days from J2000. Scenes and catalog experiments
      * start at the scene epoch (2026-06-09); synthetic lessons at J2000. */
     bool dated = simulation_session_is_dated(&state->session);
@@ -741,8 +842,15 @@ int main(int argc, char **argv)
     app.camera.fovy = 45.0f;
     app.camera.projection = CAMERA_PERSPECTIVE;
     app.orbit_camera = orbit_camera_default_state();
+    app.shown_camera = app.orbit_camera;
     app.session = simulation_session_create();
     app.auto_rotate = true;
+#if defined(PLATFORM_WEB)
+    /* prefers-reduced-motion (DESIGN.md): no auto-rotation, and framing cuts
+     * instead of flying. The page unticks its Rotate box to match. */
+    app.reduced_motion = solar_web_prefers_reduced_motion() != 0;
+    if (app.reduced_motion) app.auto_rotate = false;
+#endif
     app.grid = true;
     app.labels = true;
     app.orbits = true;

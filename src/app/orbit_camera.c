@@ -84,3 +84,71 @@ void orbit_camera_frame_sphere(OrbitCameraState *state, float radius, float vert
     state->max_distance = fmaxf(80.0f, state->distance * 4.0f);
     state->zoom_speed = state->distance * 0.1f;
 }
+
+static float wrap_turn(float angle)
+{
+    const float full_turn = 2.0f * acosf(-1.0f);
+    float wrapped = fmodf(angle, full_turn);
+    if (wrapped < 0.0f) wrapped += full_turn;
+    return wrapped < full_turn ? wrapped : 0.0f;
+}
+
+void orbit_camera_drag(OrbitCameraState *state, float dx_pixels, float dy_pixels, float viewport_height)
+{
+    if (!(viewport_height > 0.0f)) return;
+    const float radians_per_pixel = acosf(-1.0f) / viewport_height;
+    state->yaw_radians = wrap_turn(state->yaw_radians - dx_pixels * radians_per_pixel);
+    state->pitch_radians = clamp_float(state->pitch_radians + dy_pixels * radians_per_pixel,
+        -ORBIT_CAMERA_MAX_PITCH_RADIANS, ORBIT_CAMERA_MAX_PITCH_RADIANS);
+}
+
+void orbit_camera_pinch(OrbitCameraState *state, float ratio)
+{
+    if (!(ratio > 0.0f) || !isfinite(ratio)) return;
+    state->distance = clamp_float(state->distance / ratio, state->min_distance, state->max_distance);
+}
+
+void orbit_camera_flight_begin(OrbitCameraFlight *flight, const double origin[3], const OrbitCameraState *current,
+    float duration_seconds)
+{
+    *flight = (OrbitCameraFlight){.active = true, .duration_seconds = duration_seconds > 0.0f ? duration_seconds : 0.0f,
+        .from_origin = {origin[0], origin[1], origin[2]}, .from = *current};
+}
+
+float orbit_camera_flight_advance(OrbitCameraFlight *flight, float dt_seconds)
+{
+    if (!flight->active) return 1.0f;
+    flight->elapsed_seconds += dt_seconds > 0.0f ? dt_seconds : 0.0f;
+    float t = flight->duration_seconds > 0.0f ? flight->elapsed_seconds / flight->duration_seconds : 1.0f;
+    if (t >= 1.0f) {
+        flight->active = false;
+        return 1.0f;
+    }
+    /* Smootherstep (6t^5 - 15t^4 + 10t^3): zero speed and acceleration at
+     * both ends, so the camera neither lurches off nor bumps into place. */
+    return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
+}
+
+void orbit_camera_flight_blend(const OrbitCameraFlight *flight, float progress, const double to_origin[3],
+    const OrbitCameraState *to, double out_origin[3], OrbitCameraState *out)
+{
+    const float pi = acosf(-1.0f);
+    float e = clamp_float(progress, 0.0f, 1.0f);
+    double travel = 0;
+    for (int k = 0; k < 3; ++k) {
+        double delta = to_origin[k] - flight->from_origin[k];
+        out_origin[k] = e >= 1.0f ? to_origin[k] : flight->from_origin[k] + delta * e;
+        travel += delta * delta;
+    }
+    *out = *to;
+    /* Turn the short way round. */
+    float turn = fmodf(to->yaw_radians - flight->from.yaw_radians, 2.0f * pi);
+    if (turn > pi) turn -= 2.0f * pi;
+    if (turn < -pi) turn += 2.0f * pi;
+    out->yaw_radians = e >= 1.0f ? to->yaw_radians : wrap_turn(flight->from.yaw_radians + turn * e);
+    out->pitch_radians = flight->from.pitch_radians + (to->pitch_radians - flight->from.pitch_radians) * e;
+    double d0 = flight->from.distance > 1e-30f ? flight->from.distance : 1e-30, d1 = to->distance > 1e-30f ? to->distance : 1e-30;
+    double hop = 0.6 * log(1.0 + sqrt(travel) / (d0 > d1 ? d0 : d1));
+    double log_distance = log(d0) + (log(d1) - log(d0)) * e + hop * sin(pi * e);
+    out->distance = e >= 1.0f ? to->distance : (float)exp(log_distance);
+}
