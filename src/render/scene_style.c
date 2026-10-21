@@ -2,7 +2,9 @@
 
 #include <limits.h>
 #include <math.h>
+#include <string.h>
 
+#include "../sim/constants.h"
 #include "../sim/orbit.h"
 
 #define PI 3.14159265358979323846
@@ -653,4 +655,48 @@ double render_slide_past(double x, double y, double w, double h, const double bl
     bool before_fits = before >= lo && before + size <= hi, after_fits = after >= lo && after + size <= hi;
     if (before_fits && (!after_fits || start - before <= after - start)) return before - start;
     return after_fits ? after - start : 0;
+}
+
+static unsigned read_u16(const unsigned char *p) { return (unsigned)p[0] | (unsigned)p[1] << 8; }
+
+size_t render_belt_decode(const unsigned char *bytes, size_t length, RenderBeltBody *out, size_t capacity)
+{
+    if (!bytes || length < 16 || memcmp(bytes, "SOLBELT1", 8) != 0) return 0;
+    size_t count = (size_t)bytes[8] | (size_t)bytes[9] << 8 | (size_t)bytes[10] << 16 | (size_t)bytes[11] << 24;
+    if (count > capacity || length != 16 + count * 16) return 0;
+    const double turn = 2 * PI / 65535.0;
+    for (size_t k = 0; k < count; ++k) {
+        const unsigned char *r = bytes + 16 + k * 16;
+        float a;
+        memcpy(&a, r, sizeof(a)); /* little-endian IEEE single, as written */
+        out[k] = (RenderBeltBody){a, (float)(read_u16(r + 4) / 65535.0), (float)(read_u16(r + 6) * PI / 65535.0),
+            (float)(read_u16(r + 8) * turn), (float)(read_u16(r + 10) * turn), (float)(read_u16(r + 12) * turn), r[14]};
+        if (!(a > 0) || !isfinite(a) || out[k].e >= 1.0f) return 0;
+    }
+    return count;
+}
+
+double render_belt_mean_motion(double a_au)
+{
+    double a = a_au * SOLAR_AU_METERS;
+    return sqrt(SOLAR_SUN_GM_M3PS2 / (a * a * a)) * SOLAR_DAY_SECONDS;
+}
+
+Vec3d render_belt_position(const RenderBeltBody *body, double days)
+{
+    double e = body->e, a = body->a_au;
+    double m = fmod(body->mean_anomaly0 + render_belt_mean_motion(a) * days, 2 * PI);
+    /* Kepler's equation M = E - e sin E by Newton's method from E = M + e sin M:
+     * six steps converge to below float precision for e < 0.97. */
+    double E = m + e * sin(m);
+    for (int k = 0; k < 6; ++k) E -= (E - e * sin(E) - m) / (1 - e * cos(E));
+    double x = a * (cos(E) - e), y = a * sqrt(1 - e * e) * sin(E);
+    /* Perifocal to ecliptic (3-1-3: periapsis, inclination, node), then to
+     * simulation axes (x, y, z)_sim = (X, Z, -Y) as orbit_ecliptic_to_simulation. */
+    double cw = cos(body->periapsis), sw = sin(body->periapsis), ci = cos(body->inclination), si = sin(body->inclination);
+    double cn = cos(body->node), sn = sin(body->node);
+    double X = x * (cw * cn - sw * sn * ci) - y * (sw * cn + cw * sn * ci);
+    double Y = x * (cw * sn + sw * cn * ci) + y * (cw * cn * ci - sw * sn);
+    double Z = x * (sw * si) + y * (cw * si);
+    return (Vec3d){X, Z, -Y};
 }

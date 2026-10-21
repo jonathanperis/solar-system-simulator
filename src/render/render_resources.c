@@ -220,6 +220,70 @@ static const char fragment_shader_lit[] =
     "    FRAG_COLOR = vec4(toDisplay(color), 1.0);\n"
     "}\n";
 
+/* Small-body cloud (SPEC A121). Every body is a quad of four vertices that
+ * share its orbital elements; the vertex shader solves Kepler's equation for
+ * the current day and moves the quad there, then spreads its corners a few
+ * pixels on screen. It mirrors render_belt_position in scene_style.c exactly
+ * (same Newton start, six steps, 3-1-3 rotation and simulation axes); the
+ * CPU never touches the 48,000 bodies per frame.
+ * Attributes: position = (corner x, corner y, kind), texcoord = (a [AU], e),
+ * texcoord2 = (inclination, node), normal = (periapsis, M0, n [rad/day]). */
+static const char belt_vertex_shader[] = SHADER_HEADER_VS
+    "IN vec3 vertexPosition;\n"
+    "IN vec2 vertexTexCoord;\n"
+    "IN vec2 vertexTexCoord2;\n"
+    "IN vec3 vertexNormal;\n"
+    "uniform mat4 mvp;\n"
+    "uniform float days;\n"      /* since the scene epoch */
+    "uniform vec3 sunOffset;\n"  /* the Sun relative to the view origin, render units */
+    "uniform float auUnits;\n"   /* render units per AU */
+    "uniform vec2 viewport;\n"   /* pixels */
+    "uniform float pointSize;\n" /* pixels */
+    "uniform float focal;\n"     /* pixels per render unit at unit depth: viewport height / (2 tan(fovy/2)) */
+    "OUT vec2 corner;\n"
+    "OUT vec4 tint;\n"
+    "void main() {\n"
+    "    float a = vertexTexCoord.x, e = vertexTexCoord.y;\n"
+    "    float m = mod(vertexNormal.y + vertexNormal.z * days, 6.2831853);\n"
+    "    float E = m + e * sin(m);\n"
+    "    for (int k = 0; k < 6; ++k) E -= (E - e * sin(E) - m) / (1.0 - e * cos(E));\n"
+    "    float x = a * (cos(E) - e), y = a * sqrt(1.0 - e * e) * sin(E);\n"
+    "    float cw = cos(vertexNormal.x), sw = sin(vertexNormal.x);\n"
+    "    float ci = cos(vertexTexCoord2.x), si = sin(vertexTexCoord2.x);\n"
+    "    float cn = cos(vertexTexCoord2.y), sn = sin(vertexTexCoord2.y);\n"
+    "    vec3 ecl = vec3(x * (cw * cn - sw * sn * ci) - y * (sw * cn + cw * sn * ci),\n"
+    "                    x * (cw * sn + sw * cn * ci) + y * (cw * cn * ci - sw * sn),\n"
+    "                    x * (sw * si) + y * (cw * si));\n"
+    "    vec3 world = sunOffset + vec3(ecl.x, ecl.z, -ecl.y) * auUnits;\n"
+    "    vec4 clip = mvp * vec4(world, 1.0);\n"
+    "    corner = vertexPosition.xy;\n"
+    /* Density: a point fades as its own orbit shrinks on screen (a in AU times
+     * pixels per AU at its depth), so 40,000 points piled into a few hundred
+     * pixels around the Sun never blow out to white, while the wide Kuiper
+     * belt stays visible from afar. */
+    "    float orbitPixels = a * auUnits * focal / max(clip.w, 1e-6);\n"
+    "    float density = smoothstep(25.0, 220.0, orbitPixels);\n"
+    "    clip.xy += corner * pointSize / viewport * 2.0 * clip.w;\n"
+    "    gl_Position = clip;\n"
+    /* Muted hues by orbit class: belt stone, Trojan green, near-Earth red,
+     * outer-system blue, Mars-crosser sand. */
+    "    float kind = vertexPosition.z;\n"
+    /* Quiet on purpose: the cloud is context behind the planets, never a
+     * veil over them. Near-Earth objects crowd the inner system, so dimmest. */
+    "    tint = kind < 0.5 ? vec4(0.62, 0.57, 0.48, 0.30) : kind < 1.5 ? vec4(0.45, 0.75, 0.5, 0.42)\n"
+    "        : kind < 2.5 ? vec4(0.85, 0.5, 0.42, 0.26) : kind < 3.5 ? vec4(0.5, 0.65, 0.95, 0.5) : vec4(0.8, 0.62, 0.45, 0.24);\n"
+    "    tint.a *= density;\n"
+    "}\n";
+
+static const char belt_fragment_shader[] = SHADER_HEADER_FS
+    "IN vec2 corner;\n"
+    "IN vec4 tint;\n"
+    SHADER_OUTPUT
+    "void main() {\n"
+    "    float fade = 1.0 - smoothstep(0.35, 1.0, length(corner));\n"
+    "    FRAG_COLOR = vec4(tint.rgb * tint.a * fade, 1.0);\n"
+    "}\n";
+
 /* Copy generated geometry into raylib-owned buffers (UnloadMesh frees them
  * with RL_FREE) and upload it to the GPU once. */
 static Mesh upload_mesh(size_t vertex_count, size_t index_count, const float *positions, const float *normals,
@@ -336,6 +400,19 @@ bool renderer_resources_init(RenderResources *resources)
     resources->label_font = LoadFontFromMemory(".ttf", label_font, label_font_size, 32, NULL, 95);
     resources->label_font_ready = resources->label_font.texture.id != 0;
     if (resources->label_font_ready) SetTextureFilter(resources->label_font.texture, TEXTURE_FILTER_BILINEAR);
+    resources->belt_shader = LoadShaderFromMemory(belt_vertex_shader, belt_fragment_shader);
+    if (IsShaderValid(resources->belt_shader) && resources->belt_shader.id != rlGetShaderIdDefault()) {
+        resources->loc_belt_days = GetShaderLocation(resources->belt_shader, "days");
+        resources->loc_belt_sun = GetShaderLocation(resources->belt_shader, "sunOffset");
+        resources->loc_belt_au = GetShaderLocation(resources->belt_shader, "auUnits");
+        resources->loc_belt_viewport = GetShaderLocation(resources->belt_shader, "viewport");
+        resources->loc_belt_size = GetShaderLocation(resources->belt_shader, "pointSize");
+        resources->loc_belt_focal = GetShaderLocation(resources->belt_shader, "focal");
+        resources->belt_material = LoadMaterialDefault();
+        resources->belt_material.shader = resources->belt_shader;
+    } else {
+        resources->belt_shader = (Shader){0};
+    }
     resources->material = LoadMaterialDefault();
     resources->material.shader = resources->shader;
     resources->ready = resources->sphere_detailed.vertexCount > 0 && resources->sphere_simple.vertexCount > 0 &&
@@ -352,6 +429,11 @@ void renderer_resources_unload(RenderResources *resources)
     if (resources->white.id) UnloadTexture(resources->white);
     if (resources->glow.id) UnloadTexture(resources->glow);
     if (resources->label_font_ready) UnloadFont(resources->label_font);
+    for (int k = 0; k < resources->belt_mesh_count; ++k) UnloadMesh(resources->belt_meshes[k]);
+    if (resources->belt_shader.id) {
+        RL_FREE(resources->belt_material.maps);
+        UnloadShader(resources->belt_shader);
+    }
     /* UnloadMaterial would also unload the shared shader and default texture;
      * release only the map array this material allocated. */
     RL_FREE(resources->material.maps);
@@ -402,4 +484,46 @@ int renderer_loaded_texture_count(const RenderResources *resources)
     int count = 0;
     for (int i = 0; i < RENDER_TEXTURE_COUNT; ++i) count += resources->texture_loaded[i];
     return count;
+}
+
+bool renderer_load_belt_memory(RenderResources *resources, const unsigned char *bytes, size_t length)
+{
+    static RenderBeltBody bodies[RENDER_BELT_CAPACITY];
+    if (!resources->belt_shader.id || resources->belt_mesh_count) return false;
+    size_t count = render_belt_decode(bytes, length, bodies, RENDER_BELT_CAPACITY);
+    if (!count) return false;
+    const size_t per_mesh = 16383; /* 4 vertices each: indices stay below 65536 */
+    const float corners[4][2] = {{-1, -1}, {1, -1}, {1, 1}, {-1, 1}};
+    for (size_t first = 0; first < count && resources->belt_mesh_count < 4; first += per_mesh) {
+        size_t n = count - first < per_mesh ? count - first : per_mesh;
+        Mesh mesh = {0};
+        mesh.vertexCount = (int)(n * 4);
+        mesh.triangleCount = (int)(n * 2);
+        mesh.vertices = RL_MALLOC(n * 4 * 3 * sizeof(float));
+        mesh.texcoords = RL_MALLOC(n * 4 * 2 * sizeof(float));
+        mesh.texcoords2 = RL_MALLOC(n * 4 * 2 * sizeof(float));
+        mesh.normals = RL_MALLOC(n * 4 * 3 * sizeof(float));
+        mesh.indices = RL_MALLOC(n * 6 * sizeof(unsigned short));
+        if (!mesh.vertices || !mesh.texcoords || !mesh.texcoords2 || !mesh.normals || !mesh.indices) {
+            RL_FREE(mesh.vertices); RL_FREE(mesh.texcoords); RL_FREE(mesh.texcoords2); RL_FREE(mesh.normals); RL_FREE(mesh.indices);
+            break;
+        }
+        for (size_t k = 0; k < n; ++k) {
+            const RenderBeltBody *b = &bodies[first + k];
+            float mean_motion = (float)render_belt_mean_motion(b->a_au);
+            for (int c = 0; c < 4; ++c) {
+                size_t v = k * 4 + (size_t)c;
+                mesh.vertices[v * 3] = corners[c][0]; mesh.vertices[v * 3 + 1] = corners[c][1]; mesh.vertices[v * 3 + 2] = b->kind;
+                mesh.texcoords[v * 2] = b->a_au; mesh.texcoords[v * 2 + 1] = b->e;
+                mesh.texcoords2[v * 2] = b->inclination; mesh.texcoords2[v * 2 + 1] = b->node;
+                mesh.normals[v * 3] = b->periapsis; mesh.normals[v * 3 + 1] = b->mean_anomaly0; mesh.normals[v * 3 + 2] = mean_motion;
+            }
+            const unsigned short base = (unsigned short)(k * 4), order[6] = {0, 1, 2, 0, 2, 3};
+            for (int t = 0; t < 6; ++t) mesh.indices[k * 6 + (size_t)t] = (unsigned short)(base + order[t]);
+        }
+        UploadMesh(&mesh, false);
+        resources->belt_meshes[resources->belt_mesh_count++] = mesh;
+    }
+    resources->belt_count = count;
+    return resources->belt_mesh_count > 0;
 }

@@ -8,6 +8,7 @@ docs/test-results/
 docs/playwright-report/
 docs/public/wasm/
 docs/public/textures/
+docs/public/belt/
 playwright-evidence/
 .playwright-cli/
 .specs/

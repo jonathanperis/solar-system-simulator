@@ -204,3 +204,17 @@ test('arrows, address, Back, search, tour and follow drive navigation', async ({
   await expect(follow).toHaveText('Follow: On');
   await expect(follow).toHaveAttribute('aria-pressed', 'true');
 });
+
+// SPEC A121: the small-body sample loads after the textures and the cloud
+// toggles through C.
+test('the small-body cloud loads and toggles', async ({ page }) => {
+  await page.goto(base);
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
+  await expect(page.locator('canvas').first()).toHaveAttribute('data-belt', 'loaded', { timeout: 60000 });
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  const belt = page.getByRole('button', { name: /^Belt: (On|Off)$/ });
+  await expect(belt).toHaveText('Belt: On');
+  await belt.click();
+  await expect(belt).toHaveText('Belt: Off');
+  await expect(belt).toHaveAttribute('aria-pressed', 'false');
+});

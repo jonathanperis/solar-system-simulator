@@ -31,6 +31,14 @@ typedef struct RenderResources {
     int loc_mode, loc_light_dir, loc_view_pos, loc_atmosphere, loc_night_lights;
     int loc_body_center, loc_body_radius, loc_ring_normal, loc_ring_radii, loc_ring_shadow;
     int loc_occluders, loc_occluder_count, loc_sun_radius;
+    /* Small-body cloud (A121): its own point shader and up to
+     * RENDER_BELT_MESHES meshes of quads (16-bit indices cap a mesh). */
+    Shader belt_shader;
+    int loc_belt_days, loc_belt_sun, loc_belt_au, loc_belt_viewport, loc_belt_size, loc_belt_focal;
+    Mesh belt_meshes[4];
+    int belt_mesh_count;
+    size_t belt_count;
+    Material belt_material;
     Mesh sphere_detailed, sphere_simple, ring;
     Material material;
     Texture2D textures[RENDER_TEXTURE_COUNT];
@@ -52,6 +60,8 @@ typedef struct RenderView {
     bool show_grid;
     bool show_orbits;
     size_t selected;
+    bool show_belt;        /* small-body cloud (A121): dated scenes only */
+    double days_since_epoch; /* scene time for the belt, days after JD 2461200.5 */
 } RenderView;
 
 bool renderer_resources_init(RenderResources *resources);
@@ -62,6 +72,9 @@ bool renderer_load_texture_memory(RenderResources *resources, RenderTextureSlot 
 /* Load every slot from `directory`; returns how many textures loaded. */
 int renderer_load_textures_from_directory(RenderResources *resources, const char *directory);
 int renderer_loaded_texture_count(const RenderResources *resources);
+/* Decode the small-body sample (assets/belt/small_bodies.bin) and upload its
+ * meshes; false keeps the cloud off. */
+bool renderer_load_belt_memory(RenderResources *resources, const unsigned char *bytes, size_t length);
 
 RenderSystemFrame renderer_system_frame(const SolarSystem *system, size_t selected, RenderScaleMode mode);
 RenderSystemFrame renderer_body_frame(const SolarSystem *system, size_t selected, RenderScaleMode mode);

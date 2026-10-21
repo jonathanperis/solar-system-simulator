@@ -58,6 +58,7 @@ interface RuntimeControls {
   contact: HTMLButtonElement;
   follow?: HTMLButtonElement;
   tour?: HTMLButtonElement;
+  belt?: HTMLButtonElement;
   /* Called with the selected body's name whenever C's selection changes. */
   onSelection?: (name: string) => void;
 }
@@ -76,9 +77,10 @@ interface LabState {
   labels?: boolean;
   /* Osculating orbit guides (presentation only, SPEC A107). */
   orbits?: boolean;
-  /* Follow camera and tour (SPEC A120). */
+  /* Follow camera and tour (SPEC A120), small-body cloud (A121). */
   follow?: boolean;
   touring?: boolean;
+  belt?: boolean;
 }
 
 export const lessonNames = lessonOptions.map(([, label]) => label);
@@ -157,7 +159,7 @@ interface RuntimeState {
 // Matches SolarCommand in src/main.c. All actions execute in the C runtime.
 export const runtimeCommands = { pause: 0, step: 1, reset: 2, speed: 3, select: 4, view: 5, zoom: 6, rotate: 7, frame: 8, frameBody: 9,
   trails: 10, vectors: 11, background: 12, contact: 13, grid: 14, labels: 15, orbits: 16,
-  follow: 17, tour: 18 } as const;
+  follow: 17, tour: 18, belt: 19 } as const;
 
 interface RuntimeBody { index: number; name: string; group: string }
 
@@ -245,8 +247,31 @@ type TextureRuntime = {
   _free?: (pointer: number) => void;
   _solar_web_texture_count?: () => number;
   _solar_web_load_texture?: (slot: number, pointer: number, length: number) => number;
+  _solar_web_load_belt?: (pointer: number, length: number) => number;
   HEAPU8?: Uint8Array;
 };
+
+/** Fetch the small-body sample (SPEC A121) and hand it to C. It is optional:
+ * a failure leaves the cloud off and is reported on the canvas. */
+export async function loadRuntimeBelt(runtime: TextureRuntime, canvas: HTMLCanvasElement, artifactUrl: URL): Promise<void> {
+  if (!runtime._malloc || !runtime._free || !runtime._solar_web_load_belt) return;
+  try {
+    const response = await fetch(new URL('../belt/small_bodies.bin', artifactUrl));
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const pointer = runtime._malloc(bytes.length);
+    if (!pointer) throw new Error('out of WebAssembly memory');
+    try {
+      runtime.HEAPU8!.set(bytes, pointer);
+      canvas.dataset.belt = runtime._solar_web_load_belt(pointer, bytes.length) ? 'loaded' : 'invalid';
+    } finally {
+      runtime._free(pointer);
+    }
+  } catch (error) {
+    canvas.dataset.belt = 'unavailable';
+    console.warn(`Small-body cloud unavailable (${errorMessage(error)}).`);
+  }
+}
 
 /**
  * Fetch the planet/backdrop maps after the first frame so the scene starts at
@@ -435,6 +460,10 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       setText(controls.labels, `Labels: ${state.labels === false ? 'Off' : 'On'}`);
       controls.labels.setAttribute('aria-pressed', String(state.labels !== false));
       setText(controls.orbits, `Orbits: ${state.orbits === false ? 'Off' : 'On'}`);
+      if (controls.belt) {
+        setText(controls.belt, `Belt: ${state.belt === false ? 'Off' : 'On'}`);
+        controls.belt.setAttribute('aria-pressed', String(state.belt !== false));
+      }
       if (controls.follow) {
         setText(controls.follow, `Follow: ${state.follow ? 'On' : 'Off'}`);
         controls.follow.setAttribute('aria-pressed', String(Boolean(state.follow)));
@@ -511,7 +540,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       // the runtime's own selection policy.
       if (!initialSelectionApplied) {
         initialSelectionApplied = true;
-        void loadRuntimeTextures(this, canvas, artifactUrl);
+        void loadRuntimeTextures(this, canvas, artifactUrl).then(() => loadRuntimeBelt(this, canvas, artifactUrl));
         pendingBody = requestedBody?.name;
         if (requestedBody && requestedBody.scene > 0)
           this.ccall?.('solar_web_lesson', 'number', ['number', 'number', 'number', 'number'], [requestedBody.scene, 1, 0, 15]);
@@ -549,6 +578,7 @@ export function mountSimulator(root: HTMLElement): void {
     speed: root.querySelector<HTMLInputElement>('[data-runtime-speed]')!,
     speedLabel: root.querySelector<HTMLElement>('[data-speed-label]') ?? undefined,
     follow: root.querySelector<HTMLButtonElement>('[data-command="follow"]') ?? undefined,
+    belt: root.querySelector<HTMLButtonElement>('[data-command="belt"]') ?? undefined,
     tour: root.querySelector<HTMLButtonElement>('[data-command="tour"]') ?? undefined,
     view: root.querySelector<HTMLButtonElement>('[data-command="view"]')!,
     search: root.querySelector<HTMLInputElement>('[data-runtime-search]')!,

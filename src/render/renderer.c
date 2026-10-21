@@ -1166,6 +1166,32 @@ static void draw_orbit_guides(const FrameContext *ctx)
     rlEnd();
 }
 
+/* Small-body cloud (SPEC A121): the GPU moves every sampled body along its
+ * heliocentric conic for today's date (see the vertex shader); here only the
+ * Sun's place, the scale and the time are set. Additive, depth-tested, no
+ * depth writes: planets hide what lies behind them. Presentation only. */
+static void draw_belt(const FrameContext *ctx)
+{
+    const RenderResources *resources = ctx->resources;
+    if (ctx->star < 0 || !resources->belt_mesh_count) return;
+    float days = (float)ctx->view->days_since_epoch;
+    float sun[3] = {ctx->star_position.x, ctx->star_position.y, ctx->star_position.z};
+    float au = meters_to_render_units(SOLAR_AU_METERS);
+    float viewport[2] = {(float)GetRenderWidth(), (float)GetRenderHeight()};
+    float size = 1.4f * pixel_scale;
+    SetShaderValue(resources->belt_shader, resources->loc_belt_days, &days, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(resources->belt_shader, resources->loc_belt_sun, sun, SHADER_UNIFORM_VEC3);
+    SetShaderValue(resources->belt_shader, resources->loc_belt_au, &au, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(resources->belt_shader, resources->loc_belt_viewport, viewport, SHADER_UNIFORM_VEC2);
+    SetShaderValue(resources->belt_shader, resources->loc_belt_size, &size, SHADER_UNIFORM_FLOAT);
+    /* In CSS pixels, like every other budget, so HiDPI does not change it. */
+    float focal = (float)(ctx->viewport_height / (2.0 * tan(ctx->camera.fovy * DEG2RAD / 2.0)));
+    SetShaderValue(resources->belt_shader, resources->loc_belt_focal, &focal, SHADER_UNIFORM_FLOAT);
+    rlDrawRenderBatchActive();
+    for (int k = 0; k < resources->belt_mesh_count; ++k)
+        DrawMesh(resources->belt_meshes[k], resources->belt_material, (Matrix){1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1});
+}
+
 /* Phase 1. Milky Way backdrop: a huge inside-out sphere centred on the camera,
  * drawn first without writing depth, so everything else draws over it and it
  * never moves as the camera translates (stars are effectively at infinity).
@@ -1395,6 +1421,7 @@ static void draw_translucent_layers(const FrameContext *ctx)
     }
 
     BeginBlendMode(BLEND_ADDITIVE);
+    if (ctx->view->show_belt) draw_belt(ctx);
     if (ctx->view->show_orbits) draw_orbit_guides(ctx);
     draw_trails(&ctx->cache, system, ctx->trails, ctx->mode, ctx->trail_frame, ctx->origin, &ctx->camera);
     /* Atmospheric halos: a shell a few percent above each body with air, so
