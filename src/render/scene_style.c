@@ -2,6 +2,7 @@
 
 #include <limits.h>
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "../sim/constants.h"
@@ -743,4 +744,34 @@ void render_uranus_ring_strip_illustrative(unsigned char *rgba)
         rgba[x * 4] = 150; rgba[x * 4 + 1] = 148; rgba[x * 4 + 2] = 145;
         rgba[x * 4 + 3] = (unsigned char)lround(alpha * 255);
     }
+}
+
+bool render_scale_bar(double meters_per_pixel, double max_pixels, RenderScaleBar *out)
+{
+    if (!(meters_per_pixel > 0) || !(max_pixels > 0) || !isfinite(meters_per_pixel)) return false;
+    double widest = meters_per_pixel * max_pixels;
+    bool au = widest >= 0.1 * SOLAR_AU_METERS * 2; /* AU once a 0.1 AU bar fits comfortably */
+    double unit = au ? SOLAR_AU_METERS : 1000.0;
+    double span = widest / unit;
+    double decade = pow(10.0, floor(log10(span)));
+    double step = span >= 5 * decade ? 5 : span >= 2 * decade ? 2 : 1;
+    double length = step * decade;
+    out->length_m = length * unit;
+    out->pixels = out->length_m / meters_per_pixel;
+    if (au) {
+        if (length >= 1) snprintf(out->label, sizeof(out->label), "%.0f AU", length);
+        else snprintf(out->label, sizeof(out->label), "%.1f AU", length);
+        return true;
+    }
+    if (length < 1) { snprintf(out->label, sizeof(out->label), "%.0f m", length * 1000); return true; }
+    /* Group thousands with a space (the label font is ASCII). */
+    char digits[24];
+    snprintf(digits, sizeof(digits), "%.0f", length);
+    size_t n = strlen(digits), o = 0;
+    for (size_t k = 0; k < n && o + 2 < sizeof(out->label); ++k) {
+        if (k > 0 && (n - k) % 3 == 0) out->label[o++] = ' ';
+        out->label[o++] = digits[k];
+    }
+    snprintf(out->label + o, sizeof(out->label) - o, " km");
+    return true;
 }
