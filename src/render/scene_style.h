@@ -307,28 +307,40 @@ double render_belt_mean_motion(double a_au);
  * single precision; keep the two identical. */
 Vec3d render_belt_position(const RenderBeltBody *body, double days);
 
-/* Uranus's rings (SPEC A122), from the NASA NSSDC Uranian Rings Fact Sheet:
- * the ten narrow rings' mean radius, width and normal optical depth. The
- * dusty nu and mu rings are not drawn. Presentation only. */
+/* Faint ring systems (SPEC A122, A126) from the NASA NSSDC ring fact sheets:
+ * each ring's mean radius, width and normal optical depth. Uranus's ten
+ * narrow rings, Neptune's Galle, Le Verrier, Lassell and Adams rings (the
+ * Adams arcs and Arago, without a depth, are not modelled) and Jupiter's halo,
+ * main and gossamer rings. Saturn keeps its texture map. Presentation only. */
 typedef struct RenderRing {
     const char *name;
     double radius_m, width_m, optical_depth;
 } RenderRing;
-#define RENDER_URANUS_RING_COUNT 10
-extern const RenderRing render_uranus_rings[RENDER_URANUS_RING_COUNT];
-/* The strip spans these radii (the ring mesh's inner and outer edges). */
-#define RENDER_URANUS_RING_INNER_M 41500e3
-#define RENDER_URANUS_RING_OUTER_M 51400e3
-#define RENDER_URANUS_RING_STRIP_WIDTH 1024
-/* Fill an RGBA strip (inner edge at x = 0): alpha is each pixel's share of
- * ring times its opacity 1 - exp(-tau); colour is the rings' dark grey. */
-void render_uranus_ring_strip(unsigned char *rgba);
-/* Illustrative scale (A122): the same rings on a coarse strip where each ring
- * fills the texel it falls in at opacity 0.25 + 0.75 (1 - exp(-tau)), so a
- * 2 km ring still draws as a line about a pixel wide. Render-only widening,
- * like enlarged illustrative bodies; real scale keeps the coverage strip. */
-#define RENDER_URANUS_RING_ILLUSTRATIVE_WIDTH 128
-void render_uranus_ring_strip_illustrative(unsigned char *rgba);
+typedef struct RenderRingSystem {
+    BodyId planet;
+    double planet_radius_m, inner_m, outer_m; /* the strip and mesh span */
+    /* Extent used for framing and moon clearance: the main rings. Jupiter's
+     * gossamer rings are dust from Amalthea and Thebe, which orbit inside
+     * them, so they do not count. */
+    double extent_m;
+    const RenderRing *rings;
+    size_t count;
+    unsigned char rgb[3];
+} RenderRingSystem;
+#define RENDER_RING_SYSTEM_COUNT 3
+const RenderRingSystem *render_ring_system_at(size_t index);
+/* The table-driven ring system of a planet, or NULL (Saturn has its map). */
+const RenderRingSystem *render_ring_system(BodyId planet);
+/* Real scale: area coverage, so a 2 km ring fills a fifth of a 10 km texel
+ * and the rings are as faint as they really are. */
+#define RENDER_RING_STRIP_WIDTH 1024
+void render_ring_strip(const RenderRingSystem *system, unsigned char *rgba);
+/* Illustrative scale: every ring fills the texels it touches at opacity
+ * 0.12 (log10 tau + 7.5), times 0.35 for rings wider than two texels, within
+ * [0.03, 0.85]. Narrow dense rings read as lines about a pixel wide; broad
+ * dusty rings stay ghostly. A render-only widening, like enlarged bodies. */
+#define RENDER_RING_ILLUSTRATIVE_WIDTH 128
+void render_ring_strip_illustrative(const RenderRingSystem *system, unsigned char *rgba);
 
 /* Scale bar (SPEC A123): given metres per pixel at the camera target's depth
  * and the widest bar wanted (pixels), the longest round distance that fits:
