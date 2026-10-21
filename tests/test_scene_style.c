@@ -436,6 +436,8 @@ static void test_markers_find_small_planets_and_frame_the_selection(void)
         previous = half;
     }
     assert(render_selection_wants_brackets(0) && render_selection_wants_brackets(40));
+    for (double radius = 0; radius < 300; radius += 11)
+        assert(render_hover_ring_radius(radius) > radius && render_hover_ring_radius(radius) > RENDER_RING_MARKER_RADIUS_PIXELS);
     assert(!render_selection_wants_brackets(RENDER_SELECTION_MAX_RADIUS_PIXELS));
 }
 

@@ -624,3 +624,9 @@ RenderOrientation render_sky_orientation(void)
     south = vec3d_scale(south, 1.0 / vec3d_length(south));
     return (RenderOrientation){south, centre, 0, true};
 }
+
+double render_hover_ring_radius(double radius_pixels)
+{
+    double ring = radius_pixels * 1.1 + 5.0;
+    return ring > RENDER_RING_MARKER_RADIUS_PIXELS + 2.0 ? ring : RENDER_RING_MARKER_RADIUS_PIXELS + 2.0;
+}
