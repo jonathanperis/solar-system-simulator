@@ -341,6 +341,12 @@ typedef struct RenderScaleBar {
 } RenderScaleBar;
 bool render_scale_bar(double meters_per_pixel, double max_pixels, RenderScaleBar *out);
 
+/* Constellation lines (SPEC A124): the IAU stick figures (d3-celestial,
+ * BSD 3-Clause, tools/constellations.py) as unit directions in simulation
+ * axes. Presentation only. */
+size_t render_constellation_count(void);
+bool render_constellation_segment(size_t index, Vec3d *a, Vec3d *b);
+
 /* Name labels drawn in the canvas (presentation only). The Sun, planets and
  * dwarf planets are always named; the selected body always is; moons and small bodies are
  * named once their family is zoomed in (at least

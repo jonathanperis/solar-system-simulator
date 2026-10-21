@@ -109,12 +109,13 @@ EM_JS(void, solar_web_report_lab, (int lesson, int method, double dt, double tic
     double acceleration, double specific_energy, double energy, double energy_change, int isolated,
     double momentum, double angular_momentum, double magnification, int trail_frame, int vectors,
     double px, double py, double pz, double vx, double vy, double vz, int contact_mode,
-    double min_factor, double contact_seconds, int grid, int labels, int orbits, int follow, int touring, int belt), {
+    double min_factor, double contact_seconds, int grid, int labels, int orbits, int follow, int touring, int belt,
+    int constellations), {
     Module.reportLabState({lesson, method, dt, ticks, factor, acceleration, specificEnergy: specific_energy,
         energy, energyChange: energy_change, isolated: !!isolated, momentum, angularMomentum: angular_momentum,
         magnification, trailFrame: trail_frame, vectors: !!vectors, position: [px, py, pz], velocity: [vx, vy, vz], contactMode: contact_mode,
         minFactor: min_factor, contactSeconds: contact_seconds, grid: !!grid, labels: !!labels, orbits: !!orbits,
-        follow: !!follow, touring: !!touring, belt: !!belt});
+        follow: !!follow, touring: !!touring, belt: !!belt, constellations: !!constellations});
 })
 
 EM_JS(void, solar_web_download_csv, (const char *data, int length), {
@@ -165,6 +166,7 @@ typedef struct SolarApp {
     bool labels; /* in-canvas body names (presentation only) */
     bool orbits; /* osculating orbit guides (presentation only, A107) */
     bool belt;   /* small-body cloud (presentation only, A121) */
+    bool constellations; /* IAU stick figures on the sky (A124) */
     /* Camera presentation (A112): the view actually shown (eased toward the
      * framing in orbit_camera during a fly-to), pointer state for drag, pinch
      * and click-to-select, and a pause of auto-rotation after interaction. */
@@ -216,7 +218,7 @@ typedef enum SolarCommand {
     SOLAR_COMMAND_SPEED, SOLAR_COMMAND_SELECT, SOLAR_COMMAND_VIEW,
     SOLAR_COMMAND_ZOOM, SOLAR_COMMAND_ROTATE, SOLAR_COMMAND_FRAME, SOLAR_COMMAND_FRAME_BODY,
     SOLAR_COMMAND_TRAILS, SOLAR_COMMAND_VECTORS, SOLAR_COMMAND_BACKGROUND, SOLAR_COMMAND_CONTACT, SOLAR_COMMAND_GRID, SOLAR_COMMAND_LABELS,
-    SOLAR_COMMAND_ORBITS, SOLAR_COMMAND_FOLLOW, SOLAR_COMMAND_TOUR, SOLAR_COMMAND_BELT
+    SOLAR_COMMAND_ORBITS, SOLAR_COMMAND_FOLLOW, SOLAR_COMMAND_TOUR, SOLAR_COMMAND_BELT, SOLAR_COMMAND_CONSTELLATIONS
 } SolarCommand;
 
 static SolarApp app;
@@ -627,6 +629,7 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
             break;
         }
         case SOLAR_COMMAND_BELT: state->belt = !state->belt; break;
+        case SOLAR_COMMAND_CONSTELLATIONS: state->constellations = !state->constellations; break;
         case SOLAR_COMMAND_TOUR:
             state->touring = !state->touring;
             state->tour_step = -1;
@@ -685,7 +688,7 @@ static void report_web_state(const SolarApp *state)
         selected->velocity_mps.x, selected->velocity_mps.y, selected->velocity_mps.z, session->clock.collision_mode,
         lesson_minimum_velocity_factor(session->lesson),
         (double)session->clock.contact_tick * simulation_clock_step_seconds(&session->clock), state->grid, state->labels,
-        state->orbits, state->follow, state->touring, state->belt);
+        state->orbits, state->follow, state->touring, state->belt, state->constellations);
     ForceContribution forces[SOLAR_SYSTEM_BODY_CAPACITY];
     size_t count = physics_force_breakdown(&session->system, session->selected_body_index, forces, SOLAR_SYSTEM_BODY_CAPACITY);
     solar_web_begin_forces(session->system.elapsed_seconds);
@@ -878,6 +881,7 @@ static void solar_app_update_draw(void *user_data)
         if (IsKeyPressed(KEY_ESCAPE)) step_out(state);
         if (IsKeyPressed(KEY_Y)) solar_app_command(state, SOLAR_COMMAND_FOLLOW, 0);
         if (IsKeyPressed(KEY_Q)) solar_app_command(state, SOLAR_COMMAND_BELT, 0);
+        if (IsKeyPressed(KEY_S)) solar_app_command(state, SOLAR_COMMAND_CONSTELLATIONS, 0);
         /* Arrow keys hop through the family tree (A120): siblings left and
          * right, parent up, first moon down; each hop flies to the body. */
         const int arrows[4] = {KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN};
@@ -993,7 +997,8 @@ static void solar_app_update_draw(void *user_data)
         .selected = state->session.selected_body_index,
         /* The cloud is the real sky's small bodies: dated scenes only. */
         .show_belt = state->belt && dated,
-        .days_since_epoch = state->session.system.elapsed_seconds / SOLAR_DAY_SECONDS};
+        .days_since_epoch = state->session.system.elapsed_seconds / SOLAR_DAY_SECONDS,
+        .show_constellations = state->constellations};
     BeginMode3D(state->camera);
     renderer_draw_solar_system(&state->session.system, &state->session.trails, state->render_mode, state->trail_frame,
         origin, &state->render, &view);
@@ -1164,6 +1169,7 @@ int main(int argc, char **argv)
     app.labels = true;
     app.orbits = true;
     app.belt = true;
+    app.constellations = false; /* off by default: the sky stays quiet until asked */
     /* Moon trails relative to their planet trace the same ellipse as the
      * orbit guides; absolute (heliocentric) spirals stay one key away (T). */
     app.trail_frame = RENDER_TRAILS_PARENT;
