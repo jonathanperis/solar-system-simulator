@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures';
 
-const base = '/solar-system-simulator/';
+const base = '/';
 
 // SPEC A64-A65: every bundled texture reaches the runtime after the first
 // frame, and losing them never stops the simulation (lit-colour fallback).

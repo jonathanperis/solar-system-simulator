@@ -101,18 +101,18 @@ class ArtifactChecks(unittest.TestCase):
                 check_site_images(dist)
 
     def test_every_page_carries_the_link_preview_tags(self):
-        html = ('<meta property="og:image" content="https://jonathanperis.github.io/solar-system-simulator/social-preview.png">'
+        html = ('<meta property="og:image" content="https://solar-system-simulator.jonathanperis.tech/social-preview.png">'
                 '<meta name="twitter:card" content="summary_large_image"><meta property="og:image:width" content="1200">'
-                '<link rel="apple-touch-icon" href="/solar-system-simulator/apple-touch-icon.png">')
+                '<link rel="apple-touch-icon" href="/apple-touch-icon.png">')
         check_preview_tags("404.html", html)
         with self.assertRaises(SystemExit):
             check_preview_tags("physics/index.html", html.replace('summary_large_image', 'summary'))
 
     def test_not_found_page_is_an_astro_noindex_page_linking_home(self):
         good = ('<html><head><meta name="generator" content="Astro v7.3.6"><meta name="robots" content="noindex">'
-                '</head><body><a href="/solar-system-simulator/">Simulator</a>'
-                '<a href="/solar-system-simulator/learn/">Learn</a><a href="/solar-system-simulator/catalog/">Catalog</a>'
-                '<a href="/solar-system-simulator/about/">About</a></body></html>')
+                '</head><body><a href="/">Simulator</a>'
+                '<a href="/learn/">Learn</a><a href="/catalog/">Catalog</a>'
+                '<a href="/about/">About</a></body></html>')
         with tempfile.TemporaryDirectory(dir=ROOT / "build") as directory:
             dist = Path(directory)
             with self.assertRaises(SystemExit):
@@ -121,8 +121,8 @@ class ArtifactChecks(unittest.TestCase):
             check_not_found_page(dist)
             for html in (good.replace('<meta name="generator" content="Astro v7.3.6">', ""),
                          good.replace('<meta name="robots" content="noindex">', ""),
-                         good.replace('href="/solar-system-simulator/learn/"', 'href="learn/"'),
-                         good.replace('href="/solar-system-simulator/"', 'href="../"'),
+                         good.replace('href="/learn/"', 'href="learn/"'),
+                         good.replace('href="/"', 'href="../"'),
                          good.replace("</head>", '<link rel="canonical" href="https://example.test/"></head>')):
                 with self.subTest(html=html), self.assertRaises(SystemExit):
                     (dist / "404.html").write_text(html)
@@ -152,7 +152,7 @@ class ArtifactChecks(unittest.TestCase):
             # A retired URL's redirect stub is noindex and not a sitemap page.
             (root / "physics").mkdir()
             (root / "physics/index.html").write_text('<meta name="robots" content="noindex">')
-            base = "https://jonathanperis.github.io/solar-system-simulator/"
+            base = "https://solar-system-simulator.jonathanperis.tech/"
             expected = [base, base + "small-bodies/"]
 
             def sitemap(urls):
@@ -173,8 +173,8 @@ class ArtifactChecks(unittest.TestCase):
             root.mkdir()
             (root.parent / "outside.js").write_text("// outside published tree")
             (root / "asset.js").write_text("// fixture")
-            check_internal_references(root, "index.html", '<script src="/solar-system-simulator/asset.js"></script>')
-            for reference in ("/asset.js", "/solar-system-simulator/missing.js", "/solar-system-simulator/../outside.js"):
+            check_internal_references(root, "index.html", '<script src="/asset.js"></script>')
+            for reference in ("/missing.js", "/../outside.js"):
                 with self.subTest(reference=reference), self.assertRaises(SystemExit):
                     check_internal_references(root, "index.html", f'<script src="{reference}"></script>')
 

@@ -20,7 +20,7 @@ export default defineConfig({
   },
   webServer: {
     command: 'python3 ../tools/serve_site.py dist --port 4318 --test-fixtures',
-    url: 'http://127.0.0.1:4318/solar-system-simulator/',
+    url: 'http://127.0.0.1:4318/',
     reuseExistingServer: false
   }
 });

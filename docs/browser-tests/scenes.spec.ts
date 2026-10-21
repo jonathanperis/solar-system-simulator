@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures';
 
-const base = '/solar-system-simulator/';
+const base = '/';
 
 // SPEC 2026-10-07 scene split: the main scene keeps the large bodies; every
 // small moon runs in its planet's system scene, reachable from a link, the
