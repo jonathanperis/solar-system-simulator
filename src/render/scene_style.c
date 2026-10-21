@@ -703,47 +703,74 @@ Vec3d render_belt_position(const RenderBeltBody *body, double days)
     return (Vec3d){X, Z, -Y};
 }
 
-const RenderRing render_uranus_rings[RENDER_URANUS_RING_COUNT] = {
+static const RenderRing uranus_rings[] = {
     {"6", 41837e3, 1.5e3, 0.3}, {"5", 42234e3, 2.0e3, 0.5}, {"4", 42571e3, 2.0e3, 0.3},
     {"alpha", 44718e3, 7.15e3, 0.4}, {"beta", 45661e3, 8.15e3, 0.3}, {"eta", 47176e3, 1.55e3, 0.4},
     {"gamma", 47627e3, 3.85e3, 1.5}, {"delta", 48300e3, 6.0e3, 0.5}, {"lambda", 50023e3, 2.0e3, 0.1},
     {"epsilon", 51149e3, 58.1e3, 1.5},
 };
+/* Le Verrier's width is given as "< 100 km"; 100 km is drawn. */
+static const RenderRing neptune_rings[] = {
+    {"Galle", 41900e3, 2000e3, 1e-4}, {"Le Verrier", 53200e3, 100e3, 0.01},
+    {"Lassell", 55200e3, 4000e3, 1e-4}, {"Adams", 62933e3, 15e3, 0.01},
+};
+/* Edges from the fact sheet's radius ranges (centre and full width here). */
+static const RenderRing jupiter_rings[] = {
+    {"halo", 106200e3, 33600e3, 3e-6}, {"main", 125970e3, 5940e3, 5e-6},
+    {"Amalthea gossamer", 155145e3, 52410e3, 1e-7}, {"Thebe gossamer", 201625e3, 40550e3, 1e-7},
+};
+static const RenderRingSystem ring_systems[RENDER_RING_SYSTEM_COUNT] = {
+    {BODY_ID_URANUS, SOLAR_URANUS_RADIUS_M, 41500e3, 51400e3, 51400e3, uranus_rings, sizeof(uranus_rings) / sizeof(uranus_rings[0]), {150, 148, 145}},
+    {BODY_ID_NEPTUNE, SOLAR_NEPTUNE_RADIUS_M, 40800e3, 63100e3, 63100e3, neptune_rings, sizeof(neptune_rings) / sizeof(neptune_rings[0]), {150, 138, 132}},
+    {BODY_ID_JUPITER, SOLAR_JUPITER_RADIUS_M, 89400e3, 221900e3, 128940e3, jupiter_rings, sizeof(jupiter_rings) / sizeof(jupiter_rings[0]), {175, 140, 110}},
+};
 
-void render_uranus_ring_strip(unsigned char *rgba)
+const RenderRingSystem *render_ring_system_at(size_t index)
 {
-    const double inner = RENDER_URANUS_RING_INNER_M;
-    const double step = (RENDER_URANUS_RING_OUTER_M - inner) / RENDER_URANUS_RING_STRIP_WIDTH;
-    for (int x = 0; x < RENDER_URANUS_RING_STRIP_WIDTH; ++x) {
-        double lo = inner + x * step, hi = lo + step, alpha = 0;
-        for (size_t k = 0; k < RENDER_URANUS_RING_COUNT; ++k) {
-            const RenderRing *r = &render_uranus_rings[k];
+    return index < RENDER_RING_SYSTEM_COUNT ? &ring_systems[index] : NULL;
+}
+
+const RenderRingSystem *render_ring_system(BodyId planet)
+{
+    for (size_t k = 0; k < RENDER_RING_SYSTEM_COUNT; ++k) if (ring_systems[k].planet == planet) return &ring_systems[k];
+    return NULL;
+}
+
+static void strip_pixel(const RenderRingSystem *system, unsigned char *rgba, double alpha)
+{
+    rgba[0] = system->rgb[0]; rgba[1] = system->rgb[1]; rgba[2] = system->rgb[2];
+    rgba[3] = (unsigned char)lround((alpha > 1 ? 1 : alpha) * 255);
+}
+
+void render_ring_strip(const RenderRingSystem *system, unsigned char *rgba)
+{
+    const double step = (system->outer_m - system->inner_m) / RENDER_RING_STRIP_WIDTH;
+    for (int x = 0; x < RENDER_RING_STRIP_WIDTH; ++x) {
+        double lo = system->inner_m + x * step, hi = lo + step, alpha = 0;
+        for (size_t k = 0; k < system->count; ++k) {
+            const RenderRing *r = &system->rings[k];
             double a = fmax(lo, r->radius_m - r->width_m / 2), b = fmin(hi, r->radius_m + r->width_m / 2);
-            /* Area coverage: a 2 km ring fills a fifth of a 10 km pixel, so
-             * mipmapping thins it honestly instead of widening it. */
+            /* Area coverage: mipmapping then thins narrow rings honestly
+             * instead of widening them. */
             if (b > a) alpha += (b - a) / step * (1 - exp(-r->optical_depth));
         }
-        alpha = alpha > 1 ? 1 : alpha;
-        /* Dark grey: the rings' albedo is only 0.02-0.03; the shader draws
-         * them brightened like a long exposure, or they would not show. */
-        rgba[x * 4] = 150; rgba[x * 4 + 1] = 148; rgba[x * 4 + 2] = 145;
-        rgba[x * 4 + 3] = (unsigned char)lround(alpha * 255);
+        strip_pixel(system, rgba + x * 4, alpha);
     }
 }
 
-void render_uranus_ring_strip_illustrative(unsigned char *rgba)
+void render_ring_strip_illustrative(const RenderRingSystem *system, unsigned char *rgba)
 {
-    const double inner = RENDER_URANUS_RING_INNER_M;
-    const double step = (RENDER_URANUS_RING_OUTER_M - inner) / RENDER_URANUS_RING_ILLUSTRATIVE_WIDTH;
-    for (int x = 0; x < RENDER_URANUS_RING_ILLUSTRATIVE_WIDTH; ++x) {
-        double lo = inner + x * step, hi = lo + step, alpha = 0;
-        for (size_t k = 0; k < RENDER_URANUS_RING_COUNT; ++k) {
-            const RenderRing *r = &render_uranus_rings[k];
-            if (r->radius_m + r->width_m / 2 > lo && r->radius_m - r->width_m / 2 < hi)
-                alpha = fmax(alpha, 0.25 + 0.75 * (1 - exp(-r->optical_depth)));
+    const double step = (system->outer_m - system->inner_m) / RENDER_RING_ILLUSTRATIVE_WIDTH;
+    for (int x = 0; x < RENDER_RING_ILLUSTRATIVE_WIDTH; ++x) {
+        double lo = system->inner_m + x * step, hi = lo + step, alpha = 0;
+        for (size_t k = 0; k < system->count; ++k) {
+            const RenderRing *r = &system->rings[k];
+            if (!(r->radius_m + r->width_m / 2 > lo && r->radius_m - r->width_m / 2 < hi)) continue;
+            double level = 0.12 * (log10(r->optical_depth) + 7.5);
+            if (r->width_m > 2 * step) level *= 0.35;
+            alpha = fmax(alpha, fmin(0.85, fmax(0.03, level)));
         }
-        rgba[x * 4] = 150; rgba[x * 4 + 1] = 148; rgba[x * 4 + 2] = 145;
-        rgba[x * 4 + 3] = (unsigned char)lround(alpha * 255);
+        strip_pixel(system, rgba + x * 4, alpha);
     }
 }
 

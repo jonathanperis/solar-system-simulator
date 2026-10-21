@@ -644,39 +644,55 @@ static void test_belt_sample_decodes_and_matches_the_atlas_conic(void)
     }
 }
 
-/* Uranus's rings (SPEC A122): the opacity strip is rasterised from the ring
- * table, so every ring sits at its radius with its width and depth, and the
- * gaps between rings are empty. */
-static void test_uranian_ring_strip_follows_the_ring_table(void)
+/* Faint ring systems (SPEC A122, A126): the real-scale strip carries each
+ * table's integrated opacity; the illustrative strip shows every ring, dense
+ * narrow ones far above broad dusty ones, and leaves the gaps empty. */
+static void test_ring_strips_follow_the_ring_tables(void)
 {
-    static unsigned char strip[RENDER_URANUS_RING_STRIP_WIDTH * 4];
-    render_uranus_ring_strip(strip);
-    const double inner = RENDER_URANUS_RING_INNER_M, outer = RENDER_URANUS_RING_OUTER_M;
-    const double per_pixel = (outer - inner) / RENDER_URANUS_RING_STRIP_WIDTH;
-    int epsilon = (int)((51149e3 - inner) / per_pixel), gap = (int)((49200e3 - inner) / per_pixel);
-    /* Epsilon, 20-96 km wide and optically thick, is the most opaque ring. */
-    int densest = 0;
-    for (int x = 0; x < RENDER_URANUS_RING_STRIP_WIDTH; ++x) if (strip[x * 4 + 3] > strip[densest * 4 + 3]) densest = x;
-    assert(abs(densest - epsilon) <= 3);
-    assert(strip[gap * 4 + 3] == 0);
-    /* Integrated opacity equals the table's sum of width x (1 - e^-tau). */
-    double sum = 0;
-    for (int x = 0; x < RENDER_URANUS_RING_STRIP_WIDTH; ++x) sum += strip[x * 4 + 3] / 255.0 * per_pixel;
-    double expected = 0;
-    for (size_t k = 0; k < RENDER_URANUS_RING_COUNT; ++k)
-        expected += render_uranus_rings[k].width_m * (1 - exp(-render_uranus_rings[k].optical_depth));
-    assert(fabs(sum - expected) / expected < 0.03);
-
-    /* The illustrative strip: every ring owns at least one visible texel (a
-     * render-only widening, like illustrative body sizes); gaps stay empty. */
-    static unsigned char wide[RENDER_URANUS_RING_ILLUSTRATIVE_WIDTH * 4];
-    render_uranus_ring_strip_illustrative(wide);
-    const double coarse = (outer - inner) / RENDER_URANUS_RING_ILLUSTRATIVE_WIDTH;
-    for (size_t k = 0; k < RENDER_URANUS_RING_COUNT; ++k) {
-        int x = (int)((render_uranus_rings[k].radius_m - inner) / coarse);
-        assert(wide[x * 4 + 3] >= 60);
+    static unsigned char strip[RENDER_RING_STRIP_WIDTH * 4], wide[RENDER_RING_ILLUSTRATIVE_WIDTH * 4];
+    for (size_t s = 0; s < RENDER_RING_SYSTEM_COUNT; ++s) {
+        const RenderRingSystem *system = render_ring_system_at(s);
+        assert(render_ring_system(system->planet) == system);
+        render_ring_strip(system, strip);
+        double per_pixel = (system->outer_m - system->inner_m) / RENDER_RING_STRIP_WIDTH, sum = 0, expected = 0;
+        for (int x = 0; x < RENDER_RING_STRIP_WIDTH; ++x) sum += strip[x * 4 + 3] / 255.0 * per_pixel;
+        for (size_t k = 0; k < system->count; ++k) {
+            const RenderRing *r = &system->rings[k];
+            assert(r->radius_m - r->width_m / 2 >= system->inner_m - 1 && r->radius_m + r->width_m / 2 <= system->outer_m + 1);
+            expected += r->width_m * (1 - exp(-r->optical_depth));
+        }
+        /* Rings fainter than one 8-bit step per texel round away entirely. */
+        if (expected / (system->outer_m - system->inner_m) > 0.01) assert(fabs(sum - expected) / expected < 0.03);
+        render_ring_strip_illustrative(system, wide);
+        double coarse = (system->outer_m - system->inner_m) / RENDER_RING_ILLUSTRATIVE_WIDTH;
+        for (size_t k = 0; k < system->count; ++k) {
+            int x = (int)((system->rings[k].radius_m - system->inner_m) / coarse);
+            assert(wide[x * 4 + 3] > 0);
+        }
     }
-    assert(wide[(int)((49200e3 - inner) / coarse) * 4 + 3] == 0);
+    assert(render_ring_system(BODY_ID_SATURN) == NULL && render_ring_system(BODY_ID_EARTH) == NULL);
+    /* Uranus: epsilon, 20-96 km wide and optically thick, is the densest
+     * texel; the gap at 49,200 km is empty; every ring reads as a line. */
+    const RenderRingSystem *uranus = render_ring_system(BODY_ID_URANUS);
+    render_ring_strip(uranus, strip);
+    double step = (uranus->outer_m - uranus->inner_m) / RENDER_RING_STRIP_WIDTH;
+    int densest = 0;
+    for (int x = 0; x < RENDER_RING_STRIP_WIDTH; ++x) if (strip[x * 4 + 3] > strip[densest * 4 + 3]) densest = x;
+    assert(abs(densest - (int)((51149e3 - uranus->inner_m) / step)) <= 3);
+    assert(strip[(int)((49200e3 - uranus->inner_m) / step) * 4 + 3] == 0);
+    render_ring_strip_illustrative(uranus, wide);
+    double coarse = (uranus->outer_m - uranus->inner_m) / RENDER_RING_ILLUSTRATIVE_WIDTH;
+    for (size_t k = 0; k < uranus->count; ++k) assert(wide[(int)((uranus->rings[k].radius_m - uranus->inner_m) / coarse) * 4 + 3] >= 150);
+    assert(wide[(int)((49200e3 - uranus->inner_m) / coarse) * 4 + 3] == 0);
+    /* Jupiter's dusty rings stay ghostly next to Neptune's Adams ring. */
+    const RenderRingSystem *jupiter = render_ring_system(BODY_ID_JUPITER), *neptune = render_ring_system(BODY_ID_NEPTUNE);
+    render_ring_strip_illustrative(jupiter, wide);
+    int main_ring = wide[(int)((125970e3 - jupiter->inner_m) / ((jupiter->outer_m - jupiter->inner_m) / RENDER_RING_ILLUSTRATIVE_WIDTH)) * 4 + 3];
+    assert(main_ring > 0 && main_ring < 40);
+    render_ring_strip_illustrative(neptune, wide);
+    double nstep = (neptune->outer_m - neptune->inner_m) / RENDER_RING_ILLUSTRATIVE_WIDTH;
+    assert(wide[(int)((62933e3 - neptune->inner_m) / nstep) * 4 + 3] > 4 * main_ring);
+    assert(wide[(int)((47500e3 - neptune->inner_m) / nstep) * 4 + 3] == 0);
 }
 
 /* Scale bar (SPEC A123): the longest round distance (1, 2 or 5 x 10^n km, or
@@ -752,7 +768,7 @@ int main(void)
     test_edge_anchor_follows_the_direction_to_the_body();
     test_markers_slide_past_floating_panels();
     test_belt_sample_decodes_and_matches_the_atlas_conic();
-    test_uranian_ring_strip_follows_the_ring_table();
+    test_ring_strips_follow_the_ring_tables();
     test_scale_bar_picks_a_round_distance();
     test_constellation_lines_sit_on_their_stars();
     puts("test_scene_style passed");

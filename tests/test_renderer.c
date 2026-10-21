@@ -464,7 +464,9 @@ static void check_moons_outside_drawn_rings(BodyId planet, double ring_outer_m, 
 static void test_illustrative_saturn_moons_stay_outside_the_drawn_rings(void)
 {
     check_moons_outside_drawn_rings(BODY_ID_SATURN, SOLAR_SATURN_RING_OUTER_RADIUS_M, 7); /* Mimas through Iapetus */
-    check_moons_outside_drawn_rings(BODY_ID_URANUS, RENDER_URANUS_RING_OUTER_M, 5);       /* Miranda through Oberon (A122) */
+    check_moons_outside_drawn_rings(BODY_ID_URANUS, render_ring_system(BODY_ID_URANUS)->extent_m, 5); /* Miranda-Oberon (A122) */
+    check_moons_outside_drawn_rings(BODY_ID_NEPTUNE, render_ring_system(BODY_ID_NEPTUNE)->extent_m, 1); /* Triton (A126) */
+    check_moons_outside_drawn_rings(BODY_ID_JUPITER, render_ring_system(BODY_ID_JUPITER)->extent_m, 4); /* Galileans (A126) */
 }
 
 /* Pluto-Charon shadow events happen only near Pluto's equinoxes (1985-90,
