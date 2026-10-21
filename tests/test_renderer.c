@@ -515,8 +515,35 @@ static void test_navigation_neighbors_hop_through_the_family_tree(void)
     assert(renderer_navigation_neighbor(&system, (size_t)sun, RENDER_NAV_NEXT) == first);
 }
 
+/* Scale morph (SPEC A125): while switching scale the renderer blends from
+ * the old mode's sizes and places to the new one's; outside a morph each
+ * mode draws exactly as before. */
+static void test_scale_morph_blends_sizes_and_places(void)
+{
+    SolarSystem system = solar_system_create_current();
+    size_t earth = 3, moon = 4;
+    float r_ill = renderer_body_radius(&system.bodies[earth], RENDER_SCALE_ILLUSTRATIVE);
+    float r_real = renderer_body_radius(&system.bodies[earth], RENDER_SCALE_REAL);
+    Vec3d m_ill = renderer_body_position(&system, moon, RENDER_SCALE_ILLUSTRATIVE);
+    Vec3d m_real = renderer_body_position(&system, moon, RENDER_SCALE_REAL);
+    renderer_set_scale_morph(RENDER_SCALE_ILLUSTRATIVE, 0.0f);
+    assert(renderer_body_radius(&system.bodies[earth], RENDER_SCALE_REAL) == r_ill);
+    assert(vec3d_length(vec3d_sub(renderer_body_position(&system, moon, RENDER_SCALE_REAL), m_ill)) < 1e-12);
+    renderer_set_scale_morph(RENDER_SCALE_ILLUSTRATIVE, 0.5f);
+    float r_mid = renderer_body_radius(&system.bodies[earth], RENDER_SCALE_REAL);
+    assert(r_mid < r_ill && r_mid > r_real);
+    /* Log-space size blend: halfway is the geometric mean. */
+    assert(fabs(r_mid - sqrtf(r_ill * r_real)) / r_mid < 1e-4);
+    /* The mode being left is unaffected (only the target mode blends). */
+    assert(renderer_body_radius(&system.bodies[earth], RENDER_SCALE_ILLUSTRATIVE) == r_ill);
+    renderer_set_scale_morph(RENDER_SCALE_ILLUSTRATIVE, 1.0f);
+    assert(renderer_body_radius(&system.bodies[earth], RENDER_SCALE_REAL) == r_real);
+    assert(vec3d_length(vec3d_sub(renderer_body_position(&system, moon, RENDER_SCALE_REAL), m_real)) < 1e-12);
+}
+
 int main(void)
 {
+    test_scale_morph_blends_sizes_and_places();
     test_navigation_neighbors_hop_through_the_family_tree();
     test_charon_casts_no_shadow_on_pluto_in_2026();
     test_illustrative_saturn_moons_stay_outside_the_drawn_rings();

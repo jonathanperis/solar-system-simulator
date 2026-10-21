@@ -320,6 +320,7 @@ The app uses a small stable orbit camera instead of raylib's automatic orbital h
 - **Asteroid belt and beyond** (`Q`, on in dated scenes): 48,074 bodies sampled from the pinned small-body atlas (main belt, Jupiter's Trojans, near-Earth objects, Centaurs and the Kuiper belt) move on their heliocentric orbits for the scene date, computed on the GPU. They are drawn only, never simulated: they do not pull on anything and are not in the CSV.
 - `S` (View → Constellations) draws the IAU constellation stick figures on the real sky, so you can see which constellation each planet stands in (d3-celestial data, BSD 3-Clause).
 - A scale bar at the bottom left shows a round distance ("0.5 AU", "1 000 000 km") at the depth of the body the camera orbits; it measures space, not the enlarged illustrative bodies.
+- Switching scale (`V`) morphs over 1.6 s: enlarged bodies shrink to their true sizes and spread moons glide to their true distances (a cut under reduced motion).
 - `O`: orbit guides. `T`: parent-relative (default) or absolute trail history. `X`: vector directions (green velocity, orange acceleration; illustrative lengths). `G`: show or hide the reference grid (web: View → Grid). `H`: show or hide body labels.
 - `E`: export an SI snapshot. The browser downloads `solar-snapshot.csv`; native writes the next free `solar-snapshot-001.csv`, `-002.csv`, … in the working directory and never overwrites an earlier snapshot. Headless series and snapshots share the C writer.
 - `Space`: pause/resume. Paused time does not accumulate for later catch-up.

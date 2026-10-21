@@ -104,6 +104,9 @@ double renderer_radius_magnification(const Body *body, RenderScaleMode mode);
 void renderer_draw_vectors(const SolarSystem *system, size_t selected, RenderScaleMode mode, Vec3d origin);
 size_t renderer_trail_sample_stride(size_t point_count);
 size_t renderer_trail_draw_segment_count(size_t point_count);
+/* Scale morph (SPEC A125): blend drawing in the other mode from `from`'s
+ * sizes and places; progress 1 (the default) ends it. */
+void renderer_set_scale_morph(RenderScaleMode from, float progress);
 float renderer_body_radius(const Body *body, RenderScaleMode mode);
 float renderer_body_visual_radius(const Body *body, RenderScaleMode mode);
 Vector3 renderer_relative_vector(Vec3d position, Vec3d origin);
