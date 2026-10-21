@@ -194,6 +194,19 @@ int render_orbit_guide_segments(double semi_major_pixels);
  * same expression; keep the two identical. */
 double render_eclipse_fraction(double separation, double occluder_radius, double sun_radius);
 #define RENDER_MAX_SHADOW_CASTERS 4
+/* A caster for the shader, from true SI geometry (SPEC A111): `offset` is
+ * the caster's position relative to the receiver and `radius` its radius,
+ * both times `scale` (the receiver's drawn radius per true metre), so the
+ * shader sees an exact scaled copy of the real configuration around the
+ * drawn receiver. Returns false when the caster is not sunward or its shadow
+ * cylinder, widened by the penumbra, misses the receiver; `gap` (scaled) says
+ * how clearly it misses (more negative = nearer the shadow line). */
+typedef struct RenderEclipseCaster {
+    Vec3d offset;
+    double radius, gap;
+} RenderEclipseCaster;
+bool render_eclipse_caster(Vec3d receiver_m, double receiver_radius_m, Vec3d caster_m, double caster_radius_m,
+    Vec3d sun_m, double sun_radius_m, double scale, RenderEclipseCaster *out);
 
 /* Screen markers (SPEC A108), drawn after the 3D scene. A planet or dwarf
  * planet smaller than RENDER_RING_MARKER_MAX_RADIUS_PIXELS on screen gets a
