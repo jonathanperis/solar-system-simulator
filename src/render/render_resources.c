@@ -135,7 +135,12 @@ static const char fragment_shader_lit[] =
     "            float r2 = bodyRadius * bodyRadius;\n"
     "            if (b < 0.0) shade = smoothstep(r2 * 0.94, r2 * 1.02, miss);\n"
     "        }\n"
-    "        FRAG_COLOR = vec4(toDisplay(albedo * (0.02 + 0.98 * abs(ndl)) * shade), surface.a);\n"
+    /* From the unlit face the rings shine only by light passing through:
+     * dense parts (high opacity, the B ring) go dark, sparse ones (the C ring,
+     * the Cassini division) glow, as in Cassini's views from the night side. */
+    "        float sunSide = step(0.0, dot(n, lightDir) * dot(n, v));\n"
+    "        float through = mix(0.12 + 1.5 * (1.0 - surface.a), 1.0, sunSide);\n"
+    "        FRAG_COLOR = vec4(toDisplay(albedo * (0.02 + 0.98 * abs(ndl)) * shade * through), surface.a);\n"
     "        return;\n"
     "    }\n"
     "    if (mode > 1.5) {\n" /* clouds: the map's brightness is its opacity */

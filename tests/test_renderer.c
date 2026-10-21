@@ -438,8 +438,32 @@ static void test_tidally_locked_maps_face_their_parent(void)
     }
 }
 
+/* Illustrative scale enlarges Saturn and its rings; a moon that orbits outside
+ * the real rings must still be drawn outside the drawn rings (SPEC A115), or
+ * the ring plane slices through it on screen. */
+static void test_illustrative_saturn_moons_stay_outside_the_drawn_rings(void)
+{
+    SolarSystem system = solar_system_create_current();
+    int saturn = -1;
+    for (size_t i = 0; i < system.body_count; ++i) if (system.bodies[i].id == BODY_ID_SATURN) saturn = (int)i;
+    assert(saturn >= 0);
+    Vec3d center = renderer_body_position(&system, (size_t)saturn, RENDER_SCALE_ILLUSTRATIVE);
+    double rings = renderer_body_visual_radius(&system.bodies[saturn], RENDER_SCALE_ILLUSTRATIVE);
+    int checked = 0;
+    for (size_t i = 0; i < system.body_count; ++i) {
+        if (solar_system_parent_index(&system, i) != saturn) continue;
+        double true_distance = vec3d_length(vec3d_sub(system.bodies[i].position_m, system.bodies[saturn].position_m));
+        if (true_distance <= SOLAR_SATURN_RING_OUTER_RADIUS_M) continue;
+        double drawn = vec3d_length(vec3d_sub(renderer_body_position(&system, i, RENDER_SCALE_ILLUSTRATIVE), center));
+        assert(drawn > rings + renderer_body_radius(&system.bodies[i], RENDER_SCALE_ILLUSTRATIVE));
+        ++checked;
+    }
+    assert(checked >= 7); /* Mimas through Iapetus */
+}
+
 int main(void)
 {
+    test_illustrative_saturn_moons_stay_outside_the_drawn_rings();
     test_tidally_locked_maps_face_their_parent();
     test_cached_trail_points_match_uncached_exactly();
     test_moving_sun_history_preserves_parent_relative_frames();
