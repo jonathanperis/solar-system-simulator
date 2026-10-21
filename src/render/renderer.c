@@ -1000,9 +1000,11 @@ static void draw_wire_marker(Vector3 center, float radius, Color color)
 
 /* Eclipse casters for body i (SPEC A111): up to RENDER_MAX_SHADOW_CASTERS
  * bodies of its own family (its parent, its moons, its siblings) whose
- * spheres can block part of the Sun as seen from any point of body i. Uses
- * the drawn positions, so shadows fall where the drawing says they should;
- * the Sun's angular size comes from SI distances. Presentation only. */
+ * spheres block part of the Sun as seen from body i in the true SI geometry.
+ * Each is placed as a copy of that geometry scaled by body i's drawn/true
+ * radius around its drawn centre, so an eclipse shows exactly when one really
+ * happens, at its true size relative to the body, even when illustrative
+ * scale enlarges bodies relative to their spacing. Presentation only. */
 static void set_eclipse_casters(const FrameContext *ctx, size_t i)
 {
     const RenderResources *resources = ctx->resources;
@@ -1015,7 +1017,9 @@ static void set_eclipse_casters(const FrameContext *ctx, size_t i)
         const Body *body = &system->bodies[i];
         double sun_distance = vec3d_length(vec3d_sub(body->position_m, system->bodies[ctx->star].position_m));
         sun_radius = sun_distance > 0 ? (float)(system->bodies[ctx->star].radius_m / sun_distance) : 0;
-        Vector3 light = light_toward_star(ctx, i);
+        /* Drawn radius per true metre: 1 render unit per its metres in real
+         * scale, larger for an enlarged illustrative body. */
+        double scale = ctx->radius[i] / body->radius_m;
         int parent = ctx->cache.parent[i];
         for (size_t j = 0; j < system->body_count && j < SOLAR_SYSTEM_BODY_CAPACITY; ++j) {
             const Body *other = &system->bodies[j];
@@ -1024,19 +1028,10 @@ static void set_eclipse_casters(const FrameContext *ctx, size_t i)
             bool family = other_parent == (int)i || parent == (int)j
                 || (parent >= 0 && other_parent == parent && system->bodies[parent].kind != BODY_KIND_STAR);
             if (!family) continue;
-            /* Illustrative scale draws moons far larger next to their planet
-             * than they are; a shadow keeps the true size ratio to the body it
-             * falls on (Io's is a dot on Jupiter, not a quarter of the disc).
-             * In real scale both terms are equal. */
-            float caster = fminf(ctx->radius[j], ctx->radius[i] * (float)(other->radius_m / body->radius_m));
-            Vector3 d = {ctx->position[j].x - ctx->position[i].x, ctx->position[j].y - ctx->position[i].y,
-                ctx->position[j].z - ctx->position[i].z};
-            float along = d.x * light.x + d.y * light.y + d.z * light.z;
-            if (along <= 0) continue;
-            float miss = sqrtf(fmaxf(d.x * d.x + d.y * d.y + d.z * d.z - along * along, 0));
-            /* The shadow cylinder (widened by the penumbra) must reach the body. */
-            float gap = miss - caster - ctx->radius[i] - sun_radius * along;
-            if (gap > 0) continue;
+            RenderEclipseCaster caster;
+            if (!render_eclipse_caster(body->position_m, body->radius_m, other->position_m, other->radius_m,
+                    system->bodies[ctx->star].position_m, system->bodies[ctx->star].radius_m, scale, &caster)) continue;
+            float gap = (float)caster.gap;
             int slot = count < RENDER_MAX_SHADOW_CASTERS ? count++ : -1;
             if (slot < 0) {
                 /* Keep the casters closest to the shadow line. */
@@ -1045,10 +1040,10 @@ static void set_eclipse_casters(const FrameContext *ctx, size_t i)
                 if (gap >= scores[slot]) continue;
             }
             scores[slot] = gap;
-            casters[slot * 4 + 0] = ctx->position[j].x;
-            casters[slot * 4 + 1] = ctx->position[j].y;
-            casters[slot * 4 + 2] = ctx->position[j].z;
-            casters[slot * 4 + 3] = caster;
+            casters[slot * 4 + 0] = ctx->position[i].x + (float)caster.offset.x;
+            casters[slot * 4 + 1] = ctx->position[i].y + (float)caster.offset.y;
+            casters[slot * 4 + 2] = ctx->position[i].z + (float)caster.offset.z;
+            casters[slot * 4 + 3] = (float)caster.radius;
         }
     }
     float count_value = (float)count;

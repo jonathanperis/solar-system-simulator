@@ -515,6 +515,28 @@ static void test_resolution_governor_steps_down_only_under_sustained_load(void)
     assert(scale == 1.0f);
 }
 
+/* Eclipse casters from true geometry (SPEC A111): a scaled copy of the real
+ * configuration around the receiver, so shadows occur only when they really
+ * do, at their true size relative to the receiver. */
+static void test_eclipse_caster_is_a_scaled_copy_of_the_true_geometry(void)
+{
+    const Vec3d receiver = {1e12, 0, 0}, sun = {0, 0, 0};
+    RenderEclipseCaster c;
+    /* A moon 4e8 m sunward of a 7e7 m planet, on the shadow line. */
+    Vec3d moon = {1e12 - 4e8, 0, 0};
+    assert(render_eclipse_caster(receiver, 7e7, moon, 1.8e6, sun, 6.957e8, 2e-9, &c));
+    assert(fabs(c.offset.x - (-4e8 * 2e-9)) < 1e-12 && fabs(c.radius - 1.8e6 * 2e-9) < 1e-15);
+    /* Same moon well off the line: no shadow can reach the planet. */
+    Vec3d off = {1e12 - 4e8, 3e8, 0};
+    assert(!render_eclipse_caster(receiver, 7e7, off, 1.8e6, sun, 6.957e8, 2e-9, &c));
+    /* Anti-sunward bodies cast nothing. */
+    Vec3d behind = {1e12 + 4e8, 0, 0};
+    assert(!render_eclipse_caster(receiver, 7e7, behind, 1.8e6, sun, 6.957e8, 2e-9, &c));
+    /* The penumbra widens the reach: just outside the umbra cylinder still counts. */
+    Vec3d edge = {1e12 - 4e8, 7e7 + 1.8e6 + 0.5 * 4e8 * 6.957e8 / 1e12, 0};
+    assert(render_eclipse_caster(receiver, 7e7, edge, 1.8e6, sun, 6.957e8, 1.0, &c));
+}
+
 int main(void)
 {
     test_texture_inventory_matches_assets();
@@ -541,6 +563,7 @@ int main(void)
     test_eclipse_fraction_covers_umbra_penumbra_and_annulus();
     test_pick_prefers_the_body_under_the_pointer();
     test_resolution_governor_steps_down_only_under_sustained_load();
+    test_eclipse_caster_is_a_scaled_copy_of_the_true_geometry();
     puts("test_scene_style passed");
     return 0;
 }

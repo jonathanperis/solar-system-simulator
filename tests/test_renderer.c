@@ -461,8 +461,27 @@ static void test_illustrative_saturn_moons_stay_outside_the_drawn_rings(void)
     assert(checked >= 7); /* Mimas through Iapetus */
 }
 
+/* Pluto-Charon shadow events happen only near Pluto's equinoxes (1985-90,
+ * the 2110s); in the 2026-06-09 sky Charon cannot shadow Pluto, whatever
+ * illustrative scale draws (SPEC A111). */
+static void test_charon_casts_no_shadow_on_pluto_in_2026(void)
+{
+    SolarSystem system = solar_system_create_current();
+    int pluto = -1, charon = -1;
+    for (size_t i = 0; i < system.body_count; ++i) {
+        if (system.bodies[i].id == BODY_ID_PLUTO) pluto = (int)i;
+        if (system.bodies[i].id == BODY_ID_CHARON) charon = (int)i;
+    }
+    assert(pluto >= 0 && charon >= 0);
+    RenderEclipseCaster c;
+    const Body *p = &system.bodies[pluto], *ch = &system.bodies[charon], *sun = &system.bodies[0];
+    assert(!render_eclipse_caster(p->position_m, p->radius_m, ch->position_m, ch->radius_m, sun->position_m, sun->radius_m, 1.0, &c));
+    assert(!render_eclipse_caster(ch->position_m, ch->radius_m, p->position_m, p->radius_m, sun->position_m, sun->radius_m, 1.0, &c));
+}
+
 int main(void)
 {
+    test_charon_casts_no_shadow_on_pluto_in_2026();
     test_illustrative_saturn_moons_stay_outside_the_drawn_rings();
     test_tidally_locked_maps_face_their_parent();
     test_cached_trail_points_match_uncached_exactly();
