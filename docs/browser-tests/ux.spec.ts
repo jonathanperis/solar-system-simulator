@@ -21,6 +21,14 @@ test('phone simulator keeps every panel clear of the view, with object handoffs,
   await dialog.getByRole('searchbox', { name: 'Name' }).fill('not-a-real-body');
   await expect(page.locator('[data-body-filter-status]')).toHaveText('No matching bodies. Earth remains selected.');
   await dialog.getByRole('button', { name: 'Clear', exact: true }).click();
+  // A130: typing lists matches; Enter flies to the first and closes Find.
+  await dialog.getByRole('searchbox', { name: 'Name' }).fill('mar');
+  await expect(dialog.getByRole('group', { name: 'Matches' }).getByRole('button').first()).toHaveText(/^Mars/);
+  await page.keyboard.press('Enter');
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Mars');
+  await page.getByRole('button', { name: 'Find', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Clear', exact: true }).click();
   await dialog.getByRole('combobox', { name: 'Body', exact: true }).selectOption({ label: 'Moon — Earth and Mars moons' });
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Find', exact: true })).toBeFocused();

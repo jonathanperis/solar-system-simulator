@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, clockNote, speedLabels, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod } from '../src/lib/simulator.ts';
+import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, clockNote, speedLabels, findMatches, formatSpacing, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod } from '../src/lib/simulator.ts';
 import { errorMessage, downloadText } from '../src/lib/browser.ts';
 
 test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolling', () => {
@@ -288,4 +288,18 @@ test('arrow keys reach the simulator without scrolling, and the speed slider rea
   }
   assert.deepEqual(speedLabels(false).short, ['1 h/s', '1 d/s', '5 d/s', '10 d/s', '15 d/s']);
   assert.equal(speedLabels(true).spoken[4], '50 seconds / second');
+});
+
+test('Find lists names that start with the query first, then ones containing it (SPEC A130)', () => {
+  const bodies = [
+    { index: 0, name: 'Sun', group: 'Star' }, { index: 21, name: 'Titan', group: 'Major moons' },
+    { index: 24, name: 'Titania', group: 'Major moons' }, { index: 40, name: 'Metis', group: 'Inner small moons' },
+    { index: 41, name: 'Mimas', group: 'Major moons' },
+  ];
+  assert.deepEqual(findMatches(bodies, 'ti', '').map(body => body.name), ['Titan', 'Titania', 'Metis']);
+  assert.deepEqual(findMatches(bodies, 'ti', 'Inner small moons').map(body => body.name), ['Metis']);
+  assert.deepEqual(findMatches(bodies, '   ', ''), []);
+  assert.equal(findMatches(Array.from({ length: 20 }, (_, i) => ({ index: i, name: `Moon ${i}`, group: 'g' })), 'moon', '').length, 8);
+  assert.equal(formatSpacing(300), '300\u00a0s between trail samples');
+  assert.equal(formatSpacing(7200), '2.00\u00a0h between trail samples');
 });
