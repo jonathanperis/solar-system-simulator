@@ -258,3 +258,25 @@ test('the dock keeps one row on portrait tablets, and phones read one value per 
     expect(box.height, `${readout} on one line`).toBeLessThan(24);
   }
 });
+
+test('landscape phones keep the view full height with the controls beside it (SPEC A138)', async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.goto(`${base}?body=saturn`);
+  await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Saturn', { timeout: 30000 });
+  const canvas = (await page.locator('#canvas').boundingBox())!;
+  const header = (await page.locator('.site-header').boundingBox())!;
+  // The view fills everything under the header on the left.
+  expect(canvas.y + canvas.height).toBeGreaterThanOrEqual(389);
+  expect(canvas.height).toBeGreaterThanOrEqual(390 - header.height - 2);
+  // Playback controls sit beside it, on screen without scrolling.
+  const pause = (await page.getByRole('button', { name: 'Pause', exact: true }).boundingBox())!;
+  expect(pause.x).toBeGreaterThanOrEqual(canvas.x + canvas.width - 1);
+  expect(pause.y + pause.height).toBeLessThanOrEqual(390);
+  // A lesson's longer column scrolls to its last control.
+  await page.goto(`${base}?lesson=collision`);
+  await expect(page.locator('[data-lesson-strip]')).toBeVisible({ timeout: 30000 });
+  const load = page.getByRole('button', { name: 'Load', exact: true });
+  await load.scrollIntoViewIfNeeded();
+  await expect(load).toBeInViewport();
+  expect((await page.locator('#canvas').boundingBox())!.height).toBeGreaterThanOrEqual(390 - header.height - 2);
+});
