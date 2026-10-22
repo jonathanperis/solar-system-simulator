@@ -10,6 +10,7 @@ interface RuntimeReadouts {
   clockNote?: Readout;
   today?: Pick<HTMLElement, 'textContent' | 'hidden' | 'dataset'>;
   dateOpen?: Pick<HTMLElement, 'hidden'>;
+  sky?: Readout;
   interval: Readout;
   parent: Readout;
   distance: Readout;
@@ -97,6 +98,11 @@ interface LabState {
   /* View from Earth (SPEC A143) and its field of view in degrees. */
   sky?: boolean;
   skyFov?: number;
+  /* The view from Earth's target and its caption facts (A154). */
+  skyTarget?: string;
+  skyDisc?: number;
+  skyElongation?: number;
+  skyLit?: number;
 }
 
 export const lessonNames = lessonOptions.map(([, label]) => label);
@@ -149,6 +155,21 @@ export function skyFieldAtLink(from: string | null, fov: string | null): number 
 /** The `fov` value for a field of view in degrees: three significant figures. */
 export function linkForSkyField(degrees: number): string {
   return String(Number(degrees.toPrecision(3)));
+}
+/** The view from Earth's canvas captions as one sentence for screen readers
+ * (A154); empty when the view is off. Units spelled out, as the captions. */
+export function skyReadout(state: { sky?: boolean; skyFov?: number; skyTarget?: string; skyDisc?: number;
+  skyElongation?: number; skyLit?: number }): string {
+  if (!state.sky || !state.skyTarget) return '';
+  const fov = state.skyFov ?? NaN;
+  const field = fov >= 10 ? `${fov.toFixed(0)} degrees` : fov >= 1 ? `${fov.toFixed(1)} degrees`
+    : fov * 60 >= 2 ? `${(fov * 60).toFixed(0)} arcminutes` : `${(fov * 3600).toFixed(0)} arcseconds`;
+  const parts = [`From Earth: ${state.skyTarget}`];
+  const disc = state.skyDisc ?? NaN;
+  if (Number.isFinite(disc)) parts.push(disc >= 120 ? `disc ${(disc / 60).toFixed(1)} arcminutes` : `disc ${disc.toFixed(1)} arcseconds`);
+  if (Number.isFinite(state.skyElongation)) parts.push(`${state.skyElongation!.toFixed(1)} degrees from the Sun`);
+  if (Number.isFinite(state.skyLit)) parts.push(`${Math.round(state.skyLit! * 100)}% lit`);
+  return `${parts.join(', ')}; field ${field}.`;
 }
 /** The `at` value for a scene time, to the minute (A141). */
 export function linkForSceneSeconds(seconds: number): string {
@@ -639,6 +660,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       setSwitch(controls.belt, state.belt !== false);
       setSwitch(controls.follow, Boolean(state.follow));
       setSwitch(controls.sky, Boolean(state.sky));
+      if (readouts.sky) setText(readouts.sky, skyReadout(state));
       if (controls.sky?.dataset && Number.isFinite(state.skyFov)) controls.sky.dataset.fov = String(state.skyFov);
       if (controls.tour) {
         setText(controls.tour, state.touring ? 'Stop tour' : 'Tour');
@@ -791,6 +813,7 @@ export function mountSimulator(root: HTMLElement): void {
     clockNote: root.querySelector<HTMLElement>('[data-clock-note]') ?? undefined,
     today: root.querySelector<HTMLButtonElement>('[data-today]') ?? undefined,
     dateOpen: root.querySelector<HTMLButtonElement>('[data-date-open]') ?? undefined,
+    sky: root.querySelector<HTMLElement>('[data-sky-readout]') ?? undefined,
     interval: root.querySelector<HTMLElement>('[data-runtime-interval]')!,
     parent: root.querySelector<HTMLElement>('[data-inspector-parent]')!,
     distance: root.querySelector<HTMLElement>('[data-inspector-distance]')!,
