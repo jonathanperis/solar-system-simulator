@@ -1,6 +1,7 @@
 #include "orbit_camera.h"
 
 #include <math.h>
+#include <stdio.h>
 
 static float clamp_float(float value, float min_value, float max_value)
 {
@@ -151,4 +152,19 @@ void orbit_camera_flight_blend(const OrbitCameraFlight *flight, float progress, 
     double hop = 0.6 * log(1.0 + sqrt(travel) / (d0 > d1 ? d0 : d1));
     double log_distance = log(d0) + (log(d1) - log(d0)) * e + hop * sin(3.14159265358979323846 * (double)e);
     out->distance = e >= 1.0f ? to->distance : (float)exp(log_distance);
+}
+
+float orbit_camera_sky_zoom(float fov_degrees, float factor)
+{
+    if (!(factor > 0.0f) || !isfinite(factor)) return fov_degrees;
+    float fov = fov_degrees * factor;
+    return fov < ORBIT_CAMERA_SKY_FOV_MIN ? ORBIT_CAMERA_SKY_FOV_MIN : fov > ORBIT_CAMERA_SKY_FOV_MAX ? ORBIT_CAMERA_SKY_FOV_MAX : fov;
+}
+
+void orbit_camera_sky_fov_label(float fov_degrees, char *out, size_t size)
+{
+    if (fov_degrees >= 10.0f) snprintf(out, size, "%.0f deg", fov_degrees);
+    else if (fov_degrees >= 1.0f) snprintf(out, size, "%.1f deg", fov_degrees);
+    else if (fov_degrees * 60.0f >= 2.0f) snprintf(out, size, "%.0f arcmin", fov_degrees * 60.0f);
+    else snprintf(out, size, "%.0f arcsec", fov_degrees * 3600.0f);
 }

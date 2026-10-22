@@ -301,3 +301,37 @@ test('a link with ?at= opens on its body and plays the sky to that instant (SPEC
   await panel.getByRole('button', { name: 'Copy link', exact: true }).click();
   await expect(panel.locator('[data-date-note]')).toHaveText(/Link copied|at=2027-03-23T12%3A00/);
 });
+
+test('View from Earth switches to real scale, aims at the selection and restores the view (SPEC A143)', async ({ page }) => {
+  await page.goto(`${base}?body=jupiter`);
+  await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Jupiter', { timeout: 30000 });
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  const sky = page.getByRole('switch', { name: 'From Earth' });
+  const real = page.getByRole('button', { name: 'Real', exact: true });
+  await expect(sky).toHaveAttribute('aria-checked', 'false');
+  await sky.click();
+  await expect(sky).toHaveAttribute('aria-checked', 'true');
+  // Directions from Earth are only true in real scale.
+  await expect(real).toHaveAttribute('aria-pressed', 'true');
+  // The selection stays the target; zoom narrows the field without leaving.
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  await expect(sky).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Jupiter');
+  // Turning it off restores the illustrative scale it left.
+  await sky.click();
+  await expect(sky).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByRole('button', { name: 'Illustrative', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  // Choosing a scale also leaves the view.
+  await sky.click();
+  await expect(sky).toHaveAttribute('aria-checked', 'true');
+  await page.getByRole('button', { name: 'Illustrative', exact: true }).click();
+  await expect(sky).toHaveAttribute('aria-checked', 'false');
+  // Entered from real scale, choosing Illustrative still lands there.
+  await real.click();
+  await expect(real).toHaveAttribute('aria-pressed', 'true');
+  await sky.click();
+  await expect(sky).toHaveAttribute('aria-checked', 'true');
+  await page.getByRole('button', { name: 'Illustrative', exact: true }).click();
+  await expect(sky).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByRole('button', { name: 'Illustrative', exact: true })).toHaveAttribute('aria-pressed', 'true');
+});
