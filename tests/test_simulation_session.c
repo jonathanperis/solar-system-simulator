@@ -349,6 +349,18 @@ static void test_inspection_measures_disc_and_elongation_from_earth(void)
     assert(at_jupiter.angular_diameter_arcsec > 30 && at_jupiter.angular_diameter_arcsec < 50);
     BodyInspection at_moon = simulation_session_inspect_body(&session, (size_t)moon);
     assert(at_moon.angular_diameter_arcsec > 29 * 60 && at_moon.angular_diameter_arcsec < 34 * 60);
+    /* The lit fraction (A146), (1 + cos i) / 2 with i the Sun-body-Earth
+     * phase angle. For the Moon i is close to 180 degrees minus its
+     * elongation, so a Moon 90 degrees from the Sun is half lit. */
+    const Body *m = &session.system.bodies[moon];
+    Vec3d moon_to_sun = vec3d_sub(s->position_m, m->position_m), moon_to_earth = vec3d_sub(e->position_m, m->position_m);
+    double phase = acos(vec3d_dot(moon_to_sun, moon_to_earth) / (vec3d_length(moon_to_sun) * vec3d_length(moon_to_earth)));
+    assert(fabs(at_moon.illuminated_fraction - (1 + cos(phase)) / 2) < 1e-12);
+    double approx = (1 - cos(at_moon.elongation_deg * acos(-1.0) / 180.0)) / 2;
+    assert(fabs(at_moon.illuminated_fraction - approx) < 0.01);
+    /* Jupiter, outside Earth's orbit, always shows nearly all its disc. */
+    assert(at_jupiter.illuminated_fraction > 0.98 && at_jupiter.illuminated_fraction <= 1.0);
+    assert(isnan(simulation_session_inspect_body(&session, (size_t)sun).illuminated_fraction));
     /* No elongation for the Sun itself or for Earth; no disc for Earth. */
     assert(isnan(simulation_session_inspect_body(&session, (size_t)sun).elongation_deg));
     assert(simulation_session_inspect_body(&session, (size_t)sun).angular_diameter_arcsec > 31 * 60);
