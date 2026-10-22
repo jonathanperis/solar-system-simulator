@@ -8,7 +8,7 @@ interface RuntimeReadouts {
   /** Shows the date; `data-seconds` carries the exact simulated seconds (whole 15 s ticks in scenes) for tools and tests. */
   elapsed: Readout & { dataset?: DOMStringMap };
   clockNote?: Readout;
-  today?: Readout & { hidden: boolean; dataset?: DOMStringMap };
+  today?: Pick<HTMLElement, 'textContent' | 'hidden' | 'dataset'>;
   interval: Readout;
   parent: Readout;
   distance: Readout;
@@ -609,7 +609,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
         const running = state.untilSeconds != null;
         readouts.today.hidden = !state.dated;
         setText(readouts.today, running ? 'Stop' : 'Today');
-        if (readouts.today.dataset) readouts.today.dataset.running = running ? 'true' : 'false';
+        readouts.today.dataset.running = running ? 'true' : 'false';
       }
       if (readouts.name) setText(readouts.name, state.body);
       if (readouts.period) setText(readouts.period, !state.hasParent ? 'N/A — no parent'
