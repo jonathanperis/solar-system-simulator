@@ -268,7 +268,7 @@ BodyInspection simulation_session_inspect_body(const SimulationSession *session,
     int parent_index = solar_system_parent_index(&session->system, index);
     BodyInspection result = {.name = body->name, .parent_name = "None", .has_parent = parent_index >= 0,
         .mass_kg = body->mass_kg, .radius_m = body->radius_m, .orbital_period_s = NAN, .earth_distance_m = NAN,
-        .angular_diameter_arcsec = NAN, .elongation_deg = NAN,
+        .angular_diameter_arcsec = NAN, .elongation_deg = NAN, .illuminated_fraction = NAN,
         .mass_quality = body->mass_quality, .radius_quality = body->radius_quality};
     const double degrees = 180.0 / acos(-1.0);
     for (size_t i = 0; i < session->system.body_count; ++i) {
@@ -283,6 +283,12 @@ BodyInspection simulation_session_inspect_body(const SimulationSession *session,
             Vec3d to_star = vec3d_sub(session->system.bodies[k].position_m, earth->position_m);
             double c = vec3d_dot(to_body, to_star) / (vec3d_length(to_body) * vec3d_length(to_star));
             if (isfinite(c)) result.elongation_deg = acos(fmax(-1.0, fmin(1.0, c))) * degrees;
+            /* Phase angle at the body, between the directions to the star
+             * and to Earth. */
+            Vec3d body_to_star = vec3d_sub(session->system.bodies[k].position_m, body->position_m);
+            Vec3d body_to_earth = vec3d_scale(to_body, -1.0);
+            double ci = vec3d_dot(body_to_star, body_to_earth) / (vec3d_length(body_to_star) * vec3d_length(body_to_earth));
+            if (isfinite(ci)) result.illuminated_fraction = (1.0 + fmax(-1.0, fmin(1.0, ci))) / 2.0;
             break;
         }
         break;

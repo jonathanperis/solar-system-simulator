@@ -1224,7 +1224,9 @@ static void solar_app_update_draw(void *user_data)
                     snprintf(lines[count++], sizeof(lines[0]), "%s | disc %.1f arcmin", seen.name, seen.angular_diameter_arcsec / 60.0);
                 else snprintf(lines[count++], sizeof(lines[0]), "%s | disc %.1f arcsec", seen.name, seen.angular_diameter_arcsec);
             } else snprintf(lines[count++], sizeof(lines[0]), "%s", seen.name);
-            if (isfinite(seen.elongation_deg)) snprintf(lines[count++], sizeof(lines[0]), "%.1f deg from the Sun", seen.elongation_deg);
+            if (isfinite(seen.elongation_deg))
+                snprintf(lines[count++], sizeof(lines[0]), "%.1f deg from the Sun | %.0f%% lit", seen.elongation_deg,
+                    100.0 * seen.illuminated_fraction);
         }
         snprintf(lines[count++], sizeof(lines[0]), "From Earth | field %s", field);
         const float s = state->pixel_scale, size = 13 * s, spacing = 0.4f * s, step = 18 * s;
