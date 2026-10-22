@@ -67,6 +67,9 @@ typedef struct RenderView {
     bool show_belt;        /* small-body cloud (A121): dated scenes only */
     double days_since_epoch; /* scene time for the belt, days after JD 2461200.5 */
     bool show_constellations; /* IAU stick figures on the sky (A124) */
+    /* From Earth (A147) months of moon trails pile into a band across the
+     * planet; the orbit guides already show the current orbits. */
+    bool hide_trails;
 } RenderView;
 
 /* View from Earth (A143): the body containing the camera (-1 for none) is

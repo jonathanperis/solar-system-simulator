@@ -355,3 +355,18 @@ test('View from Earth switches to real scale, aims at the selection and restores
   await page.getByRole('button', { name: 'View', exact: true }).click();
   await expect(sky).toHaveAttribute('aria-checked', 'false');
 });
+
+test('a link can open the view from Earth at a telescope field, and Copy link writes one (SPEC A147)', async ({ page }) => {
+  await page.goto(`${base}?body=jupiter&at=2026-06-12T06:30&from=earth&fov=0.05`);
+  await expect(page.locator('[data-runtime-elapsed]')).toHaveText('2026-06-12 06:30 TDB', { timeout: 30000 });
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  const sky = page.getByRole('switch', { name: 'From Earth' });
+  await expect(sky).toHaveAttribute('aria-checked', 'true');
+  await expect(sky).toHaveAttribute('data-fov', /^0\.05/);
+  await expect.poll(() => new URL(page.url()).searchParams.get('from')).toBeNull();
+  await page.getByRole('button', { name: 'Close view' }).click();
+  await page.getByRole('button', { name: 'Date', exact: true }).click();
+  const panel = page.getByRole('dialog', { name: 'Go to date' });
+  await panel.getByRole('button', { name: 'Copy link', exact: true }).click();
+  await expect(panel.locator('[data-date-note]')).toHaveText(/Link copied|from=earth&fov=0\.05/);
+});
