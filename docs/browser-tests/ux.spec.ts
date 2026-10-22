@@ -334,4 +334,12 @@ test('View from Earth switches to real scale, aims at the selection and restores
   await page.getByRole('button', { name: 'Illustrative', exact: true }).click();
   await expect(sky).toHaveAttribute('aria-checked', 'false');
   await expect(page.getByRole('button', { name: 'Illustrative', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  // A new scene starts from the orbit view (Bugbot on #75).
+  await sky.click();
+  await expect(sky).toHaveAttribute('aria-checked', 'true');
+  await page.getByRole('button', { name: 'Close view' }).click();
+  await page.getByRole('combobox', { name: 'Scene', exact: true }).selectOption({ label: 'Uranus (29 moons)' });
+  await expect(page.locator('[data-active-scene]')).toContainText('Uranus system', { timeout: 30000 });
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await expect(sky).toHaveAttribute('aria-checked', 'false');
 });
