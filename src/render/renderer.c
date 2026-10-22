@@ -16,6 +16,14 @@
  * thresholds and 2D marks are designed in CSS pixels: budgets divide the
  * viewport by this scale, drawn text and marks multiply by it. */
 static float pixel_scale = 1.0f;
+/* View from Earth (A143): the body the camera sits inside. It is not drawn,
+ * labelled, picked or counted as an occluder; -1 when there is none. */
+static int observer_body = -1;
+
+void renderer_set_observer(int index)
+{
+    observer_body = index;
+}
 
 void renderer_set_pixel_scale(float scale)
 {
@@ -668,7 +676,7 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
     rlBegin(RL_LINES);
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
-        if (body->kind == BODY_KIND_STAR && body->fixed) continue;
+        if ((body->kind == BODY_KIND_STAR && body->fixed) || (int)i == observer_body) continue;
         size_t point_count = body_trails_point_count(trails, i);
         if (point_count < 2) continue;
         Color color = renderer_body_color(body);
@@ -804,11 +812,12 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
         Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
         Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
         in_front[i] = offset.x * forward.x + offset.y * forward.y + offset.z * forward.z > 0;
+        if ((int)i == observer_body) in_front[i] = false;
         screen[i] = in_front[i] ? GetWorldToScreen(position, camera) : (Vector2){-1e6f, -1e6f};
         on_screen[i] = in_front[i] && screen[i].x >= 0 && screen[i].x <= width && screen[i].y >= 0 && screen[i].y <= height;
         occluder_distance[i] = sqrt(offset.x * offset.x + offset.y * offset.y + offset.z * offset.z);
-        occluder_radius[i] = system->bodies[i].radius_quality == PHYSICAL_UNKNOWN ? 0 : render_projected_radius_pixels(
-            renderer_body_radius(&system->bodies[i], mode), occluder_distance[i], camera.fovy, viewport_height);
+        occluder_radius[i] = system->bodies[i].radius_quality == PHYSICAL_UNKNOWN || (int)i == observer_body ? 0
+            : render_projected_radius_pixels(renderer_body_radius(&system->bodies[i], mode), occluder_distance[i], camera.fovy, viewport_height);
     }
 
     size_t count = 0;
@@ -924,7 +933,7 @@ static void draw_offscreen_markers(const SolarSystem *system, RenderScaleMode mo
     static Vector2 occluder_screen[SOLAR_SYSTEM_BODY_CAPACITY];
     size_t occluders = 0;
     for (size_t j = 0; j < system->body_count && j < SOLAR_SYSTEM_BODY_CAPACITY; ++j) {
-        if (system->bodies[j].radius_quality == PHYSICAL_UNKNOWN) continue;
+        if (system->bodies[j].radius_quality == PHYSICAL_UNKNOWN || (int)j == observer_body) continue;
         Vector3 pj = renderer_relative_vector(renderer_body_position(system, j, mode), origin);
         Vector3 oj = {pj.x - camera.position.x, pj.y - camera.position.y, pj.z - camera.position.z};
         if (oj.x * forward.x + oj.y * forward.y + oj.z * forward.z <= 0) continue;
@@ -944,7 +953,7 @@ static void draw_offscreen_markers(const SolarSystem *system, RenderScaleMode mo
     for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
         const Body *body = &system->bodies[i];
         bool major = body->kind == BODY_KIND_STAR || body->kind == BODY_KIND_PLANET || body->kind == BODY_KIND_DWARF_PLANET;
-        if (i == selected || !(major || (int)i == selected_parent)) continue;
+        if (i == selected || (int)i == observer_body || !(major || (int)i == selected_parent)) continue;
         Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
         Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
         bool in_front = offset.x * forward.x + offset.y * forward.y + offset.z * forward.z > 0;
@@ -1102,6 +1111,7 @@ void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3
     for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
         const Body *body = &system->bodies[i];
         bool is_selected = i == selected, is_hovered = (int)i == hovered;
+        if ((int)i == observer_body) continue;
         if (!is_selected && !is_hovered && body->kind != BODY_KIND_PLANET && body->kind != BODY_KIND_DWARF_PLANET) continue;
         Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
         Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
@@ -1146,6 +1156,7 @@ int renderer_pick_body(const SolarSystem *system, RenderScaleMode mode, Vec3d or
     size_t count = system->body_count < SOLAR_SYSTEM_BODY_CAPACITY ? system->body_count : SOLAR_SYSTEM_BODY_CAPACITY;
     for (size_t i = 0; i < count; ++i) {
         const Body *body = &system->bodies[i];
+        if ((int)i == observer_body) continue;
         Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
         Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
         bool in_front = offset.x * forward.x + offset.y * forward.y + offset.z * forward.z > 0;
@@ -1236,7 +1247,7 @@ static void draw_orbit_guides(const FrameContext *ctx)
     for (size_t i = 0; i < system->body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
         const Body *body = &system->bodies[i];
         int parent_index = ctx->cache.parent[i];
-        if (body->kind == BODY_KIND_STAR || parent_index < 0) continue;
+        if (body->kind == BODY_KIND_STAR || parent_index < 0 || (int)i == observer_body) continue;
         const Body *parent = &system->bodies[parent_index];
         Vec3d r = vec3d_sub(body->position_m, parent->position_m);
         Vec3d v = vec3d_sub(body->velocity_mps, parent->velocity_mps);
@@ -1518,6 +1529,7 @@ static void draw_opaque_bodies(const FrameContext *ctx)
     const RenderResources *resources = ctx->resources;
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
+        if ((int)i == observer_body) continue;
         Vector3 position = ctx->position[i];
         float radius = ctx->radius[i];
         Vector3 offset = {position.x - ctx->camera.position.x, position.y - ctx->camera.position.y, position.z - ctx->camera.position.z};
@@ -1580,7 +1592,7 @@ static void draw_translucent_layers(const FrameContext *ctx)
     rlDisableDepthMask();
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
-        if (body->radius_quality == PHYSICAL_UNKNOWN) continue;
+        if (body->radius_quality == PHYSICAL_UNKNOWN || (int)i == observer_body) continue;
         int faint_rings = ring_system_index(body->id);
         /* Faint rings need their opacity strip: without it they are not drawn
          * (a flat tinted annulus would misrepresent near-transparent dust). */
@@ -1625,7 +1637,7 @@ static void draw_translucent_layers(const FrameContext *ctx)
     for (size_t i = 0; i < system->body_count; ++i) {
         const Body *body = &system->bodies[i];
         RenderAtmosphere air = render_atmosphere_for_body(body->id);
-        if (air.strength <= 0 || body->radius_quality == PHYSICAL_UNKNOWN) continue;
+        if (air.strength <= 0 || body->radius_quality == PHYSICAL_UNKNOWN || (int)i == observer_body) continue;
         if (body_pixels(ctx, i, ctx->radius[i]) < 6.0) continue;
         /* Giant planets have no surface to frame their air against; a softer
          * halo keeps them from looking blurred. */
@@ -1645,7 +1657,10 @@ static void draw_sun_glow(const FrameContext *ctx)
     if (ctx->star < 0) return;
     /* Two layers: a tight bright corona and a wide, faint scattered halo
      * (the glare a camera or eye sees around a bright star). */
-    float size = fmaxf(ctx->radius[ctx->star] * 7.0f, (float)ctx->camera_distance * 0.05f);
+    /* From Earth (A143) the floor follows the Sun's own distance: the aim
+     * point may be a planet many AU away. */
+    double reference = observer_body >= 0 ? ctx->distance[ctx->star] : ctx->camera_distance;
+    float size = fmaxf(ctx->radius[ctx->star] * 7.0f, (float)reference * 0.05f);
     BeginBlendMode(BLEND_ADDITIVE);
     DrawBillboard(ctx->camera, ctx->resources->glow, ctx->star_position, size, WHITE);
     DrawBillboard(ctx->camera, ctx->resources->glow, ctx->star_position, size * 4.0f, (Color){110, 92, 70, 255});

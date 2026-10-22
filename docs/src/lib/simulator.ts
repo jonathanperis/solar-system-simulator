@@ -67,6 +67,7 @@ interface RuntimeControls {
   orbits: Switch;
   contact: HTMLButtonElement;
   follow?: Switch;
+  sky?: Switch;
   tour?: HTMLButtonElement;
   belt?: Switch;
   constellations?: Switch;
@@ -93,6 +94,9 @@ interface LabState {
   touring?: boolean;
   belt?: boolean;
   constellations?: boolean;
+  /* View from Earth (SPEC A143) and its field of view in degrees. */
+  sky?: boolean;
+  skyFov?: number;
 }
 
 export const lessonNames = lessonOptions.map(([, label]) => label);
@@ -241,7 +245,7 @@ interface RuntimeState {
 // Matches SolarCommand in src/main.c. All actions execute in the C runtime.
 export const runtimeCommands = { pause: 0, step: 1, reset: 2, speed: 3, select: 4, view: 5, zoom: 6, rotate: 7, frame: 8, frameBody: 9,
   trails: 10, vectors: 11, background: 12, contact: 13, grid: 14, labels: 15, orbits: 16,
-  follow: 17, tour: 18, belt: 19, constellations: 20, runUntil: 21 } as const;
+  follow: 17, tour: 18, belt: 19, constellations: 20, runUntil: 21, sky: 22 } as const;
 
 interface RuntimeBody { index: number; name: string; group: string }
 
@@ -621,6 +625,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       setSwitch(controls.constellations, Boolean(state.constellations));
       setSwitch(controls.belt, state.belt !== false);
       setSwitch(controls.follow, Boolean(state.follow));
+      setSwitch(controls.sky, Boolean(state.sky));
       if (controls.tour) {
         setText(controls.tour, state.touring ? 'Stop tour' : 'Tour');
         controls.tour.setAttribute('aria-pressed', String(Boolean(state.touring)));
@@ -746,6 +751,7 @@ export function mountSimulator(root: HTMLElement): void {
     speed: root.querySelector<HTMLInputElement>('[data-runtime-speed]')!,
     speedLabel: root.querySelector<HTMLElement>('[data-speed-label]') ?? undefined,
     follow: root.querySelector<HTMLButtonElement>('[data-command="follow"]') ?? undefined,
+    sky: root.querySelector<HTMLButtonElement>('[data-command="sky"]') ?? undefined,
     belt: root.querySelector<HTMLButtonElement>('[data-command="belt"]') ?? undefined,
     constellations: root.querySelector<HTMLButtonElement>('[data-command="constellations"]') ?? undefined,
     tour: root.querySelector<HTMLButtonElement>('[data-command="tour"]') ?? undefined,

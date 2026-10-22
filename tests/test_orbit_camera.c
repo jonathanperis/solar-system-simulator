@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "app/orbit_camera.h"
 
@@ -250,8 +251,36 @@ static void test_flight_eases_between_framings(void)
     assert(orbit_camera_flight_advance(&flight, 0.016f) == 1.0f && !flight.active);
 }
 
+/* View from Earth (A143): the telescope's field of view zooms by a factor
+ * and stays between a wide naked-eye field and a narrow telescope field. */
+static void test_sky_zoom_narrows_and_widens_within_bounds(void)
+{
+    float fov = 30.0f;
+    fov = orbit_camera_sky_zoom(fov, 0.5f);
+    assert(fabsf(fov - 15.0f) < 1e-5f);
+    assert(orbit_camera_sky_zoom(fov, 2.0f) == 30.0f);
+    assert(orbit_camera_sky_zoom(0.03f, 0.01f) == ORBIT_CAMERA_SKY_FOV_MIN);
+    assert(orbit_camera_sky_zoom(60.0f, 100.0f) == ORBIT_CAMERA_SKY_FOV_MAX);
+    /* A broken factor never poisons the view. */
+    assert(orbit_camera_sky_zoom(12.0f, NAN) == 12.0f);
+    assert(orbit_camera_sky_zoom(12.0f, -1.0f) == 12.0f);
+    /* Narrow enough to show Jupiter's disc (about 47 arcseconds) as a disc. */
+    assert(ORBIT_CAMERA_SKY_FOV_MIN < 47.0f / 3600.0f * 10.0f);
+    /* The caption names the field in the unit an observer would use. */
+    char label[32];
+    orbit_camera_sky_fov_label(40.0f, label, sizeof(label));
+    assert(strcmp(label, "40 deg") == 0);
+    orbit_camera_sky_fov_label(2.5f, label, sizeof(label));
+    assert(strcmp(label, "2.5 deg") == 0);
+    orbit_camera_sky_fov_label(0.25f, label, sizeof(label));
+    assert(strcmp(label, "15 arcmin") == 0);
+    orbit_camera_sky_fov_label(0.02f, label, sizeof(label));
+    assert(strcmp(label, "72 arcsec") == 0);
+}
+
 int main(void)
 {
+    test_sky_zoom_narrows_and_widens_within_bounds();
     test_sunlit_yaw_places_camera_on_the_day_side();
     test_auto_rotation_yaw_stays_bounded_and_keeps_moving();
     test_frame_fits_bounding_sphere_at_solar_and_moon_scales();

@@ -2,6 +2,7 @@
 #define ORBIT_CAMERA_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 typedef struct OrbitCameraVec3 {
     float x;
@@ -38,6 +39,20 @@ void orbit_camera_frame_sphere(OrbitCameraState *state, float radius, float vert
 #define ORBIT_CAMERA_MAX_PITCH_RADIANS 1.45f
 void orbit_camera_drag(OrbitCameraState *state, float dx_pixels, float dy_pixels, float viewport_height);
 void orbit_camera_pinch(OrbitCameraState *state, float ratio);
+
+/* View from Earth (A143): a telescope's vertical field of view, in degrees.
+ * 70 degrees is a wide naked-eye field; 0.02 degrees (72 arcseconds) shows
+ * Jupiter's 47-arcsecond disc across most of the view. */
+#define ORBIT_CAMERA_SKY_FOV_MIN 0.02f
+#define ORBIT_CAMERA_SKY_FOV_MAX 70.0f
+#define ORBIT_CAMERA_SKY_FOV_DEFAULT 40.0f
+/* Multiplies the field by `factor` (below 1 zooms in), clamped; a factor that
+ * is not finite and positive leaves it unchanged. */
+float orbit_camera_sky_zoom(float fov_degrees, float factor);
+/* "40 deg", "2.5 deg", "15 arcmin" or "72 arcsec": the field in degrees down
+ * to one, arcminutes down to two, then arcseconds. Spelled out because the embedded
+ * label font is an ASCII subset (no degree or prime glyphs). */
+void orbit_camera_sky_fov_label(float fov_degrees, char *out, size_t size);
 
 /* Fly-to (SPEC A112): when the framing changes, the shown camera eases from
  * the old view to the new one instead of cutting. The destination is passed

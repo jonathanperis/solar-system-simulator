@@ -69,6 +69,10 @@ typedef struct RenderView {
     bool show_constellations; /* IAU stick figures on the sky (A124) */
 } RenderView;
 
+/* View from Earth (A143): the body containing the camera (-1 for none) is
+ * neither drawn nor labelled, picked or counted as an occluder. */
+void renderer_set_observer(int index);
+
 bool renderer_resources_init(RenderResources *resources);
 void renderer_resources_unload(RenderResources *resources);
 /* Decode bundled JPEG/PNG bytes into a texture slot; false keeps the fallback. */
