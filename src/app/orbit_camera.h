@@ -53,6 +53,14 @@ float orbit_camera_sky_zoom(float fov_degrees, float factor);
  * to one, arcminutes down to two, then arcseconds. Spelled out because the embedded
  * label font is an ASCII subset (no degree or prime glyphs). */
 void orbit_camera_sky_fov_label(float fov_degrees, char *out, size_t size);
+/* Looking around from Earth (A144): `target` (any length, simulation axes,
+ * +y ecliptic north) turned by `yaw` radians about +y and raised by `pitch`
+ * radians toward north, elevation clamped 1 degree short of either pole so
+ * the camera's up stays defined; same length. */
+void orbit_camera_sky_aim(const double target[3], float yaw, float pitch, double out[3]);
+/* A drag of `pixels` as an angle: one viewport height spans the vertical
+ * field, so a narrow telescope field pans finely. 0 for an empty viewport. */
+float orbit_camera_sky_drag_radians(float pixels, float fov_degrees, float viewport_height);
 
 /* Fly-to (SPEC A112): when the framing changes, the shown camera eases from
  * the old view to the new one instead of cutting. The destination is passed

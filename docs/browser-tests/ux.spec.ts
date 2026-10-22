@@ -316,6 +316,18 @@ test('View from Earth switches to real scale, aims at the selection and restores
   // The selection stays the target; zoom narrows the field without leaving.
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
   await expect(sky).toHaveAttribute('aria-checked', 'true');
+  // Dragging looks around the sky (A144) without leaving the view or
+  // changing the selection; Frame body re-centres.
+  await page.getByRole('button', { name: 'Close view' }).click();
+  const canvas = (await page.locator('#canvas').boundingBox())!;
+  await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(canvas.x + canvas.width / 2 + 200, canvas.y + canvas.height / 2 + 60, { steps: 10 });
+  await page.mouse.up();
+  await page.getByRole('button', { name: 'Frame body', exact: true }).click();
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await expect(sky).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Jupiter');
   await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Jupiter');
   // Turning it off restores the illustrative scale it left.
   await sky.click();
