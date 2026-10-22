@@ -8,6 +8,7 @@ interface RuntimeReadouts {
   /** Shows the date; `data-seconds` carries the exact simulated seconds (whole 15 s ticks in scenes) for tools and tests. */
   elapsed: Readout & { dataset?: DOMStringMap };
   clockNote?: Readout;
+  today?: Readout & { hidden: boolean; dataset?: DOMStringMap };
   interval: Readout;
   parent: Readout;
   distance: Readout;
@@ -98,6 +99,11 @@ export function sceneDate(elapsedSeconds: number): string {
   const ms = (sceneEpochJd - 2440587.5) * 86400000 + elapsedSeconds * 1000;
   return `${new Date(ms).toISOString().slice(0, 16).replace('T', ' ')} TDB`;
 }
+/** Scene seconds at a UTC instant (A133), as scene_epoch_seconds_at_unix_time
+ * in C: TDB runs 69.184 s ahead of UTC. */
+export function sceneSecondsAt(unixMs: number): number {
+  return unixMs / 1000 - (sceneEpochJd - 2440587.5) * 86400 + 69.184;
+}
 /** The note beside the sky clock: how far the run has come from its starting
  * sky, or that a lesson clock counts from the lesson start. */
 export function clockNote(elapsedSeconds: number, dated: boolean): string {
@@ -160,12 +166,14 @@ interface RuntimeState {
   /* Two-body period around the parent (s, NaN when unbound) and whether the
    * scene starts from the dated 2026-06-09 sky. */
   periodS?: number; dated?: boolean;
+  /* The elapsed time a Today run is playing to (A133), or null. */
+  untilSeconds?: number | null;
 }
 
 // Matches SolarCommand in src/main.c. All actions execute in the C runtime.
 export const runtimeCommands = { pause: 0, step: 1, reset: 2, speed: 3, select: 4, view: 5, zoom: 6, rotate: 7, frame: 8, frameBody: 9,
   trails: 10, vectors: 11, background: 12, contact: 13, grid: 14, labels: 15, orbits: 16,
-  follow: 17, tour: 18, belt: 19, constellations: 20 } as const;
+  follow: 17, tour: 18, belt: 19, constellations: 20, runUntil: 21 } as const;
 
 interface RuntimeBody { index: number; name: string; group: string }
 
@@ -595,6 +603,14 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
         : `${(state.elapsedSeconds / 86400).toFixed(4)} d (${Number(state.elapsedSeconds.toPrecision(12))} s)`);
       if (readouts.elapsed.dataset) readouts.elapsed.dataset.seconds = String(state.elapsedSeconds);
       if (readouts.clockNote) setText(readouts.clockNote, clockNote(state.elapsedSeconds, Boolean(state.dated)));
+      if (readouts.today) {
+        // Today plays dated scenes forward to the present; while it runs the
+        // same button stops it.
+        const running = state.untilSeconds != null;
+        readouts.today.hidden = !state.dated;
+        setText(readouts.today, running ? 'Stop' : 'Today');
+        if (readouts.today.dataset) readouts.today.dataset.running = running ? 'true' : 'false';
+      }
       if (readouts.name) setText(readouts.name, state.body);
       if (readouts.period) setText(readouts.period, !state.hasParent ? 'N/A — no parent'
         : Number.isFinite(state.periodS) ? formatPeriod(state.periodS!) : 'Unbound (no closed orbit)');
@@ -678,6 +694,7 @@ export function mountSimulator(root: HTMLElement): void {
     controls: root.querySelector<HTMLElement>('[data-runtime-controls]')!,
     elapsed: root.querySelector<HTMLElement>('[data-runtime-elapsed]')!,
     clockNote: root.querySelector<HTMLElement>('[data-clock-note]') ?? undefined,
+    today: root.querySelector<HTMLButtonElement>('[data-today]') ?? undefined,
     interval: root.querySelector<HTMLElement>('[data-runtime-interval]')!,
     parent: root.querySelector<HTMLElement>('[data-inspector-parent]')!,
     distance: root.querySelector<HTMLElement>('[data-inspector-distance]')!,
@@ -747,6 +764,11 @@ export function mountSimulator(root: HTMLElement): void {
   });
   root.querySelectorAll<HTMLButtonElement>('[data-command]').forEach(button => {
     button.addEventListener('click', () => send(button.dataset.command as keyof typeof runtimeCommands, Number(button.dataset.value ?? 0)));
+  });
+  root.querySelector<HTMLButtonElement>('[data-today]')?.addEventListener('click', event => {
+    const button = event.currentTarget as HTMLButtonElement;
+    if (button.dataset.running === 'true') send('pause');
+    else send('runUntil', Math.floor(sceneSecondsAt(Date.now())));
   });
   controls.body.addEventListener('change', () => send('select', Number(controls.body.value)));
   controls.speed.addEventListener('input', () => send('speed', Number(controls.speed.value)));

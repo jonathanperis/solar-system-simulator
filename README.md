@@ -325,6 +325,7 @@ The app uses a small stable orbit camera instead of raylib's automatic orbital h
 - `O`: orbit guides. `T`: parent-relative (default) or absolute trail history. `X`: vector directions (green velocity, orange acceleration; illustrative lengths). `G`: show or hide the reference grid (web: View → Grid). `H`: show or hide body labels.
 - `E`: export an SI snapshot. The browser downloads `solar-snapshot.csv`; native writes the next free `solar-snapshot-001.csv`, `-002.csv`, … in the working directory and never overwrites an earlier snapshot. Headless series and snapshots share the C writer.
 - `Space`: pause/resume. Paused time does not accumulate for later catch-up.
+- `P` (and the page's Today button): play a dated scene at the fastest speed to the present moment and pause there, within one 15-second tick. It is ordinary integration, not a jump, so it takes about nine seconds per 135 days; a present before the clock restarts the scene first.
 - `N`: advance one configured physics tick while paused (15 seconds in core/catalog scenes).
 - `R`: restore initial physics, trail history, and clock remainder; retain selection, speed, pause state, render mode, and camera rotation setting.
 - `[` / `]`: change requested orbital playback speed among 1 hour, 1 day, 5 days, 10 days, and 15 days per real second without changing the integration step. The collision lesson uses 1/5/10/25/50 simulated seconds per real second instead.

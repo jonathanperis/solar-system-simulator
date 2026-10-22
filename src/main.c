@@ -85,7 +85,7 @@ EM_JS(void, solar_web_report_state, (const char *body_name, const char *parent_n
     double elapsed_seconds, double trail_interval_seconds, int trails_failed, int has_parent,
     double distance_m, double speed_mps, double mass_kg, double radius_m, double zoom,
     int mass_quality, int radius_quality, double achieved_time_scale, double pending_seconds, int short_timescale,
-    double orbital_period_s, int dated), {
+    double orbital_period_s, int dated, double run_until_seconds), {
     Module.reportState({body: UTF8ToString(body_name), parent: UTF8ToString(parent_name),
         view: UTF8ToString(view_mode), cameraTarget: UTF8ToString(camera_target), selected,
         paused: !!paused, speedPreset: speed_preset, autoRotate: !!auto_rotate,
@@ -94,7 +94,8 @@ EM_JS(void, solar_web_report_state, (const char *body_name, const char *parent_n
         distanceM: distance_m, speedMps: speed_mps, massKg: mass_kg, radiusM: radius_m, zoom,
         massQuality: mass_quality, radiusQuality: radius_quality,
         achievedTimeScale: achieved_time_scale, pendingSeconds: pending_seconds, shortTimescale: !!short_timescale,
-        periodS: orbital_period_s, dated: !!dated});
+        periodS: orbital_period_s, dated: !!dated,
+        untilSeconds: run_until_seconds >= 0 ? run_until_seconds : null});
 })
 
 EM_JS(void, solar_web_add_body, (int index, const char *name, const char *group), {
@@ -151,6 +152,7 @@ EM_JS(int, solar_web_canvas_has_focus, (void), {
 #include "render/renderer.h"
 #include "sim/experiment.h"
 #include "sim/scene_epoch.h"
+#include <time.h>
 
 typedef struct SolarApp {
     Camera3D camera;
@@ -223,7 +225,8 @@ typedef enum SolarCommand {
     SOLAR_COMMAND_SPEED, SOLAR_COMMAND_SELECT, SOLAR_COMMAND_VIEW,
     SOLAR_COMMAND_ZOOM, SOLAR_COMMAND_ROTATE, SOLAR_COMMAND_FRAME, SOLAR_COMMAND_FRAME_BODY,
     SOLAR_COMMAND_TRAILS, SOLAR_COMMAND_VECTORS, SOLAR_COMMAND_BACKGROUND, SOLAR_COMMAND_CONTACT, SOLAR_COMMAND_GRID, SOLAR_COMMAND_LABELS,
-    SOLAR_COMMAND_ORBITS, SOLAR_COMMAND_FOLLOW, SOLAR_COMMAND_TOUR, SOLAR_COMMAND_BELT, SOLAR_COMMAND_CONSTELLATIONS
+    SOLAR_COMMAND_ORBITS, SOLAR_COMMAND_FOLLOW, SOLAR_COMMAND_TOUR, SOLAR_COMMAND_BELT, SOLAR_COMMAND_CONSTELLATIONS,
+    SOLAR_COMMAND_RUN_UNTIL
 } SolarCommand;
 
 static SolarApp app;
@@ -675,6 +678,15 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
             state->tour_seconds = 1e9f; /* start at once */
             break;
         case SOLAR_COMMAND_BACKGROUND: simulation_session_set_background(session, value != 0); break;
+        case SOLAR_COMMAND_RUN_UNTIL:
+            /* "Today" (A133): play forward to `value` seconds after the scene
+             * epoch. Only dated scenes have a calendar to run to; a target
+             * behind the clock restarts the scene first, since physics only
+             * runs forward. */
+            if (!simulation_session_is_dated(session)) break;
+            if (value < session->system.elapsed_seconds) solar_app_command(state, SOLAR_COMMAND_RESET, 0);
+            simulation_session_run_until(session, value);
+            break;
         case SOLAR_COMMAND_CONTACT:
             if (session->lesson == LESSON_COLLISION) {
                 CollisionMode mode = session->clock.collision_mode == COLLISION_BOUNCE ? COLLISION_MERGE : COLLISION_BOUNCE;
@@ -715,7 +727,7 @@ static void report_web_state(const SolarApp *state)
         body.distance_m, body.speed_mps, body.mass_kg, body.radius_m, state->orbit_camera.distance,
         body.mass_quality, body.radius_quality, session->achieved_time_scale, session->clock.pending_seconds,
         session->lesson == LESSON_COLLISION, body.orbital_period_s,
-        simulation_session_is_dated(session));
+        simulation_session_is_dated(session), session->run_until_seconds);
     PhysicsDiagnostics diagnostics = physics_diagnostics(&session->system);
     const Body *selected = &session->system.bodies[session->selected_body_index];
     solar_web_report_lab(session->lesson, session->clock.integrator, simulation_clock_step_seconds(&session->clock),
@@ -917,6 +929,10 @@ static void solar_app_update_draw(void *user_data)
         if (IsKeyPressed(KEY_G)) solar_app_command(state, SOLAR_COMMAND_GRID, 0);
         if (IsKeyPressed(KEY_H)) solar_app_command(state, SOLAR_COMMAND_LABELS, 0);
         if (IsKeyPressed(KEY_O)) solar_app_command(state, SOLAR_COMMAND_ORBITS, 0);
+        /* P runs the sky to the present (A133); Emscripten's time() is the
+         * browser's clock, so the page's Today button and P agree. */
+        if (IsKeyPressed(KEY_P)) solar_app_command(state, SOLAR_COMMAND_RUN_UNTIL,
+            (int)scene_epoch_seconds_at_unix_time((double)time(NULL)));
         if (IsKeyPressed(KEY_ESCAPE)) step_out(state);
         if (IsKeyPressed(KEY_Y)) solar_app_command(state, SOLAR_COMMAND_FOLLOW, 0);
         if (IsKeyPressed(KEY_Q)) solar_app_command(state, SOLAR_COMMAND_BELT, 0);
@@ -1105,7 +1121,7 @@ static void solar_app_update_draw(void *user_data)
         simulation_session_energy_change(&state->session, &diagnostics),
         magnification), 20, 335, 16, RAYWHITE);
     DrawText("K: scene | L: lesson | I: integrator | D: dt | - / =: initial speed | M: contact model (changes reset)", 20, 360, 16, RAYWHITE);
-    DrawText(TextFormat("T: trails (%s) | O: orbit guides | X: vector directions | G: grid | H: labels | E: export SI snapshot",
+    DrawText(TextFormat("T: trails (%s) | O: orbit guides | X: vectors | G: grid | H: labels | P: run to present | E: export SI",
         state->trail_frame == RENDER_TRAILS_PARENT ? "parent-relative" : "absolute"), 20, 385, 16, RAYWHITE);
     DrawText("Vectors: green velocity / orange acceleration; lengths are illustrative", 20, 410, 16, RAYWHITE);
     DrawText(state->feedback, 20, 435, 16, RAYWHITE);
