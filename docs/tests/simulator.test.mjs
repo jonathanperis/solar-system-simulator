@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, sceneSecondsAt, clockNote, speedLabels, findMatches, formatSpacing, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod } from '../src/lib/simulator.ts';
+import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, sceneSecondsAt, sceneSecondsAtDate, dateRunNote, clockNote, speedLabels, findMatches, formatSpacing, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod } from '../src/lib/simulator.ts';
 import { errorMessage, downloadText } from '../src/lib/browser.ts';
 
 test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolling', () => {
@@ -338,4 +338,18 @@ test('Find lists names that start with the query first, then ones containing it 
   assert.equal(formatSpacing(0.1), '0.1\u00a0s between trail samples');
   assert.equal(formatSpacing(12.345), '12.3\u00a0s between trail samples');
   assert.equal(formatSpacing(7200), '2.00\u00a0h between trail samples');
+});
+
+test('Go to date reads a TDB instant and says how the run will go (SPEC A134)', () => {
+  assert.equal(sceneSecondsAtDate('2026-06-09', '00:00'), 0);
+  assert.equal(sceneSecondsAtDate('2026-06-10', '06:30'), 86400 + 6.5 * 3600);
+  assert.equal(sceneDate(sceneSecondsAtDate('2031-02-28', '23:59')), '2031-02-28 23:59 TDB');
+  // Before the epoch, past the runnable range, or malformed: not a target.
+  assert.ok(Number.isNaN(sceneSecondsAtDate('2026-06-08', '23:59')));
+  assert.ok(Number.isNaN(sceneSecondsAtDate('2077-01-01', '00:00')));
+  assert.ok(Number.isNaN(sceneSecondsAtDate('', '00:00')));
+  assert.equal(dateRunNote(135 * 86400, 0), 'Plays forward about 9 s at 15 d/s.');
+  assert.equal(dateRunNote(10 * 365.25 * 86400, 0), 'Plays forward about 4 min at 15 d/s.');
+  assert.equal(dateRunNote(86400, 2 * 86400), 'Restarts at 2026-06-09, then plays under a second.');
+  assert.equal(dateRunNote(NaN, 0), 'Choose a date from 2026-06-09 to 2076-06-08.');
 });
