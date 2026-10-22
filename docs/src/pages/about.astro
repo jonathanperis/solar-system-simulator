@@ -74,6 +74,10 @@ const sources = [
 
     <h2 id="rendering">Rendering</h2>
     <p>Everything drawn is presentation: it reads the physical state and never feeds the physics, the inspector or the CSV export.</p>
+    <figure class="figure">
+      <a href={`${base}?body=jupiter&at=2026-12-01T22:00&from=earth&fov=0.15`}><img src={`${base}about-sky.jpg`} width="1280" height="720" alt="The view from Earth through a 9-arcminute field: Jupiter's banded disc with Ganymede, Io, Europa and Callisto labelled in a line." loading="lazy" decoding="async" /></a>
+      <figcaption>From Earth on 2026-12-01: Jupiter 103 degrees from the Sun, its Galilean moons in a line. <a href={`${base}?body=jupiter&at=2026-12-01T22:00&from=earth&fov=0.15`}>Open this view</a>.</figcaption>
+    </figure>
     <dl class="glossary">
       <dt>Scale</dt><dd>Illustrative enlarges bodies and pushes each moon out past its enlarged planet by the same amount, so moons keep their true order and spacing; real uses physical sizes and distances. Switching morphs between them.</dd>
       <dt>Orbit guides</dt><dd>Each body's two-body ellipse about its parent, from its current position and velocity: where it would go if only its parent pulled on it.</dd>
