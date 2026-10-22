@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, sceneSecondsAt, sceneSecondsAtDate, dateRunNote, dateRunArrived, clockNote, speedLabels, findMatches, formatSpacing, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod, formatFromEarth } from '../src/lib/simulator.ts';
+import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, sceneSecondsAt, sceneSecondsAtDate, dateRunNote, dateRunArrived, sceneSecondsAtLink, linkForSceneSeconds, clockNote, speedLabels, findMatches, formatSpacing, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod, formatFromEarth } from '../src/lib/simulator.ts';
 import { errorMessage, downloadText } from '../src/lib/browser.ts';
 
 test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolling', () => {
@@ -374,4 +374,13 @@ test('From Earth gives the distance and the light time (SPEC A136)', () => {
   // Totals are rounded before splitting: 3599.7 s is 1 h 0 min, never 59 min 60 s.
   assert.equal(formatFromEarth(3599.7 * 299792458), `7.2138${nb}AU ·${nb}light${nb}1${nb}h${nb}0${nb}min`);
   assert.equal(formatFromEarth(59.999 * 299792458), `0.1202${nb}AU ·${nb}light${nb}1${nb}min${nb}0${nb}s`);
+});
+
+test('a linked instant reads ?at= in TDB and writes it back to the minute (SPEC A141)', () => {
+  assert.equal(sceneSecondsAtLink('2026-06-10'), 86400);
+  assert.equal(sceneSecondsAtLink('2026-06-10T06:30'), 86400 + 6.5 * 3600);
+  for (const bad of [null, '', '2026-6-10', '2026-06-10T6:30', '2026-06-10 06:30', '2026-06-08', '2080-01-01', '2026-06-10T06:30Z'])
+    assert.ok(Number.isNaN(sceneSecondsAtLink(bad)), String(bad));
+  assert.equal(linkForSceneSeconds(86400 + 6.5 * 3600 + 42), '2026-06-10T06:30');
+  assert.equal(sceneSecondsAtLink(linkForSceneSeconds(123456789)), Math.floor(123456789 / 60) * 60);
 });

@@ -280,3 +280,24 @@ test('landscape phones keep the view full height with the controls beside it (SP
   await expect(load).toBeInViewport();
   expect((await page.locator('#canvas').boundingBox())!.height).toBeGreaterThanOrEqual(390 - header.height - 2);
 });
+
+test('a link with ?at= opens on its body and plays the sky to that instant (SPEC A141)', async ({ page }) => {
+  await page.goto(`${base}?body=mars&at=2026-06-12T06:30`);
+  await expect(page.locator('[data-runtime-elapsed]')).toHaveText('2026-06-12 06:30 TDB', { timeout: 30000 });
+  await expect(page.getByRole('button', { name: 'Resume', exact: true })).toBeVisible();
+  await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Mars');
+  // The instant is applied once, then leaves the address.
+  await expect.poll(() => new URL(page.url()).searchParams.get('at')).toBeNull();
+  expect(new URL(page.url()).searchParams.get('body')).toBe('mars');
+  // A family-scene body loads its scene first, then runs.
+  await page.goto(`${base}?body=pan&at=2026-06-10`);
+  await expect(page.locator('[data-runtime-elapsed]')).toHaveText('2026-06-10 00:00 TDB', { timeout: 30000 });
+  await expect(page.locator('[data-active-scene]')).toContainText('Saturn system');
+  // Copy link writes one for the chosen instant.
+  await page.getByRole('button', { name: 'Date', exact: true }).click();
+  const panel = page.getByRole('dialog', { name: 'Go to date' });
+  await panel.getByLabel('Date', { exact: true }).fill('2027-03-23');
+  await panel.getByLabel('Time (TDB)').fill('12:00');
+  await panel.getByRole('button', { name: 'Copy link', exact: true }).click();
+  await expect(panel.locator('[data-date-note]')).toHaveText(/Link copied|at=2027-03-23T12%3A00/);
+});

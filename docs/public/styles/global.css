@@ -222,7 +222,8 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
 .date-form label { display: grid; gap: 0.25rem; font: 0.6875rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
 .date-form input { width: 100%; color-scheme: dark; }
 .date-form .date-note { grid-column: 1 / -1; margin: 0; color: var(--amber); font-size: 0.75rem; min-height: 1.1em; }
-.date-form button { grid-column: 1 / -1; }
+.date-form button[type="submit"] { grid-column: 1; }
+.date-form button[data-date-copy] { grid-column: 2; }
 .view-groups { display: grid; gap: 0.6rem; }
 .view-groups > * + * { margin-top: 0 !important; }
 .view-group { display: grid; gap: 0.3rem; }
