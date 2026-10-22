@@ -1156,7 +1156,9 @@ int renderer_pick_body(const SolarSystem *system, RenderScaleMode mode, Vec3d or
     size_t count = system->body_count < SOLAR_SYSTEM_BODY_CAPACITY ? system->body_count : SOLAR_SYSTEM_BODY_CAPACITY;
     for (size_t i = 0; i < count; ++i) {
         const Body *body = &system->bodies[i];
-        if ((int)i == observer_body) continue;
+        /* The static slot must be overwritten, not skipped: a stale entry
+         * from an earlier frame would make the observer pickable (Bugbot). */
+        if ((int)i == observer_body) { candidates[i] = (RenderPickCandidate){.kind = body->kind, .in_front = false}; continue; }
         Vector3 position = renderer_relative_vector(renderer_body_position(system, i, mode), origin);
         Vector3 offset = {position.x - camera.position.x, position.y - camera.position.y, position.z - camera.position.z};
         bool in_front = offset.x * forward.x + offset.y * forward.y + offset.z * forward.z > 0;

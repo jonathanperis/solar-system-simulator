@@ -564,6 +564,8 @@ static void step_out(SolarApp *state)
 
 static bool start_app_lesson(SolarApp *state, LessonPreset lesson, double factor, PhysicsIntegrator method, double dt)
 {
+    /* A new scene or lesson starts from the orbit view (Bugbot). */
+    sky_leave(state);
     if (!simulation_session_start_lesson(&state->session, lesson, factor, method, dt)) return false;
     state->orbit_camera = orbit_camera_default_state();
     state->system_framed = state->body_framed = false;
@@ -637,6 +639,19 @@ static int earth_index(const SolarSystem *system)
     return -1;
 }
 
+/* What the view from Earth aims at: the selection, or with Earth selected
+ * the star (any other body in a starless lesson), never index 0 blindly:
+ * in the Earth-Moon lesson index 0 is Earth itself (Bugbot). */
+static size_t sky_target_index(const SolarSystem *system, int earth, size_t selected)
+{
+    if (selected != (size_t)earth) return selected;
+    for (size_t i = 0; i < system->body_count; ++i)
+        if (system->bodies[i].kind == BODY_KIND_STAR) return i;
+    for (size_t i = 0; i < system->body_count; ++i)
+        if (i != (size_t)earth) return i;
+    return selected;
+}
+
 static void sky_leave(SolarApp *state)
 {
     if (!state->sky) return;
@@ -644,6 +659,10 @@ static void sky_leave(SolarApp *state)
     state->render_mode = state->sky_return_mode;
     state->auto_rotate = state->sky_return_rotate;
     renderer_set_observer(-1);
+    /* Framing reads camera.fovy: restore the orbit view's field first, or a
+     * telescope field (down to 72 arcseconds) frames the body from far away
+     * (Bugbot). */
+    state->camera.fovy = 45.0f;
     frame_selected_body(state, false);
 }
 
@@ -843,6 +862,7 @@ EMSCRIPTEN_KEEPALIVE void solar_web_command(int command, int value)
 EMSCRIPTEN_KEEPALIVE int solar_web_experiment(const char *text)
 {
     if (!simulation_session_start_experiment(&app.session, text)) return 0;
+    sky_leave(&app);
     app.orbit_camera = orbit_camera_default_state();
     app.system_framed = app.body_framed = false;
     populate_web_bodies();
@@ -854,6 +874,7 @@ EMSCRIPTEN_KEEPALIVE int solar_web_experiment(const char *text)
 EMSCRIPTEN_KEEPALIVE void solar_web_demo(void)
 {
     simulation_session_demo(&app.session);
+    sky_leave(&app);
     app.orbit_camera = orbit_camera_default_state();
     app.system_framed = app.body_framed = false;
     populate_web_bodies();
@@ -1098,7 +1119,7 @@ static void solar_app_update_draw(void *user_data)
          * sits at (0,0,0) and looks along the true direction to the target;
          * ecliptic north (+y) is up. Real scale, so every direction is the
          * SI geometry. */
-        size_t target = state->session.selected_body_index == (size_t)earth ? 0 : state->session.selected_body_index;
+        size_t target = sky_target_index(&state->session.system, earth, state->session.selected_body_index);
         origin = renderer_body_position(&state->session.system, (size_t)earth, state->render_mode);
         Vec3d aim = vec3d_sub(renderer_body_position(&state->session.system, target, state->render_mode), origin);
         renderer_set_observer(earth);
