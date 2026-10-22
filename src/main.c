@@ -337,8 +337,8 @@ static void handle_pointer(SolarApp *state)
                  * follow the pointer at the field's own scale. */
                 if (state->sky) {
                     float h = (float)GetScreenHeight();
-                    state->sky_yaw += orbit_camera_sky_drag_radians(dx, state->sky_fov, h);
-                    state->sky_pitch += orbit_camera_sky_drag_radians(dy, state->sky_fov, h);
+                    state->sky_yaw += orbit_camera_sky_drag_radians(dx, state->camera.fovy, h);
+                    state->sky_pitch += orbit_camera_sky_drag_radians(dy, state->camera.fovy, h);
                 } else orbit_camera_drag(&state->orbit_camera, dx, dy, (float)GetScreenHeight());
                 state->interaction_hold_seconds = SOLAR_INTERACTION_HOLD_SECONDS;
                 state->steered = true;
@@ -1155,7 +1155,8 @@ static void solar_app_update_draw(void *user_data)
         state->camera.position = (Vector3){0, 0, 0};
         state->camera.target = (Vector3){(float)aim.x, (float)aim.y, (float)aim.z};
         state->camera.up = (Vector3){0, 1, 0};
-        state->camera.fovy = state->sky_fov;
+        float view_aspect = GetScreenHeight() > 0 ? (float)GetScreenWidth() / (float)GetScreenHeight() : 1.0f;
+        state->camera.fovy = orbit_camera_sky_vertical_fov(state->sky_fov, view_aspect);
         state->shown_origin = origin;
         state->shown_camera = shown;
     } else {
@@ -1201,7 +1202,7 @@ static void solar_app_update_draw(void *user_data)
         }
         const double forward[3] = {state->camera.target.x, state->camera.target.y, state->camera.target.z};
         float aspect = GetScreenHeight() > 0 ? (float)GetScreenWidth() / (float)GetScreenHeight() : 1.0f;
-        near_plane = orbit_camera_sky_near((const double (*)[3])offsets, radii, n, forward, state->sky_fov, aspect,
+        near_plane = orbit_camera_sky_near((const double (*)[3])offsets, radii, n, forward, state->camera.fovy, aspect,
             meters_to_render_units(2.0 * SOLAR_EARTH_RADIUS_M));
         far_plane = meters_to_render_units(200.0 * SOLAR_AU_METERS);
     }
@@ -1256,6 +1257,9 @@ static void solar_app_update_draw(void *user_data)
             Color tint = k == count - 1 ? (Color){240, 190, 90, 255} : (Color){228, 222, 206, 255};
             DrawTextEx(font, lines[k], (Vector2){x, bottom - (float)(count - k) * step}, size, spacing, tint);
         }
+        renderer_set_caption_box(x - 4 * s, bottom - (float)count * step - 4 * s, widest + 8 * s, (float)count * step + 4 * s);
+    } else {
+        renderer_set_caption_box(0, 0, 0, 0);
     }
 
     if (state->labels || state->hovered >= 0) renderer_draw_labels(&state->session.system, state->render_mode, origin,

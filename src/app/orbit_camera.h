@@ -64,6 +64,10 @@ float orbit_camera_sky_drag_radians(float pixels, float fov_degrees, float viewp
 /* `pitch` limited to what orbit_camera_sky_aim can use for this target, so
  * drag past a pole is not stored (it would have to be unwound). */
 float orbit_camera_sky_clamp_pitch(const double target[3], float pitch);
+/* The camera's vertical field for a sky field across the narrower side of a
+ * `aspect` (width/height) view (A151): portrait phones see the field asked
+ * for sideways too. */
+float orbit_camera_sky_vertical_fov(float field_degrees, float aspect);
 /* Near clip plane for the view from Earth (A148): half the distance to the
  * nearest body surface inside the field (vertical `fov_degrees`, `aspect`
  * width/height, with a margin), never below `floor`. Depth precision falls

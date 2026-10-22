@@ -764,7 +764,18 @@ typedef struct ClickTarget {
 static ClickTarget click_targets[CLICK_TARGET_CAPACITY];
 static size_t click_target_count;
 /* One extra slot holds the scale bar's box (A123), set every frame. */
-static double blockers[RENDER_MAX_BLOCKERS + 1][4];
+/* Page panels, then the scale bar, then last frame's placed labels (A151):
+ * edge markers slide along the edge past all of them. */
+#define RENDER_MAX_LABEL_BLOCKERS 24
+static double blockers[RENDER_MAX_BLOCKERS + 1 + RENDER_MAX_LABEL_BLOCKERS][4];
+static double placed_labels[RENDER_MAX_LABEL_BLOCKERS][4];
+static int placed_label_count, panel_blocker_count;
+static double caption_box[4]; /* the app's canvas caption, if any (A151) */
+
+void renderer_set_caption_box(float x, float y, float width, float height)
+{
+    caption_box[0] = x; caption_box[1] = y; caption_box[2] = width; caption_box[3] = height;
+}
 static int blocker_count, page_blocker_count;
 
 float renderer_caption_bottom(float x0, float x1, float bottom)
@@ -866,12 +877,20 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
             clearance = fmax(clearance, render_selection_bracket_half_size(radius_px));
         if (is_hovered) clearance = fmax(clearance, render_hover_ring_radius(radius_px));
         float top = fmaxf(4.0f * s, screen[i].y - (float)clearance * s - 4.0f * s - text.y);
-        boxes[count] = (RenderLabelBox){screen[i].x - text.x / 2, top, text.x, text.y, priority, false};
+        /* Kept inside the view sideways too: a moon near the edge keeps its
+         * whole name (A151). */
+        float left = fminf(fmaxf(4.0f * s, screen[i].x - text.x / 2), width - text.x - 4.0f * s);
+        boxes[count] = (RenderLabelBox){left, top, text.x, text.y, priority, false};
         body_of[count++] = i;
     }
     render_declutter_labels(boxes, count);
+    placed_label_count = 0;
     for (size_t k = 0; k < count; ++k) {
         if (!boxes[k].visible) continue;
+        if (placed_label_count < RENDER_MAX_LABEL_BLOCKERS) {
+            double *r = placed_labels[placed_label_count++];
+            r[0] = boxes[k].x; r[1] = boxes[k].y; r[2] = boxes[k].width; r[3] = boxes[k].height;
+        }
         const Body *body = &system->bodies[body_of[k]];
         Color color = body_of[k] == selected ? (Color){240, 200, 120, 255}
             : (int)body_of[k] == hovered ? (Color){255, 250, 240, 255} : (Color){228, 222, 206, 225};
@@ -987,7 +1006,8 @@ static void draw_offscreen_markers(const SolarSystem *system, RenderScaleMode mo
                     }
                 }
                 int panel = -1;
-                for (int b = 0; b < blocker_count && panel < 0; ++b)
+                /* Page panels and the scale bar only: a label is not a panel. */
+                for (int b = 0; b < panel_blocker_count && panel < 0; ++b)
                     if (at.x >= blockers[b][0] && at.x <= blockers[b][0] + blockers[b][2] && at.y >= blockers[b][1]
                         && at.y <= blockers[b][1] + blockers[b][3]) panel = b;
                 if (occluder >= 0) {
@@ -1112,6 +1132,19 @@ void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3
     click_target_count = 0;
     Font font = resources->label_font_ready ? resources->label_font : GetFontDefault();
     draw_scale_bar(font, camera);
+    /* Edge markers step past the names in view (labels draw after markers,
+     * so last frame's are used): through the telescope a "Sun >" chevron
+     * must not land on Ganymede. */
+    /* The app's canvas caption (the view from Earth's) is an obstacle too. */
+    if (caption_box[2] > 0 && blocker_count < RENDER_MAX_BLOCKERS + 1) {
+        for (int c = 0; c < 4; ++c) blockers[blocker_count][c] = caption_box[c];
+        ++blocker_count;
+    }
+    panel_blocker_count = blocker_count;
+    for (int k = 0; k < placed_label_count; ++k)
+        for (int c = 0; c < 4; ++c) blockers[blocker_count + k][c] = placed_labels[k][c];
+    blocker_count += placed_label_count;
+    placed_label_count = 0; /* refilled if labels draw this frame */
     draw_offscreen_markers(system, mode, origin, font, camera, selected);
     Vector3 forward = unit_vector((Vector3){camera.target.x - camera.position.x, camera.target.y - camera.position.y,
         camera.target.z - camera.position.z}, (Vector3){0, 0, -1});

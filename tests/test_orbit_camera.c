@@ -323,6 +323,15 @@ static void test_sky_aim_turns_about_north_and_stops_short_of_the_poles(void)
         /* Never below the floor (Earth's own surface). */
         assert(orbit_camera_sky_near(offsets, radii, 0, forward, 1.0f, 1.5f, 1.3e7) == 1.3e7);
     }
+    /* The field spans the narrower side (A151): unchanged on a landscape
+     * screen, widened vertically on a portrait phone so the sideways field
+     * is the one asked for. */
+    assert(orbit_camera_sky_vertical_fov(1.0f, 1.6f) == 1.0f);
+    {
+        float v = orbit_camera_sky_vertical_fov(1.0f, 0.5f);
+        double half_h = atan(tan(v * SKY_PI / 360.0) * 0.5);
+        assert(fabs(half_h * 360.0 / SKY_PI - 1.0) < 1e-4);
+    }
     /* One viewport height of drag sweeps the whole vertical field. */
     float swept = orbit_camera_sky_drag_radians(900.0f, 40.0f, 900.0f);
     assert(fabsf(swept - 40.0f * (float)SKY_PI / 180.0f) < 1e-6f);
