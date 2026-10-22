@@ -163,7 +163,14 @@ void simulation_session_update(SimulationSession *session, double real_seconds)
                 session->run_until_seconds = -1;
                 return;
             }
-            if (advance > remaining) advance = remaining > 0 ? remaining : 0;
+            if (remaining < 0) {
+                /* A slow frame left more queued time than the run has left
+                 * (the per-update step cap): keep only the part before the
+                 * target. The run stops there, so nothing it shows is skipped. */
+                session->clock.pending_seconds = left;
+                remaining = 0;
+            }
+            if (advance > remaining) advance = remaining;
         }
         solar_app_step_system_with_trails(&session->system, &session->trails, &session->clock,
             advance, SOLAR_APP_MAX_STEPS_PER_UPDATE);
