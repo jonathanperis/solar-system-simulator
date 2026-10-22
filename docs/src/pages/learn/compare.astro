@@ -84,7 +84,10 @@ const plots = [
       </details>
       <p><span class="legend-a">A — solid blue</span> · <span class="legend-b">B — dashed copper</span>. Runs compute as fast as bounded batches permit; horizontal plot time is simulated seconds.</p>
     </section>
-    <div class="plots">
+    {/* Until the first matched checkpoint the cards hold no plot, so they
+         collapse to titles and captions instead of seven blank boxes. */}
+    <p class="plots-waiting" data-plots-waiting>Charts draw from the first matched checkpoint: press Start comparison.</p>
+    <div class="plots" data-plots data-empty>
       {plots.map(([field, title, description]) => <figure>
         <h2>{title}</h2>
         <svg viewBox="0 0 500 210" role="img" aria-label={`${title}: matched C measurements for runs A and B`} data-plot={field}></svg>
@@ -143,10 +146,15 @@ const plots = [
   button[type="submit"]:hover:enabled { background: var(--ink-2); }
   .runs, .plots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
   .runs h2, figure h2 { font-size: 1.5rem; margin-bottom: .5rem; }
+  /* A card's title is not a page section: no notebook rule above it. */
+  figure h2 { margin-top: 0; padding-top: 0; border-top: 0; }
   figure { margin: 0; } svg { display: block; width: 100%; }
   svg :global(text) { font: 11px monospace; fill: var(--ink); }
   figcaption { font-size: .9rem; }
   .plot-range { font: .875rem/1.5 "JetBrains Mono", monospace; overflow-wrap: anywhere; }
+  .plots[data-empty] svg, .plots[data-empty] .plot-range { display: none; }
+  .plots[data-empty] figure h2 { font-size: 1.15rem; margin-bottom: .25rem; }
+  .plots-waiting { margin: 1rem 0 .5rem; color: var(--ink-2); }
   .legend-a { color: #0e5682; } .legend-b { color: #9a3b17; }
   .share { margin: .8rem 0; } .share input, textarea { width: 100%; }
   progress { width: min(30rem, 100%); }

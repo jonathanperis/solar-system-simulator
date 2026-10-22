@@ -160,7 +160,12 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
   };
 
   const render = (): void => {
-    const count = lab._lab_point_count(); if (!count) return;
+    const count = lab._lab_point_count();
+    // No matched checkpoint yet (or a reset): the plot cards collapse.
+    root.querySelector('[data-plots]')?.toggleAttribute('data-empty', !count);
+    const waiting = root.querySelector<HTMLElement>('[data-plots-waiting]');
+    if (waiting) waiting.hidden = count > 0;
+    if (!count) return;
     const points = Array.from({ length: count }, (_, index) => ({
       time: lab._lab_point(index, 0, -1), difference: lab._lab_point(index, 0, -2),
       values: [0, 1].map(side => Object.fromEntries(fieldNames.map((name, field) => [name, lab._lab_point(index, side, field)])))
