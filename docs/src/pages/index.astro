@@ -50,6 +50,9 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
       <p data-scene-status role="status"></p>
     </div>
 
+    {/* The side panels: transparent to every layout (display: contents)
+         except landscape phones, where they form one scrolling column (A138). */}
+    <div class="side-panels">
     <div class="lesson-strip" data-lesson-strip hidden>
       <fieldset data-runtime-panel disabled>
         <legend class="sr-only">Lesson</legend>
@@ -101,6 +104,7 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
         <button type="button" data-open-panel="keys-panel" aria-haspopup="dialog">Keys</button>
         <button type="button" data-open-panel="advanced-panel" aria-haspopup="dialog">Data</button>
       </fieldset>
+    </div>
     </div>
 
     <dialog id="find-panel" class="sheet" aria-labelledby="find-heading">
