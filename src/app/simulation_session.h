@@ -46,6 +46,9 @@ typedef struct BodyInspection {
     /* Two-body period around the parent from the specific energy (Kepler's
      * third law with a = -mu / 2E), seconds; NAN when unbound or parentless. */
     double orbital_period_s;
+    /* Distance from Earth's centre (A136), metres; NAN for Earth itself or a
+     * scene without Earth. Light crosses it in earth_distance_m / c. */
+    double earth_distance_m;
     Vec3d relative_position_m;
     Vec3d relative_velocity_mps;
     Vec3d relative_acceleration_mps2;

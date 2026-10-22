@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, sceneSecondsAt, sceneSecondsAtDate, dateRunNote, dateRunArrived, clockNote, speedLabels, findMatches, formatSpacing, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod } from '../src/lib/simulator.ts';
+import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, sceneSecondsAt, sceneSecondsAtDate, dateRunNote, dateRunArrived, clockNote, speedLabels, findMatches, formatSpacing, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod, formatFromEarth } from '../src/lib/simulator.ts';
 import { errorMessage, downloadText } from '../src/lib/browser.ts';
 
 test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolling', () => {
@@ -362,4 +362,16 @@ test('Go to date reads a TDB instant and says how the run will go (SPEC A134)', 
   assert.ok(!dateRunArrived(86400, 86400 + 60));
   assert.ok(!dateRunArrived(86400 + 15, 86400));
   assert.equal(dateRunNote(86400, 86400 + 45), 'The clock is already there.');
+});
+
+test('From Earth gives the distance and the light time (SPEC A136)', () => {
+  const nb = '\u00a0', nn = '\u202f';
+  assert.equal(formatFromEarth(384400e3), `384${nn}400${nb}km ·${nb}light${nb}1.28${nb}s`);
+  // 1 AU is 499.005 light-seconds: 8 min 19 s.
+  assert.equal(formatFromEarth(149597870700), `1.0000${nb}AU ·${nb}light${nb}8${nb}min${nb}19${nb}s`);
+  assert.equal(formatFromEarth(5 * 149597870700), `5.0000${nb}AU ·${nb}light${nb}41${nb}min${nb}35${nb}s`);
+  assert.equal(formatFromEarth(30 * 149597870700), `30.0000${nb}AU ·${nb}light${nb}4${nb}h${nb}10${nb}min`);
+  // Totals are rounded before splitting: 3599.7 s is 1 h 0 min, never 59 min 60 s.
+  assert.equal(formatFromEarth(3599.7 * 299792458), `7.2138${nb}AU ·${nb}light${nb}1${nb}h${nb}0${nb}min`);
+  assert.equal(formatFromEarth(59.999 * 299792458), `0.1202${nb}AU ·${nb}light${nb}1${nb}min${nb}0${nb}s`);
 });

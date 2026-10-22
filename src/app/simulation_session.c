@@ -267,8 +267,13 @@ BodyInspection simulation_session_inspect_body(const SimulationSession *session,
     const Body *body = &session->system.bodies[index];
     int parent_index = solar_system_parent_index(&session->system, index);
     BodyInspection result = {.name = body->name, .parent_name = "None", .has_parent = parent_index >= 0,
-        .mass_kg = body->mass_kg, .radius_m = body->radius_m, .orbital_period_s = NAN,
+        .mass_kg = body->mass_kg, .radius_m = body->radius_m, .orbital_period_s = NAN, .earth_distance_m = NAN,
         .mass_quality = body->mass_quality, .radius_quality = body->radius_quality};
+    for (size_t i = 0; i < session->system.body_count; ++i) {
+        if (session->system.bodies[i].id != BODY_ID_EARTH || i == index) continue;
+        result.earth_distance_m = vec3d_length(vec3d_sub(body->position_m, session->system.bodies[i].position_m));
+        break;
+    }
     if (result.has_parent) {
         const Body *parent = &session->system.bodies[parent_index];
         result.parent_name = parent->name;

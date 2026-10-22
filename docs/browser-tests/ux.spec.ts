@@ -227,3 +227,17 @@ test('Go to date plays to a chosen instant, restarting for a past one (SPEC A134
   await expect(panel).toBeVisible();
   await expect(panel.locator('[data-date-note]')).toHaveText('Choose a date from 2026-06-09 to 2076-06-08.');
 });
+
+test('the inspector says how far a body is from Earth and how old its light is (SPEC A136)', async ({ page }) => {
+  await page.goto(`${base}?body=mars`);
+  await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Mars', { timeout: 30000 });
+  const fromEarth = page.locator('[data-inspector-earth]');
+  await expect(fromEarth).toBeVisible();
+  await expect(fromEarth).toHaveText(/^\d+\.\d{4} AU · light \d+ min \d+ s$/);
+  await page.goto(`${base}?body=earth`);
+  await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Earth', { timeout: 30000 });
+  await expect(fromEarth).toBeHidden();
+  await page.goto(`${base}?body=moon`);
+  await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Moon', { timeout: 30000 });
+  await expect(fromEarth).toHaveText(/^3[5-9]\d \d{3} km · light 1\.\d\d s$/);
+});

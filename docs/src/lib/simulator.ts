@@ -15,6 +15,8 @@ interface RuntimeReadouts {
   distance: Readout;
   speed: Readout;
   period?: Readout;
+  fromEarth?: Pick<HTMLElement, 'textContent'>;
+  fromEarthRow?: Pick<HTMLElement, 'hidden'>[];
   name?: Readout;
   mass: Readout;
   radius: Readout;
@@ -174,6 +176,19 @@ export function formatMass(kg: number): string {
   const power = String(exponent).replace('-', '⁻').replace(/\d/g, digit => superscript[Number(digit)]);
   return `${mantissa}${nbsp}×${nbsp}10${power}${nbsp}kg`;
 }
+/** From Earth (A136): the distance, in AU beyond a hundredth of one, and
+ * how long light takes to cross it (c = 299 792 458 m/s, exact). */
+export function formatFromEarth(meters: number): string {
+  const distance = meters >= 0.01 * auMeters ? `${(meters / auMeters).toFixed(4)}${nbsp}AU`
+    : `${grouped(meters / 1000, 0)}${nbsp}km`;
+  // Round the total before splitting it, so no unit ever reads 60.
+  const s = meters / 299792458, wholeS = Math.round(s), wholeMin = Math.round(s / 60);
+  const light = s < 59.995 ? `${s.toFixed(2)}${nbsp}s`
+    : wholeS < 3600 ? `${Math.floor(wholeS / 60)}${nbsp}min${nbsp}${wholeS % 60}${nbsp}s`
+    : `${Math.floor(wholeMin / 60)}${nbsp}h${nbsp}${wholeMin % 60}${nbsp}min`;
+  // Like the other readings (A113), it wraps only before the " · ".
+  return `${distance} ·${nbsp}light${nbsp}${light}`;
+}
 export function formatPeriod(seconds: number): string {
   const days = seconds / 86400;
   if (days >= 730.5) return `${grouped(days, 2)}${nbsp}d · ${(days / 365.25).toFixed(2)}${nbsp}yr`;
@@ -198,6 +213,9 @@ interface RuntimeState {
   periodS?: number; dated?: boolean;
   /* The elapsed time a Today run is playing to (A133), or null. */
   untilSeconds?: number | null;
+  /* Distance from Earth's centre in metres (A136), null for Earth itself or
+   * a scene without Earth. */
+  earthM?: number | null;
 }
 
 // Matches SolarCommand in src/main.c. All actions execute in the C runtime.
@@ -643,6 +661,11 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
         readouts.today.dataset.running = running ? 'true' : 'false';
       }
       if (readouts.name) setText(readouts.name, state.body);
+      if (readouts.fromEarth) {
+        const known = state.earthM != null && Number.isFinite(state.earthM);
+        readouts.fromEarthRow?.forEach(element => { element.hidden = !known; });
+        if (known) setText(readouts.fromEarth, formatFromEarth(state.earthM!));
+      }
       if (readouts.period) setText(readouts.period, !state.hasParent ? 'N/A — no parent'
         : Number.isFinite(state.periodS) ? formatPeriod(state.periodS!) : 'Unbound (no closed orbit)');
       setText(readouts.interval, formatSpacing(state.intervalSeconds));
@@ -732,6 +755,8 @@ export function mountSimulator(root: HTMLElement): void {
     distance: root.querySelector<HTMLElement>('[data-inspector-distance]')!,
     speed: root.querySelector<HTMLElement>('[data-inspector-speed]')!,
     period: root.querySelector<HTMLElement>('[data-inspector-period]') ?? undefined,
+    fromEarth: root.querySelector<HTMLElement>('[data-inspector-earth]') ?? undefined,
+    fromEarthRow: [...root.querySelectorAll<HTMLElement>('[data-from-earth]')],
     name: root.querySelector<HTMLElement>('[data-inspector-name]') ?? undefined,
     mass: root.querySelector<HTMLElement>('[data-inspector-mass]')!,
     radius: root.querySelector<HTMLElement>('[data-inspector-radius]')!,

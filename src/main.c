@@ -85,7 +85,7 @@ EM_JS(void, solar_web_report_state, (const char *body_name, const char *parent_n
     double elapsed_seconds, double trail_interval_seconds, int trails_failed, int has_parent,
     double distance_m, double speed_mps, double mass_kg, double radius_m, double zoom,
     int mass_quality, int radius_quality, double achieved_time_scale, double pending_seconds, int short_timescale,
-    double orbital_period_s, int dated, double run_until_seconds), {
+    double orbital_period_s, int dated, double run_until_seconds, double earth_distance_m), {
     Module.reportState({body: UTF8ToString(body_name), parent: UTF8ToString(parent_name),
         view: UTF8ToString(view_mode), cameraTarget: UTF8ToString(camera_target), selected,
         paused: !!paused, speedPreset: speed_preset, autoRotate: !!auto_rotate,
@@ -95,7 +95,8 @@ EM_JS(void, solar_web_report_state, (const char *body_name, const char *parent_n
         massQuality: mass_quality, radiusQuality: radius_quality,
         achievedTimeScale: achieved_time_scale, pendingSeconds: pending_seconds, shortTimescale: !!short_timescale,
         periodS: orbital_period_s, dated: !!dated,
-        untilSeconds: run_until_seconds >= 0 ? run_until_seconds : null});
+        untilSeconds: run_until_seconds >= 0 ? run_until_seconds : null,
+        earthM: Number.isFinite(earth_distance_m) ? earth_distance_m : null});
 })
 
 EM_JS(void, solar_web_add_body, (int index, const char *name, const char *group), {
@@ -727,7 +728,7 @@ static void report_web_state(const SolarApp *state)
         body.distance_m, body.speed_mps, body.mass_kg, body.radius_m, state->orbit_camera.distance,
         body.mass_quality, body.radius_quality, session->achieved_time_scale, session->clock.pending_seconds,
         session->lesson == LESSON_COLLISION, body.orbital_period_s,
-        simulation_session_is_dated(session), session->run_until_seconds);
+        simulation_session_is_dated(session), session->run_until_seconds, body.earth_distance_m);
     PhysicsDiagnostics diagnostics = physics_diagnostics(&session->system);
     const Body *selected = &session->system.bodies[session->selected_body_index];
     solar_web_report_lab(session->lesson, session->clock.integrator, simulation_clock_step_seconds(&session->clock),

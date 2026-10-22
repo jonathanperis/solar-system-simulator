@@ -298,8 +298,37 @@ static void test_run_until_stops_on_the_target_within_one_tick(void)
     simulation_session_destroy(&session);
 }
 
+/* From Earth (A136): the selected body's distance from Earth's centre in SI
+ * state, for the inspector's distance and light-time line. */
+static void test_inspection_measures_the_distance_from_earth(void)
+{
+    SimulationSession session = simulation_session_create();
+    int earth = -1, mars = -1, moon = -1;
+    for (size_t i = 0; i < session.system.body_count; ++i) {
+        if (session.system.bodies[i].id == BODY_ID_EARTH) earth = (int)i;
+        if (session.system.bodies[i].id == BODY_ID_MARS) mars = (int)i;
+        if (session.system.bodies[i].id == BODY_ID_MOON) moon = (int)i;
+    }
+    assert(earth >= 0 && mars >= 0 && moon >= 0);
+    BodyInspection at_mars = simulation_session_inspect_body(&session, (size_t)mars);
+    double expected = vec3d_length(vec3d_sub(session.system.bodies[mars].position_m, session.system.bodies[earth].position_m));
+    assert(fabs(at_mars.earth_distance_m - expected) <= 1e-9 * expected);
+    BodyInspection at_moon = simulation_session_inspect_body(&session, (size_t)moon);
+    assert(at_moon.earth_distance_m > 356e6 && at_moon.earth_distance_m < 407e6);
+    assert(isnan(simulation_session_inspect_body(&session, (size_t)earth).earth_distance_m));
+    simulation_session_destroy(&session);
+    /* A lesson without Earth has no such line. */
+    SimulationSession lesson = simulation_session_create();
+    assert(simulation_session_start_lesson(&lesson, LESSON_CIRCULAR, 1.0, PHYSICS_VERLET, 15.0));
+    bool has_earth = false;
+    for (size_t i = 0; i < lesson.system.body_count; ++i) has_earth = has_earth || lesson.system.bodies[i].id == BODY_ID_EARTH;
+    if (!has_earth) assert(isnan(simulation_session_inspect_body(&lesson, 0).earth_distance_m));
+    simulation_session_destroy(&lesson);
+}
+
 int main(void)
 {
+    test_inspection_measures_the_distance_from_earth();
     test_run_until_stops_on_the_target_within_one_tick();
     test_dated_sessions_are_the_epoch_presets();
     test_non_finite_state_is_detected();

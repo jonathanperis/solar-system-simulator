@@ -259,6 +259,10 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
   .lesson-strip input[type="number"] { width: 5rem; }
   .inspector { position: static; order: 4; width: auto; max-height: none; overflow: visible; border-width: 1px 0 0; padding: 0.4rem 0.5rem; font-size: 0.75rem; }
   .inspector dl { grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr); gap: 0.1rem 0.5rem; margin: 0.2rem 0 0.4rem; }
+  /* From Earth (A136) is the last, longest reading: its own row. Its label
+   * spans into the flexible column so it never widens the label column. */
+  .inspector dt[data-from-earth] { grid-column: 1 / 3; }
+  .inspector dd[data-from-earth] { grid-column: 3 / -1; }
   .dock { position: static; order: 5; width: auto; max-width: none; margin: 0; border-width: 1px 0 0; padding: 0.4rem 0.5rem; gap: 0.35rem; align-items: center; }
   .dock label { flex-direction: row; align-items: center; gap: 0.35rem; }
   .dock [data-open-panel="keys-panel"] { display: none; }
