@@ -713,7 +713,12 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
             state->touring = false; /* a choice of body ends the tour (it restores its own) */
             break;
         case SOLAR_COMMAND_SKY:
-            if (state->sky) sky_leave(state);
+            /* 0 toggles; a positive value opens the view from Earth with
+             * that field in arcseconds (a shared telescope link, A147). */
+            if (value > 0) {
+                sky_enter(state);
+                if (state->sky) state->sky_fov = orbit_camera_sky_zoom((float)value / 3600.0f, 1.0f);
+            } else if (state->sky) sky_leave(state);
             else sky_enter(state);
             break;
         case SOLAR_COMMAND_VIEW:
@@ -1199,7 +1204,7 @@ static void solar_app_update_draw(void *user_data)
         /* The cloud is the real sky's small bodies: dated scenes only. */
         .show_belt = state->belt && dated,
         .days_since_epoch = state->session.system.elapsed_seconds / SOLAR_DAY_SECONDS,
-        .show_constellations = state->constellations};
+        .show_constellations = state->constellations, .hide_trails = state->sky};
     BeginMode3D(state->camera);
     renderer_draw_solar_system(&state->session.system, &state->session.trails, state->render_mode, state->trail_frame,
         origin, &state->render, &view);
