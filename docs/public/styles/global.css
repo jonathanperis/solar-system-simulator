@@ -133,6 +133,7 @@ html.instrument, html.instrument body { height: 100%; overflow: hidden; }
 html.instrument body { display: flex; flex-direction: column; }
 html.instrument main { position: relative; flex: 1; min-height: 0; }
 .instrument { position: absolute; inset: 0; }
+.side-panels { display: contents; }
 .canvas-wrap { position: absolute; inset: 0; background: #000; }
 /* Drags turn the view and two fingers zoom (A112): the browser must not pan or zoom the page instead. */
 .canvas-wrap canvas { display: block; width: 100%; height: 100%; outline-offset: -2px; touch-action: none; cursor: grab; }
@@ -259,7 +260,7 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
    * fit, the instrument scrolls rather than clipping the dock. The C runtime
    * follows the canvas's CSS size every frame. */
   .instrument { display: flex; flex-direction: column; overflow-y: auto; }
-  .instrument > * { flex-shrink: 0; }
+  .instrument > *, .side-panels > * { flex-shrink: 0; }
   .canvas-wrap { position: relative; inset: auto; flex: 1 1 0; min-height: 12rem; order: 3; }
   .hud { position: static; order: 1; padding: 0.4rem 0.5rem; gap: 0; }
   .clock-time { font-size: 1.125rem; }
@@ -298,4 +299,25 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
   .site-header { gap: 0.6rem; }
   .site-header nav { gap: 0.55rem; letter-spacing: 0.02em; }
   .wordmark { font-size: 1.05rem; }
+}
+
+/* Landscape phones (A138): stacking left the view 12rem tall and pushed the
+   dock below the fold. On a wide, short screen the view keeps the full height
+   on the left with the clock over it, as on desktop; the inspector, dock and
+   lesson strip form a right column that scrolls on its own. Placed last so it
+   overrides the stack; section.instrument because <html> has the class too. */
+@media (max-height: 520px) and (min-width: 600px) {
+  section.instrument { display: grid; grid-template-columns: minmax(0, 1fr) min(19rem, 42vw); grid-template-rows: minmax(0, 1fr); overflow: hidden; }
+  .canvas-wrap { grid-column: 1; grid-row: 1; height: 100%; min-height: 0; }
+  .hud { grid-column: 1; grid-row: 1; align-self: start; z-index: 1; padding: 0.4rem 0.6rem; }
+  .side-panels { display: flex; flex-direction: column; grid-column: 2; grid-row: 1; min-height: 0; overflow-y: auto; border-left: 1px solid var(--line); background: var(--panel); }
+  .clock { gap: 0 0.5rem; }
+  .clock-note { order: 1; }
+  /* Playback first: Pause and speed are the controls reached for most. */
+  .dock { order: 1; border-width: 0 0 1px; }
+  .inspector { order: 2; border-width: 0; }
+  .inspector dl { grid-template-columns: auto minmax(0, 1fr); }
+  .inspector dt[data-from-earth] { grid-column: 1; }
+  .inspector dd[data-from-earth] { grid-column: 2; }
+  .lesson-strip { order: 3; border-width: 1px 0 0; }
 }
