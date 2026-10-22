@@ -246,6 +246,10 @@ typedef struct RenderPickCandidate {
 } RenderPickCandidate;
 #define RENDER_PICK_SLOP_PIXELS 14.0f
 int render_pick_body(const RenderPickCandidate *candidates, size_t count, float x, float y);
+/* How far down text spanning [x0, x1] may reach (A145): `bottom`, or the top
+ * of the highest page panel (x, y, width, height in screen pixels) that
+ * crosses that span and reaches below its top. */
+double render_clear_above(const double (*rects)[4], int count, double x0, double x1, double bottom);
 
 /* Resolution governor (SPEC A116). The browser draws at up to 2 backing
  * pixels per CSS pixel; a phone GPU that cannot fill that many pixels would

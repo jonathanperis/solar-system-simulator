@@ -133,6 +133,9 @@ int renderer_pick_target(Vector2 pointer);
  * over the canvas; off-screen markers slide past them (A119). */
 #define RENDER_MAX_BLOCKERS 12
 void renderer_set_blockers(const float *rects, int count);
+/* Lowest screen y that text spanning [x0, x1] may reach without running
+ * under a page panel (A145); `bottom` when none crosses it. */
+float renderer_caption_bottom(float x0, float x1, float bottom);
 /* Keyboard hopping (SPEC A120): the sibling after/before `index` (bodies of
  * the same parent with a known radius, wrapping), its parent, or its first
  * child; -1 when there is none. A parentless body's siblings are its children. */
