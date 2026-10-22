@@ -107,8 +107,9 @@ export function sceneSecondsAt(unixMs: number): number {
 }
 /** Scene seconds at a TDB calendar instant typed as "YYYY-MM-DD" and
  * "HH:MM" (A134), or NaN if it is not a valid date in the runnable range:
- * the epoch to 50 years on (the C command carries whole seconds as an int). */
-export const dateRunMaxSeconds = 50 * 365.25 * 86400;
+ * the epoch through 2076-06-08 23:59 (the C command carries whole seconds as
+ * an int). */
+export const dateRunMaxSeconds = (Date.UTC(2076, 5, 8, 23, 59) - Date.UTC(2026, 5, 9)) / 1000;
 export function sceneSecondsAtDate(date: string, time: string): number {
   const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date), t = /^(\d{2}):(\d{2})/.exec(time || '00:00');
   if (!d || !t) return NaN;
@@ -116,10 +117,17 @@ export function sceneSecondsAtDate(date: string, time: string): number {
   const seconds = ms / 1000 - (sceneEpochJd - 2440587.5) * 86400;
   return seconds >= 0 && seconds <= dateRunMaxSeconds ? seconds : NaN;
 }
+/** True when the clock already shows `target`'s minute: the form works in
+ * whole minutes, so a target up to a minute behind the clock is not a
+ * reason to restart (Date opened right after Today, say). */
+export function dateRunArrived(target: number, elapsed: number): boolean {
+  return target <= elapsed && elapsed - target < 60;
+}
 /** How a run to `target` will go from `elapsed` at 15 simulated days per
  * second (A134): a restart first when the target is behind the clock. */
 export function dateRunNote(target: number, elapsed: number): string {
   if (!Number.isFinite(target)) return 'Choose a date from 2026-06-09 to 2076-06-08.';
+  if (dateRunArrived(target, elapsed)) return 'The clock is already there.';
   const behind = target < elapsed;
   const seconds = (behind ? target : target - elapsed) / (15 * 86400);
   const span = seconds < 1 ? 'under a second' : seconds < 90 ? `about ${Math.round(seconds)} s`
@@ -814,7 +822,7 @@ export function mountSimulator(root: HTMLElement): void {
       event.preventDefault();
       const seconds = target();
       if (!Number.isFinite(seconds)) { refresh(); dateInput.focus(); return; }
-      send('runUntil', Math.round(seconds));
+      if (!dateRunArrived(seconds, elapsed())) send('runUntil', Math.round(seconds));
       dateForm.closest('dialog')?.close();
     });
   }
