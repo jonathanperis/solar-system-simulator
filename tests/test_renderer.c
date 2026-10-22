@@ -522,6 +522,31 @@ static void check_moon_order_survives(const SolarSystem *system, BodyId planet_i
     assert(checked >= at_least);
 }
 
+/* Mars's moons orbit within seven Mars radii, a pair the enlarged planet
+ * dwarfs: illustrative scale spreads them (A155) so Deimos reads clearly
+ * outside Phobos, by at least a fifth of Mars's drawn radius. */
+static void test_illustrative_martian_moons_read_as_two_orbits(void)
+{
+    SolarSystem system = solar_system_create_current();
+    int mars = -1, phobos = -1, deimos = -1;
+    for (size_t i = 0; i < system.body_count; ++i) {
+        if (system.bodies[i].id == BODY_ID_MARS) mars = (int)i;
+        if (system.bodies[i].id == BODY_ID_PHOBOS) phobos = (int)i;
+        if (system.bodies[i].id == BODY_ID_DEIMOS) deimos = (int)i;
+    }
+    assert(mars >= 0 && phobos >= 0 && deimos >= 0);
+    Vec3d center = renderer_body_position(&system, (size_t)mars, RENDER_SCALE_ILLUSTRATIVE);
+    double p = vec3d_length(vec3d_sub(renderer_body_position(&system, (size_t)phobos, RENDER_SCALE_ILLUSTRATIVE), center));
+    double d = vec3d_length(vec3d_sub(renderer_body_position(&system, (size_t)deimos, RENDER_SCALE_ILLUSTRATIVE), center));
+    assert(d - p > 0.2 * renderer_body_radius(&system.bodies[mars], RENDER_SCALE_ILLUSTRATIVE));
+    /* Real scale is untouched (double-precision conversion; the scalar
+     * meters_to_render_units returns a float). */
+    Vec3d real = vec3d_sub(renderer_body_position(&system, (size_t)phobos, RENDER_SCALE_REAL),
+        renderer_body_position(&system, (size_t)mars, RENDER_SCALE_REAL));
+    double true_distance = vec3d_length(meters_vec_to_render_vec3d(vec3d_sub(system.bodies[phobos].position_m, system.bodies[mars].position_m)));
+    assert(fabs(vec3d_length(real) - true_distance) < 1e-9 * true_distance);
+}
+
 static void test_illustrative_moons_keep_their_order_outward(void)
 {
     SolarSystem system = solar_system_create_current();
@@ -617,6 +642,7 @@ int main(void)
     test_charon_casts_no_shadow_on_pluto_in_2026();
     test_illustrative_saturn_moons_stay_outside_the_drawn_rings();
     test_illustrative_moons_keep_their_order_outward();
+    test_illustrative_martian_moons_read_as_two_orbits();
     test_tidally_locked_maps_face_their_parent();
     test_cached_trail_points_match_uncached_exactly();
     test_moving_sun_history_preserves_parent_relative_frames();

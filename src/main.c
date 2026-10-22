@@ -585,8 +585,10 @@ static bool start_app_lesson(SolarApp *state, LessonPreset lesson, double factor
         frame_selected_system(state, true);
     }
     /* Two-body lessons open on the whole pair: framing the small partner alone
-     * hides the body it orbits. */
-    if (lesson == LESSON_ENCOUNTER || lesson == LESSON_PLUTO_CHARON || lesson == LESSON_DART)
+     * hides the body it orbits, and the default camera, placed for AU-scale
+     * scenes, left Earth-Moon and Mars-Phobos as specks 0.2 AU away (B60). */
+    if (lesson == LESSON_ENCOUNTER || lesson == LESSON_PLUTO_CHARON || lesson == LESSON_DART
+        || lesson == LESSON_EARTH_MOON || lesson == LESSON_PHOBOS)
         frame_selected_system(state, true);
     if (lesson == LESSON_RESONANCE) {
         state->session.selected_body_index = 0;

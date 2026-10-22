@@ -214,6 +214,8 @@ static void test_labels_name_planets_and_zoomed_in_moons(void)
     /* Through the telescope (A149) the target's moons are named however
      * small, once they stand clear of the planet; unknown radii stay
      * unnamed markers. */
+    assert(render_moon_spread_factor(BODY_ID_MARS) == 40.0);
+    assert(render_moon_spread_factor(BODY_ID_JUPITER) == 1.0);
     assert(render_sky_moon_wants_label(true, RENDER_LABEL_MIN_SEPARATION_PIXELS + 1));
     assert(!render_sky_moon_wants_label(true, RENDER_LABEL_MIN_SEPARATION_PIXELS - 1));
     assert(!render_sky_moon_wants_label(false, 500));

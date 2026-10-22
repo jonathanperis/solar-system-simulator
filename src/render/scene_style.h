@@ -393,6 +393,12 @@ bool render_constellation_segment(size_t index, Vec3d *a, Vec3d *b);
 /* The view from Earth (A149): a moon of the target is labelled however small
  * its disc, once it is `parent_separation_pixels` clear of the planet. */
 bool render_sky_moon_wants_label(bool known_radius, double parent_separation_pixels);
+/* Illustrative spreading of a compact moon system (A155): the factor a moon's
+ * true distance is multiplied by, past its enlarged parent's clearance. Mars
+ * (Phobos and Deimos within seven Mars radii) gets 40, so the pair reads as
+ * two orbits; others 1 (Earth's Moon keeps its own eightfold rule).
+ * Presentation only. */
+double render_moon_spread_factor(BodyId parent);
 bool render_body_wants_label(BodyKind kind, bool selected, bool known_radius, double radius_pixels,
     double parent_separation_pixels);
 
