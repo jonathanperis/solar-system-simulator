@@ -268,10 +268,23 @@ BodyInspection simulation_session_inspect_body(const SimulationSession *session,
     int parent_index = solar_system_parent_index(&session->system, index);
     BodyInspection result = {.name = body->name, .parent_name = "None", .has_parent = parent_index >= 0,
         .mass_kg = body->mass_kg, .radius_m = body->radius_m, .orbital_period_s = NAN, .earth_distance_m = NAN,
+        .angular_diameter_arcsec = NAN, .elongation_deg = NAN,
         .mass_quality = body->mass_quality, .radius_quality = body->radius_quality};
+    const double degrees = 180.0 / acos(-1.0);
     for (size_t i = 0; i < session->system.body_count; ++i) {
         if (session->system.bodies[i].id != BODY_ID_EARTH || i == index) continue;
-        result.earth_distance_m = vec3d_length(vec3d_sub(body->position_m, session->system.bodies[i].position_m));
+        const Body *earth = &session->system.bodies[i];
+        Vec3d to_body = vec3d_sub(body->position_m, earth->position_m);
+        result.earth_distance_m = vec3d_length(to_body);
+        if (body->radius_quality != PHYSICAL_UNKNOWN && result.earth_distance_m > body->radius_m)
+            result.angular_diameter_arcsec = 2.0 * asin(body->radius_m / result.earth_distance_m) * degrees * 3600.0;
+        for (size_t k = 0; k < session->system.body_count; ++k) {
+            if (session->system.bodies[k].kind != BODY_KIND_STAR || k == index) continue;
+            Vec3d to_star = vec3d_sub(session->system.bodies[k].position_m, earth->position_m);
+            double c = vec3d_dot(to_body, to_star) / (vec3d_length(to_body) * vec3d_length(to_star));
+            if (isfinite(c)) result.elongation_deg = acos(fmax(-1.0, fmin(1.0, c))) * degrees;
+            break;
+        }
         break;
     }
     if (result.has_parent) {

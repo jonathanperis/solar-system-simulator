@@ -49,6 +49,13 @@ typedef struct BodyInspection {
     /* Distance from Earth's centre (A136), metres; NAN for Earth itself or a
      * scene without Earth. Light crosses it in earth_distance_m / c. */
     double earth_distance_m;
+    /* Seen from Earth's centre (A145): the disc's apparent diameter,
+     * 2 asin(R / d) in arcseconds (NAN for Earth, an unknown radius or no
+     * Earth), and the elongation, the Sun-Earth-body angle in degrees that
+     * decides whether it is in a night sky (NAN for Earth, the star, or a
+     * scene without either). */
+    double angular_diameter_arcsec;
+    double elongation_deg;
     Vec3d relative_position_m;
     Vec3d relative_velocity_mps;
     Vec3d relative_acceleration_mps2;

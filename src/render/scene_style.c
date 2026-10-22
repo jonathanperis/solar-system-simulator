@@ -817,3 +817,21 @@ bool render_constellation_segment(size_t index, Vec3d *a, Vec3d *b)
     *b = orbit_icrf_direction(s[2], s[3]);
     return true;
 }
+
+double render_clear_above(const double (*rects)[4], int count, double x0, double x1, double bottom)
+{
+    /* A panel blocks when it crosses the span and reaches down to the
+     * current limit; lifting the limit can bring another panel into play, so
+     * repeat until nothing moves (at most once per panel). */
+    double limit = bottom;
+    for (int pass = 0; pass <= count; ++pass) {
+        bool moved = false;
+        for (int k = 0; k < count; ++k) {
+            const double *r = rects[k];
+            bool crosses = r[0] < x1 && r[0] + r[2] > x0;
+            if (crosses && r[1] < limit && r[1] + r[3] >= limit) { limit = r[1]; moved = true; }
+        }
+        if (!moved) break;
+    }
+    return limit;
+}
