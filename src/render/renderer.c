@@ -1280,7 +1280,11 @@ static void draw_orbit_guides(const FrameContext *ctx)
             double periapsis = meters_to_render_units(guide.semi_major_m * (1 - guide.eccentricity));
             double apoapsis = meters_to_render_units(guide.semi_major_m * (1 + guide.eccentricity));
             double at_periapsis = satellite_clearance(body, parent, periapsis, ctx->mode);
-            if (at_periapsis == satellite_clearance(body, parent, apoapsis, ctx->mode)) clearance = at_periapsis;
+            /* Equal unless the orbit crosses a ring edge, where the two
+             * differ by a whole ring extent; the tolerance only absorbs
+             * rounding. */
+            if (fabs(at_periapsis - satellite_clearance(body, parent, apoapsis, ctx->mode)) <= 1e-9 * at_periapsis)
+                clearance = at_periapsis;
         }
         /* The body's eccentric anomaly from its perifocal coordinates:
          * x = a (cos E - e), y = b sin E. */
