@@ -381,6 +381,9 @@ bool render_constellation_segment(size_t index, Vec3d *a, Vec3d *b);
  * size (unknown-radius wire markers stay unnamed unless selected). */
 #define RENDER_LABEL_MIN_SEPARATION_PIXELS 36.0
 #define RENDER_LABEL_MIN_RADIUS_PIXELS 2.0
+/* The view from Earth (A149): a moon of the target is labelled however small
+ * its disc, once it is `parent_separation_pixels` clear of the planet. */
+bool render_sky_moon_wants_label(bool known_radius, double parent_separation_pixels);
 bool render_body_wants_label(BodyKind kind, bool selected, bool known_radius, double radius_pixels,
     double parent_separation_pixels);
 

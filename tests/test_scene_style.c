@@ -211,6 +211,12 @@ static void test_labels_name_planets_and_zoomed_in_moons(void)
     assert(render_body_wants_label(BODY_KIND_STAR, false, true, 0.3, 0));
     assert(render_body_wants_label(BODY_KIND_PLANET, false, true, 0.3, 0));
     assert(render_body_wants_label(BODY_KIND_MOON, true, false, 0.1, 0)); /* selected */
+    /* Through the telescope (A149) the target's moons are named however
+     * small, once they stand clear of the planet; unknown radii stay
+     * unnamed markers. */
+    assert(render_sky_moon_wants_label(true, RENDER_LABEL_MIN_SEPARATION_PIXELS + 1));
+    assert(!render_sky_moon_wants_label(true, RENDER_LABEL_MIN_SEPARATION_PIXELS - 1));
+    assert(!render_sky_moon_wants_label(false, 500));
     /* A moon tucked against its parent in the overview stays unnamed... */
     assert(!render_body_wants_label(BODY_KIND_MOON, false, true, 5, 10));
     /* ...as does a sub-pixel one, but a visible moon of a framed family is named. */
