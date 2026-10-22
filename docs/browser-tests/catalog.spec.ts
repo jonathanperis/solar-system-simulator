@@ -72,3 +72,13 @@ test('full-index journey: consent, superseding search mid-download, Stop, restar
   await expect(page.getByRole('button', { name: '2 Pallas (A802 FA)', exact: true })).toBeVisible();
   expect(indexRequests.length).toBe(downloaded);
 });
+
+test('on a phone every catalog table fits without sideways scrolling (SPEC A140)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${base}catalog/`);
+  await page.evaluate(() => document.querySelectorAll('details').forEach(details => { details.open = true; }));
+  const overflow = await page.evaluate(() => [...document.querySelectorAll('.table-wrap')].map(wrap => wrap.scrollWidth - wrap.clientWidth));
+  expect(overflow.every(pixels => pixels <= 0), `overflowing tables: ${overflow}`).toBe(true);
+  // Group stays: it is the moon's family (Galilean, Norse, Inuit...).
+  await expect(page.locator('[data-moon-section] th', { hasText: 'Group' }).first()).toBeVisible();
+});

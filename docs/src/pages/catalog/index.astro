@@ -32,7 +32,7 @@ const sections = [...new Set(implementedBodies.map(sectionOf))].map(title => ({
     <p data-body-count role="status">{totalBodyCount} bodies.</p>
     <p data-body-empty hidden>No match. Try a shorter name or clear the family.</p>
     {sections.map((section, index) => (
-      <details class="catalog-section" data-catalog-section open={index === 0}>
+      <details class="catalog-section" data-catalog-section open={index === 0} {...(index > 0 ? { 'data-moon-section': '' } : {})}>
         <summary><span class="section-title">{section.title}</span> <span class="section-count" data-section-count>{section.bodies.length}</span></summary>
         <div class="table-wrap">
           <table aria-label={section.title}>
