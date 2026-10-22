@@ -315,6 +315,8 @@ test('View from Earth switches to real scale, aims at the selection and restores
   await expect(sky).toHaveAttribute('aria-checked', 'true');
   // Directions from Earth are only true in real scale.
   await expect(real).toHaveAttribute('aria-pressed', 'true');
+  // Screen readers get the canvas captions as text (A154).
+  await expect(page.locator('[data-sky-readout]')).toHaveText(/^From Earth: Jupiter, disc \d+\.\d arcseconds, \d+\.\d degrees from the Sun, \d+% lit; field 40 degrees\.$/);
   // The selection stays the target; zoom narrows the field without leaving.
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
   await expect(sky).toHaveAttribute('aria-checked', 'true');
@@ -334,6 +336,7 @@ test('View from Earth switches to real scale, aims at the selection and restores
   // Turning it off restores the illustrative scale it left.
   await sky.click();
   await expect(sky).toHaveAttribute('aria-checked', 'false');
+  await expect(page.locator('[data-sky-readout]')).toHaveText('');
   await expect(page.getByRole('button', { name: 'Illustrative', exact: true })).toHaveAttribute('aria-pressed', 'true');
   // Choosing a scale also leaves the view.
   await sky.click();

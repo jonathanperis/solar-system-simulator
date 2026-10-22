@@ -47,6 +47,8 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
       </div>
       <p class="hud-line"><span data-active-scene>—</span> · <span data-runtime-status role="status" aria-live="polite">Downloading simulator…</span></p>
       <p id="runtime-control-state" class="sr-only" data-runtime-controls role="status" aria-live="polite">Waiting for simulation state.</p>
+      {/* A154: the view from Earth's canvas captions as text; empty otherwise. */}
+      <p class="sr-only" data-sky-readout></p>
       <p data-scene-status role="status"></p>
     </div>
 
