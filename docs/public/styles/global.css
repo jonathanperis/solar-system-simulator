@@ -102,6 +102,13 @@ html.notebook tr:target { background: oklch(90% 0.06 85); }
 .section-count { font: 0.8125rem var(--mono); font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .catalog-section summary:hover .section-title { color: var(--amber-ink); }
 .catalog-section .table-wrap { margin-bottom: 1rem; }
+/* Phones: each section already names the parent ("Jupiter's moons"), and in
+   a moon section every Kind reads Moon, so those columns go and the rest fit
+   without clipping Group. */
+@media (max-width: 480px) {
+  .catalog-section th:nth-child(3), .catalog-section td:nth-child(3),
+  .catalog-section[data-moon-section] th:nth-child(2), .catalog-section[data-moon-section] td:nth-child(2) { display: none; }
+}
 html.notebook .catalog-section tbody tr:hover { background: oklch(93% 0.02 85); }
 @media (min-width: 761px) {
   /* Column headers stay in view through a long section (sticky needs the
