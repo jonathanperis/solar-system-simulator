@@ -31,7 +31,7 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
         aria-label="Live solar system simulation" aria-describedby="canvas-keys runtime-control-state">
         Your browser needs canvas and WebGL to display the simulation.
       </canvas>
-      <p id="canvas-keys" class="sr-only">With the view focused: Space pauses, N steps, R restarts, P runs to the present, V switches scale, F frames the system, B frames the body, A toggles rotation, G grid, H labels, C cycles bodies, O orbits, brackets change speed. Tab leaves the view.</p>
+      <p id="canvas-keys" class="sr-only">With the view focused: Space pauses, N steps, R restarts, P runs to now, V scale, F frames the system, B the body, A rotation, G grid, H labels, C cycles bodies, O orbits, W views from Earth, brackets change speed. Tab leaves the view.</p>
     </div>
 
     {/* The sky clock leads the view: the date is the one reading that always
@@ -176,6 +176,8 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
               <button type="button" data-command="zoom" data-value="-1" aria-label="Zoom out">−</button>
               <button type="button" data-command="zoom" data-value="1" aria-label="Zoom in">+</button>
             </div>
+            {/* A143: a planetarium view from Earth's centre, aimed at the selection. */}
+            <button type="button" role="switch" aria-checked="false" data-command="sky" title="Look from Earth's centre at the selected body (W); zoom narrows the field">From Earth</button>
           </div>
         </div>
       </fieldset>
@@ -194,6 +196,7 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
           <dt><kbd>F</kbd> <kbd>B</kbd></dt><dd>frame system, frame body</dd>
           <dt><kbd>V</kbd> <kbd>A</kbd></dt><dd>scale, camera rotation</dd>
           <dt><kbd>O</kbd> <kbd>T</kbd> <kbd>X</kbd></dt><dd>orbits, trails, vectors</dd>
+          <dt><kbd>W</kbd></dt><dd>view from Earth; wheel zooms the field</dd>
           <dt><kbd>G</kbd> <kbd>H</kbd></dt><dd>grid, labels</dd>
           <dt>Wheel, drag, pinch, twist</dt><dd>zoom, turn the view</dd>
           <dt>Long press</dt><dd>a body's numbers</dd>

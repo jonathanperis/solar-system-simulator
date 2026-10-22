@@ -112,12 +112,13 @@ EM_JS(void, solar_web_report_lab, (int lesson, int method, double dt, double tic
     double momentum, double angular_momentum, double magnification, int trail_frame, int vectors,
     double px, double py, double pz, double vx, double vy, double vz, int contact_mode,
     double min_factor, double contact_seconds, int grid, int labels, int orbits, int follow, int touring, int belt,
-    int constellations), {
+    int constellations, int sky, double sky_fov), {
     Module.reportLabState({lesson, method, dt, ticks, factor, acceleration, specificEnergy: specific_energy,
         energy, energyChange: energy_change, isolated: !!isolated, momentum, angularMomentum: angular_momentum,
         magnification, trailFrame: trail_frame, vectors: !!vectors, position: [px, py, pz], velocity: [vx, vy, vz], contactMode: contact_mode,
         minFactor: min_factor, contactSeconds: contact_seconds, grid: !!grid, labels: !!labels, orbits: !!orbits,
-        follow: !!follow, touring: !!touring, belt: !!belt, constellations: !!constellations});
+        follow: !!follow, touring: !!touring, belt: !!belt, constellations: !!constellations,
+        sky: !!sky, skyFov: sky_fov});
 })
 
 EM_JS(void, solar_web_download_csv, (const char *data, int length), {
@@ -170,6 +171,14 @@ typedef struct SolarApp {
     bool orbits; /* osculating orbit guides (presentation only, A107) */
     bool belt;   /* small-body cloud (presentation only, A121) */
     bool constellations; /* IAU stick figures on the sky (A124) */
+    /* View from Earth (A143): the camera sits at Earth's centre in real scale
+     * and aims at the selected body (the Sun when Earth is selected); the
+     * field of view zooms like a telescope. Leaving restores the scale and
+     * rotation the view had. Presentation only. */
+    bool sky;
+    float sky_fov;
+    RenderScaleMode sky_return_mode;
+    bool sky_return_rotate;
     /* Camera presentation (A112): the view actually shown (eased toward the
      * framing in orbit_camera during a fly-to), pointer state for drag, pinch
      * and click-to-select, and a pause of auto-rotation after interaction. */
@@ -227,7 +236,7 @@ typedef enum SolarCommand {
     SOLAR_COMMAND_ZOOM, SOLAR_COMMAND_ROTATE, SOLAR_COMMAND_FRAME, SOLAR_COMMAND_FRAME_BODY,
     SOLAR_COMMAND_TRAILS, SOLAR_COMMAND_VECTORS, SOLAR_COMMAND_BACKGROUND, SOLAR_COMMAND_CONTACT, SOLAR_COMMAND_GRID, SOLAR_COMMAND_LABELS,
     SOLAR_COMMAND_ORBITS, SOLAR_COMMAND_FOLLOW, SOLAR_COMMAND_TOUR, SOLAR_COMMAND_BELT, SOLAR_COMMAND_CONSTELLATIONS,
-    SOLAR_COMMAND_RUN_UNTIL
+    SOLAR_COMMAND_RUN_UNTIL, SOLAR_COMMAND_SKY
 } SolarCommand;
 
 static SolarApp app;
@@ -270,6 +279,7 @@ static size_t camera_target_index(const SolarApp *state)
 static void solar_app_command(SolarApp *state, SolarCommand command, int value);
 static void frame_selected_system(SolarApp *state, bool face_sun);
 static void step_out(SolarApp *state);
+static void sky_leave(SolarApp *state);
 static void handle_pointer(SolarApp *state)
 {
     int touches = GetTouchPointCount();
@@ -288,10 +298,13 @@ static void handle_pointer(SolarApp *state)
     if (touches >= 2) {
         Vector2 a = GetTouchPosition(0), b = GetTouchPosition(1);
         float spread = hypotf(a.x - b.x, a.y - b.y);
-        if (state->pinch_spread > 0.0f && spread > 0.0f) orbit_camera_pinch(&state->orbit_camera, spread / state->pinch_spread);
+        if (state->pinch_spread > 0.0f && spread > 0.0f) {
+            if (state->sky) state->sky_fov = orbit_camera_sky_zoom(state->sky_fov, state->pinch_spread / spread);
+            else orbit_camera_pinch(&state->orbit_camera, spread / state->pinch_spread);
+        }
         /* Two fingers turning about each other turn the view (A120). */
         float angle = atan2f(b.y - a.y, b.x - a.x);
-        if (state->pinch_spread > 0.0f) {
+        if (state->pinch_spread > 0.0f && !state->sky) {
             float turn = angle - state->twist_angle;
             if (turn > PI) turn -= 2 * PI;
             if (turn < -PI) turn += 2 * PI;
@@ -316,7 +329,8 @@ static void handle_pointer(SolarApp *state)
             float dx = at.x - state->pointer_last.x, dy = at.y - state->pointer_last.y;
             state->pointer_travel += (fabsf(dx) + fabsf(dy)) / state->pixel_scale;
             if (state->pointer_travel > SOLAR_CLICK_SLOP_PIXELS && (dx != 0.0f || dy != 0.0f)) {
-                orbit_camera_drag(&state->orbit_camera, dx, dy, (float)GetScreenHeight());
+                /* From Earth the aim stays on the selected body. */
+                if (!state->sky) orbit_camera_drag(&state->orbit_camera, dx, dy, (float)GetScreenHeight());
                 state->interaction_hold_seconds = SOLAR_INTERACTION_HOLD_SECONDS;
                 state->steered = true;
             }
@@ -533,6 +547,7 @@ static void update_follow_and_tour(SolarApp *state, float dt)
  * the whole scene. */
 static void step_out(SolarApp *state)
 {
+    if (state->sky) { sky_leave(state); return; }
     const SolarSystem *system = &state->session.system;
     size_t selected = state->session.selected_body_index;
     int parent = solar_system_parent_index(system, selected);
@@ -615,6 +630,37 @@ static int export_snapshot(const SolarApp *state, char *name, size_t size)
     return error;
 }
 
+static int earth_index(const SolarSystem *system)
+{
+    for (size_t i = 0; i < system->body_count; ++i)
+        if (system->bodies[i].id == BODY_ID_EARTH) return (int)i;
+    return -1;
+}
+
+static void sky_leave(SolarApp *state)
+{
+    if (!state->sky) return;
+    state->sky = false;
+    state->render_mode = state->sky_return_mode;
+    state->auto_rotate = state->sky_return_rotate;
+    renderer_set_observer(-1);
+    frame_selected_body(state, false);
+}
+
+static void sky_enter(SolarApp *state)
+{
+    if (state->sky || earth_index(&state->session.system) < 0) return;
+    state->sky = true;
+    state->sky_fov = ORBIT_CAMERA_SKY_FOV_DEFAULT;
+    state->sky_return_mode = state->render_mode;
+    state->sky_return_rotate = state->auto_rotate;
+    /* Directions from Earth are only true in real scale. */
+    state->render_mode = RENDER_SCALE_REAL;
+    state->morph_seconds = SOLAR_FLIGHT_SECONDS;
+    state->auto_rotate = state->follow = state->touring = false;
+    state->flight.active = false;
+}
+
 static void solar_app_command(SolarApp *state, SolarCommand command, int value)
 {
     SimulationSession *session = &state->session;
@@ -636,7 +682,18 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
             state->steered = true;  /* follow: recapture the angle for the new body */
             state->touring = false; /* a choice of body ends the tour (it restores its own) */
             break;
+        case SOLAR_COMMAND_SKY:
+            if (state->sky) sky_leave(state);
+            else sky_enter(state);
+            break;
         case SOLAR_COMMAND_VIEW:
+            /* The view from Earth shows real scale, so V (or choosing
+             * Illustrative) leaves it for illustrative scale: restore what
+             * it left, and toggle on if that was real scale too. */
+            if (state->sky) {
+                sky_leave(state);
+                if (state->render_mode != RENDER_SCALE_REAL) break;
+            }
             begin_camera_flight(state);
             /* The target body glides with the morph itself: the camera looks
              * straight at it rather than easing toward an eased point. */
@@ -655,10 +712,14 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
             if (state->system_framed) frame_selected_system(state, false);
             else if (state->body_framed) frame_selected_body(state, false);
             break;
-        case SOLAR_COMMAND_ZOOM: orbit_camera_apply_zoom(&state->orbit_camera, (float)value); break;
+        case SOLAR_COMMAND_ZOOM:
+            if (state->sky) state->sky_fov = orbit_camera_sky_zoom(state->sky_fov, value > 0 ? 0.7f : 1.0f / 0.7f);
+            else orbit_camera_apply_zoom(&state->orbit_camera, (float)value);
+            break;
         case SOLAR_COMMAND_ROTATE: state->auto_rotate = !state->auto_rotate; break;
-        case SOLAR_COMMAND_FRAME: frame_selected_system(state, true); break;
-        case SOLAR_COMMAND_FRAME_BODY: frame_selected_body(state, true); break;
+        case SOLAR_COMMAND_FRAME: sky_leave(state); frame_selected_system(state, true); break;
+        /* From Earth the view already follows the selection. */
+        case SOLAR_COMMAND_FRAME_BODY: if (!state->sky) frame_selected_body(state, true); break;
         case SOLAR_COMMAND_TRAILS: state->trail_frame = state->trail_frame == RENDER_TRAILS_ABSOLUTE ? RENDER_TRAILS_PARENT : RENDER_TRAILS_ABSOLUTE; break;
         case SOLAR_COMMAND_VECTORS: state->vectors = !state->vectors; break;
         case SOLAR_COMMAND_GRID: state->grid = !state->grid; break;
@@ -740,7 +801,7 @@ static void report_web_state(const SolarApp *state)
         selected->velocity_mps.x, selected->velocity_mps.y, selected->velocity_mps.z, session->clock.collision_mode,
         lesson_minimum_velocity_factor(session->lesson),
         (double)session->clock.contact_tick * simulation_clock_step_seconds(&session->clock), state->grid, state->labels,
-        state->orbits, state->follow, state->touring, state->belt, state->constellations);
+        state->orbits, state->follow, state->touring, state->belt, state->constellations, state->sky, state->sky_fov);
     ForceContribution forces[SOLAR_SYSTEM_BODY_CAPACITY];
     size_t count = physics_force_breakdown(&session->system, session->selected_body_index, forces, SOLAR_SYSTEM_BODY_CAPACITY);
     solar_web_begin_forces(session->system.elapsed_seconds);
@@ -930,6 +991,7 @@ static void solar_app_update_draw(void *user_data)
         if (IsKeyPressed(KEY_G)) solar_app_command(state, SOLAR_COMMAND_GRID, 0);
         if (IsKeyPressed(KEY_H)) solar_app_command(state, SOLAR_COMMAND_LABELS, 0);
         if (IsKeyPressed(KEY_O)) solar_app_command(state, SOLAR_COMMAND_ORBITS, 0);
+        if (IsKeyPressed(KEY_W)) solar_app_command(state, SOLAR_COMMAND_SKY, 0);
         /* P runs the sky to the present (A133); Emscripten's time() is the
          * browser's clock, so the page's Today button and P agree. */
         if (IsKeyPressed(KEY_P)) solar_app_command(state, SOLAR_COMMAND_RUN_UNTIL,
@@ -993,7 +1055,8 @@ static void solar_app_update_draw(void *user_data)
 #endif
     float wheel = GetMouseWheelMove();
     if (wheel != 0.0f) state->interaction_hold_seconds = SOLAR_INTERACTION_HOLD_SECONDS;
-    orbit_camera_apply_zoom(&state->orbit_camera, wheel);
+    if (state->sky) state->sky_fov = orbit_camera_sky_zoom(state->sky_fov, expf(-0.15f * wheel));
+    else orbit_camera_apply_zoom(&state->orbit_camera, wheel);
     handle_pointer(state);
     bool stalled = simulation_frame_is_stall(frame_time);
     if (state->interaction_hold_seconds > 0.0f && !stalled) state->interaction_hold_seconds -= frame_time;
@@ -1028,10 +1091,30 @@ static void solar_app_update_draw(void *user_data)
         orbit_camera_flight_blend(&state->flight, progress, to, &state->orbit_camera, at, &shown);
         origin = (Vec3d){at[0], at[1], at[2]};
     }
-    state->shown_origin = origin;
-    state->shown_camera = shown;
+    int earth = state->sky ? earth_index(&state->session.system) : -1;
+    if (state->sky && earth < 0) sky_leave(state); /* a scene without Earth */
+    if (state->sky) {
+        /* View from Earth (A143): the origin is Earth's centre, so the camera
+         * sits at (0,0,0) and looks along the true direction to the target;
+         * ecliptic north (+y) is up. Real scale, so every direction is the
+         * SI geometry. */
+        size_t target = state->session.selected_body_index == (size_t)earth ? 0 : state->session.selected_body_index;
+        origin = renderer_body_position(&state->session.system, (size_t)earth, state->render_mode);
+        Vec3d aim = vec3d_sub(renderer_body_position(&state->session.system, target, state->render_mode), origin);
+        renderer_set_observer(earth);
+        state->camera.position = (Vector3){0, 0, 0};
+        state->camera.target = (Vector3){(float)aim.x, (float)aim.y, (float)aim.z};
+        state->camera.up = (Vector3){0, 1, 0};
+        state->camera.fovy = state->sky_fov;
+        state->shown_origin = origin;
+        state->shown_camera = shown;
+    } else {
+        state->camera.fovy = 45.0f;
+        state->shown_origin = origin;
+        state->shown_camera = shown;
+        apply_orbit_camera(&state->camera, &shown, (Vector3){0,0,0});
+    }
     if (!stalled && state->shown_seconds < SOLAR_FLIGHT_STARTUP_SECONDS) state->shown_seconds += frame_time;
-    apply_orbit_camera(&state->camera, &shown, (Vector3){0,0,0});
 
 #if defined(PLATFORM_WEB)
     /* Readouts for people: 15 updates a second read as live, and each report
@@ -1052,14 +1135,21 @@ static void solar_app_update_draw(void *user_data)
     /* Real-scale moon systems need a near plane smaller than raylib's default.
      * Clip distances follow the camera only; SI positions and radii stay intact. */
     double far_plane = fmax(1000.0, state->shown_camera.distance * 4.0);
-    rlSetClipPlanes(fmax(1e-9, state->shown_camera.distance * 0.001), far_plane);
+    double near_plane = fmax(1e-9, state->shown_camera.distance * 0.001);
+    if (state->sky) {
+        /* From Earth's centre: nothing nearer than its own surface is drawn,
+         * and Neptune lies within about 31 AU. */
+        near_plane = meters_to_render_units(2.0 * SOLAR_EARTH_RADIUS_M);
+        far_plane = meters_to_render_units(200.0 * SOLAR_AU_METERS);
+    }
+    rlSetClipPlanes(near_plane, far_plane);
     /* Spin models count TDB days from J2000. Scenes and catalog experiments
      * start at the scene epoch (2026-06-09); synthetic lessons at J2000. */
     bool dated = simulation_session_is_dated(&state->session);
     double epoch_days = dated ? SOLAR_SCENE_EPOCH_JD - RENDER_J2000_JD : 0.0;
     RenderView view = {.camera = state->camera,
         .orientation_days = epoch_days + state->session.system.elapsed_seconds / SOLAR_DAY_SECONDS,
-        .far_plane = (float)far_plane, .show_grid = state->grid, .show_orbits = state->orbits,
+        .far_plane = (float)far_plane, .show_grid = state->grid && !state->sky, .show_orbits = state->orbits,
         .selected = state->session.selected_body_index,
         /* The cloud is the real sky's small bodies: dated scenes only. */
         .show_belt = state->belt && dated,
@@ -1073,6 +1163,15 @@ static void solar_app_update_draw(void *user_data)
     renderer_draw_markers(&state->session.system, state->render_mode, origin, &state->render, state->camera,
         state->session.selected_body_index, state->hovered);
     draw_hover_tooltip(state);
+    if (state->sky) {
+        /* The field of view, above the scale bar (A143). */
+        char field[32], caption[64];
+        orbit_camera_sky_fov_label(state->sky_fov, field, sizeof(field));
+        snprintf(caption, sizeof(caption), "From Earth | field %s", field);
+        const float s = state->pixel_scale;
+        Font font = state->render.label_font_ready ? state->render.label_font : GetFontDefault();
+        DrawTextEx(font, caption, (Vector2){16 * s, (float)GetScreenHeight() - 58 * s}, 13 * s, 0.4f * s, (Color){240, 190, 90, 255});
+    }
     if (state->labels || state->hovered >= 0) renderer_draw_labels(&state->session.system, state->render_mode, origin,
         &state->render, state->camera, state->session.selected_body_index, state->hovered, state->labels);
 
