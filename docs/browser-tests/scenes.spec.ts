@@ -39,8 +39,8 @@ test('the scene picker switches between the main scene and planet systems', asyn
   await expect(page.locator('[data-active-scene]')).toContainText('32 active bodies');
   const scene = page.getByRole('combobox', { name: 'Scene', exact: true });
   await expect(scene).toHaveValue('0');
+  // A132: choosing a scene loads it.
   await scene.selectOption({ label: 'Uranus (29 moons)' });
-  await page.getByRole('button', { name: 'Load scene', exact: true }).click();
   await expect(page.locator('[data-active-scene]')).toContainText('38 active bodies · Uranus system');
   await expect(page.locator('[data-scene-status]')).toContainText('Uranus (29 moons) loaded');
   // The scene opens on its planet, and its catalog fills the body picker.
@@ -48,7 +48,6 @@ test('the scene picker switches between the main scene and planet systems', asyn
   const bodies = page.getByRole('combobox', { name: 'Body', exact: true, includeHidden: true });
   await expect(bodies.locator('option', { hasText: 'Cordelia' })).toHaveCount(1);
   await scene.selectOption('0');
-  await page.getByRole('button', { name: 'Load scene', exact: true }).click();
   await expect(page.locator('[data-active-scene]')).toContainText('32 active bodies · Main scene');
   await expect(bodies.locator('option', { hasText: 'Cordelia' })).toHaveCount(0);
   await expect(bodies.locator('option', { hasText: /^Titan —/ })).toHaveCount(1);
@@ -61,4 +60,17 @@ test('every catalog row links into the simulator, small moons through their scen
   await page.getByRole('link', { name: 'Pan', exact: true }).click();
   await expect(page.locator('[data-active-scene]')).toContainText('Saturn system', { timeout: 30000 });
   await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Pan;');
+});
+
+// SPEC A132: arrowing through the scene list loads only where it rests.
+test('keyboard browsing of the scene list loads only the scene it stops on', async ({ page }) => {
+  await page.goto(base);
+  await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
+  const scene = page.getByRole('combobox', { name: 'Scene', exact: true });
+  await scene.focus();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expect(scene).toHaveValue(/\d+/);
+  await expect(page.locator('[data-scene-status]')).toContainText('Saturn (291 moons) loaded', { timeout: 15000 });
+  await expect(page.locator('[data-active-scene]')).toContainText('Saturn system');
 });
