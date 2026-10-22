@@ -26,4 +26,9 @@ bool scene_epoch_state(int code, Vec3d *position_m, Vec3d *velocity_mps);
  * "YYYY-MM-DD HH:MM TDB" (proleptic Gregorian). False if it does not fit. */
 bool scene_epoch_format_date(double elapsed_seconds, char *out, size_t size);
 
+/* Elapsed scene seconds at a UTC instant given as Unix seconds (A133). TDB
+ * runs TT - UTC = 69.184 s ahead of UTC since the 2017 leap second (TAI -
+ * UTC = 37 s, TT - TAI = 32.184 s; TDB - TT stays under 2 ms). */
+double scene_epoch_seconds_at_unix_time(double unix_seconds);
+
 #endif

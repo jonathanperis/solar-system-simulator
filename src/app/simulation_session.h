@@ -28,6 +28,9 @@ typedef struct SimulationSession {
     double achieved_time_scale;
     double rate_real_seconds;
     double rate_sim_seconds;
+    /* Run until (A133): a target elapsed time to play to and pause at, or
+     * negative for none. */
+    double run_until_seconds;
 } SimulationSession;
 
 typedef struct BodyInspection {
@@ -67,6 +70,11 @@ void simulation_session_reset(SimulationSession *session);
 void simulation_session_update(SimulationSession *session, double real_seconds);
 void simulation_session_single_step(SimulationSession *session);
 void simulation_session_set_speed(SimulationSession *session, int preset);
+/* Play at the fastest preset to `target_seconds` of elapsed time and pause
+ * within one tick of it (A133). Never skips time or enlarges a step: it is
+ * ordinary playback that stops on time. A target behind the clock pauses at
+ * once; pausing or resetting cancels the run. */
+void simulation_session_run_until(SimulationSession *session, double target_seconds);
 void simulation_session_select_body(SimulationSession *session, int index);
 int simulation_session_find_body(const SimulationSession *session, const char *query, size_t start);
 double simulation_session_time_scale(const SimulationSession *session);

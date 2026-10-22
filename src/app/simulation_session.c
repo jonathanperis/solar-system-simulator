@@ -38,6 +38,7 @@ void simulation_session_reset(SimulationSession *session)
     session->initial_energy_j = initial.total_energy_j;
     session->energy_scale_j = initial.kinetic_energy_j + fabs(initial.potential_energy_j);
     session->achieved_time_scale = 0;
+    session->run_until_seconds = -1;
     session->rate_real_seconds = 0;
     session->rate_sim_seconds = 0;
     body_trails_record_system(&session->trails, &session->system);
@@ -147,10 +148,25 @@ void simulation_session_update(SimulationSession *session, double real_seconds)
         session->discard_resumed_frame = false;
         return;
     }
+    if (session->paused) session->run_until_seconds = -1; /* pausing cancels a run */
     if (!session->paused) {
         double before = session->system.elapsed_seconds;
+        double advance = real_seconds * simulation_session_time_scale(session);
+        if (session->run_until_seconds >= 0) {
+            /* Queue at most the time left before the target, counting what
+             * the clock already holds, so no tick lands past it. Once less
+             * than one tick remains, the run pauses within a tick of it. */
+            double left = session->run_until_seconds - session->system.elapsed_seconds;
+            double remaining = left - session->clock.pending_seconds;
+            if (left < simulation_clock_step_seconds(&session->clock)) {
+                session->paused = true;
+                session->run_until_seconds = -1;
+                return;
+            }
+            if (advance > remaining) advance = remaining > 0 ? remaining : 0;
+        }
         solar_app_step_system_with_trails(&session->system, &session->trails, &session->clock,
-            real_seconds * simulation_session_time_scale(session), SOLAR_APP_MAX_STEPS_PER_UPDATE);
+            advance, SOLAR_APP_MAX_STEPS_PER_UPDATE);
         if (session->selected_body_index >= session->system.body_count) session->selected_body_index = 0;
         session->rate_sim_seconds += session->system.elapsed_seconds - before;
         session->rate_real_seconds += real_seconds;
@@ -160,6 +176,18 @@ void simulation_session_update(SimulationSession *session, double real_seconds)
             session->rate_sim_seconds = 0;
         }
     }
+}
+
+void simulation_session_run_until(SimulationSession *session, double target_seconds)
+{
+    if (!(target_seconds > session->system.elapsed_seconds)) {
+        session->paused = true;
+        session->run_until_seconds = -1;
+        return;
+    }
+    simulation_session_set_speed(session, SOLAR_SPEED_PRESET_COUNT - 1);
+    session->run_until_seconds = target_seconds;
+    session->paused = false;
 }
 
 void simulation_session_single_step(SimulationSession *session)

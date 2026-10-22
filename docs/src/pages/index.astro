@@ -31,7 +31,7 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
         aria-label="Live solar system simulation" aria-describedby="canvas-keys runtime-control-state">
         Your browser needs canvas and WebGL to display the simulation.
       </canvas>
-      <p id="canvas-keys" class="sr-only">With the view focused: Space pauses, N steps, R restarts, V switches scale, F frames the system, B frames the body, A toggles rotation, G grid, H labels, C cycles bodies, O orbits, brackets change speed. Tab leaves the view.</p>
+      <p id="canvas-keys" class="sr-only">With the view focused: Space pauses, N steps, R restarts, P runs to the present, V switches scale, F frames the system, B frames the body, A toggles rotation, G grid, H labels, C cycles bodies, O orbits, brackets change speed. Tab leaves the view.</p>
     </div>
 
     {/* The sky clock leads the view: the date is the one reading that always
@@ -40,6 +40,8 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
       <div class="clock" role="group" aria-label="Simulation clock">
         <output class="clock-time" data-runtime-elapsed>—</output>
         <p class="clock-note" data-clock-note></p>
+        <button type="button" class="clock-today" data-today hidden
+          title="Run the sky forward to the present (P)">Today</button>
       </div>
       <p class="hud-line"><span data-active-scene>—</span> · <span data-runtime-status role="status" aria-live="polite">Downloading simulator…</span></p>
       <p id="runtime-control-state" class="sr-only" data-runtime-controls role="status" aria-live="polite">Waiting for simulation state.</p>
@@ -167,6 +169,7 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
           <dt><kbd>Space</kbd></dt><dd>pause or resume</dd>
           <dt><kbd>N</kbd></dt><dd>one step while paused</dd>
           <dt><kbd>R</kbd></dt><dd>restart</dd>
+          <dt><kbd>P</kbd></dt><dd>run to the present</dd>
           <dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>slower, faster</dd>
           <dt><kbd>C</kbd> <kbd>1</kbd>–<kbd>0</kbd></dt><dd>cycle or pick bodies</dd>
           <dt><kbd>F</kbd> <kbd>B</kbd></dt><dd>frame system, frame body</dd>
