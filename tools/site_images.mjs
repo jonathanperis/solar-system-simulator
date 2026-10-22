@@ -3,7 +3,8 @@
 //   favicon.ico (16/32/48), favicon-32x32.png, apple-touch-icon.png from the
 //   hand-written docs/public/favicon.svg, and social-preview.png (1200×630,
 //   the og:image) from a live frame of the simulator beside a notebook title,
-//   and about-view.jpg (1280×720), the About page's figure of the solar system.
+//   about-view.jpg (1280×720), the About page's figure of the solar system,
+//   and about-sky.jpg (1280×720), its figure of the view from Earth.
 //
 // Usage: build the site, serve it, then pass its base URL, e.g.
 //   python3 tools/serve_site.py docs/dist --port 4400 &
@@ -136,6 +137,19 @@ await view.evaluate(() => {
 });
 await view.waitForTimeout(1500);
 writeFileSync(`${publicDir}about-view.jpg`, await view.locator('canvas').screenshot({ type: 'jpeg', quality: 82 }));
+
+// About's second figure (A150): the view from Earth, Jupiter and its four
+// Galilean moons through a 9-arcmin field on 2026-12-01, from the same link
+// Learn offers. The canvas captions stay; the page panels are hidden.
+const sky = await browser.newPage({ viewport: { width: 1280, height: 760 }, bypassCSP: true });
+await sky.goto(`${base}?body=jupiter&at=2026-12-01T22:00&from=earth&fov=0.15`);
+await sky.locator('[data-runtime-elapsed]').filter({ hasText: '2026-12-01 22:00 TDB' }).waitFor({ timeout: 180000 });
+await sky.waitForFunction(() => /^(\d+)\/\1$/.test(document.querySelector('canvas')?.dataset.textures ?? ''), null, { timeout: 90000 });
+const skyHeader = await sky.locator('.site-header').evaluate(element => element.getBoundingClientRect().height);
+await sky.setViewportSize({ width: 1280, height: 720 + Math.round(skyHeader) });
+await sky.addStyleTag({ content: '.hud,.dock,.inspector,.lesson-strip{display:none!important}' });
+await sky.waitForTimeout(1500);
+writeFileSync(`${publicDir}about-sky.jpg`, await sky.locator('canvas').screenshot({ type: 'jpeg', quality: 82 }));
 
 await browser.close();
 console.log(`site images written to ${publicDir}`);
