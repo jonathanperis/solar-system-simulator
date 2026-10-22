@@ -284,6 +284,12 @@ test('the sky clock reads the scene date and how far the run has come', () => {
   assert.equal(clockNote(0, true), '+0.00 days since 2026-06-09');
   // Lessons are not dated: their clock counts from the lesson start.
   assert.equal(clockNote(140970, false), 'since the lesson started');
+  // A Today or Date run names its destination (A142): to the minute unless
+  // it is midnight, and not once it has arrived.
+  assert.equal(clockNote(10 * 86400, true, 135 * 86400), '+10.00 days since 2026-06-09 →\u00a02026\u2060-\u206010\u2060-\u206022');
+  assert.equal(clockNote(10 * 86400, true, 135 * 86400 + 3660), '+10.00 days since 2026-06-09 →\u00a02026\u2060-\u206010\u2060-\u206022\u00a001:01');
+  assert.equal(clockNote(10 * 86400, true, null), '+10.00 days since 2026-06-09');
+  assert.equal(clockNote(10 * 86400, true, 10 * 86400), '+10.00 days since 2026-06-09');
 });
 
 test('Today runs to the present in TDB, as the C helper does (SPEC A133)', () => {
