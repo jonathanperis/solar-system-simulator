@@ -56,6 +56,9 @@ typedef struct BodyInspection {
      * scene without either). */
     double angular_diameter_arcsec;
     double elongation_deg;
+    /* Fraction of the disc seen lit from Earth (A146): (1 + cos i) / 2,
+     * with i the Sun-body-Earth phase angle; NAN where elongation is. */
+    double illuminated_fraction;
     Vec3d relative_position_m;
     Vec3d relative_velocity_mps;
     Vec3d relative_acceleration_mps2;
