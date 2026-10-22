@@ -249,6 +249,15 @@ int render_pick_body(const RenderPickCandidate *candidates, size_t count, float 
 /* How far down text spanning [x0, x1] may reach (A145): `bottom`, or the top
  * of the highest page panel (x, y, width, height in screen pixels) that
  * crosses that span and reaches below its top. */
+/* First trail point to draw when a trail circles its parent (A152): enough
+ * evenly spaced samples (`interval_s` apart) for `periods` orbits of
+ * `period_s`, plus the live endpoint; 0 (the whole trail) when the orbit is
+ * unbound or the spacing unknown. */
+size_t render_trail_first_point(size_t point_count, double interval_s, double period_s, double periods);
+/* True when samples `interval_s` apart give fewer than 12 per orbit of
+ * `period_s` (A152): the trail would draw a polygon, so it gives way to the
+ * orbit guide. False when the period is unknown. */
+bool render_trail_too_coarse(double interval_s, double period_s);
 double render_clear_above(const double (*rects)[4], int count, double x0, double x1, double bottom);
 
 /* Resolution governor (SPEC A116). The browser draws at up to 2 backing

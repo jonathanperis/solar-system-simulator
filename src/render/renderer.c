@@ -660,6 +660,20 @@ static double trail_extent_pixels[SOLAR_SYSTEM_BODY_CAPACITY];
 static size_t trail_extent_points[SOLAR_SYSTEM_BODY_CAPACITY];
 static unsigned trail_extent_frame;
 
+/* Two-body period of `body` about `parent` from SI state (s), NAN when
+ * unbound: Kepler's third law with a = -mu / 2E. */
+#define RENDER_TRAIL_ORBITS 1.5
+static double two_body_period_s(const Body *body, const Body *parent)
+{
+    Vec3d r = vec3d_sub(body->position_m, parent->position_m), v = vec3d_sub(body->velocity_mps, parent->velocity_mps);
+    double mu = SOLAR_G * (parent->mass_kg + body->mass_kg), d = vec3d_length(r);
+    if (!(d > 0) || !(mu > 0)) return NAN;
+    double energy = 0.5 * vec3d_dot(v, v) - mu / d;
+    if (!(energy < 0)) return NAN;
+    double a = -mu / (2.0 * energy);
+    return 2.0 * acos(-1.0) * sqrt(a * a * a / mu);
+}
+
 static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system, const BodyTrails *trails,
     RenderScaleMode mode, RenderTrailFrame trail_frame, Vec3d origin, const Camera3D *camera)
 {
@@ -679,6 +693,20 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
         if ((body->kind == BODY_KIND_STAR && body->fixed) || (int)i == observer_body) continue;
         size_t point_count = body_trails_point_count(trails, i);
         if (point_count < 2) continue;
+        /* A trail drawn about its parent keeps its last 1.5 orbits (A152):
+         * after months at speed, a hundred loops of Io are a solid band and
+         * the orbit guide already shows the current orbit. Sun-relative moon
+         * trails are spirals, so they keep their whole history. */
+        size_t first = 0;
+        int parent = cache->parent[i];
+        if (parent >= 0 && (trail_frame == RENDER_TRAILS_PARENT || system->bodies[parent].kind == BODY_KIND_STAR)) {
+            double period = two_body_period_s(body, &system->bodies[parent]);
+            /* Too coarse to trace the orbit: the guide shows it instead. */
+            if (render_trail_too_coarse(trails->sample_interval_seconds, period)) continue;
+            first = render_trail_first_point(point_count, trails->sample_interval_seconds, period, RENDER_TRAIL_ORBITS);
+        }
+        size_t shown = point_count - first;
+        if (shown < 2) continue;
         Color color = renderer_body_color(body);
         color.a = 235;
         /* Draw only as finely as the trail's on-screen length can show. */
@@ -687,7 +715,7 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
                 camera_world, camera, viewport_height);
             trail_extent_points[i] = point_count;
         }
-        size_t stride = render_trail_stride_for_extent(point_count, renderer_trail_sample_stride(point_count),
+        size_t stride = render_trail_stride_for_extent(shown, renderer_trail_sample_stride(shown),
             trail_extent_pixels[i]);
         /* The live endpoint is the body's centre: stop the trail at its drawn
          * surface so it never pokes out through the near side. */
@@ -696,16 +724,17 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
         /* Adjacent segments share an endpoint. Reuse its render transform;
          * the simulation and synchronized history are immutable while drawing.
          * Opacity follows the sample's age so recent motion reads first. */
-        size_t previous = 0;
-        Vec3d start = renderer_trail_point_cached(cache, system, trails, i, 0, mode, trail_frame);
+        size_t previous = first;
+        Vec3d start = renderer_trail_point_cached(cache, system, trails, i, first, mode, trail_frame);
         unsigned start_code = render_frustum_outcode(&view, start);
-        for (size_t j = stride; j < point_count; j += stride) {
+        for (size_t j = first + stride; j < point_count; j += stride) {
             Vec3d end = renderer_trail_point_cached(cache, system, trails, i, j, mode, trail_frame);
             unsigned end_code = render_frustum_outcode(&view, end);
             Vec3d a = start, b = end;
             if (!(start_code & end_code) && render_clip_segment_outside_sphere(&a, &b, center, surface)) {
-                line_vertex(renderer_relative_vector(a, origin), color, render_trail_alpha(previous, point_count));
-                line_vertex(renderer_relative_vector(b, origin), color, render_trail_alpha(j, point_count));
+                /* The fade runs over the drawn window, oldest to newest. */
+                line_vertex(renderer_relative_vector(a, origin), color, render_trail_alpha(previous - first, shown));
+                line_vertex(renderer_relative_vector(b, origin), color, render_trail_alpha(j - first, shown));
             }
             start = end;
             start_code = end_code;
@@ -715,7 +744,7 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
             Vec3d end = renderer_trail_point_cached(cache, system, trails, i, point_count - 1, mode, trail_frame);
             Vec3d a = start, b = end;
             if (!(start_code & render_frustum_outcode(&view, end)) && render_clip_segment_outside_sphere(&a, &b, center, surface)) {
-                line_vertex(renderer_relative_vector(a, origin), color, render_trail_alpha(previous, point_count));
+                line_vertex(renderer_relative_vector(a, origin), color, render_trail_alpha(previous - first, shown));
                 line_vertex(renderer_relative_vector(b, origin), color, 1.0f);
             }
         }

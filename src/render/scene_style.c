@@ -840,3 +840,15 @@ double render_clear_above(const double (*rects)[4], int count, double x0, double
     }
     return limit;
 }
+
+size_t render_trail_first_point(size_t point_count, double interval_s, double period_s, double periods)
+{
+    if (!(interval_s > 0) || !(period_s > 0) || !isfinite(period_s) || !(periods > 0)) return 0;
+    double samples = ceil(periods * period_s / interval_s) + 1.0;
+    return (double)point_count > samples ? point_count - (size_t)samples : 0;
+}
+
+bool render_trail_too_coarse(double interval_s, double period_s)
+{
+    return interval_s > 0 && period_s > 0 && isfinite(period_s) && period_s / interval_s < 12.0;
+}
