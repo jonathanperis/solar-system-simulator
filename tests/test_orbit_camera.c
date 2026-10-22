@@ -307,6 +307,22 @@ static void test_sky_aim_turns_about_north_and_stops_short_of_the_poles(void)
     assert(fabsf(clamped - (float)(SKY_PI / 4 - SKY_PI / 180)) < 1e-5f);
     assert(fabsf(orbit_camera_sky_clamp_pitch(raised, -5.0f) - (float)(-3 * SKY_PI / 4 + SKY_PI / 180)) < 1e-5f);
     assert(orbit_camera_sky_clamp_pitch(raised, 0.2f) == 0.2f);
+    /* The near plane (A148) sits at half the nearest surface in view, so a
+     * distant planet keeps fine depth while nothing visible is clipped. */
+    {
+        const double offsets[3][3] = {{1.4e12, 0, 0}, {0, 3.8e8, 0}, {3.0e11, 1.0e9, 0}};
+        const double radii[3] = {1.4e8, 1.7e6, 6.0e6};
+        const double forward[3] = {1, 0, 0};
+        /* Saturn ahead; the Moon far off-axis is ignored; Venus 0.19 deg off
+         * the axis is inside a 1-degree field and sets the plane. */
+        double near = orbit_camera_sky_near(offsets, radii, 3, forward, 1.0f, 1.5f, 1.3e7);
+        assert(fabs(near - 0.5 * (sqrt(3.0e11 * 3.0e11 + 1.0e18) - 6.0e6)) < 1e3);
+        /* In a 0.1-degree field Venus is outside: Saturn sets it. */
+        near = orbit_camera_sky_near(offsets, radii, 3, forward, 0.1f, 1.5f, 1.3e7);
+        assert(fabs(near - 0.5 * (1.4e12 - 1.4e8)) < 1e3);
+        /* Never below the floor (Earth's own surface). */
+        assert(orbit_camera_sky_near(offsets, radii, 0, forward, 1.0f, 1.5f, 1.3e7) == 1.3e7);
+    }
     /* One viewport height of drag sweeps the whole vertical field. */
     float swept = orbit_camera_sky_drag_radians(900.0f, 40.0f, 900.0f);
     assert(fabsf(swept - 40.0f * (float)SKY_PI / 180.0f) < 1e-6f);
