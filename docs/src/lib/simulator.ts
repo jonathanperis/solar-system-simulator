@@ -324,6 +324,20 @@ export const firstWaveTextures = 14;
 
 export async function loadRuntimeTextures(runtime: TextureRuntime, canvas: HTMLCanvasElement, artifactUrl: URL,
   afterFirstWave?: () => Promise<void>): Promise<void> {
+  // The callback (the belt) runs exactly once on every path: between the
+  // waves normally, or at the end when texture setup gave up early.
+  let started = false;
+  const between = (): Promise<void> => {
+    if (started || !afterFirstWave) return Promise.resolve();
+    started = true;
+    return afterFirstWave().catch(() => undefined);
+  };
+  await loadTexturesInWaves(runtime, canvas, artifactUrl, between);
+  await between();
+}
+
+async function loadTexturesInWaves(runtime: TextureRuntime, canvas: HTMLCanvasElement, artifactUrl: URL,
+  between: () => Promise<void>): Promise<void> {
   let count = 0;
   const files: string[] = [];
   try {
@@ -352,7 +366,7 @@ export async function loadRuntimeTextures(runtime: TextureRuntime, canvas: HTMLC
   // The overview shows the asteroid belt long before any moon is big enough
   // to show its map, so the belt comes between the waves: the moon maps
   // start once it has arrived (or failed).
-  const settled = Promise.allSettled(firstWave).then(() => afterFirstWave?.().catch(() => undefined));
+  const settled = Promise.allSettled(firstWave).then(between);
   const downloads = [...firstWave, ...files.slice(firstWave.length).map(file => settled.then(() => fetchMap(file)))];
   downloads.forEach(download => download.catch(() => undefined)); // reported below, in order
   for (let slot = 0; slot < count; slot++) {
