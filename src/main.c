@@ -112,13 +112,15 @@ EM_JS(void, solar_web_report_lab, (int lesson, int method, double dt, double tic
     double momentum, double angular_momentum, double magnification, int trail_frame, int vectors,
     double px, double py, double pz, double vx, double vy, double vz, int contact_mode,
     double min_factor, double contact_seconds, int grid, int labels, int orbits, int follow, int touring, int belt,
-    int constellations, int sky, double sky_fov), {
+    int constellations, int sky, double sky_fov, const char *sky_target, double sky_disc, double sky_elongation,
+    double sky_lit), {
     Module.reportLabState({lesson, method, dt, ticks, factor, acceleration, specificEnergy: specific_energy,
         energy, energyChange: energy_change, isolated: !!isolated, momentum, angularMomentum: angular_momentum,
         magnification, trailFrame: trail_frame, vectors: !!vectors, position: [px, py, pz], velocity: [vx, vy, vz], contactMode: contact_mode,
         minFactor: min_factor, contactSeconds: contact_seconds, grid: !!grid, labels: !!labels, orbits: !!orbits,
         follow: !!follow, touring: !!touring, belt: !!belt, constellations: !!constellations,
-        sky: !!sky, skyFov: sky_fov});
+        sky: !!sky, skyFov: sky_fov, skyTarget: UTF8ToString(sky_target), skyDisc: sky_disc,
+        skyElongation: sky_elongation, skyLit: sky_lit});
 })
 
 EM_JS(void, solar_web_download_csv, (const char *data, int length), {
@@ -830,6 +832,13 @@ static void report_web_state(const SolarApp *state)
         simulation_session_is_dated(session), session->run_until_seconds, body.earth_distance_m);
     PhysicsDiagnostics diagnostics = physics_diagnostics(&session->system);
     const Body *selected = &session->system.bodies[session->selected_body_index];
+    /* The view from Earth's caption facts for the page's screen-reader text
+     * (A154); NaN and no name when the view is off. */
+    BodyInspection sky_seen = {.name = NULL, .angular_diameter_arcsec = NAN, .elongation_deg = NAN,
+        .illuminated_fraction = NAN};
+    int observer = state->sky ? earth_index(&session->system) : -1;
+    if (observer >= 0)
+        sky_seen = simulation_session_inspect_body(session, sky_target_index(&session->system, observer, session->selected_body_index));
     solar_web_report_lab(session->lesson, session->clock.integrator, simulation_clock_step_seconds(&session->clock),
         (double)session->clock.ticks, session->velocity_factor, body.acceleration_mps2, body.specific_energy_jpkg,
         diagnostics.total_energy_j, simulation_session_energy_change(session, &diagnostics), diagnostics.isolated,
@@ -839,7 +848,8 @@ static void report_web_state(const SolarApp *state)
         selected->velocity_mps.x, selected->velocity_mps.y, selected->velocity_mps.z, session->clock.collision_mode,
         lesson_minimum_velocity_factor(session->lesson),
         (double)session->clock.contact_tick * simulation_clock_step_seconds(&session->clock), state->grid, state->labels,
-        state->orbits, state->follow, state->touring, state->belt, state->constellations, state->sky, state->sky_fov);
+        state->orbits, state->follow, state->touring, state->belt, state->constellations, state->sky, state->sky_fov,
+        sky_seen.name ? sky_seen.name : "", sky_seen.angular_diameter_arcsec, sky_seen.elongation_deg, sky_seen.illuminated_fraction);
     ForceContribution forces[SOLAR_SYSTEM_BODY_CAPACITY];
     size_t count = physics_force_breakdown(&session->system, session->selected_body_index, forces, SOLAR_SYSTEM_BODY_CAPACITY);
     solar_web_begin_forces(session->system.elapsed_seconds);

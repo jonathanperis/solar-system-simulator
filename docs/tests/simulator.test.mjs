@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, sceneSecondsAt, sceneSecondsAtDate, dateRunNote, dateRunArrived, sceneSecondsAtLink, linkForSceneSeconds, skyFieldAtLink, linkForSkyField, clockNote, speedLabels, findMatches, formatSpacing, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod, formatFromEarth } from '../src/lib/simulator.ts';
+import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, sceneSecondsAt, sceneSecondsAtDate, dateRunNote, dateRunArrived, sceneSecondsAtLink, linkForSceneSeconds, skyFieldAtLink, linkForSkyField, skyReadout, clockNote, speedLabels, findMatches, formatSpacing, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod, formatFromEarth } from '../src/lib/simulator.ts';
 import { errorMessage, downloadText } from '../src/lib/browser.ts';
 
 test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolling', () => {
@@ -404,4 +404,15 @@ test('a linked view from Earth reads from=earth and a field in degrees (SPEC A14
   assert.ok(Number.isNaN(skyFieldAtLink('mars', '1')));
   assert.equal(linkForSkyField(0.0523456), '0.0523');
   assert.equal(linkForSkyField(40), '40');
+});
+
+test('the view from Earth reads its captions out as one sentence (SPEC A154)', () => {
+  assert.equal(skyReadout({ sky: false, skyTarget: 'Jupiter' }), '');
+  assert.equal(skyReadout({ sky: true, skyFov: 0.15, skyTarget: 'Jupiter', skyDisc: 38.42, skyElongation: 102.91, skyLit: 0.993 }),
+    'From Earth: Jupiter, disc 38.4 arcseconds, 102.9 degrees from the Sun, 99% lit; field 9 arcminutes.');
+  assert.equal(skyReadout({ sky: true, skyFov: 40, skyTarget: 'Moon', skyDisc: 1906, skyElongation: 69.3, skyLit: 0.32 }),
+    'From Earth: Moon, disc 31.8 arcminutes, 69.3 degrees from the Sun, 32% lit; field 40 degrees.');
+  // The Sun has no elongation or phase from Earth.
+  assert.equal(skyReadout({ sky: true, skyFov: 0.02, skyTarget: 'Sun', skyDisc: 1891, skyElongation: NaN, skyLit: NaN }),
+    'From Earth: Sun, disc 31.5 arcminutes; field 72 arcseconds.');
 });
