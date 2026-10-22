@@ -161,10 +161,12 @@ export async function mountComparison(root: HTMLElement): Promise<void> {
 
   const render = (): void => {
     const count = lab._lab_point_count();
-    // No matched checkpoint yet (or a reset): the plot cards collapse.
-    root.querySelector('[data-plots]')?.toggleAttribute('data-empty', !count);
+    // Start and Reset record a t = 0 checkpoint at once; one point draws no
+    // line, so the plot cards stay collapsed until there are two (Bugbot).
+    const drawable = count >= 2;
+    root.querySelector('[data-plots]')?.toggleAttribute('data-empty', !drawable);
     const waiting = root.querySelector<HTMLElement>('[data-plots-waiting]');
-    if (waiting) waiting.hidden = count > 0;
+    if (waiting) waiting.hidden = drawable;
     if (!count) return;
     const points = Array.from({ length: count }, (_, index) => ({
       time: lab._lab_point(index, 0, -1), difference: lab._lab_point(index, 0, -2),

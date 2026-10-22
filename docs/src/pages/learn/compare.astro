@@ -86,7 +86,7 @@ const plots = [
     </section>
     {/* Until the first matched checkpoint the cards hold no plot, so they
          collapse to titles and captions instead of seven blank boxes. */}
-    <p class="plots-waiting" data-plots-waiting>Charts draw from the first matched checkpoint: press Start comparison.</p>
+    <p class="plots-waiting" data-plots-waiting>Charts draw once both runs advance past the start: press Start comparison.</p>
     <div class="plots" data-plots data-empty>
       {plots.map(([field, title, description]) => <figure>
         <h2>{title}</h2>
