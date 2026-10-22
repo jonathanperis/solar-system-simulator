@@ -221,3 +221,10 @@ double orbit_camera_sky_near(const double (*offsets)[3], const double *radii, si
     double near = isfinite(nearest) ? 0.5 * nearest : floor;
     return near > floor ? near : floor;
 }
+
+float orbit_camera_sky_vertical_fov(float field_degrees, float aspect)
+{
+    if (!(aspect > 0.0f) || aspect >= 1.0f) return field_degrees;
+    const double pi = 3.14159265358979323846;
+    return (float)(2.0 * atan(tan(field_degrees * pi / 360.0) / aspect) * 180.0 / pi);
+}

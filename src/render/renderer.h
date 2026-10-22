@@ -139,6 +139,9 @@ void renderer_set_blockers(const float *rects, int count);
 /* Lowest screen y that text spanning [x0, x1] may reach without running
  * under a page panel (A145); `bottom` when none crosses it. */
 float renderer_caption_bottom(float x0, float x1, float bottom);
+/* The app's own canvas caption box in screen pixels (width 0 for none):
+ * edge markers slide past it, a frame later (A151). */
+void renderer_set_caption_box(float x, float y, float width, float height);
 /* Keyboard hopping (SPEC A120): the sibling after/before `index` (bodies of
  * the same parent with a known radius, wrapping), its parent, or its first
  * child; -1 when there is none. A parentless body's siblings are its children. */
