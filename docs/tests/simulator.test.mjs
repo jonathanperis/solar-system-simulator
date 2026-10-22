@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, sceneSecondsAt, sceneSecondsAtDate, dateRunNote, clockNote, speedLabels, findMatches, formatSpacing, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod } from '../src/lib/simulator.ts';
+import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, sceneSecondsAt, sceneSecondsAtDate, dateRunNote, dateRunArrived, clockNote, speedLabels, findMatches, formatSpacing, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod } from '../src/lib/simulator.ts';
 import { errorMessage, downloadText } from '../src/lib/browser.ts';
 
 test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolling', () => {
@@ -347,9 +347,19 @@ test('Go to date reads a TDB instant and says how the run will go (SPEC A134)', 
   // Before the epoch, past the runnable range, or malformed: not a target.
   assert.ok(Number.isNaN(sceneSecondsAtDate('2026-06-08', '23:59')));
   assert.ok(Number.isNaN(sceneSecondsAtDate('2077-01-01', '00:00')));
+  // The whole last day is runnable; the next one is not (Bugbot).
+  assert.ok(Number.isFinite(sceneSecondsAtDate('2076-06-08', '23:59')));
+  assert.ok(Number.isNaN(sceneSecondsAtDate('2076-06-09', '00:00')));
+  assert.ok(sceneSecondsAtDate('2076-06-08', '23:59') < 2 ** 31);
   assert.ok(Number.isNaN(sceneSecondsAtDate('', '00:00')));
   assert.equal(dateRunNote(135 * 86400, 0), 'Plays forward about 9 s at 15 d/s.');
   assert.equal(dateRunNote(10 * 365.25 * 86400, 0), 'Plays forward about 4 min at 15 d/s.');
   assert.equal(dateRunNote(86400, 2 * 86400), 'Restarts at 2026-06-09, then plays under a second.');
   assert.equal(dateRunNote(NaN, 0), 'Choose a date from 2026-06-09 to 2076-06-08.');
+  // Date opened right after Today shows the clock's own minute, a few
+  // seconds behind it: that is arrival, not a restart (Bugbot).
+  assert.ok(dateRunArrived(86400, 86400 + 45));
+  assert.ok(!dateRunArrived(86400, 86400 + 60));
+  assert.ok(!dateRunArrived(86400 + 15, 86400));
+  assert.equal(dateRunNote(86400, 86400 + 45), 'The clock is already there.');
 });

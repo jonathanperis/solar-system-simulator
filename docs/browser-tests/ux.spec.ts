@@ -183,6 +183,14 @@ test('Today plays the dated sky forward to the present and stops there (SPEC A13
   const target = Math.floor((Date.UTC(2026, 5, 12, 6, 30) - Date.UTC(2026, 5, 9)) / 1000 + 69.184);
   expect(seconds).toBeLessThanOrEqual(target);
   expect(seconds).toBeGreaterThan(target - 15);
+  // Date opened now shows the present minute, just behind the clock: Go
+  // leaves the clock where it is instead of restarting (Bugbot on #66).
+  await page.getByRole('button', { name: 'Date', exact: true }).click();
+  const panel = page.getByRole('dialog', { name: 'Go to date' });
+  await expect(panel.locator('[data-date-note]')).toHaveText('The clock is already there.');
+  await panel.getByRole('button', { name: 'Go', exact: true }).click();
+  await expect(panel).toBeHidden();
+  await expect(page.locator('[data-runtime-elapsed]')).toHaveText('2026-06-12 06:31 TDB');
   // Lessons have no calendar, so Today is not offered.
   await page.goto(`${base}?lesson=collision`);
   await expect(page.locator('[data-lesson-strip]')).toBeVisible({ timeout: 30000 });
