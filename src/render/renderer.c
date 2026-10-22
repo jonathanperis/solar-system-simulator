@@ -717,9 +717,11 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
 
 /* Drawn position of a guide point: the parent's current place plus the
  * conic offset, then the same illustrative spreading as the body itself
- * (renderer_body_position), so a guide always passes through its body. */
+ * (renderer_body_position), so a guide always passes through its body.
+ * `clearance` >= 0 is that spreading's clearance when it is the same over
+ * the whole orbit, saving the per-vertex lookup (identical result). */
 static Vec3d orbit_guide_vertex(const SolarSystem *system, int parent_index, const Body *body, const Body *parent,
-    Vec3d parent_render, Vec3d offset_m, RenderScaleMode mode, bool spread)
+    Vec3d parent_render, Vec3d offset_m, RenderScaleMode mode, bool spread, double clearance)
 {
     Vec3d position = meters_vec_to_render_vec3d(vec3d_add(parent->position_m, offset_m));
     if (morphing(mode)) {
@@ -735,7 +737,13 @@ static Vec3d orbit_guide_vertex(const SolarSystem *system, int parent_index, con
         }
         return morph_progress <= 0.0f ? place[0] : blend_place(place[0], place[1]);
     }
-    return spread ? visible_satellite_position(body, parent, position, parent_render, mode) : position;
+    if (!spread) return position;
+    if (clearance >= 0) {
+        Vec3d relative = vec3d_sub(position, parent_render);
+        double distance = vec3d_length(relative);
+        if (distance > 0) return vec3d_add(parent_render, vec3d_scale(relative, (distance + clearance) / distance));
+    }
+    return visible_satellite_position(body, parent, position, parent_render, mode);
 }
 
 /* Screen rectangles that select a body when clicked (A119): visible labels
@@ -1262,14 +1270,17 @@ static void draw_orbit_guides(const FrameContext *ctx)
         Color color = renderer_body_color(body);
 
         bool spread = ctx->mode != RENDER_SCALE_REAL && !(body->kind != BODY_KIND_MOON && parent->kind == BODY_KIND_STAR);
-        /* The illustrative spreading only moves points closer to the parent
-         * than the drawn surfaces (and the Moon). An orbit whose periapsis is
-         * already outside that never changes, so skip the per-vertex test. */
+        /* Illustrative spreading pushes every moon out by its clearance
+         * (A135), so every guide follows it. The clearance depends on the
+         * distance only where an orbit crosses a ring edge; otherwise it is
+         * one number for the whole orbit. The Moon's eightfold expansion
+         * keeps the full per-vertex form. */
+        double clearance = -1.0;
         if (spread && body->id != BODY_ID_MOON) {
-            /* The largest clearance any point of the orbit can need. */
+            double periapsis = meters_to_render_units(guide.semi_major_m * (1 - guide.eccentricity));
             double apoapsis = meters_to_render_units(guide.semi_major_m * (1 + guide.eccentricity));
-            spread = meters_to_render_units(guide.semi_major_m * (1 - guide.eccentricity))
-                <= satellite_clearance(body, parent, apoapsis, ctx->mode);
+            double at_periapsis = satellite_clearance(body, parent, periapsis, ctx->mode);
+            if (at_periapsis == satellite_clearance(body, parent, apoapsis, ctx->mode)) clearance = at_periapsis;
         }
         /* The body's eccentric anomaly from its perifocal coordinates:
          * x = a (cos E - e), y = b sin E. */
@@ -1282,7 +1293,7 @@ static void draw_orbit_guides(const FrameContext *ctx)
         bool close = a_pixels > 2500.0;
         double step_cos = cos(2 * pi / segments), step_sin = sin(2 * pi / segments);
         double c = cos0, s = sin0;
-        Vec3d previous = orbit_guide_vertex(system, parent_index, body, parent, parent_render, render_orbit_guide_point(&guide, c, s), ctx->mode, spread);
+        Vec3d previous = orbit_guide_vertex(system, parent_index, body, parent, parent_render, render_orbit_guide_point(&guide, c, s), ctx->mode, spread, clearance);
         unsigned previous_code = render_frustum_outcode(&view, previous);
         for (int k = 1; k <= segments; ++k) {
             if (close) {
@@ -1294,7 +1305,7 @@ static void draw_orbit_guides(const FrameContext *ctx)
                 if (k == 1) {
                     double e_start = e0 - pi;
                     previous = orbit_guide_vertex(system, parent_index, body, parent, parent_render,
-                        render_orbit_guide_point(&guide, cos(e_start), sin(e_start)), ctx->mode, spread);
+                        render_orbit_guide_point(&guide, cos(e_start), sin(e_start)), ctx->mode, spread, clearance);
                     previous_code = render_frustum_outcode(&view, previous);
                 }
             } else {
@@ -1302,7 +1313,7 @@ static void draw_orbit_guides(const FrameContext *ctx)
                 s = s * step_cos + c * step_sin;
                 c = next_c;
             }
-            Vec3d point = orbit_guide_vertex(system, parent_index, body, parent, parent_render, render_orbit_guide_point(&guide, c, s), ctx->mode, spread);
+            Vec3d point = orbit_guide_vertex(system, parent_index, body, parent, parent_render, render_orbit_guide_point(&guide, c, s), ctx->mode, spread, clearance);
             unsigned code = render_frustum_outcode(&view, point);
             if (!(code & previous_code)) {
                 line_vertex(renderer_relative_vector(previous, ctx->origin), color, alpha);
