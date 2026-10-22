@@ -269,6 +269,23 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
   .instrument button, .instrument select, .instrument input { min-height: 2.25rem; padding: 0.2rem 0.45rem; }
 }
 
+@media (max-width: 440px) {
+  /* Phone-width four-column readings wrap Distance and Period over two
+   * lines, and below 360 px split no-break readings ("9.7161 km/s")
+   * mid-token: one label/value pair per row reads cleanly instead. */
+  .inspector dl { grid-template-columns: auto minmax(0, 1fr); }
+  .inspector dt[data-from-earth] { grid-column: 1; }
+  .inspector dd[data-from-earth] { grid-column: 2; }
+}
+
+@media (max-width: 360px) {
+  /* The clock's buttons sit beside the date and the note takes the next
+   * line, so Today and Date never split across two rows. */
+  .clock { gap: 0 0.5rem; }
+  .clock-time { font-size: 0.9375rem; }
+  .clock-note { order: 1; }
+}
+
 @media (max-width: 400px) {
   .site-header { gap: 0.6rem; }
   .site-header nav { gap: 0.55rem; letter-spacing: 0.02em; }
