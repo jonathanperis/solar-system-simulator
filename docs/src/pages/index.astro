@@ -90,7 +90,6 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
           {sceneChoices.map(({ index, label }) => <option value={index}>{label}</option>)}
           <option value="" disabled>Lesson or experiment</option>
         </select></label>
-        <button type="button" data-load-scene>Load scene</button>
         <button type="button" data-command="tour" aria-pressed="false">Tour</button>
         <button type="button" data-open-panel="find-panel" aria-haspopup="dialog">Find</button>
         <button type="button" data-open-panel="view-panel" aria-haspopup="dialog">View</button>

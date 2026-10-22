@@ -811,7 +811,10 @@ export function mountSimulator(root: HTMLElement): void {
   });
   const sceneStatus = root.querySelector<HTMLElement>('[data-scene-status]')!;
   let sceneStatusTimer = 0;
-  root.querySelector('[data-load-scene]')!.addEventListener('click', () => {
+  // A132: choosing a scene loads it; there is no separate Load button.
+  // Keyboard browsing (arrows fire change on every step) waits until the
+  // keys rest, so passing over a scene does not reload it.
+  const loadScene = (): void => {
     if (!controls.scene.value) return;
     const accepted = runtime.ccall?.('solar_web_lesson', 'number', ['number', 'number', 'number', 'number'],
       [Number(controls.scene.value), 1, 0, 15]);
@@ -820,6 +823,13 @@ export function mountSimulator(root: HTMLElement): void {
     sceneStatusTimer = window.setTimeout(() => { sceneStatus.textContent = ''; }, 6000);
     sceneStatus.textContent = accepted ? `${controls.scene.selectedOptions[0].text} loaded from its initial state.`
       : 'The scene could not be loaded.';
+  };
+  let sceneKeyAt = -Infinity, sceneLoadTimer = 0;
+  controls.scene.addEventListener('keydown', () => { sceneKeyAt = performance.now(); });
+  controls.scene.addEventListener('change', () => {
+    window.clearTimeout(sceneLoadTimer);
+    if (performance.now() - sceneKeyAt < 700) sceneLoadTimer = window.setTimeout(loadScene, 700);
+    else loadScene();
   });
   for (const select of [controls.body, controls.group, controls.scene, controls.lesson, controls.method]) {
     select.addEventListener('keydown', event => {
