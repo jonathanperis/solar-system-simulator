@@ -241,3 +241,20 @@ test('the inspector says how far a body is from Earth and how old its light is (
   await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Moon', { timeout: 30000 });
   await expect(fromEarth).toHaveText(/^3[5-9]\d \d{3} km · light 1\.\d\d s$/);
 });
+
+test('the dock keeps one row on portrait tablets, and phones read one value per row (SPEC A137)', async ({ page }) => {
+  await page.goto(`${base}?body=pan`);
+  await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Pan', { timeout: 30000 });
+  for (const width of [768, 820, 1024]) {
+    await page.setViewportSize({ width, height: 1024 });
+    const rows = await page.locator('.dock button:visible, .dock select:visible')
+      .evaluateAll(elements => new Set(elements.map(element => Math.round(element.getBoundingClientRect().top))).size);
+    expect(rows, `dock rows at ${width}px`).toBe(1);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  // Each reading sits on one line beside its label.
+  for (const readout of ['distance', 'speed', 'period', 'mass', 'radius']) {
+    const box = (await page.locator(`[data-inspector-${readout}]`).boundingBox())!;
+    expect(box.height, `${readout} on one line`).toBeLessThan(24);
+  }
+});

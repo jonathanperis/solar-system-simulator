@@ -163,6 +163,14 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
 .dock .speed-row { display: flex; align-items: center; gap: 0.4rem; min-height: 2rem; }
 .instrument .dock input[type="range"] { width: 7rem; padding: 0; border: 0; background: transparent; accent-color: var(--amber); min-height: 2rem; }
 .dock output[data-speed-label] { min-width: 6ch; font-variant-numeric: tabular-nums; text-transform: none; color: var(--text); font-size: 0.8125rem; }
+/* Portrait tablets (768-820 px iPads): a shorter slider and tighter gaps keep
+   the dock on one row instead of wrapping Data under it. */
+@media (min-width: 761px) and (max-width: 900px) {
+  .dock { gap: 0.35rem; }
+  .instrument .dock input[type="range"] { width: 4.5rem; }
+  .instrument .dock button, .instrument .dock select { padding-inline: 0.45rem; }
+  .instrument .dock select { max-width: 11rem; }
+}
 .inspector { position: absolute; right: 0.75rem; top: 2.5rem; width: min(22rem, calc(100% - 1.5rem)); max-height: calc(100% - 11rem); overflow: auto; padding: 0.75rem; }
 .inspector h2 { margin: 0 0 0.2rem; font: 600 1rem var(--mono); color: var(--amber); }
 .inspector dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.2rem 0.75rem; margin: 0.5rem 0; }
