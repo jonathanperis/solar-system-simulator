@@ -318,7 +318,12 @@ export async function loadRuntimeBelt(runtime: TextureRuntime, canvas: HTMLCanva
  * logged and skipped: the body keeps its lit-colour fallback. Textures live in
  * the site's textures/ folder beside wasm/, so the URL is base-path safe.
  */
-export async function loadRuntimeTextures(runtime: TextureRuntime, canvas: HTMLCanvasElement, artifactUrl: URL): Promise<void> {
+/** Texture slots fetched before the rest (A131): the 14 Solar System Scope
+ * maps that come first in the C inventory (Sun, planets, Moon, rings, sky). */
+export const firstWaveTextures = 14;
+
+export async function loadRuntimeTextures(runtime: TextureRuntime, canvas: HTMLCanvasElement, artifactUrl: URL,
+  afterFirstWave?: () => Promise<void>): Promise<void> {
   let count = 0;
   const files: string[] = [];
   try {
@@ -332,14 +337,23 @@ export async function loadRuntimeTextures(runtime: TextureRuntime, canvas: HTMLC
   const folder = new URL('../textures/', artifactUrl);
   let loaded = 0;
   canvas.dataset.textures = `0/${count}`;
-  // Download every map at once (the network overlaps), then hand them to C
-  // one at a time in inventory order so decoded pixels never pile up in WASM.
-  const downloads = files.map(async file => {
+  // Download in two waves (A131): the Sun, planet, ring and sky maps first,
+  // which every view shows, then the moon maps, so on a slow connection the
+  // planets are not starved by maps of moons too small to see yet. Within a
+  // wave the network overlaps; maps go to C one at a time in inventory order
+  // so decoded pixels never pile up in WASM.
+  const fetchMap = async (file: string): Promise<Uint8Array> => {
     if (!/^[a-z_]+\.(jpg|png)$/.test(file)) throw new Error(`unexpected texture name ${JSON.stringify(file)}`);
     const response = await fetch(new URL(file, folder));
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return new Uint8Array(await response.arrayBuffer());
-  });
+  };
+  const firstWave = files.slice(0, Math.min(firstWaveTextures, files.length)).map(fetchMap);
+  // The overview shows the asteroid belt long before any moon is big enough
+  // to show its map, so the belt comes between the waves: the moon maps
+  // start once it has arrived (or failed).
+  const settled = Promise.allSettled(firstWave).then(() => afterFirstWave?.().catch(() => undefined));
+  const downloads = [...firstWave, ...files.slice(firstWave.length).map(file => settled.then(() => fetchMap(file)))];
   downloads.forEach(download => download.catch(() => undefined)); // reported below, in order
   for (let slot = 0; slot < count; slot++) {
     const file = files[slot];
@@ -588,7 +602,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       // the runtime's own selection policy.
       if (!initialSelectionApplied) {
         initialSelectionApplied = true;
-        void loadRuntimeTextures(this, canvas, artifactUrl).then(() => loadRuntimeBelt(this, canvas, artifactUrl));
+        void loadRuntimeTextures(this, canvas, artifactUrl, () => loadRuntimeBelt(this, canvas, artifactUrl));
         pendingBody = requestedBody?.name;
         if (requestedBody && requestedBody.scene > 0)
           this.ccall?.('solar_web_lesson', 'number', ['number', 'number', 'number', 'number'], [requestedBody.scene, 1, 0, 15]);
