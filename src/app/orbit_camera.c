@@ -168,3 +168,23 @@ void orbit_camera_sky_fov_label(float fov_degrees, char *out, size_t size)
     else if (fov_degrees * 60.0f >= 2.0f) snprintf(out, size, "%.0f arcmin", fov_degrees * 60.0f);
     else snprintf(out, size, "%.0f arcsec", fov_degrees * 3600.0f);
 }
+
+void orbit_camera_sky_aim(const double target[3], float yaw, float pitch, double out[3])
+{
+    const double pi = 3.14159265358979323846, limit = pi / 2 - pi / 180;
+    double length = sqrt(target[0] * target[0] + target[1] * target[1] + target[2] * target[2]);
+    if (!(length > 0)) { out[0] = target[0]; out[1] = target[1]; out[2] = target[2]; return; }
+    /* Azimuth in the ecliptic plane and elevation above it. */
+    double azimuth = atan2(target[2], target[0]) - yaw;
+    double elevation = asin(fmax(-1.0, fmin(1.0, target[1] / length))) + pitch;
+    elevation = fmax(-limit, fmin(limit, elevation));
+    out[0] = length * cos(elevation) * cos(azimuth);
+    out[1] = length * sin(elevation);
+    out[2] = length * cos(elevation) * sin(azimuth);
+}
+
+float orbit_camera_sky_drag_radians(float pixels, float fov_degrees, float viewport_height)
+{
+    if (!(viewport_height > 0.0f)) return 0.0f;
+    return pixels / viewport_height * fov_degrees * 3.14159265358979323846f / 180.0f;
+}

@@ -278,8 +278,36 @@ static void test_sky_zoom_narrows_and_widens_within_bounds(void)
     assert(strcmp(label, "72 arcsec") == 0);
 }
 
+/* Strict C11 headers need not define M_PI. */
+#define SKY_PI 3.14159265358979323846
+
+/* Looking around from Earth (A144): the aim is the target direction turned
+ * by yaw about ecliptic north (+y) and by pitch toward it. */
+static void test_sky_aim_turns_about_north_and_stops_short_of_the_poles(void)
+{
+    const double east[3] = {2.0, 0.0, 0.0};
+    double out[3];
+    orbit_camera_sky_aim(east, 0.0f, 0.0f, out);
+    assert(fabs(out[0] - 2.0) < 1e-9 && fabs(out[1]) < 1e-9 && fabs(out[2]) < 1e-9);
+    /* A quarter turn about +y keeps the length and the elevation. */
+    orbit_camera_sky_aim(east, (float)(SKY_PI / 2), 0.0f, out);
+    assert(fabs(sqrt(out[0] * out[0] + out[1] * out[1] + out[2] * out[2]) - 2.0) < 1e-6);
+    assert(fabs(out[0]) < 1e-6 && fabs(out[1]) < 1e-9 && fabs(fabs(out[2]) - 2.0) < 1e-6);
+    /* Pitch raises the aim toward north, but never onto the pole (where
+     * "up" would be undefined). */
+    orbit_camera_sky_aim(east, 0.0f, (float)(SKY_PI / 6), out);
+    assert(fabs(asin(out[1] / 2.0) - SKY_PI / 6) < 1e-6);
+    orbit_camera_sky_aim(east, 0.0f, 10.0f, out);
+    assert(asin(out[1] / 2.0) < SKY_PI / 2 - 0.01 && asin(out[1] / 2.0) > SKY_PI / 2 - 0.05);
+    /* One viewport height of drag sweeps the whole vertical field. */
+    float swept = orbit_camera_sky_drag_radians(900.0f, 40.0f, 900.0f);
+    assert(fabsf(swept - 40.0f * (float)SKY_PI / 180.0f) < 1e-6f);
+    assert(orbit_camera_sky_drag_radians(10.0f, 40.0f, 0.0f) == 0.0f);
+}
+
 int main(void)
 {
+    test_sky_aim_turns_about_north_and_stops_short_of_the_poles();
     test_sky_zoom_narrows_and_widens_within_bounds();
     test_sunlit_yaw_places_camera_on_the_day_side();
     test_auto_rotation_yaw_stays_bounded_and_keeps_moving();
