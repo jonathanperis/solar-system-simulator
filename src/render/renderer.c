@@ -840,7 +840,11 @@ void renderer_draw_labels(const SolarSystem *system, RenderScaleMode mode, Vec3d
         double separation = 1e9;
         if (parent >= 0 && system->bodies[parent].kind != BODY_KIND_STAR)
             separation = hypot(screen[i].x - screen[parent].x, screen[i].y - screen[parent].y) / s;
-        if (!render_body_wants_label(body->kind, i == selected || is_hovered, body->radius_quality != PHYSICAL_UNKNOWN, radius_px, separation))
+        /* From Earth (A149) the target's own moons are named through the
+         * telescope even as points of light. */
+        bool sky_moon = observer_body >= 0 && parent >= 0 && (size_t)parent == selected
+            && render_sky_moon_wants_label(body->radius_quality != PHYSICAL_UNKNOWN, separation);
+        if (!sky_moon && !render_body_wants_label(body->kind, i == selected || is_hovered, body->radius_quality != PHYSICAL_UNKNOWN, radius_px, separation))
             continue;
         /* Hidden behind a nearer body that is large on screen: no label. */
         bool hidden = false;
