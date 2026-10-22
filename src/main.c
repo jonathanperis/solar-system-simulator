@@ -177,6 +177,10 @@ typedef struct SolarApp {
      * rotation the view had. Presentation only. */
     bool sky;
     float sky_fov;
+    /* Looking around (A144): drag turns the aim away from the target; a new
+     * selection re-centres it. */
+    float sky_yaw, sky_pitch;
+    size_t sky_target;
     RenderScaleMode sky_return_mode;
     bool sky_return_rotate;
     /* Camera presentation (A112): the view actually shown (eased toward the
@@ -329,8 +333,13 @@ static void handle_pointer(SolarApp *state)
             float dx = at.x - state->pointer_last.x, dy = at.y - state->pointer_last.y;
             state->pointer_travel += (fabsf(dx) + fabsf(dy)) / state->pixel_scale;
             if (state->pointer_travel > SOLAR_CLICK_SLOP_PIXELS && (dx != 0.0f || dy != 0.0f)) {
-                /* From Earth the aim stays on the selected body. */
-                if (!state->sky) orbit_camera_drag(&state->orbit_camera, dx, dy, (float)GetScreenHeight());
+                /* From Earth, dragging looks around the sky (A144): the stars
+                 * follow the pointer at the field's own scale. */
+                if (state->sky) {
+                    float h = (float)GetScreenHeight();
+                    state->sky_yaw += orbit_camera_sky_drag_radians(dx, state->sky_fov, h);
+                    state->sky_pitch += orbit_camera_sky_drag_radians(dy, state->sky_fov, h);
+                } else orbit_camera_drag(&state->orbit_camera, dx, dy, (float)GetScreenHeight());
                 state->interaction_hold_seconds = SOLAR_INTERACTION_HOLD_SECONDS;
                 state->steered = true;
             }
@@ -671,6 +680,8 @@ static void sky_enter(SolarApp *state)
     if (state->sky || earth_index(&state->session.system) < 0) return;
     state->sky = true;
     state->sky_fov = ORBIT_CAMERA_SKY_FOV_DEFAULT;
+    state->sky_yaw = state->sky_pitch = 0.0f;
+    state->sky_target = state->session.selected_body_index;
     state->sky_return_mode = state->render_mode;
     state->sky_return_rotate = state->auto_rotate;
     /* Directions from Earth are only true in real scale. */
@@ -737,8 +748,11 @@ static void solar_app_command(SolarApp *state, SolarCommand command, int value)
             break;
         case SOLAR_COMMAND_ROTATE: state->auto_rotate = !state->auto_rotate; break;
         case SOLAR_COMMAND_FRAME: sky_leave(state); frame_selected_system(state, true); break;
-        /* From Earth the view already follows the selection. */
-        case SOLAR_COMMAND_FRAME_BODY: if (!state->sky) frame_selected_body(state, true); break;
+        /* From Earth, Frame body re-centres a view looked away (A144). */
+        case SOLAR_COMMAND_FRAME_BODY:
+            if (state->sky) state->sky_yaw = state->sky_pitch = 0.0f;
+            else frame_selected_body(state, true);
+            break;
         case SOLAR_COMMAND_TRAILS: state->trail_frame = state->trail_frame == RENDER_TRAILS_ABSOLUTE ? RENDER_TRAILS_PARENT : RENDER_TRAILS_ABSOLUTE; break;
         case SOLAR_COMMAND_VECTORS: state->vectors = !state->vectors; break;
         case SOLAR_COMMAND_GRID: state->grid = !state->grid; break;
@@ -1120,8 +1134,15 @@ static void solar_app_update_draw(void *user_data)
          * ecliptic north (+y) is up. Real scale, so every direction is the
          * SI geometry. */
         size_t target = sky_target_index(&state->session.system, earth, state->session.selected_body_index);
+        if (target != state->sky_target) {
+            state->sky_target = target;
+            state->sky_yaw = state->sky_pitch = 0.0f;
+        }
         origin = renderer_body_position(&state->session.system, (size_t)earth, state->render_mode);
-        Vec3d aim = vec3d_sub(renderer_body_position(&state->session.system, target, state->render_mode), origin);
+        Vec3d toward = vec3d_sub(renderer_body_position(&state->session.system, target, state->render_mode), origin);
+        double raw[3] = {toward.x, toward.y, toward.z}, turned[3];
+        orbit_camera_sky_aim(raw, state->sky_yaw, state->sky_pitch, turned);
+        Vec3d aim = {turned[0], turned[1], turned[2]};
         renderer_set_observer(earth);
         state->camera.position = (Vector3){0, 0, 0};
         state->camera.target = (Vector3){(float)aim.x, (float)aim.y, (float)aim.z};
