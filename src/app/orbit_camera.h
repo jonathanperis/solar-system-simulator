@@ -64,6 +64,13 @@ float orbit_camera_sky_drag_radians(float pixels, float fov_degrees, float viewp
 /* `pitch` limited to what orbit_camera_sky_aim can use for this target, so
  * drag past a pole is not stored (it would have to be unwound). */
 float orbit_camera_sky_clamp_pitch(const double target[3], float pitch);
+/* Near clip plane for the view from Earth (A148): half the distance to the
+ * nearest body surface inside the field (vertical `fov_degrees`, `aspect`
+ * width/height, with a margin), never below `floor`. Depth precision falls
+ * with the square of distance over the near plane, so a fixed near plane at
+ * Earth's surface left Saturn's rings z-fighting the planet at 9 AU. */
+double orbit_camera_sky_near(const double (*offsets)[3], const double *radii, size_t count,
+    const double forward[3], float fov_degrees, float aspect, double floor);
 
 /* Fly-to (SPEC A112): when the framing changes, the shown camera eases from
  * the old view to the new one instead of cutting. The destination is passed

@@ -198,3 +198,26 @@ float orbit_camera_sky_clamp_pitch(const double target[3], float pitch)
     double low = -limit - elevation, high = limit - elevation;
     return pitch < low ? (float)low : pitch > high ? (float)high : pitch;
 }
+
+double orbit_camera_sky_near(const double (*offsets)[3], const double *radii, size_t count,
+    const double forward[3], float fov_degrees, float aspect, double floor)
+{
+    const double pi = 3.14159265358979323846;
+    /* Half the field's diagonal plus a margin, as the angle a body's centre
+     * may sit off the axis and still be on screen. */
+    double half_v = fov_degrees * pi / 360.0, half_h = atan(tan(half_v) * aspect);
+    double cone = atan(sqrt(tan(half_v) * tan(half_v) + tan(half_h) * tan(half_h))) * 1.1;
+    double fl = sqrt(forward[0] * forward[0] + forward[1] * forward[1] + forward[2] * forward[2]);
+    double nearest = INFINITY;
+    for (size_t i = 0; i < count && fl > 0; ++i) {
+        const double *o = offsets[i];
+        double d = sqrt(o[0] * o[0] + o[1] * o[1] + o[2] * o[2]);
+        if (!(d > radii[i])) continue;
+        double c = (o[0] * forward[0] + o[1] * forward[1] + o[2] * forward[2]) / (d * fl);
+        /* The body's own angular radius widens the cone it can touch. */
+        double off = acos(fmax(-1.0, fmin(1.0, c))) - asin(radii[i] / d);
+        if (off <= cone && d - radii[i] < nearest) nearest = d - radii[i];
+    }
+    double near = isfinite(nearest) ? 0.5 * nearest : floor;
+    return near > floor ? near : floor;
+}

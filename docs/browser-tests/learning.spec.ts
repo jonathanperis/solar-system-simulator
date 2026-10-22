@@ -166,3 +166,15 @@ test('real missing/invalid local assets fail visibly and disable runtime control
     }
   }
 });
+
+test('Learn links open telescope views of the simulated sky (SPEC A148)', async ({ page }) => {
+  test.setTimeout(90000);
+  await page.goto(`${base}learn/`);
+  const links = page.locator('.look-ups a');
+  await expect(links).toHaveCount(4);
+  await links.filter({ hasText: 'The waxing gibbous Moon' }).click();
+  await expect(page.locator('[data-runtime-elapsed]')).toHaveText('2026-06-25 00:00 TDB', { timeout: 60000 });
+  await page.getByRole('button', { name: 'View', exact: true }).click();
+  await expect(page.getByRole('switch', { name: 'From Earth' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Moon');
+});
