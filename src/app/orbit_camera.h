@@ -61,6 +61,9 @@ void orbit_camera_sky_aim(const double target[3], float yaw, float pitch, double
 /* A drag of `pixels` as an angle: one viewport height spans the vertical
  * field, so a narrow telescope field pans finely. 0 for an empty viewport. */
 float orbit_camera_sky_drag_radians(float pixels, float fov_degrees, float viewport_height);
+/* `pitch` limited to what orbit_camera_sky_aim can use for this target, so
+ * drag past a pole is not stored (it would have to be unwound). */
+float orbit_camera_sky_clamp_pitch(const double target[3], float pitch);
 
 /* Fly-to (SPEC A112): when the framing changes, the shown camera eases from
  * the old view to the new one instead of cutting. The destination is passed

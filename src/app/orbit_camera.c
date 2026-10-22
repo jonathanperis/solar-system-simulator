@@ -188,3 +188,13 @@ float orbit_camera_sky_drag_radians(float pixels, float fov_degrees, float viewp
     if (!(viewport_height > 0.0f)) return 0.0f;
     return pixels / viewport_height * fov_degrees * 3.14159265358979323846f / 180.0f;
 }
+
+float orbit_camera_sky_clamp_pitch(const double target[3], float pitch)
+{
+    const double pi = 3.14159265358979323846, limit = pi / 2 - pi / 180;
+    double length = sqrt(target[0] * target[0] + target[1] * target[1] + target[2] * target[2]);
+    if (!(length > 0)) return pitch;
+    double elevation = asin(fmax(-1.0, fmin(1.0, target[1] / length)));
+    double low = -limit - elevation, high = limit - elevation;
+    return pitch < low ? (float)low : pitch > high ? (float)high : pitch;
+}
