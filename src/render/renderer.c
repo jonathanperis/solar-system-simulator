@@ -781,7 +781,10 @@ static Vec3d orbit_guide_vertex(const SolarSystem *system, int parent_index, con
     if (clearance >= 0) {
         Vec3d relative = vec3d_sub(position, parent_render);
         double distance = vec3d_length(relative);
-        if (distance > 0) return vec3d_add(parent_render, vec3d_scale(relative, (distance + clearance) / distance));
+        /* Same placement as visible_satellite_position, spread included
+         * (Bugbot on #82). */
+        if (distance > 0) return vec3d_add(parent_render, vec3d_scale(relative,
+            (distance * render_moon_spread_factor(parent->id) + clearance) / distance));
     }
     return visible_satellite_position(body, parent, position, parent_render, mode);
 }
