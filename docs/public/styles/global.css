@@ -186,6 +186,13 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
 .sheet table { font-size: 0.75rem; }
 .sheet th, .sheet td { border-color: var(--line); color: var(--text); }
 .sheet th { color: var(--text-2); }
+/* Find (A130): live matches as one-click rows. */
+.find-results { display: grid; gap: 0.15rem; }
+.sheet .find-results button { display: flex; justify-content: space-between; gap: 1rem; width: 100%; text-align: left; border-color: transparent; background: transparent; }
+.sheet .find-results button:hover, .sheet .find-results button:focus-visible { border-color: var(--amber); }
+.sheet .find-results button:first-child { border-color: var(--line); }
+.find-group { color: var(--text-2); font-size: 0.75rem; }
+
 /* View panel (A128): non-modal, docked above the dock's right end. */
 .sheet.popover { position: fixed; inset: auto 0.75rem 5.5rem auto; margin: 0; width: min(21rem, calc(100% - 1.5rem)); z-index: 5; }
 .view-groups { display: grid; gap: 0.6rem; }

@@ -108,6 +108,8 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
           <label>Group <select data-runtime-group><option value="">All groups</option></select></label>
           <button type="button" data-clear-filters>Clear</button>
         </div>
+        {/* A130: live matches; a click or Enter flies to the first. */}
+        <div class="find-results" data-find-results role="group" aria-label="Matches" hidden></div>
         <label>Body <select data-runtime-body></select></label>
         <p data-body-filter-status role="status"></p>
         <p>Small moons live in their planet's scene: switch the scene first, or open a moon from the <a href={`${base}catalog/`}>catalog</a>.</p>
@@ -197,7 +199,7 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
         <details>
           <summary id="diagnostics-heading">Numbers</summary>
           <dl>
-            <dt>Time</dt><dd data-runtime-interval>—</dd>
+            <dt>Trail spacing</dt><dd data-runtime-interval>—</dd>
             <dt>Achieved speed</dt><dd data-runtime-achieved>—</dd>
             <dt>Pending time</dt><dd data-runtime-pending>—</dd>
             <dt>Integrator</dt><dd data-integration>—</dd>
