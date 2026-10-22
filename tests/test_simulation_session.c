@@ -255,8 +255,38 @@ static void test_dated_sessions_are_the_epoch_presets(void)
     simulation_session_destroy(&session);
 }
 
+/* Run until (SPEC A133): the session plays at its fastest preset to a target
+ * time, never past it, and pauses within one tick of it; it never skips
+ * time or enlarges a step, so the physics is exactly what playing would do. */
+static void test_run_until_stops_on_the_target_within_one_tick(void)
+{
+    SimulationSession session = simulation_session_create();
+    double step = simulation_clock_step_seconds(&session.clock);
+    double target = 3.25 * SOLAR_DAY_SECONDS + 7.0;
+    simulation_session_run_until(&session, target);
+    assert(!session.paused && session.speed_preset == SOLAR_SPEED_PRESET_COUNT - 1);
+    for (int frame = 0; frame < 2000 && !session.paused; ++frame) {
+        simulation_session_update(&session, 1.0 / 60.0);
+        assert(session.system.elapsed_seconds <= target + 1e-6);
+    }
+    assert(session.paused);
+    assert(session.system.elapsed_seconds > target - step - 1e-6);
+    assert(session.run_until_seconds < 0);
+    /* A target already behind the clock pauses at once and moves nothing. */
+    double now = session.system.elapsed_seconds;
+    simulation_session_run_until(&session, now - 100);
+    assert(session.paused && session.system.elapsed_seconds == now);
+    /* Pausing or resetting cancels a run. */
+    simulation_session_run_until(&session, now + SOLAR_DAY_SECONDS);
+    session.paused = true;
+    simulation_session_update(&session, 1.0 / 60.0);
+    assert(session.run_until_seconds < 0 && session.system.elapsed_seconds == now);
+    simulation_session_destroy(&session);
+}
+
 int main(void)
 {
+    test_run_until_stops_on_the_target_within_one_tick();
     test_dated_sessions_are_the_epoch_presets();
     test_non_finite_state_is_detected();
     test_stalled_frame_is_discarded_but_slow_frames_keep_pending_time();

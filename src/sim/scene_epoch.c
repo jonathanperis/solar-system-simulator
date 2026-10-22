@@ -58,3 +58,8 @@ bool scene_epoch_format_date(double elapsed_seconds, char *out, size_t size)
     int written = snprintf(out, size, "%04ld-%02ld-%02ld %02ld:%02ld TDB", year, month, day, minutes / 60, minutes % 60);
     return written > 0 && (size_t)written < size;
 }
+
+double scene_epoch_seconds_at_unix_time(double unix_seconds)
+{
+    return unix_seconds - (SOLAR_SCENE_EPOCH_JD - 2440587.5) * 86400.0 + 69.184;
+}

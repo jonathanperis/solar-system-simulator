@@ -641,6 +641,11 @@ static void test_scene_dates_count_from_the_epoch(void)
     assert(scene_epoch_format_date(365 * 86400.0 + 3600 * 13.5, date, sizeof(date)) && strcmp(date, "2027-06-09 13:30 TDB") == 0);
     assert(scene_epoch_format_date((365 + 365 + 265) * 86400.0, date, sizeof(date)) && strcmp(date, "2029-02-28 00:00 TDB") == 0);
     assert(!scene_epoch_format_date(0, date, 8));
+    /* 2026-06-09 00:00 UTC is 69.184 s before 00:00 TDB; a day later in UTC
+     * is a day plus the offset into the scene (A133). */
+    double epoch_unix = (SOLAR_SCENE_EPOCH_JD - 2440587.5) * 86400.0;
+    assert(fabs(scene_epoch_seconds_at_unix_time(epoch_unix) - 69.184) < 1e-6);
+    assert(fabs(scene_epoch_seconds_at_unix_time(epoch_unix + 86400.0) - (86400.0 + 69.184)) < 1e-6);
 }
 
 static void test_mercury_body_starts_at_perihelion_with_tangential_velocity(void)

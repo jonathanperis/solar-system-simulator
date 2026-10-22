@@ -167,3 +167,24 @@ test('mobile small-body details are visible and return to the refreshed result',
   await expect(page.locator('[data-search-status]')).toContainText('1 match;');
   expect(indexRequests.length).toBe(downloaded);
 });
+
+test('Today plays the dated sky forward to the present and stops there (SPEC A133)', async ({ page }) => {
+  // The page and the C runtime both read Date.now(); pin it three days in.
+  await page.clock.setFixedTime(new Date(Date.UTC(2026, 5, 12, 6, 30)));
+  await page.goto(base);
+  const today = page.getByRole('button', { name: 'Today', exact: true });
+  await expect(today).toBeVisible({ timeout: 30000 });
+  await today.click();
+  // 06:30 UTC is 06:31 TDB; the run pauses within one 15 s tick of it.
+  await expect(page.locator('[data-runtime-elapsed]')).toHaveText('2026-06-12 06:31 TDB', { timeout: 30000 });
+  await expect(page.getByRole('button', { name: 'Resume', exact: true })).toBeVisible();
+  await expect(today).toHaveText('Today');
+  const seconds = Number(await page.locator('[data-runtime-elapsed]').getAttribute('data-seconds'));
+  const target = Math.floor((Date.UTC(2026, 5, 12, 6, 30) - Date.UTC(2026, 5, 9)) / 1000 + 69.184);
+  expect(seconds).toBeLessThanOrEqual(target);
+  expect(seconds).toBeGreaterThan(target - 15);
+  // Lessons have no calendar, so Today is not offered.
+  await page.goto(`${base}?lesson=collision`);
+  await expect(page.locator('[data-lesson-strip]')).toBeVisible({ timeout: 30000 });
+  await expect(today).toBeHidden();
+});

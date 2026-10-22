@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, clockNote, speedLabels, findMatches, formatSpacing, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod } from '../src/lib/simulator.ts';
+import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, sceneSecondsAt, clockNote, speedLabels, findMatches, formatSpacing, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod } from '../src/lib/simulator.ts';
 import { errorMessage, downloadText } from '../src/lib/browser.ts';
 
 test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolling', () => {
@@ -284,6 +284,14 @@ test('the sky clock reads the scene date and how far the run has come', () => {
   assert.equal(clockNote(0, true), '+0.00 days since 2026-06-09');
   // Lessons are not dated: their clock counts from the lesson start.
   assert.equal(clockNote(140970, false), 'since the lesson started');
+});
+
+test('Today runs to the present in TDB, as the C helper does (SPEC A133)', () => {
+  const epochMs = Date.UTC(2026, 5, 9);
+  assert.ok(Math.abs(sceneSecondsAt(epochMs) - 69.184) < 1e-6);
+  // At 2026-10-21 12:00 UTC the clock reads 12:01 TDB.
+  const seconds = sceneSecondsAt(Date.UTC(2026, 9, 21, 12));
+  assert.equal(sceneDate(seconds), '2026-10-21 12:01 TDB');
 });
 
 test('inspector readouts group digits and carry readable units (SPEC A113)', () => {

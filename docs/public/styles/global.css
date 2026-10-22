@@ -143,6 +143,11 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
 .clock { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.75rem; }
 .clock-time { font: 500 1.375rem/1.2 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
 .clock-note { color: var(--amber); font-variant-numeric: tabular-nums; }
+/* Today (A133) is the HUD's one control: it takes the pointer the rest of the
+   HUD passes through to the canvas. */
+.clock-today { pointer-events: auto; align-self: center; min-height: 1.75rem; padding: 0.1rem 0.6rem; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: 0.75rem var(--mono); cursor: pointer; text-shadow: none; }
+.clock-today:hover { border-color: var(--amber); }
+.clock-today[data-running="true"] { border-color: var(--amber); color: var(--amber); }
 .hud-line [data-runtime-status] { color: var(--text); }
 .instrument-panel, .dock, .lesson-strip { background: var(--panel); border: 1px solid var(--line); color: var(--text); font: 0.8125rem/1.4 var(--mono); }
 .instrument button, .instrument select, .instrument input, .sheet button, .sheet select, .sheet input { min-height: 2rem; padding: 0.2rem 0.6rem; border: 1px solid var(--line); background: var(--space); color: var(--text); font: 0.8125rem var(--mono); cursor: pointer; }
