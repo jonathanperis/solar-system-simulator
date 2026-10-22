@@ -301,5 +301,7 @@ test('Find lists names that start with the query first, then ones containing it 
   assert.deepEqual(findMatches(bodies, '   ', ''), []);
   assert.equal(findMatches(Array.from({ length: 20 }, (_, i) => ({ index: i, name: `Moon ${i}`, group: 'g' })), 'moon', '').length, 8);
   assert.equal(formatSpacing(300), '300\u00a0s between trail samples');
+  assert.equal(formatSpacing(0.1), '0.1\u00a0s between trail samples');
+  assert.equal(formatSpacing(12.345), '12.3\u00a0s between trail samples');
   assert.equal(formatSpacing(7200), '2.00\u00a0h between trail samples');
 });
