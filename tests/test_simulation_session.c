@@ -283,6 +283,26 @@ static void test_run_until_stops_on_the_target_within_one_tick(void)
         assert(queued.paused && queued.system.elapsed_seconds > goal - step - 1e-6);
         simulation_session_destroy(&queued);
     }
+    /* A run hands back the speed it found (A153): arriving or being paused
+     * restores it, so Resume does not continue at the run's top speed. */
+    {
+        SimulationSession speedy = simulation_session_create();
+        simulation_session_set_speed(&speedy, 1);
+        simulation_session_run_until(&speedy, 2.0 * SOLAR_DAY_SECONDS);
+        assert(speedy.speed_preset == SOLAR_SPEED_PRESET_COUNT - 1);
+        for (int frame = 0; frame < 600 && !speedy.paused; ++frame) simulation_session_update(&speedy, 1.0 / 60.0);
+        assert(speedy.paused && speedy.speed_preset == 1);
+        simulation_session_run_until(&speedy, 4.0 * SOLAR_DAY_SECONDS);
+        speedy.paused = true; /* the user pauses mid-run */
+        simulation_session_update(&speedy, 1.0 / 60.0);
+        assert(speedy.speed_preset == 1);
+        /* A second run started mid-run still restores the original speed. */
+        simulation_session_run_until(&speedy, 6.0 * SOLAR_DAY_SECONDS);
+        simulation_session_run_until(&speedy, 7.0 * SOLAR_DAY_SECONDS);
+        for (int frame = 0; frame < 900 && !speedy.paused; ++frame) simulation_session_update(&speedy, 1.0 / 60.0);
+        assert(speedy.paused && speedy.speed_preset == 1);
+        simulation_session_destroy(&speedy);
+    }
     assert(session.paused);
     assert(session.system.elapsed_seconds > target - step - 1e-6);
     assert(session.run_until_seconds < 0);

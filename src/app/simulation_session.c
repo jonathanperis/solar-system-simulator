@@ -7,9 +7,12 @@
 
 #include "../sim/constants.h"
 
+static void run_until_end(SimulationSession *session);
+
 SimulationSession simulation_session_create(void)
 {
-    SimulationSession session = {.trails = body_trails_create(), .speed_preset = 1, .velocity_factor = 1.0};
+    SimulationSession session = {.trails = body_trails_create(), .speed_preset = 1, .velocity_factor = 1.0,
+        .run_return_speed = -1};
     session.initial_system = solar_system_create_current();
     simulation_session_reset(&session);
     return session;
@@ -38,7 +41,7 @@ void simulation_session_reset(SimulationSession *session)
     session->initial_energy_j = initial.total_energy_j;
     session->energy_scale_j = initial.kinetic_energy_j + fabs(initial.potential_energy_j);
     session->achieved_time_scale = 0;
-    session->run_until_seconds = -1;
+    run_until_end(session);
     session->rate_real_seconds = 0;
     session->rate_sim_seconds = 0;
     body_trails_record_system(&session->trails, &session->system);
@@ -138,6 +141,15 @@ double simulation_session_time_scale(const SimulationSession *session)
     return rates[session->speed_preset];
 }
 
+/* Ends a run (A153): no target, and the speed it found comes back, so Resume
+ * does not continue at the run's top speed. */
+static void run_until_end(SimulationSession *session)
+{
+    session->run_until_seconds = -1;
+    if (session->run_return_speed >= 0) session->speed_preset = session->run_return_speed;
+    session->run_return_speed = -1;
+}
+
 void simulation_session_update(SimulationSession *session, double real_seconds)
 {
     if (session->background) return;
@@ -148,7 +160,7 @@ void simulation_session_update(SimulationSession *session, double real_seconds)
         session->discard_resumed_frame = false;
         return;
     }
-    if (session->paused) session->run_until_seconds = -1; /* pausing cancels a run */
+    if (session->paused && session->run_until_seconds >= 0) run_until_end(session); /* pausing cancels a run */
     if (!session->paused) {
         double before = session->system.elapsed_seconds;
         double advance = real_seconds * simulation_session_time_scale(session);
@@ -160,7 +172,7 @@ void simulation_session_update(SimulationSession *session, double real_seconds)
             double remaining = left - session->clock.pending_seconds;
             if (left < simulation_clock_step_seconds(&session->clock)) {
                 session->paused = true;
-                session->run_until_seconds = -1;
+                run_until_end(session);
                 return;
             }
             if (remaining < 0) {
@@ -189,9 +201,11 @@ void simulation_session_run_until(SimulationSession *session, double target_seco
 {
     if (!(target_seconds > session->system.elapsed_seconds)) {
         session->paused = true;
-        session->run_until_seconds = -1;
+        run_until_end(session);
         return;
     }
+    /* A run started mid-run keeps the speed the first one found. */
+    if (session->run_return_speed < 0) session->run_return_speed = session->speed_preset;
     simulation_session_set_speed(session, SOLAR_SPEED_PRESET_COUNT - 1);
     session->run_until_seconds = target_seconds;
     session->paused = false;
