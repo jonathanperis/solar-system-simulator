@@ -75,7 +75,7 @@ const sources = [
     <h2 id="rendering">Rendering</h2>
     <p>Everything drawn is presentation: it reads the physical state and never feeds the physics, the inspector or the CSV export.</p>
     <dl class="glossary">
-      <dt>Scale</dt><dd>Illustrative enlarges bodies and spreads close moons so they can be seen; real uses physical sizes and distances. Switching morphs between them.</dd>
+      <dt>Scale</dt><dd>Illustrative enlarges bodies and pushes each moon out past its enlarged planet by the same amount, so moons keep their true order and spacing; real uses physical sizes and distances. Switching morphs between them.</dd>
       <dt>Orbit guides</dt><dd>Each body's two-body ellipse about its parent, from its current position and velocity: where it would go if only its parent pulled on it.</dd>
       <dt>Trails</dt><dd>The path each body actually took. Guide and trail separate slowly where other bodies perturb the orbit.</dd>
       <dt>Surfaces</dt><dd>Planet maps by Solar System Scope; moon maps are USGS mosaics (maps without colour are tinted). Every map turns on its IAU spin axis.</dd>
@@ -86,7 +86,7 @@ const sources = [
     </dl>
 
     <h2 id="controls">Controls</h2>
-    <p>The dock has play, speed and scene; Tour visits every planet; Find, View, Keys and Data open small panels. Keys work while the view has focus.</p>
+    <p>The dock has play, speed and scene; Tour visits every planet; Find, View, Keys and Data open small panels. Beside the clock, Today plays the sky forward to the present and Date to any instant up to 2076, both stopping within one 15-second step. The inspector reads the selected body from SI state, including its distance from Earth and how long its light takes to reach us. Keys work while the view has focus.</p>
     <div class="table-wrap">
       <table class="controls">
         <thead><tr><th>To</th><th>Do</th></tr></thead>
@@ -96,7 +96,7 @@ const sources = [
           <tr><td>Go to a body</td><td>click it, its name, or the arrow at the edge for one out of view; <kbd>/</kbd> searches</td></tr>
           <tr><td>Hop between bodies</td><td><kbd>←</kbd> <kbd>→</kbd> neighbours, <kbd>↑</kbd> parent, <kbd>↓</kbd> moons</td></tr>
           <tr><td>Go back</td><td><kbd>Esc</kbd> steps out, <kbd>Backspace</kbd> or the browser's Back retraces</td></tr>
-          <tr><td>Play</td><td><kbd>Space</kbd> pause, <kbd>N</kbd> step, <kbd>R</kbd> restart, <kbd>P</kbd> run to the present, <kbd>[</kbd> <kbd>]</kbd> speed</td></tr>
+          <tr><td>Play</td><td><kbd>Space</kbd> pause, <kbd>N</kbd> step, <kbd>R</kbd> restart, <kbd>P</kbd> run to the present (the Date button picks any instant), <kbd>[</kbd> <kbd>]</kbd> speed</td></tr>
           <tr><td>Frame</td><td><kbd>F</kbd> system, <kbd>B</kbd> body, <kbd>V</kbd> scale, <kbd>Y</kbd> follow an orbit</td></tr>
           <tr><td>Show</td><td><kbd>O</kbd> orbits, <kbd>T</kbd> trails, <kbd>Q</kbd> asteroids, <kbd>S</kbd> constellations, <kbd>G</kbd> grid, <kbd>H</kbd> labels</td></tr>
           <tr><td>Native app only</td><td><kbd>K</kbd> cycles scenes, <kbd>L</kbd> lessons</td></tr>
