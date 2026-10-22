@@ -247,6 +247,9 @@ export function findMatches(bodies: readonly RuntimeBody[], query: string, group
 
 /** Readable trail sample spacing for the Data sheet. */
 export function formatSpacing(seconds: number): string {
+  // Short spacings (contact lessons step in tenths of a second) keep three
+  // significant figures rather than rounding to "0 s".
+  if (seconds < 60) return `${Number(seconds.toPrecision(3))}\u00a0s between trail samples`;
   return seconds < 3600 ? `${Math.round(seconds)}\u00a0s between trail samples` : `${(seconds / 3600).toFixed(2)}\u00a0h between trail samples`;
 }
 
