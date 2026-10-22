@@ -767,6 +767,11 @@ static size_t click_target_count;
 static double blockers[RENDER_MAX_BLOCKERS + 1][4];
 static int blocker_count, page_blocker_count;
 
+float renderer_caption_bottom(float x0, float x1, float bottom)
+{
+    return (float)render_clear_above((const double (*)[4])blockers, page_blocker_count, x0, x1, bottom);
+}
+
 void renderer_set_blockers(const float *rects, int count)
 {
     page_blocker_count = count < 0 ? 0 : count > RENDER_MAX_BLOCKERS ? RENDER_MAX_BLOCKERS : count;

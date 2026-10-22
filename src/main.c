@@ -1209,14 +1209,35 @@ static void solar_app_update_draw(void *user_data)
         state->session.selected_body_index, state->hovered);
     draw_hover_tooltip(state);
     if (state->sky) {
-        /* The field of view, above the scale bar (A143). */
-        char field[32], caption[64];
+        /* Captions above the scale bar (A143, A145): the field of view, and
+         * what an observer asks about the target, how big its disc looks and
+         * how far it stands from the Sun (near the Sun it is lost in daylight
+         * or twilight). They rise above any page panel they would cross. */
+        char field[32], lines[3][96] = {{0}};
         orbit_camera_sky_fov_label(state->sky_fov, field, sizeof(field));
-        snprintf(caption, sizeof(caption), "From Earth | field %s", field);
-        const float s = state->pixel_scale;
+        int count = 0, earth = earth_index(&state->session.system);
+        if (earth >= 0) {
+            size_t target = sky_target_index(&state->session.system, earth, state->session.selected_body_index);
+            BodyInspection seen = simulation_session_inspect_body(&state->session, target);
+            if (isfinite(seen.angular_diameter_arcsec)) {
+                if (seen.angular_diameter_arcsec >= 120.0)
+                    snprintf(lines[count++], sizeof(lines[0]), "%s | disc %.1f arcmin", seen.name, seen.angular_diameter_arcsec / 60.0);
+                else snprintf(lines[count++], sizeof(lines[0]), "%s | disc %.1f arcsec", seen.name, seen.angular_diameter_arcsec);
+            } else snprintf(lines[count++], sizeof(lines[0]), "%s", seen.name);
+            if (isfinite(seen.elongation_deg)) snprintf(lines[count++], sizeof(lines[0]), "%.1f deg from the Sun", seen.elongation_deg);
+        }
+        snprintf(lines[count++], sizeof(lines[0]), "From Earth | field %s", field);
+        const float s = state->pixel_scale, size = 13 * s, spacing = 0.4f * s, step = 18 * s;
         Font font = state->render.label_font_ready ? state->render.label_font : GetFontDefault();
-        DrawTextEx(font, caption, (Vector2){16 * s, (float)GetScreenHeight() - 58 * s}, 13 * s, 0.4f * s, (Color){240, 190, 90, 255});
+        float widest = 0;
+        for (int k = 0; k < count; ++k) widest = fmaxf(widest, MeasureTextEx(font, lines[k], size, spacing).x);
+        float x = 16 * s, bottom = renderer_caption_bottom(x, x + widest, (float)GetScreenHeight() - 44 * s) - 4 * s;
+        for (int k = 0; k < count; ++k) {
+            Color tint = k == count - 1 ? (Color){240, 190, 90, 255} : (Color){228, 222, 206, 255};
+            DrawTextEx(font, lines[k], (Vector2){x, bottom - (float)(count - k) * step}, size, spacing, tint);
+        }
     }
+
     if (state->labels || state->hovered >= 0) renderer_draw_labels(&state->session.system, state->render_mode, origin,
         &state->render, state->camera, state->session.selected_body_index, state->hovered, state->labels);
 

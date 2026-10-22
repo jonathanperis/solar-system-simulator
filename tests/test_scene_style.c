@@ -742,8 +742,24 @@ static void test_constellation_lines_sit_on_their_stars(void)
     assert(!render_constellation_segment(count, &a, &b));
 }
 
+/* The sky captions (A145) sit at the bottom left, above any page panel
+ * whose span they would cross: the desktop dock overlays the canvas. */
+static void test_captions_clear_page_panels_they_would_cross(void)
+{
+    const double dock[2][4] = {{300, 815, 850, 72}, {1076, 91, 352, 278}};
+    /* Text from x 16 to 280 misses the dock: it may reach the bottom. */
+    assert(render_clear_above(dock, 2, 16, 280, 850) == 850);
+    /* Text reaching x 400 crosses it: it must end above the dock's top. */
+    assert(render_clear_above(dock, 2, 16, 400, 850) == 815);
+    /* A panel entirely above the limit does not lower it. */
+    const double high[1][4] = {{0, 0, 400, 100}};
+    assert(render_clear_above(high, 1, 16, 400, 850) == 850);
+    assert(render_clear_above(NULL, 0, 16, 400, 850) == 850);
+}
+
 int main(void)
 {
+    test_captions_clear_page_panels_they_would_cross();
     test_texture_inventory_matches_assets();
     test_atmospheres_only_where_bodies_have_air();
     test_orientation_vectors_are_orthonormal();

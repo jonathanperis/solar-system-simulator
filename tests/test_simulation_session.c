@@ -326,8 +326,40 @@ static void test_inspection_measures_the_distance_from_earth(void)
     simulation_session_destroy(&lesson);
 }
 
+/* Seen from Earth (A145): a body's apparent disc and its elongation, the
+ * Sun-Earth-body angle that decides whether it can be seen at night. */
+static void test_inspection_measures_disc_and_elongation_from_earth(void)
+{
+    SimulationSession session = simulation_session_create();
+    int sun = -1, earth = -1, jupiter = -1, moon = -1;
+    for (size_t i = 0; i < session.system.body_count; ++i) {
+        BodyId id = session.system.bodies[i].id;
+        if (session.system.bodies[i].kind == BODY_KIND_STAR) sun = (int)i;
+        if (id == BODY_ID_EARTH) earth = (int)i;
+        if (id == BODY_ID_JUPITER) jupiter = (int)i;
+        if (id == BODY_ID_MOON) moon = (int)i;
+    }
+    assert(sun >= 0 && earth >= 0 && jupiter >= 0 && moon >= 0);
+    const Body *e = &session.system.bodies[earth], *j = &session.system.bodies[jupiter], *s = &session.system.bodies[sun];
+    BodyInspection at_jupiter = simulation_session_inspect_body(&session, (size_t)jupiter);
+    Vec3d to_j = vec3d_sub(j->position_m, e->position_m), to_s = vec3d_sub(s->position_m, e->position_m);
+    double expected = acos(vec3d_dot(to_j, to_s) / (vec3d_length(to_j) * vec3d_length(to_s))) * 180.0 / acos(-1.0);
+    assert(fabs(at_jupiter.elongation_deg - expected) < 1e-9);
+    /* Jupiter's disc is 30-50 arcseconds; the Moon's about half a degree. */
+    assert(at_jupiter.angular_diameter_arcsec > 30 && at_jupiter.angular_diameter_arcsec < 50);
+    BodyInspection at_moon = simulation_session_inspect_body(&session, (size_t)moon);
+    assert(at_moon.angular_diameter_arcsec > 29 * 60 && at_moon.angular_diameter_arcsec < 34 * 60);
+    /* No elongation for the Sun itself or for Earth; no disc for Earth. */
+    assert(isnan(simulation_session_inspect_body(&session, (size_t)sun).elongation_deg));
+    assert(simulation_session_inspect_body(&session, (size_t)sun).angular_diameter_arcsec > 31 * 60);
+    assert(isnan(simulation_session_inspect_body(&session, (size_t)earth).angular_diameter_arcsec));
+    assert(isnan(simulation_session_inspect_body(&session, (size_t)earth).elongation_deg));
+    simulation_session_destroy(&session);
+}
+
 int main(void)
 {
+    test_inspection_measures_disc_and_elongation_from_earth();
     test_inspection_measures_the_distance_from_earth();
     test_run_until_stops_on_the_target_within_one_tick();
     test_dated_sessions_are_the_epoch_presets();
