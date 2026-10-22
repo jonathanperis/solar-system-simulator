@@ -145,11 +145,11 @@ static Vec3d visible_satellite_position(const Body *body, const Body *parent, Ve
         }
     }
 
-    if (current_distance < required_distance) {
-        return vec3d_add(parent_position, vec3d_scale(relative_position, required_distance / current_distance));
-    }
-
-    return position;
+    /* Push every moon out by the clearance rather than onto it (A135):
+     * clamping put all moons inside the enlarged planet on one shell, so
+     * Europa could be drawn inside Io. Adding the clearance keeps their order
+     * and their true spacing; for distant moons it is a small offset. */
+    return vec3d_add(parent_position, vec3d_scale(relative_position, (current_distance + required_distance) / current_distance));
 }
 
 static Vec3d body_position_raw(const SolarSystem *system, size_t body_index, RenderScaleMode mode)

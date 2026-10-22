@@ -491,6 +491,46 @@ static void test_illustrative_saturn_moons_stay_outside_the_drawn_rings(void)
     }
 }
 
+/* Illustrative scale enlarges each planet past its inner moons' orbits.
+ * Moons pushed clear of it must keep their true order outward and most of
+ * their true spacing: Io, Europa, Ganymede and Callisto may not collapse
+ * onto one shared shell (A135). */
+static void check_moon_order_survives(const SolarSystem *system, BodyId planet_id, int at_least)
+{
+    int planet = -1;
+    for (size_t i = 0; i < system->body_count; ++i) if (system->bodies[i].id == planet_id) planet = (int)i;
+    assert(planet >= 0);
+    Vec3d center = renderer_body_position(system, (size_t)planet, RENDER_SCALE_ILLUSTRATIVE);
+    int checked = 0;
+    for (size_t i = 0; i < system->body_count; ++i) {
+        if (solar_system_parent_index(system, i) != planet) continue;
+        double true_i = meters_to_render_units(vec3d_length(vec3d_sub(system->bodies[i].position_m, system->bodies[planet].position_m)));
+        double drawn_i = vec3d_length(vec3d_sub(renderer_body_position(system, i, RENDER_SCALE_ILLUSTRATIVE), center));
+        for (size_t j = 0; j < system->body_count; ++j) {
+            if (j == i || solar_system_parent_index(system, j) != planet) continue;
+            double true_j = meters_to_render_units(vec3d_length(vec3d_sub(system->bodies[j].position_m, system->bodies[planet].position_m)));
+            if (true_j <= true_i * 1.2) continue;
+            double drawn_j = vec3d_length(vec3d_sub(renderer_body_position(system, j, RENDER_SCALE_ILLUSTRATIVE), center));
+            if (!(drawn_j - drawn_i > 0.5 * (true_j - true_i))) {
+                fprintf(stderr, "%s (%.3g) and %s (%.3g) drawn %.3g and %.3g\n", system->bodies[i].name, true_i,
+                    system->bodies[j].name, true_j, drawn_i, drawn_j);
+                assert(drawn_j - drawn_i > 0.5 * (true_j - true_i));
+            }
+            ++checked;
+        }
+    }
+    assert(checked >= at_least);
+}
+
+static void test_illustrative_moons_keep_their_order_outward(void)
+{
+    SolarSystem system = solar_system_create_current();
+    check_moon_order_survives(&system, BODY_ID_JUPITER, 6); /* the four Galileans */
+    check_moon_order_survives(&system, BODY_ID_SATURN, 10);
+    check_moon_order_survives(&system, BODY_ID_URANUS, 6);
+    check_moon_order_survives(&system, BODY_ID_MARS, 1);
+}
+
 /* Pluto-Charon shadow events happen only near Pluto's equinoxes (1985-90,
  * the 2110s); in the 2026-06-09 sky Charon cannot shadow Pluto, whatever
  * illustrative scale draws (SPEC A111). */
@@ -576,6 +616,7 @@ int main(void)
     test_navigation_neighbors_hop_through_the_family_tree();
     test_charon_casts_no_shadow_on_pluto_in_2026();
     test_illustrative_saturn_moons_stay_outside_the_drawn_rings();
+    test_illustrative_moons_keep_their_order_outward();
     test_tidally_locked_maps_face_their_parent();
     test_cached_trail_points_match_uncached_exactly();
     test_moving_sun_history_preserves_parent_relative_frames();
