@@ -42,6 +42,8 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
         <p class="clock-note" data-clock-note></p>
         <button type="button" class="clock-today" data-today hidden
           title="Run the sky forward to the present (P)">Today</button>
+        <button type="button" class="clock-today" data-open-panel="date-panel" data-date-open hidden
+          aria-haspopup="dialog">Date</button>
       </div>
       <p class="hud-line"><span data-active-scene>—</span> · <span data-runtime-status role="status" aria-live="polite">Downloading simulator…</span></p>
       <p id="runtime-control-state" class="sr-only" data-runtime-controls role="status" aria-live="polite">Waiting for simulation state.</p>
@@ -116,6 +118,17 @@ const lessonChoices = lessonOptions.map(([name, label], index) => ({ name, label
         <p>Small moons live in their planet's scene: switch the scene first, or open a moon from the <a href={`${base}catalog/`}>catalog</a>.</p>
         <button type="button" data-close-panel>Show</button>
       </fieldset>
+    </dialog>
+
+    {/* Go to a date (A134): plays forward like Today, to a chosen instant. */}
+    <dialog id="date-panel" class="sheet popover date-popover" aria-labelledby="date-heading">
+      <header><h2 id="date-heading">Go to date</h2><button type="button" data-close-panel aria-label="Close date">Close</button></header>
+      <form class="body date-form" data-date-form>
+        <label>Date <input type="date" data-date-input min="2026-06-09" max="2076-06-08" required /></label>
+        <label>Time (TDB) <input type="time" data-time-input value="00:00" required /></label>
+        <p class="date-note" data-date-note aria-live="polite"></p>
+        <button type="submit">Go</button>
+      </form>
     </dialog>
 
     <dialog id="view-panel" class="sheet popover" aria-labelledby="view-heading">

@@ -188,3 +188,34 @@ test('Today plays the dated sky forward to the present and stops there (SPEC A13
   await expect(page.locator('[data-lesson-strip]')).toBeVisible({ timeout: 30000 });
   await expect(today).toBeHidden();
 });
+
+test('Go to date plays to a chosen instant, restarting for a past one (SPEC A134)', async ({ page }) => {
+  await page.goto(base);
+  const open = page.getByRole('button', { name: 'Date', exact: true });
+  await expect(open).toBeVisible({ timeout: 30000 });
+  await open.click();
+  const panel = page.getByRole('dialog', { name: 'Go to date' });
+  await expect(panel.getByLabel('Date', { exact: true })).toBeFocused();
+  await panel.getByLabel('Date', { exact: true }).fill('2026-06-11');
+  await panel.getByLabel('Time (TDB)').fill('12:00');
+  await expect(panel.locator('[data-date-note]')).toHaveText(/^(Plays forward|Restarts)/);
+  await panel.getByRole('button', { name: 'Go', exact: true }).click();
+  await expect(panel).toBeHidden();
+  await expect(open).toBeFocused();
+  await expect(page.locator('[data-runtime-elapsed]')).toHaveText('2026-06-11 12:00 TDB', { timeout: 30000 });
+  await expect(page.getByRole('button', { name: 'Resume', exact: true })).toBeVisible();
+  // Targets on the 15 s tick grid are reached exactly. A date behind the
+  // clock restarts the scene, then plays to it.
+  await open.click();
+  await panel.getByLabel('Date', { exact: true }).fill('2026-06-10');
+  await panel.getByLabel('Time (TDB)').fill('00:00');
+  await expect(panel.locator('[data-date-note]')).toHaveText('Restarts at 2026-06-09, then plays under a second.');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-runtime-elapsed]')).toHaveText('2026-06-10 00:00 TDB', { timeout: 30000 });
+  // Out of range: Go keeps the panel open and explains the range.
+  await open.click();
+  await panel.getByLabel('Date', { exact: true }).fill('2080-01-01');
+  await panel.getByRole('button', { name: 'Go', exact: true }).click();
+  await expect(panel).toBeVisible();
+  await expect(panel.locator('[data-date-note]')).toHaveText('Choose a date from 2026-06-09 to 2076-06-08.');
+});
