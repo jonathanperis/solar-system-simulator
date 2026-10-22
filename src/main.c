@@ -1187,9 +1187,22 @@ static void solar_app_update_draw(void *user_data)
     double far_plane = fmax(1000.0, state->shown_camera.distance * 4.0);
     double near_plane = fmax(1e-9, state->shown_camera.distance * 0.001);
     if (state->sky) {
-        /* From Earth's centre: nothing nearer than its own surface is drawn,
-         * and Neptune lies within about 31 AU. */
-        near_plane = meters_to_render_units(2.0 * SOLAR_EARTH_RADIUS_M);
+        /* From Earth's centre: the near plane sits at half the nearest body
+         * surface in the field (A148), never inside Earth; Neptune lies
+         * within about 31 AU. */
+        static double offsets[SOLAR_SYSTEM_BODY_CAPACITY][3], radii[SOLAR_SYSTEM_BODY_CAPACITY];
+        size_t n = 0;
+        int observer = earth_index(&state->session.system);
+        for (size_t i = 0; i < state->session.system.body_count && i < SOLAR_SYSTEM_BODY_CAPACITY; ++i) {
+            if ((int)i == observer) continue;
+            Vec3d p = vec3d_sub(renderer_body_position(&state->session.system, i, state->render_mode), origin);
+            offsets[n][0] = p.x; offsets[n][1] = p.y; offsets[n][2] = p.z;
+            radii[n++] = renderer_body_visual_radius(&state->session.system.bodies[i], state->render_mode);
+        }
+        const double forward[3] = {state->camera.target.x, state->camera.target.y, state->camera.target.z};
+        float aspect = GetScreenHeight() > 0 ? (float)GetScreenWidth() / (float)GetScreenHeight() : 1.0f;
+        near_plane = orbit_camera_sky_near((const double (*)[3])offsets, radii, n, forward, state->sky_fov, aspect,
+            meters_to_render_units(2.0 * SOLAR_EARTH_RADIUS_M));
         far_plane = meters_to_render_units(200.0 * SOLAR_AU_METERS);
     }
     rlSetClipPlanes(near_plane, far_plane);

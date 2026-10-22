@@ -5,6 +5,14 @@ import { normalizeBase } from '../../lib/base';
 // Each lesson is one question and one thing to watch (DESIGN.md, SPEC A101).
 // Run opens the simulator with the lesson loaded (`/?lesson=name`).
 const base = normalizeBase(import.meta.env.BASE_URL);
+/* Look from Earth (A148): telescope views of the simulated sky. Each link
+ * plays to its night, then opens the view from Earth at that field. */
+const lookUps = [
+  ['venus', '2026-10-05T00:00', '0.03', "Venus as a crescent", "5 October 2026, three weeks before it passes between Earth and the Sun: 11% lit, 51 arcseconds wide."],
+  ['moon', '2026-06-25T00:00', '1', "The waxing gibbous Moon", "25 June 2026: 125 degrees from the Sun and 79% lit."],
+  ['jupiter', '2026-12-01T22:00', '0.15', "Jupiter in the night sky", "1 December 2026, 103 degrees from the Sun: its banded disc is 38 arcseconds across."],
+  ['saturn', '2027-01-15T00:00', '0.02', "Saturn's rings opening", "15 January 2027, two years after they were edge-on: the rings tilt open again."],
+] as const;
 const lessons = [
   ['circular', 'Why does an orbit curve?', 'Earth on a circle. Turn on vectors: velocity is along the path, the pull points at the Sun.'],
   ['eccentric', 'Why does a planet speed up near the Sun?', 'An orbit with e = 0.5. Watch speed rise at perihelion and fall at aphelion.'],
@@ -33,6 +41,13 @@ const lessons = [
           <p>{watch}</p>
           <a class="button" href={`${base}?lesson=${name}`}>Run</a>
         </li>
+      ))}
+    </ul>
+    <h2>Look from Earth</h2>
+    <p>The same simulation, seen from Earth's centre through a telescope field. Each link plays the sky to its night first.</p>
+    <ul class="look-ups">
+      {lookUps.map(([body, at, fov, title, text]) => (
+        <li><a href={`${base}?body=${body}&at=${at}&from=earth&fov=${fov}`}>{title}</a>: {text}</li>
       ))}
     </ul>
     <h2>Compare two runs</h2>
