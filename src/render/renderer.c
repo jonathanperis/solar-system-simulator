@@ -767,7 +767,8 @@ static size_t click_target_count;
 /* Page panels, then the scale bar, then last frame's placed labels (A151):
  * edge markers slide along the edge past all of them. */
 #define RENDER_MAX_LABEL_BLOCKERS 24
-static double blockers[RENDER_MAX_BLOCKERS + 1 + RENDER_MAX_LABEL_BLOCKERS][4];
+/* Page panels, the scale bar, the canvas caption, then labels. */
+static double blockers[RENDER_MAX_BLOCKERS + 2 + RENDER_MAX_LABEL_BLOCKERS][4];
 static double placed_labels[RENDER_MAX_LABEL_BLOCKERS][4];
 static int placed_label_count, panel_blocker_count;
 static double caption_box[4]; /* the app's canvas caption, if any (A151) */
@@ -1135,12 +1136,14 @@ void renderer_draw_markers(const SolarSystem *system, RenderScaleMode mode, Vec3
     /* Edge markers step past the names in view (labels draw after markers,
      * so last frame's are used): through the telescope a "Sun >" chevron
      * must not land on Ganymede. */
-    /* The app's canvas caption (the view from Earth's) is an obstacle too. */
-    if (caption_box[2] > 0 && blocker_count < RENDER_MAX_BLOCKERS + 1) {
+    /* Page panels and the scale bar decide whether a body is under a panel;
+     * the canvas caption (the view from Earth's) and labels only make edge
+     * markers slide past (Bugbot on #80). */
+    panel_blocker_count = blocker_count;
+    if (caption_box[2] > 0) {
         for (int c = 0; c < 4; ++c) blockers[blocker_count][c] = caption_box[c];
         ++blocker_count;
     }
-    panel_blocker_count = blocker_count;
     for (int k = 0; k < placed_label_count; ++k)
         for (int c = 0; c < 4; ++c) blockers[blocker_count + k][c] = placed_labels[k][c];
     blocker_count += placed_label_count;
