@@ -150,9 +150,17 @@ export function dateRunNote(target: number, elapsed: number): string {
 }
 /** The note beside the sky clock: how far the run has come from its starting
  * sky, or that a lesson clock counts from the lesson start. */
-export function clockNote(elapsedSeconds: number, dated: boolean): string {
+export function clockNote(elapsedSeconds: number, dated: boolean, untilSeconds?: number | null): string {
   const days = elapsedSeconds / 86400;
-  return dated ? `${days >= 0 ? '+' : ''}${days.toFixed(2)} days since 2026-06-09` : 'since the lesson started';
+  if (!dated) return 'since the lesson started';
+  const note = `${days >= 0 ? '+' : ''}${days.toFixed(2)} days since 2026-06-09`;
+  // During a Today or Date run (A142) the note names where it is heading.
+  // No-break spaces and word joiners around its hyphens keep the arrow and
+  // destination one unbreakable piece on a narrow phone.
+  if (untilSeconds == null || untilSeconds <= elapsedSeconds) return note;
+  const destination = sceneDate(untilSeconds).slice(0, untilSeconds % 86400 ? 16 : 10)
+    .replace(' ', '\u00a0').replaceAll('-', '\u2060-\u2060');
+  return `${note} →\u00a0${destination}`;
 }
 /* Inspector readouts (SPEC A113). C supplies SI values; these only choose how
  * to print them: digits grouped in threes with narrow no-break spaces (the SI
@@ -663,7 +671,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       setText(readouts.elapsed, state.dated ? sceneDate(state.elapsedSeconds)
         : `${(state.elapsedSeconds / 86400).toFixed(4)} d (${Number(state.elapsedSeconds.toPrecision(12))} s)`);
       if (readouts.elapsed.dataset) readouts.elapsed.dataset.seconds = String(state.elapsedSeconds);
-      if (readouts.clockNote) setText(readouts.clockNote, clockNote(state.elapsedSeconds, Boolean(state.dated)));
+      if (readouts.clockNote) setText(readouts.clockNote, clockNote(state.elapsedSeconds, Boolean(state.dated), state.untilSeconds));
       if (readouts.today) {
         // Today plays dated scenes forward to the present; while it runs the
         // same button stops it.
