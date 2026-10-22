@@ -24,6 +24,13 @@ test('comparison, save/share/import and display units retain reproducible C meas
   await expect(page.locator('[data-matched-time]')).toHaveText('86400 s');
   await expect(page.locator('[data-plot="trajectory"]')).toBeVisible();
   await expect(page.locator('[data-plots-waiting]')).toBeHidden();
+  // Reset keeps only the t = 0 checkpoint: the cards collapse again.
+  await page.getByRole('button', { name: 'Reset comparison', exact: true }).click();
+  await expect(page.locator('[data-plots]')).toHaveAttribute('data-empty', '');
+  await expect(page.locator('[data-plots-waiting]')).toBeVisible();
+  await page.getByRole('button', { name: 'Start comparison', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Comparison complete.');
+  await expect(page.locator('[data-plot="trajectory"]')).toBeVisible();
   await expect(page.locator('[data-plot="trajectory"] [data-series]')).toHaveCount(2);
   await expect(page.locator('[data-force-side="0"]')).toContainText('Sun');
   await page.getByText('Save, share, or download', { exact: true }).click();
