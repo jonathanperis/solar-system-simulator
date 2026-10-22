@@ -180,7 +180,7 @@ typedef struct SolarApp {
     /* Looking around (A144): drag turns the aim away from the target; a new
      * selection re-centres it. */
     float sky_yaw, sky_pitch;
-    size_t sky_target;
+    size_t sky_selected; /* the selection the offsets belong to */
     RenderScaleMode sky_return_mode;
     bool sky_return_rotate;
     /* Camera presentation (A112): the view actually shown (eased toward the
@@ -681,7 +681,7 @@ static void sky_enter(SolarApp *state)
     state->sky = true;
     state->sky_fov = ORBIT_CAMERA_SKY_FOV_DEFAULT;
     state->sky_yaw = state->sky_pitch = 0.0f;
-    state->sky_target = state->session.selected_body_index;
+    state->sky_selected = state->session.selected_body_index;
     state->sky_return_mode = state->render_mode;
     state->sky_return_rotate = state->auto_rotate;
     /* Directions from Earth are only true in real scale. */
@@ -1134,13 +1134,16 @@ static void solar_app_update_draw(void *user_data)
          * ecliptic north (+y) is up. Real scale, so every direction is the
          * SI geometry. */
         size_t target = sky_target_index(&state->session.system, earth, state->session.selected_body_index);
-        if (target != state->sky_target) {
-            state->sky_target = target;
+        /* A new selection re-centres, even when it aims at the same body
+         * (Earth and the Sun both aim at the Sun; Bugbot). */
+        if (state->session.selected_body_index != state->sky_selected) {
+            state->sky_selected = state->session.selected_body_index;
             state->sky_yaw = state->sky_pitch = 0.0f;
         }
         origin = renderer_body_position(&state->session.system, (size_t)earth, state->render_mode);
         Vec3d toward = vec3d_sub(renderer_body_position(&state->session.system, target, state->render_mode), origin);
         double raw[3] = {toward.x, toward.y, toward.z}, turned[3];
+        state->sky_pitch = orbit_camera_sky_clamp_pitch(raw, state->sky_pitch);
         orbit_camera_sky_aim(raw, state->sky_yaw, state->sky_pitch, turned);
         Vec3d aim = {turned[0], turned[1], turned[2]};
         renderer_set_observer(earth);
