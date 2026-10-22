@@ -9,6 +9,7 @@ interface RuntimeReadouts {
   elapsed: Readout & { dataset?: DOMStringMap };
   clockNote?: Readout;
   today?: Pick<HTMLElement, 'textContent' | 'hidden' | 'dataset'>;
+  dateOpen?: Pick<HTMLElement, 'hidden'>;
   interval: Readout;
   parent: Readout;
   distance: Readout;
@@ -103,6 +104,27 @@ export function sceneDate(elapsedSeconds: number): string {
  * in C: TDB runs 69.184 s ahead of UTC. */
 export function sceneSecondsAt(unixMs: number): number {
   return unixMs / 1000 - (sceneEpochJd - 2440587.5) * 86400 + 69.184;
+}
+/** Scene seconds at a TDB calendar instant typed as "YYYY-MM-DD" and
+ * "HH:MM" (A134), or NaN if it is not a valid date in the runnable range:
+ * the epoch to 50 years on (the C command carries whole seconds as an int). */
+export const dateRunMaxSeconds = 50 * 365.25 * 86400;
+export function sceneSecondsAtDate(date: string, time: string): number {
+  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date), t = /^(\d{2}):(\d{2})/.exec(time || '00:00');
+  if (!d || !t) return NaN;
+  const ms = Date.UTC(Number(d[1]), Number(d[2]) - 1, Number(d[3]), Number(t[1]), Number(t[2]));
+  const seconds = ms / 1000 - (sceneEpochJd - 2440587.5) * 86400;
+  return seconds >= 0 && seconds <= dateRunMaxSeconds ? seconds : NaN;
+}
+/** How a run to `target` will go from `elapsed` at 15 simulated days per
+ * second (A134): a restart first when the target is behind the clock. */
+export function dateRunNote(target: number, elapsed: number): string {
+  if (!Number.isFinite(target)) return 'Choose a date from 2026-06-09 to 2076-06-08.';
+  const behind = target < elapsed;
+  const seconds = (behind ? target : target - elapsed) / (15 * 86400);
+  const span = seconds < 1 ? 'under a second' : seconds < 90 ? `about ${Math.round(seconds)} s`
+    : `about ${Math.round(seconds / 60)} min`;
+  return behind ? `Restarts at 2026-06-09, then plays ${span}.` : `Plays forward ${span} at 15 d/s.`;
 }
 /** The note beside the sky clock: how far the run has come from its starting
  * sky, or that a lesson clock counts from the lesson start. */
@@ -608,6 +630,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
         // same button stops it.
         const running = state.untilSeconds != null;
         readouts.today.hidden = !state.dated;
+        if (readouts.dateOpen) readouts.dateOpen.hidden = !state.dated;
         setText(readouts.today, running ? 'Stop' : 'Today');
         readouts.today.dataset.running = running ? 'true' : 'false';
       }
@@ -695,6 +718,7 @@ export function mountSimulator(root: HTMLElement): void {
     elapsed: root.querySelector<HTMLElement>('[data-runtime-elapsed]')!,
     clockNote: root.querySelector<HTMLElement>('[data-clock-note]') ?? undefined,
     today: root.querySelector<HTMLButtonElement>('[data-today]') ?? undefined,
+    dateOpen: root.querySelector<HTMLButtonElement>('[data-date-open]') ?? undefined,
     interval: root.querySelector<HTMLElement>('[data-runtime-interval]')!,
     parent: root.querySelector<HTMLElement>('[data-inspector-parent]')!,
     distance: root.querySelector<HTMLElement>('[data-inspector-distance]')!,
@@ -770,6 +794,30 @@ export function mountSimulator(root: HTMLElement): void {
     if (button.dataset.running === 'true') send('pause');
     else send('runUntil', Math.floor(sceneSecondsAt(Date.now())));
   });
+  // Go to date (A134): opens on the present; Go runs to the chosen instant.
+  const dateForm = root.querySelector<HTMLFormElement>('[data-date-form]');
+  if (dateForm) {
+    const dateInput = dateForm.querySelector<HTMLInputElement>('[data-date-input]')!;
+    const timeInput = dateForm.querySelector<HTMLInputElement>('[data-time-input]')!;
+    const note = dateForm.querySelector<HTMLElement>('[data-date-note]')!;
+    const elapsed = (): number => Number(root.querySelector<HTMLElement>('[data-runtime-elapsed]')?.dataset.seconds ?? 0);
+    const target = (): number => sceneSecondsAtDate(dateInput.value, timeInput.value);
+    const refresh = (): void => { note.textContent = dateRunNote(target(), elapsed()); };
+    root.querySelector<HTMLButtonElement>('[data-date-open]')?.addEventListener('click', () => {
+      const [day, minute] = sceneDate(sceneSecondsAt(Date.now())).split(' ');
+      dateInput.value = day; timeInput.value = minute;
+      refresh();
+    });
+    dateInput.addEventListener('input', refresh);
+    timeInput.addEventListener('input', refresh);
+    dateForm.addEventListener('submit', event => {
+      event.preventDefault();
+      const seconds = target();
+      if (!Number.isFinite(seconds)) { refresh(); dateInput.focus(); return; }
+      send('runUntil', Math.round(seconds));
+      dateForm.closest('dialog')?.close();
+    });
+  }
   controls.body.addEventListener('change', () => send('select', Number(controls.body.value)));
   controls.speed.addEventListener('input', () => send('speed', Number(controls.speed.value)));
   controls.search.addEventListener('input', runtime.filterBodies);
@@ -808,7 +856,7 @@ export function mountSimulator(root: HTMLElement): void {
     button.setAttribute('aria-expanded', 'false');
     button.addEventListener('click', () => {
       if (panel.open) panel.close();
-      else { panel.show(); panel.querySelector<HTMLElement>('button:not([data-close-panel])')?.focus(); }
+      else { panel.show(); panel.querySelector<HTMLElement>('input, button:not([data-close-panel])')?.focus(); }
       button.setAttribute('aria-expanded', String(panel.open));
     });
     // However it closes (Close, Escape, the opener), focus left inside the

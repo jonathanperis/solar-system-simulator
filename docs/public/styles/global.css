@@ -200,6 +200,13 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
 
 /* View panel (A128): non-modal, docked above the dock's right end. */
 .sheet.popover { position: fixed; inset: auto 0.75rem 5.5rem auto; margin: 0; width: min(21rem, calc(100% - 1.5rem)); z-index: 5; }
+/* Go to date (A134) opens under the sky clock, beside the button that opened it. */
+.sheet.popover.date-popover { inset: 7.75rem auto auto 0.75rem; width: min(17rem, calc(100% - 1.5rem)); }
+.date-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 0.75rem; align-items: end; }
+.date-form label { display: grid; gap: 0.25rem; font: 0.6875rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); }
+.date-form input { width: 100%; color-scheme: dark; }
+.date-form .date-note { grid-column: 1 / -1; margin: 0; color: var(--amber); font-size: 0.75rem; min-height: 1.1em; }
+.date-form button { grid-column: 1 / -1; }
 .view-groups { display: grid; gap: 0.6rem; }
 .view-groups > * + * { margin-top: 0 !important; }
 .view-group { display: grid; gap: 0.3rem; }
@@ -231,13 +238,13 @@ html.instrument main { position: relative; flex: 1; min-height: 0; }
   .lessons strong, .lessons p { grid-column: 2; grid-row: auto; }
   .lessons .button { grid-column: 2; grid-row: auto; justify-self: start; }
   .sheet { width: 100%; max-width: none; margin: auto 0 0; max-height: 75dvh; }
-  .sheet.popover { inset: auto 0 0 0; width: 100%; }
+  .sheet.popover, .sheet.popover.date-popover { inset: auto 0 0 0; width: 100%; }
 }
 
 @media (max-width: 760px), (max-height: 520px) {
   /* Short landscape screens stack the instrument too: the View panel is a
    * bottom sheet there as well, never a floating box over the stack. */
-  .sheet.popover { inset: auto 0 0 0; width: 100%; max-width: none; max-height: 75dvh; overflow-y: auto; }
+  .sheet.popover, .sheet.popover.date-popover { inset: auto 0 0 0; width: 100%; max-width: none; max-height: 75dvh; overflow-y: auto; }
   /* Phones and short landscape screens: the panels stop floating over the
    * view and stack around it, so none can cover another. The canvas takes the
    * height left over but never less than 12rem; if the panels still do not
