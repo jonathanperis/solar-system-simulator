@@ -353,6 +353,11 @@ bool render_clip_segment_outside_sphere(Vec3d *a, Vec3d *b, Vec3d center, double
     return true;
 }
 
+double render_moon_spread_factor(BodyId parent)
+{
+    return parent == BODY_ID_MARS ? 40.0 : 1.0;
+}
+
 bool render_sky_moon_wants_label(bool known_radius, double parent_separation_pixels)
 {
     return known_radius && parent_separation_pixels >= RENDER_LABEL_MIN_SEPARATION_PIXELS;

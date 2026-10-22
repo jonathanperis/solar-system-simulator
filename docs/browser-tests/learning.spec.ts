@@ -178,3 +178,15 @@ test('Learn links open telescope views of the simulated sky (SPEC A148)', async 
   await expect(page.getByRole('switch', { name: 'From Earth' })).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('[data-runtime-controls]')).toContainText('Selected body: Moon');
 });
+
+test('two-body lessons open framed on their pair, not 0.2 AU away (SPEC B60)', async ({ page }) => {
+  for (const [lesson, body] of [['earth-moon', 'Moon'], ['phobos', 'Phobos']] as const) {
+    await page.goto(`${base}?lesson=${lesson}`);
+    await expect(page.locator('[data-lesson-strip]')).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('[data-runtime-controls]')).toContainText(`Selected body: ${body}`);
+    // The camera readout gives its distance in render units (1 AU is 10):
+    // the default camera sits about 20 away, a framed pair under 2.
+    await expect.poll(async () => Number(((await page.locator('[data-runtime-camera]').textContent()) ?? '').split('·')[1]?.trim().split(' ')[0]))
+      .toBeLessThan(2);
+  }
+});

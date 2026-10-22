@@ -157,7 +157,10 @@ static Vec3d visible_satellite_position(const Body *body, const Body *parent, Ve
      * clamping put all moons inside the enlarged planet on one shell, so
      * Europa could be drawn inside Io. Adding the clearance keeps their order
      * and their true spacing; for distant moons it is a small offset. */
-    return vec3d_add(parent_position, vec3d_scale(relative_position, (current_distance + required_distance) / current_distance));
+    /* A compact system the enlarged planet dwarfs spreads its moons further
+     * (A155), still in order. */
+    double spread = render_moon_spread_factor(parent->id);
+    return vec3d_add(parent_position, vec3d_scale(relative_position, (current_distance * spread + required_distance) / current_distance));
 }
 
 static Vec3d body_position_raw(const SolarSystem *system, size_t body_index, RenderScaleMode mode)
