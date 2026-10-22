@@ -269,6 +269,20 @@ static void test_run_until_stops_on_the_target_within_one_tick(void)
         simulation_session_update(&session, 1.0 / 60.0);
         assert(session.system.elapsed_seconds <= target + 1e-6);
     }
+    /* Queued time left by a slow frame (the per-update step cap) must not
+     * carry a run past its target either. */
+    {
+        SimulationSession queued = simulation_session_create();
+        double goal = 40.0 * step + 3.0;
+        queued.clock.pending_seconds = 100.0 * step;
+        simulation_session_run_until(&queued, goal);
+        for (int frame = 0; frame < 100 && !queued.paused; ++frame) {
+            simulation_session_update(&queued, 1.0 / 60.0);
+            assert(queued.system.elapsed_seconds <= goal + 1e-6);
+        }
+        assert(queued.paused && queued.system.elapsed_seconds > goal - step - 1e-6);
+        simulation_session_destroy(&queued);
+    }
     assert(session.paused);
     assert(session.system.elapsed_seconds > target - step - 1e-6);
     assert(session.run_until_seconds < 0);
