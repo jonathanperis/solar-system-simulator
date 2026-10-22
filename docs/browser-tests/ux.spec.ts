@@ -179,6 +179,8 @@ test('Today plays the dated sky forward to the present and stops there (SPEC A13
   await expect(page.locator('[data-runtime-elapsed]')).toHaveText('2026-06-12 06:31 TDB', { timeout: 30000 });
   await expect(page.getByRole('button', { name: 'Resume', exact: true })).toBeVisible();
   await expect(today).toHaveText('Today');
+  // The run hands back the speed it found (A153), not its 15 d/s.
+  await expect(page.locator('[data-speed-label]')).toHaveText('1 d/s');
   const seconds = Number(await page.locator('[data-runtime-elapsed]').getAttribute('data-seconds'));
   const target = Math.floor((Date.UTC(2026, 5, 12, 6, 30) - Date.UTC(2026, 5, 9)) / 1000 + 69.184);
   expect(seconds).toBeLessThanOrEqual(target);

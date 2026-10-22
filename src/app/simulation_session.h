@@ -31,6 +31,9 @@ typedef struct SimulationSession {
     /* Run until (A133): a target elapsed time to play to and pause at, or
      * negative for none. */
     double run_until_seconds;
+    /* The speed preset a run found (A153), restored when it arrives, is
+     * paused or reset; -1 when no run holds one. */
+    int run_return_speed;
 } SimulationSession;
 
 typedef struct BodyInspection {
