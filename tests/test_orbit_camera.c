@@ -299,6 +299,14 @@ static void test_sky_aim_turns_about_north_and_stops_short_of_the_poles(void)
     assert(fabs(asin(out[1] / 2.0) - SKY_PI / 6) < 1e-6);
     orbit_camera_sky_aim(east, 0.0f, 10.0f, out);
     assert(asin(out[1] / 2.0) < SKY_PI / 2 - 0.01 && asin(out[1] / 2.0) > SKY_PI / 2 - 0.05);
+    /* Stored pitch is clamped where the aim stops, so dragging back from a
+     * pole answers at once (Bugbot): the limit is measured from the target's
+     * own elevation. */
+    const double raised[3] = {1.0, 1.0, 0.0}; /* 45 degrees up */
+    float clamped = orbit_camera_sky_clamp_pitch(raised, 5.0f);
+    assert(fabsf(clamped - (float)(SKY_PI / 4 - SKY_PI / 180)) < 1e-5f);
+    assert(fabsf(orbit_camera_sky_clamp_pitch(raised, -5.0f) - (float)(-3 * SKY_PI / 4 + SKY_PI / 180)) < 1e-5f);
+    assert(orbit_camera_sky_clamp_pitch(raised, 0.2f) == 0.2f);
     /* One viewport height of drag sweeps the whole vertical field. */
     float swept = orbit_camera_sky_drag_radians(900.0f, 40.0f, 900.0f);
     assert(fabsf(swept - 40.0f * (float)SKY_PI / 180.0f) < 1e-6f);
