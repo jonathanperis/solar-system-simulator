@@ -251,6 +251,32 @@ test('texture loader keeps fallbacks for failed downloads, bad names and exhaust
   }
 });
 
+test('the belt loads once whether texture setup succeeds or gives up early (SPEC A131)', async () => {
+  const canvas = { dataset: {} };
+  let calls = 0;
+  const belt = async () => { calls++; };
+  // No texture helpers at all: setup gives up, the belt still starts.
+  await loadRuntimeTextures({}, canvas, new URL('https://example.test/wasm/runtime.js'), belt);
+  assert.equal(calls, 1);
+  // A normal run starts it exactly once, between the waves; a failing
+  // callback never breaks the loader.
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(new Uint8Array([1, 2, 3]));
+  try {
+    const runtime = {
+      _solar_web_texture_count: () => 2, ccall: (name, result, types, [slot]) => ['sun.jpg', 'mercury.jpg'][slot],
+      _malloc: bytes => bytes, _free: () => {}, HEAPU8: { set: () => {} }, _solar_web_load_texture: () => 1,
+    };
+    calls = 0;
+    await loadRuntimeTextures(runtime, canvas, new URL('https://example.test/wasm/runtime.js'), belt);
+    assert.equal(calls, 1);
+    await loadRuntimeTextures(runtime, canvas, new URL('https://example.test/wasm/runtime.js'), async () => { throw new Error('belt failed'); });
+    assert.equal(canvas.dataset.textures, '2/2');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 test('the sky clock reads the scene date and how far the run has come', () => {
   assert.equal(sceneDate(0), '2026-06-09 00:00 TDB');
   assert.equal(sceneDate(38.84 * 86400), '2026-07-17 20:09 TDB');
