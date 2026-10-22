@@ -324,6 +324,7 @@ The app uses a small stable orbit camera instead of raylib's automatic orbital h
 - Switching scale (`V`) morphs over 1.6 s: enlarged bodies shrink to their true sizes and spread moons glide to their true distances (a cut under reduced motion).
 - `O`: orbit guides. `T`: parent-relative (default) or absolute trail history. `X`: vector directions (green velocity, orange acceleration; illustrative lengths). `G`: show or hide the reference grid (web: View → Grid). `H`: show or hide body labels.
 - `E`: export an SI snapshot. The browser downloads `solar-snapshot.csv`; native writes the next free `solar-snapshot-001.csv`, `-002.csv`, … in the working directory and never overwrites an earlier snapshot. Headless series and snapshots share the C writer.
+- The inspector's From Earth line gives the selected body's distance from Earth and how long its light takes to reach us (Saturn's is about 1 h 22 min in June 2026), from the same SI state as the other readings.
 - `Space`: pause/resume. Paused time does not accumulate for later catch-up.
 - `P` (and the page's Today button): play a dated scene at the fastest speed to the present moment and pause there, within one 15-second tick. It is ordinary integration, not a jump, so it takes about nine seconds per 135 days; a present before the clock restarts the scene first. The page's Date button does the same for any instant from 2026-06-09 to 50 years on, with a note giving the run's length.
 - `N`: advance one configured physics tick while paused (15 seconds in core/catalog scenes).
