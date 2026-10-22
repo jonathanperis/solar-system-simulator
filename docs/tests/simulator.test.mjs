@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, sceneSecondsAt, sceneSecondsAtDate, dateRunNote, dateRunArrived, sceneSecondsAtLink, linkForSceneSeconds, clockNote, speedLabels, findMatches, formatSpacing, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod, formatFromEarth } from '../src/lib/simulator.ts';
+import { createSimulatorModule, loadRuntimeTextures, filterRuntimeBodies, runtimeBodyFilterStatus, moveSelectByKey, routeSimulatorKeyboard, parsePreparedExperiment, experimentTextLimitBytes, sceneDate, sceneSecondsAt, sceneSecondsAtDate, dateRunNote, dateRunArrived, sceneSecondsAtLink, linkForSceneSeconds, skyFieldAtLink, linkForSkyField, clockNote, speedLabels, findMatches, formatSpacing, formatDistance, formatSpeed, formatMass, formatRadius, formatPeriod, formatFromEarth } from '../src/lib/simulator.ts';
 import { errorMessage, downloadText } from '../src/lib/browser.ts';
 
 test('browser form keys and Tab bypass GLFW; canvas Space pauses without scrolling', () => {
@@ -389,4 +389,19 @@ test('a linked instant reads ?at= in TDB and writes it back to the minute (SPEC 
     assert.ok(Number.isNaN(sceneSecondsAtLink(bad)), String(bad));
   assert.equal(linkForSceneSeconds(86400 + 6.5 * 3600 + 42), '2026-06-10T06:30');
   assert.equal(sceneSecondsAtLink(linkForSceneSeconds(123456789)), Math.floor(123456789 / 60) * 60);
+});
+
+test('a linked view from Earth reads from=earth and a field in degrees (SPEC A147)', () => {
+  assert.equal(skyFieldAtLink('earth', '0.05'), 180);
+  assert.equal(skyFieldAtLink('earth', '40'), 144000);
+  // Clamped to the telescope's range; a missing or broken field opens wide.
+  assert.equal(skyFieldAtLink('earth', '0.001'), 72);
+  assert.equal(skyFieldAtLink('earth', '120'), 70 * 3600);
+  assert.equal(skyFieldAtLink('earth', null), 40 * 3600);
+  assert.equal(skyFieldAtLink('earth', 'wide'), 40 * 3600);
+  // Only Earth is an observing site.
+  assert.ok(Number.isNaN(skyFieldAtLink(null, '1')));
+  assert.ok(Number.isNaN(skyFieldAtLink('mars', '1')));
+  assert.equal(linkForSkyField(0.0523456), '0.0523');
+  assert.equal(linkForSkyField(40), '40');
 });

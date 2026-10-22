@@ -1637,7 +1637,7 @@ static void draw_translucent_layers(const FrameContext *ctx)
     BeginBlendMode(BLEND_ADDITIVE);
     if (ctx->view->show_belt) draw_belt(ctx);
     if (ctx->view->show_orbits) draw_orbit_guides(ctx);
-    draw_trails(&ctx->cache, system, ctx->trails, ctx->mode, ctx->trail_frame, ctx->origin, &ctx->camera);
+    if (!ctx->view->hide_trails) draw_trails(&ctx->cache, system, ctx->trails, ctx->mode, ctx->trail_frame, ctx->origin, &ctx->camera);
     /* Atmospheric halos: a shell a few percent above each body with air, so
      * the limb glows like Earth seen from orbit. Bodies too small on screen to
      * show a limb are skipped. */

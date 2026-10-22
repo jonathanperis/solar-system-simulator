@@ -67,7 +67,7 @@ interface RuntimeControls {
   orbits: Switch;
   contact: HTMLButtonElement;
   follow?: Switch;
-  sky?: Switch;
+  sky?: Switch & { dataset?: DOMStringMap };
   tour?: HTMLButtonElement;
   belt?: Switch;
   constellations?: Switch;
@@ -136,6 +136,19 @@ export function dateRunArrived(target: number, elapsed: number): boolean {
 export function sceneSecondsAtLink(value: string | null): number {
   const match = /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?$/.exec(value ?? '');
   return match ? sceneSecondsAtDate(match[1], match[2] ?? '00:00') : NaN;
+}
+/** A linked view from Earth (A147): `?from=earth&fov=DEG` as the field in
+ * whole arcseconds for C's sky command, clamped to the telescope's 72 arcsec
+ * to 70 degrees; 40 degrees without a usable `fov`; NaN unless from=earth. */
+export function skyFieldAtLink(from: string | null, fov: string | null): number {
+  if (from !== 'earth') return NaN;
+  const degrees = fov === null || fov.trim() === '' ? NaN : Number(fov);
+  const field = Number.isFinite(degrees) && degrees > 0 ? Math.min(70, Math.max(0.02, degrees)) : 40;
+  return Math.round(field * 3600);
+}
+/** The `fov` value for a field of view in degrees: three significant figures. */
+export function linkForSkyField(degrees: number): string {
+  return String(Number(degrees.toPrecision(3)));
 }
 /** The `at` value for a scene time, to the minute (A141). */
 export function linkForSceneSeconds(seconds: number): string {
@@ -626,6 +639,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       setSwitch(controls.belt, state.belt !== false);
       setSwitch(controls.follow, Boolean(state.follow));
       setSwitch(controls.sky, Boolean(state.sky));
+      if (controls.sky?.dataset && Number.isFinite(state.skyFov)) controls.sky.dataset.fov = String(state.skyFov);
       if (controls.tour) {
         setText(controls.tour, state.touring ? 'Stop tour' : 'Tour');
         controls.tour.setAttribute('aria-pressed', String(Boolean(state.touring)));
@@ -875,6 +889,12 @@ export function mountSimulator(root: HTMLElement): void {
       if (!Number.isFinite(seconds)) { refresh(); return; }
       const url = new URL(location.href);
       url.searchParams.set('at', linkForSceneSeconds(seconds));
+      // From Earth, the link carries the telescope view too (A147).
+      const sky = root.querySelector<HTMLElement>('[data-command="sky"]');
+      if (sky?.getAttribute('aria-checked') === 'true' && sky.dataset.fov) {
+        url.searchParams.set('from', 'earth');
+        url.searchParams.set('fov', linkForSkyField(Number(sky.dataset.fov)));
+      } else { url.searchParams.delete('from'); url.searchParams.delete('fov'); }
       try { await navigator.clipboard.writeText(url.href); note.textContent = 'Link copied: it opens here and plays to this instant.'; }
       catch { note.textContent = url.href; }
     });
@@ -890,15 +910,25 @@ export function mountSimulator(root: HTMLElement): void {
   // body selected (a family scene loads first, which would reset a run), play
   // to it like Date's Go, then drop `at` so the address never claims a stale
   // instant. Copy link in the Date panel writes a new one.
-  const linkedAt = sceneSecondsAtLink(new URLSearchParams(location.search).get('at'));
-  if (Number.isFinite(linkedAt) && addressed()) {
-    const wanted = implementedBodies.find(body => body.slug === new URLSearchParams(location.search).get('body'))?.name;
+  const linkParams = new URLSearchParams(location.search);
+  const linkedAt = sceneSecondsAtLink(linkParams.get('at'));
+  // A linked view from Earth (A147) opens with the same readiness test.
+  const linkedSky = skyFieldAtLink(linkParams.get('from'), linkParams.get('fov'));
+  if ((Number.isFinite(linkedAt) || Number.isFinite(linkedSky)) && addressed()) {
+    const wanted = implementedBodies.find(body => body.slug === linkParams.get('body'))?.name;
     controls.onState = state => {
       if (!state.dated || (wanted && state.body !== wanted)) return;
       controls.onState = undefined;
-      if (!dateRunArrived(linkedAt, state.elapsedSeconds)) send('runUntil', Math.round(linkedAt));
+      // Commands report at once, so this can run inside the deep link's own
+      // select, before its Frame system (which would leave a view from
+      // Earth): act once that task is done.
+      const elapsed = state.elapsedSeconds;
+      setTimeout(() => {
+        if (Number.isFinite(linkedAt) && !dateRunArrived(linkedAt, elapsed)) send('runUntil', Math.round(linkedAt));
+        if (Number.isFinite(linkedSky)) send('sky', linkedSky);
+      }, 0);
       const url = new URL(location.href);
-      url.searchParams.delete('at');
+      for (const key of ['at', 'from', 'fov']) url.searchParams.delete(key);
       history.replaceState(history.state, '', url);
     };
   }
