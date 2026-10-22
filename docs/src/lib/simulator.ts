@@ -38,6 +38,8 @@ interface RuntimeReadouts {
 
 interface RuntimeControls {
   panels: HTMLFieldSetElement[];
+  /* Every state report (A141 waits on it for a linked instant). */
+  onState?: (state: RuntimeState) => void;
   filterStatus: Readout;
   pause: HTMLButtonElement;
   step: HTMLButtonElement;
@@ -124,6 +126,16 @@ export function sceneSecondsAtDate(date: string, time: string): number {
  * reason to restart (Date opened right after Today, say). */
 export function dateRunArrived(target: number, elapsed: number): boolean {
   return target <= elapsed && elapsed - target < 60;
+}
+/** A linked instant (A141): `?at=YYYY-MM-DD` or `?at=YYYY-MM-DDTHH:MM`, in
+ * TDB like the clock; NaN when malformed or outside the runnable range. */
+export function sceneSecondsAtLink(value: string | null): number {
+  const match = /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?$/.exec(value ?? '');
+  return match ? sceneSecondsAtDate(match[1], match[2] ?? '00:00') : NaN;
+}
+/** The `at` value for a scene time, to the minute (A141). */
+export function linkForSceneSeconds(seconds: number): string {
+  return sceneDate(seconds).slice(0, 16).replace(' ', 'T');
 }
 /** How a run to `target` will go from `elapsed` at 15 simulated days per
  * second (A134): a restart first when the target is behind the clock. */
@@ -626,6 +638,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       }
       hasParent = state.hasParent;
       controls.panels.forEach(panel => { panel.disabled = false; });
+      controls.onState?.(state);
       controls.step.disabled = !state.paused;
       setText(controls.pause, state.paused ? 'Resume' : 'Pause');
       setSegment(controls.scale, button => button.dataset.scale === state.view);
@@ -843,6 +856,14 @@ export function mountSimulator(root: HTMLElement): void {
     });
     dateInput.addEventListener('input', refresh);
     timeInput.addEventListener('input', refresh);
+    dateForm.querySelector<HTMLButtonElement>('[data-date-copy]')?.addEventListener('click', async () => {
+      const seconds = target();
+      if (!Number.isFinite(seconds)) { refresh(); return; }
+      const url = new URL(location.href);
+      url.searchParams.set('at', linkForSceneSeconds(seconds));
+      try { await navigator.clipboard.writeText(url.href); note.textContent = 'Link copied: it opens here and plays to this instant.'; }
+      catch { note.textContent = url.href; }
+    });
     dateForm.addEventListener('submit', event => {
       event.preventDefault();
       const seconds = target();
@@ -850,6 +871,22 @@ export function mountSimulator(root: HTMLElement): void {
       if (!dateRunArrived(seconds, elapsed())) send('runUntil', Math.round(seconds));
       dateForm.closest('dialog')?.close();
     });
+  }
+  // A linked instant (A141): once C reports a dated scene with the linked
+  // body selected (a family scene loads first, which would reset a run), play
+  // to it like Date's Go, then drop `at` so the address never claims a stale
+  // instant. Copy link in the Date panel writes a new one.
+  const linkedAt = sceneSecondsAtLink(new URLSearchParams(location.search).get('at'));
+  if (Number.isFinite(linkedAt) && addressed()) {
+    const wanted = implementedBodies.find(body => body.slug === new URLSearchParams(location.search).get('body'))?.name;
+    controls.onState = state => {
+      if (!state.dated || (wanted && state.body !== wanted)) return;
+      controls.onState = undefined;
+      if (!dateRunArrived(linkedAt, state.elapsedSeconds)) send('runUntil', Math.round(linkedAt));
+      const url = new URL(location.href);
+      url.searchParams.delete('at');
+      history.replaceState(history.state, '', url);
+    };
   }
   controls.body.addEventListener('change', () => send('select', Number(controls.body.value)));
   controls.speed.addEventListener('input', () => send('speed', Number(controls.speed.value)));
