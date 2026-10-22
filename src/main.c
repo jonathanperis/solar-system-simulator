@@ -1215,9 +1215,9 @@ static void solar_app_update_draw(void *user_data)
          * or twilight). They rise above any page panel they would cross. */
         char field[32], lines[3][96] = {{0}};
         orbit_camera_sky_fov_label(state->sky_fov, field, sizeof(field));
-        int count = 0, earth = earth_index(&state->session.system);
-        if (earth >= 0) {
-            size_t target = sky_target_index(&state->session.system, earth, state->session.selected_body_index);
+        int count = 0, observer = earth_index(&state->session.system);
+        if (observer >= 0) {
+            size_t target = sky_target_index(&state->session.system, observer, state->session.selected_body_index);
             BodyInspection seen = simulation_session_inspect_body(&state->session, target);
             if (isfinite(seen.angular_diameter_arcsec)) {
                 if (seen.angular_diameter_arcsec >= 120.0)
