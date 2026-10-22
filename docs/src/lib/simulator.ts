@@ -40,6 +40,8 @@ interface RuntimeControls {
   /* A128: on/off controls are role="switch" buttons (aria-checked). */
   rotate: Switch;
   body: HTMLSelectElement;
+  /* A130: live matches under the Find name box. */
+  results?: HTMLElement;
   /* Speed slider over C's five presets (A120). */
   speed: HTMLInputElement;
   speedLabel?: Readout;
@@ -232,6 +234,22 @@ export function routeSimulatorKeyboard(event: Pick<KeyboardEvent, 'key' | 'stopI
   else if (canvasFocused && (event.key === ' ' || event.key.startsWith('Arrow'))) event.preventDefault();
 }
 
+/** Find's live matches (A130): names that start with the query, then names
+ * that contain it, at most eight, within the chosen group. */
+export function findMatches(bodies: readonly RuntimeBody[], query: string, group: string): RuntimeBody[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const pool = bodies.filter(body => !group || body.group === group);
+  const starts = pool.filter(body => body.name.toLowerCase().startsWith(q));
+  const contains = pool.filter(body => !body.name.toLowerCase().startsWith(q) && body.name.toLowerCase().includes(q));
+  return [...starts, ...contains].slice(0, 8);
+}
+
+/** Readable trail sample spacing for the Data sheet. */
+export function formatSpacing(seconds: number): string {
+  return seconds < 3600 ? `${Math.round(seconds)}\u00a0s between trail samples` : `${(seconds / 3600).toFixed(2)}\u00a0h between trail samples`;
+}
+
 /** Compact and spoken labels of C's speed presets (A120). */
 export function speedLabels(shortTimescale: boolean): { short: string[]; spoken: string[] } {
   return shortTimescale
@@ -368,6 +386,25 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
     controls.body.replaceChildren(...options);
     controls.body.value = String(reportedBody);
     setText(controls.filterStatus, runtimeBodyFilterStatus(bodies, controls.search.value, controls.group.value, reportedBody));
+    // A130: with a name typed, the best matches become one-click buttons
+    // (names starting with the query first). The full list stays in Body.
+    if (controls.results) {
+      const query = controls.search.value.trim().toLowerCase();
+      const matches = query ? findMatches(bodies, query, controls.group.value) : [];
+      controls.results.replaceChildren(...matches.map(body => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.findIndex = String(body.index);
+        const name = document.createElement('span');
+        name.textContent = body.name;
+        const group = document.createElement('span');
+        group.className = 'find-group';
+        group.textContent = body.group;
+        button.append(name, group);
+        return button;
+      }));
+      controls.results.hidden = matches.length === 0;
+    }
   };
   const fail = (reason: unknown): void => {
     failed = true;
@@ -530,7 +567,7 @@ export function createSimulatorModule(canvas: HTMLCanvasElement, readouts: Runti
       if (readouts.name) setText(readouts.name, state.body);
       if (readouts.period) setText(readouts.period, !state.hasParent ? 'N/A — no parent'
         : Number.isFinite(state.periodS) ? formatPeriod(state.periodS!) : 'Unbound (no closed orbit)');
-      setText(readouts.interval, `${(state.intervalSeconds / 3600).toFixed(2)} simulated hours`);
+      setText(readouts.interval, formatSpacing(state.intervalSeconds));
       setText(readouts.parent, state.parent);
       setText(readouts.distance, state.hasParent ? formatDistance(state.distanceM) : 'N/A — no parent');
       setText(readouts.speed, state.hasParent ? formatSpeed(state.speedMps) : 'N/A — no parent');
@@ -583,6 +620,7 @@ export function mountSimulator(root: HTMLElement): void {
     step: root.querySelector<HTMLButtonElement>('[data-command="step"]')!,
     rotate: root.querySelector<HTMLButtonElement>('[data-runtime-rotate]')!,
     body: root.querySelector<HTMLSelectElement>('[data-runtime-body]')!,
+    results: root.querySelector<HTMLElement>('[data-find-results]') ?? undefined,
     speed: root.querySelector<HTMLInputElement>('[data-runtime-speed]')!,
     speedLabel: root.querySelector<HTMLElement>('[data-speed-label]') ?? undefined,
     follow: root.querySelector<HTMLButtonElement>('[data-command="follow"]') ?? undefined,
@@ -682,6 +720,24 @@ export function mountSimulator(root: HTMLElement): void {
   controls.body.addEventListener('change', () => send('select', Number(controls.body.value)));
   controls.speed.addEventListener('input', () => send('speed', Number(controls.speed.value)));
   controls.search.addEventListener('input', runtime.filterBodies);
+  // A130: picking a match selects it, flies there and closes Find.
+  const findPanel = root.querySelector<HTMLDialogElement>('#find-panel');
+  const goTo = (index: number): void => {
+    send('select', index);
+    send('frameBody');
+    findPanel?.close();
+  };
+  controls.results?.addEventListener('click', event => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-find-index]');
+    if (button) goTo(Number(button.dataset.findIndex));
+  });
+  controls.search.addEventListener('keydown', event => {
+    if (event.key !== 'Enter') return;
+    const first = controls.results?.querySelector<HTMLButtonElement>('[data-find-index]');
+    if (!first) return;
+    event.preventDefault();
+    goTo(Number(first.dataset.findIndex));
+  });
   controls.group.addEventListener('change', runtime.filterBodies);
   root.querySelector('[data-clear-filters]')!.addEventListener('click', () => {
     controls.search.value = ''; controls.group.value = ''; runtime.filterBodies(); controls.search.focus();
