@@ -763,8 +763,29 @@ static void test_captions_clear_page_panels_they_would_cross(void)
     assert(render_clear_above(NULL, 0, 16, 400, 850) == 850);
 }
 
+/* Trails about a parent show the last 1.5 orbits (A152): a hundred loops of
+ * Io drawn over each other are a solid band, not a path. */
+static void test_trails_about_a_parent_keep_the_last_orbits(void)
+{
+    /* Io (1.77 d) sampled every hour for 176 days: 4224 points, keep 1.5
+     * orbits (64 hourly samples) plus the live endpoint. */
+    size_t first = render_trail_first_point(4224, 3600.0, 1.769 * 86400.0, 1.5);
+    assert(4224 - first == (size_t)ceil(1.5 * 1.769 * 24.0) + 1);
+    /* A trail shorter than the window is drawn whole. */
+    assert(render_trail_first_point(40, 3600.0, 1.769 * 86400.0, 1.5) == 0);
+    /* Unbound or unknown: whole. */
+    assert(render_trail_first_point(4224, 3600.0, NAN, 1.5) == 0);
+    assert(render_trail_first_point(4224, 0.0, 86400.0, 1.5) == 0);
+    /* Fewer than 12 samples per orbit draw a polygon, not a path: such a
+     * trail gives way to the orbit guide. */
+    assert(render_trail_too_coarse(1.769 * 86400.0 / 8.0, 1.769 * 86400.0));
+    assert(!render_trail_too_coarse(3600.0, 1.769 * 86400.0));
+    assert(!render_trail_too_coarse(3600.0, NAN));
+}
+
 int main(void)
 {
+    test_trails_about_a_parent_keep_the_last_orbits();
     test_captions_clear_page_panels_they_would_cross();
     test_texture_inventory_matches_assets();
     test_atmospheres_only_where_bodies_have_air();
