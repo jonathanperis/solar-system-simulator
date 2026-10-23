@@ -413,8 +413,8 @@ bool renderer_resources_init(RenderResources *resources)
         resources->shader = (Shader){0};
         return false;
     }
-    /* Planets get a smooth 96 x 48 sphere; dozens of small moons share a
-     * cheaper 32 x 16 one so the 128-body scene stays light on phones. */
+    /* Planets get a smooth 96 x 48 sphere; the many small moons share a
+     * cheaper 32 x 16 one so a family scene stays light on phones. */
     resources->sphere_detailed = build_sphere(96, 48);
     resources->sphere_simple = build_sphere(32, 16);
     resources->ring = build_ring(192, (float)SOLAR_SATURN_RING_VISUAL_INNER_RATIO,

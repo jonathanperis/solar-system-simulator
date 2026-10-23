@@ -7,7 +7,7 @@ typedef enum LessonPreset {
     LESSON_CORE, LESSON_CIRCULAR, LESSON_ECCENTRIC, LESSON_ESCAPE,
     LESSON_EARTH_MOON, LESSON_INCLINED, LESSON_PHOBOS,
     LESSON_BARYCENTRIC_CORE, LESSON_RESONANCE, LESSON_ENCOUNTER, LESSON_COLLISION,
-    /* Family scenes: a giant planet with its complete moon catalog. Like the
+    /* Family scenes: one primary and its complete moon catalog. Like the
      * main scene they are fixed 15-second Verlet scenes, not guided lessons. */
     LESSON_JUPITER_SYSTEM, LESSON_SATURN_SYSTEM, LESSON_URANUS_SYSTEM, LESSON_NEPTUNE_SYSTEM,
     LESSON_PLUTO_SYSTEM, LESSON_DIDYMOS_SYSTEM, LESSON_PATROCLUS_SYSTEM,
@@ -17,7 +17,7 @@ typedef enum LessonPreset {
 } LessonPreset;
 
 const char *lesson_name(LessonPreset preset);
-/* True for the main scene and the four family scenes: fixed 15 s Verlet
+/* True for the main scene and every family scene: fixed 15 s Verlet
  * astronomy scenes rather than guided lessons. */
 bool lesson_is_scene(LessonPreset preset);
 /* True when the preset starts from the dated 2026-06-09 sky (every scene and

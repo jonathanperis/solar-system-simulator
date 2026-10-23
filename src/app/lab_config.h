@@ -7,7 +7,7 @@
  * headless series). The longest shipped example, the resonance comparison,
  * needs 2.1e7 ticks; 1e9 leaves ~50x headroom. Measured on an Apple-silicon
  * laptop, that is under a minute per side for small lesson scenes and about
- * 1.6 hours for the 128-body core scene (~475 simulated years at 15 s), where
+ * 1.6 hours for the former 128-body scene (~475 simulated years at 15 s), where
  * the old 2^53 limit allowed descriptors that would never finish. */
 #define SOLAR_LAB_MAX_TICKS 1000000000ULL
 typedef struct LabConfiguration {
