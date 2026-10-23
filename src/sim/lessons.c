@@ -42,7 +42,7 @@ bool lesson_starts_at_epoch(LessonPreset preset)
 
 size_t lesson_subject_index(LessonPreset preset)
 {
-    /* A family scene opens on its planet. */
+    /* A family scene opens on its primary. */
     if (lesson_family_planet(preset) != BODY_ID_NONE) return (size_t)solar_system_family_planet_index(lesson_family_planet(preset));
     if (preset == LESSON_CORE || preset == LESSON_BARYCENTRIC_CORE) return 0;
     return preset == LESSON_RESONANCE || preset == LESSON_ENCOUNTER ? 2 : 1;

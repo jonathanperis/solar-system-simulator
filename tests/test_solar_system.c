@@ -332,8 +332,9 @@ static void test_saturn_constants_and_derived_perihelion_state(void)
 
 static void test_main_scene_holds_the_large_bodies_in_a_stable_order(void)
 {
-    /* SPEC 2026-10-07 scene split: the Sun, planets, Vesta, the Earth and
-     * Mars systems and the 17 major moons. Small moons live in family scenes. */
+    /* The main scene: the Sun, eight planets, Vesta, the Earth and Mars
+     * systems, Pluto and the 18 major moons, including Charon. Small moons
+     * live in family scenes. */
     const char *names[] = {"Sun", "Mercury", "Venus", "Earth", "Moon", "Mars", "Phobos", "Deimos", "Vesta", "Jupiter",
         "Io", "Europa", "Ganymede", "Callisto", "Saturn", "Mimas", "Enceladus", "Tethys", "Dione", "Rhea", "Titan",
         "Iapetus", "Uranus", "Ariel", "Umbriel", "Titania", "Oberon", "Miranda", "Neptune", "Triton", "Pluto", "Charon"};

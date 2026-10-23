@@ -1,11 +1,11 @@
 # Giant-planet satellite snapshots
 
-`tools/satellite_catalog.py` maintains one snapshot per giant planet:
+`tools/satellite_catalog.py` maintains one snapshot per system:
 `jovian_moons.json` (115 moons, checked 2026-09-10), `saturnian_moons.json` (291),
 `uranian_moons.json` (29), `neptunian_moons.json` (16), `plutonian_moons.json` (5)
 and `didymos_moons.json` (1), all checked 2026-10-07, and `patroclus_moons.json`
 (1), checked 2026-10-08.
-The Jovian description below applies to all four. System-specific rules:
+The Jovian description below is the shared policy for the four giant planets. System-specific rules:
 
 - Saturn: 24 regular moons use SAT441/SAT415 Laplace planes; 267 irregular moons
   use the ecliptic. NASA's Saturn page states both 274 and 293 recognized moons;

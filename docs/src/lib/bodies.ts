@@ -7,7 +7,7 @@ import didymosCatalog from '../../../data/didymos_moons.json' with { type: 'json
 import patroclusCatalog from '../../../data/patroclus_moons.json' with { type: 'json' };
 
 /** Scenes mirror the C presets: `core` is the main scene of large bodies;
- * each family scene holds one giant planet's complete moon catalog. */
+ * each family scene holds one primary's complete moon catalog. */
 export type SceneName = 'core' | 'jupiter-system' | 'saturn-system' | 'uranus-system' | 'neptune-system'
   | 'pluto-system' | 'didymos-system' | 'patroclus-system';
 export type FamilyPrimary = 'Jupiter' | 'Saturn' | 'Uranus' | 'Neptune' | 'Pluto' | 'Didymos' | 'Patroclus';
@@ -23,7 +23,7 @@ export type ImplementedBody = {
   summary: string;
   group?: string;
   /** Where the body is simulated: the main scene, or (small moons only) its
-   * planet's family scene. Major moons appear in both; `core` is listed. */
+   * primary's family scene. Major moons appear in both; `core` is listed. */
   scene: SceneName;
 };
 
@@ -210,7 +210,7 @@ const [pluto] = named([
   { slug: 'pluto', name: 'Pluto', kind: 'Dwarf planet', parent: 'Sun', milestone: 'Small-body satellite systems',
     initialization: 'Pluto–Charon barycenter at its Horizons state on 2026-06-09; Pluto circles a point outside its own surface.',
     source: 'src/sim/solar_system.c',
-    summary: 'Dwarf planet with JPL Horizons GM; its 17° orbital inclination is not modeled.' }
+    summary: 'Dwarf planet with a JPL Horizons GM. Dated scenes keep its real orbital tilt.' }
 ]);
 /** Didymos lives only in its family scene. */
 const didymos: ImplementedBody = {

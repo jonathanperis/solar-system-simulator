@@ -594,7 +594,7 @@ static bool start_app_lesson(SolarApp *state, LessonPreset lesson, double factor
         state->session.selected_body_index = 0;
         frame_selected_system(state, true);
     }
-    /* A family scene opens framed on its planet and complete moon system. */
+    /* A family scene opens framed on its primary and complete moon system. */
     if (lesson_family_planet(lesson) != BODY_ID_NONE) frame_selected_system(state, true);
     if (lesson_is_scene(lesson))
         snprintf(state->feedback, sizeof(state->feedback), "Scene: %s | %zu bodies", lesson_name(lesson), state->session.system.body_count);
