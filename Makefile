@@ -101,7 +101,7 @@ TEST_BINS += $(TEST_DIR)/test_csv_export
 TEST_BINS += $(TEST_DIR)/test_scene_style
 TEST_BINS += $(TEST_DIR)/test_image_decode
 HEADLESS_TEST_BINS = $(filter-out $(TEST_RENDERER),$(TEST_BINS))
-SOURCE_HEADERS := $(wildcard src/app/*.h src/sim/*.h src/render/*.h src/render/third_party/*.h src/sim/*.inc)
+SOURCE_HEADERS := $(wildcard src/app/*.h src/sim/*.h src/render/*.h src/render/third_party/*.h src/sim/*.inc src/render/*.inc)
 
 .PHONY: all run headless test test-binaries test-core test-sanitize test-build test-cli test-validators web raylib-web dist-wasm docs-assets docs-textures docs-check analysis-web-boundary test-native-shaders clean FORCE
 
@@ -136,6 +136,7 @@ test-core: build/catalog-orbits.dylib $(HEADLESS_TEST_BINS)
 	python3 tools/scene_epoch.py --check
 	python3 tools/belt_sample.py --check
 	python3 tools/constellations.py --check
+	python3 tools/stars.py --check
 	python3 tests/test_small_body_catalog.py
 	python3 tests/test_satellite_catalog.py
 	python3 tests/test_planet_epoch.py
@@ -321,9 +322,9 @@ $(LAB_WEB_WASM): $(LAB_WEB_JS)
 	@test -f $@ || { rm -f $(LAB_WEB_JS); $(MAKE) $(LAB_WEB_JS); }
 
 # Cinematic renderer style math is raylib-free, so it runs with the headless suite.
-build/src/render/scene_style.o: src/render/constellation_lines.inc
+build/src/render/scene_style.o: src/render/constellation_lines.inc src/render/star_catalog.inc
 
-$(TEST_DIR)/test_scene_style: tests/test_scene_style.c src/render/scene_style.c src/sim/orbit.c src/sim/vec3d.c src/render/scene_style.h src/render/constellation_lines.inc
+$(TEST_DIR)/test_scene_style: tests/test_scene_style.c src/render/scene_style.c src/sim/orbit.c src/sim/vec3d.c src/render/scene_style.h src/render/constellation_lines.inc src/render/star_catalog.inc
 	@mkdir -p $(@D)
 	$(CC) $(ALL_CPPFLAGS) $(ALL_CFLAGS) $(filter %.c,$^) $(LDLIBS) -o $@
 

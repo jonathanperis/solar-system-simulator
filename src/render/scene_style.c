@@ -8,6 +8,7 @@
 #include "../sim/constants.h"
 #include "../sim/orbit.h"
 #include "constellation_lines.inc"
+#include "star_catalog.inc"
 
 #define PI 3.14159265358979323846
 #define DEG (PI / 180.0)
@@ -916,6 +917,50 @@ bool render_constellation_segment(size_t index, Vec3d *a, Vec3d *b)
     *a = orbit_icrf_direction(s[0], s[1]);
     *b = orbit_icrf_direction(s[2], s[3]);
     return true;
+}
+
+size_t render_star_count(void)
+{
+    return RENDER_STAR_COUNT;
+}
+
+bool render_star(size_t index, Vec3d *direction, float *magnitude, float *bv)
+{
+    if (index >= RENDER_STAR_COUNT) return false;
+    const float *s = star_catalog[index];
+    *direction = orbit_icrf_direction(s[0], s[1]);
+    *magnitude = s[2];
+    *bv = s[3];
+    return true;
+}
+
+void render_blackbody_rgb(double kelvin, float rgb[3])
+{
+    double t = (kelvin < 1000 ? 1000 : kelvin > 40000 ? 40000 : kelvin) / 100.0;
+    double r = t <= 66 ? 255 : 329.698727446 * pow(t - 60, -0.1332047592);
+    double g = t <= 66 ? 99.4708025861 * log(t) - 161.1195681661 : 288.1221695283 * pow(t - 60, -0.0755148492);
+    double b = t >= 66 ? 255 : t <= 19 ? 0 : 138.5177312231 * log(t - 10) - 305.0447927307;
+    double c[3] = {r, g, b}, top = 0;
+    for (int k = 0; k < 3; ++k) {
+        c[k] = c[k] < 0 ? 0 : c[k] > 255 ? 255 : c[k];
+        top = c[k] > top ? c[k] : top;
+    }
+    for (int k = 0; k < 3; ++k) rgb[k] = (float)(top > 0 ? c[k] / top : 1.0);
+}
+
+RenderStarLook render_star_look(float magnitude, float bv)
+{
+    /* log10 of the flux over a 6th-magnitude star (Pogson: 0.4 per mag). */
+    double s = 0.4 * (6.0 - magnitude);
+    s = s < 0 ? 0 : s > 3.5 ? 3.5 : s;
+    /* Ballesteros (2012): T = 4600 (1 / (0.92 BV + 1.7) + 1 / (0.92 BV + 0.62)). */
+    double index = bv < -0.4 ? -0.4 : bv > 2.0 ? 2.0 : bv;
+    double kelvin = 4600.0 * (1.0 / (0.92 * index + 1.7) + 1.0 / (0.92 * index + 0.62));
+    float rgb[3];
+    render_blackbody_rgb(kelvin, rgb);
+    RenderStarLook look = {(float)(1.1 + 0.75 * s), (float)fmin(1.0, 0.22 + 0.26 * s),
+        0.5f + 0.5f * rgb[0], 0.5f + 0.5f * rgb[1], 0.5f + 0.5f * rgb[2]};
+    return look;
 }
 
 double render_clear_above(const double (*rects)[4], int count, double x0, double x1, double bottom)

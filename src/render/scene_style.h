@@ -435,6 +435,26 @@ bool render_scale_bar(double meters_per_pixel, double max_pixels, RenderScaleBar
 size_t render_constellation_count(void);
 bool render_constellation_segment(size_t index, Vec3d *a, Vec3d *b);
 
+/* Bright-star catalogue (SPEC A165): the 5,044 stars to visual magnitude 6
+ * from d3-celestial (BSD 3-Clause, tools/stars.py), as unit ICRF directions
+ * in simulation axes with V magnitude and B-V colour index. */
+size_t render_star_count(void);
+bool render_star(size_t index, Vec3d *direction, float *magnitude, float *bv);
+/* How a star is drawn: a soft point `radius_px` CSS pixels in half-width with
+ * peak `intensity` (0-1) and colour `r, g, b` (0-1). Flux follows Pogson's
+ * scale, 10^(-0.4 m); size and intensity grow with its logarithm (log10 of
+ * the flux over a 6th-magnitude star, 0 to ~3), so Sirius is a clear disc and
+ * the faintest stars a dim pixel. Colour: B-V to temperature (Ballesteros
+ * 2012), then to an approximate blackbody RGB, half-way to white because
+ * stars look nearly white to the eye. Presentation only. */
+typedef struct RenderStarLook {
+    float radius_px, intensity, r, g, b;
+} RenderStarLook;
+RenderStarLook render_star_look(float magnitude, float bv);
+/* Blackbody colour (0-1 RGB, the brightest channel 1) of `kelvin`, from
+ * Tanner Helland's fit to the CIE colour-matching tables (1000-40000 K). */
+void render_blackbody_rgb(double kelvin, float rgb[3]);
+
 /* Name labels drawn in the canvas (presentation only). The Sun, planets and
  * dwarf planets are always named; the selected body always is; moons and small bodies are
  * named once their family is zoomed in (at least

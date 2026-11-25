@@ -366,6 +366,33 @@ static void test_planetshine_orders_sources_physically(void)
     assert(fabsf(render_ringshine_exposure(0.45) - 0.03f) < 1e-6f && fabsf(render_ringshine_exposure(1) - 0.03f) < 1e-6f);
 }
 
+static void test_star_catalogue_and_looks(void)
+{
+    assert(render_star_count() == 5044);
+    Vec3d d; float mag, bv;
+    size_t brightest = 0; float best = 99;
+    for (size_t k = 0; k < render_star_count(); ++k) {
+        assert(render_star(k, &d, &mag, &bv));
+        assert(fabs(vec3d_length(d) - 1.0) < 1e-6 && mag <= 6.0f && bv > -0.5f && bv < 3.5f); /* carbon stars reach 3.3 */
+        if (mag < best) { best = mag; brightest = k; }
+    }
+    assert(!render_star(render_star_count(), &d, &mag, &bv));
+    /* Sirius (RA 101.29, Dec -16.72) is the brightest star in the table. */
+    render_star(brightest, &d, &mag, &bv);
+    Vec3d sirius = orbit_icrf_direction(101.2872, -16.7161);
+    assert(mag < -1.4f && vec3d_dot(d, sirius) > cos(0.1 * 3.14159265358979323846 / 180.0));
+    /* Brighter is bigger and stronger; hot stars bluer, cool stars redder. */
+    RenderStarLook bright = render_star_look(-1.44f, 0.0f), faint = render_star_look(6.0f, 0.65f);
+    assert(bright.radius_px > faint.radius_px && bright.intensity > faint.intensity);
+    assert(faint.radius_px > 1.0f && faint.intensity > 0.2f && bright.intensity <= 1.0f);
+    RenderStarLook blue = render_star_look(1.0f, -0.2f), red = render_star_look(1.0f, 1.8f);
+    assert(blue.b > blue.r && red.r > red.b && red.b >= 0.5f);
+    float sun[3], candle[3];
+    render_blackbody_rgb(5772, sun);
+    render_blackbody_rgb(1900, candle);
+    assert(sun[0] == 1.0f && sun[2] > 0.8f && candle[2] < 0.3f);
+}
+
 static void test_own_path_fades_over_its_disc(void)
 {
     /* Camera on +z looking at a unit body at the origin, 10 units away. */
@@ -884,6 +911,7 @@ int main(void)
     test_small_wire_markers_become_dots();
     test_trail_segments_stop_at_the_body_surface();
     test_own_path_fades_over_its_disc();
+    test_star_catalogue_and_looks();
     test_planetshine_orders_sources_physically();
     test_edge_on_orbits_dim();
     test_sun_glare_fades_once_the_disc_is_resolved();

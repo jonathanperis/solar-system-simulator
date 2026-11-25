@@ -19,7 +19,7 @@ const sources = [
   ['Didymos and Dimorphos', 'Horizons DART s547 reconstruction', 'https://ssd.jpl.nasa.gov/horizons/'],
   ['Patroclus and Menoetius', 'Horizons asteroid-satellite solution JPL#82', 'https://ssd.jpl.nasa.gov/horizons/'],
   ['Textures', 'Solar System Scope, CC BY 4.0', 'https://www.solarsystemscope.com/textures/'],
-  ['Constellation lines', 'd3-celestial by Olaf Frohn, BSD 3-Clause', 'https://github.com/ofrohn/d3-celestial'],
+  ['Constellation lines and bright stars', 'd3-celestial by Olaf Frohn, BSD 3-Clause', 'https://github.com/ofrohn/d3-celestial'],
   ['Uranus rings', 'NASA NSSDC Uranian Rings Fact Sheet', 'https://nssdc.gsfc.nasa.gov/planetary/factsheet/uranringfact.html'],
   ['Neptune rings', 'NASA NSSDC Neptunian Rings Fact Sheet', 'https://nssdc.gsfc.nasa.gov/planetary/factsheet/nepringfact.html'],
   ['Jupiter rings', 'NASA NSSDC Jupiter Rings Fact Sheet', 'https://nssdc.gsfc.nasa.gov/planetary/factsheet/jupringfact.html'],
@@ -87,7 +87,7 @@ const sources = [
       <dt>Shadows</dt><dd>Eclipses from the true geometry: they appear exactly when a moon's shadow really falls on its planet, or a planet's on a moon.</dd>
       <dt>Rings</dt><dd>Saturn's from a map; Uranus's, Neptune's and Jupiter's from NASA ring tables, as faint as reality in real scale. Dusty rings glow when backlit.</dd>
       <dt>From Earth</dt><dd>The camera at Earth's centre in real scale, aimed at the selection: true directions, phases and star backgrounds. Captions give the target's apparent disc, how much of it is lit (the Moon's or Venus's phase) and its angle from the Sun, which decides whether it is in a night sky. Dragging looks around the sky and Frame body re-centres; zooming narrows the field like a telescope, down to 72 arcseconds.</dd>
-      <dt>Sky</dt><dd>A real all-sky image turned to its true directions, with optional IAU constellation lines.</dd>
+      <dt>Sky</dt><dd>A real all-sky image turned to its true directions, with the 5,044 stars to magnitude 6 drawn as sharp points in their catalogue colours, and optional IAU constellation lines.</dd>
       <dt>Small bodies</dt><dd>48,074 asteroids, Trojans and Kuiper-belt objects sampled from the atlas, moved on their orbits around the Sun.</dd>
     </dl>
 
@@ -131,6 +131,6 @@ const sources = [
     <p>Every moon system with a JPL ephemeris now has a scene, most recently the Patroclus–Menoetius trojan binary. Moons of other asteroids have only literature orbits, so they wait for an ephemeris. Open work is tracked in <a href={`${repoUrl}/blob/main/SPEC.md`}>SPEC.md</a>.</p>
 
     <h2 id="credits">Credits</h2>
-    <p>Made by {authorName}. Code under the MIT licence; data are transformed extracts of NASA/JPL products; textures by Solar System Scope (CC BY 4.0); moon maps from USGS Astrogeology mosaics of NASA, ESA and DLR data (public domain); relief from LRO LOLA, MGS MOLA and MESSENGER topography (NASA, USGS; public domain); constellation lines from d3-celestial, © 2015 Olaf Frohn, BSD 3-Clause (licence text in the source repository's assets/sky/); fonts Cormorant Garamond and JetBrains Mono (OFL). Usage analytics run only on the deployed site, and only when configured. <a href={repoUrl}>Source on GitHub</a>.</p>
+    <p>Made by {authorName}. Code under the MIT licence; data are transformed extracts of NASA/JPL products; textures by Solar System Scope (CC BY 4.0); moon maps from USGS Astrogeology mosaics of NASA, ESA and DLR data (public domain); relief from LRO LOLA, MGS MOLA and MESSENGER topography (NASA, USGS; public domain); constellation lines and the bright-star catalogue from d3-celestial, © 2015 Olaf Frohn, BSD 3-Clause (licence text in the source repository's assets/sky/); fonts Cormorant Garamond and JetBrains Mono (OFL). Usage analytics run only on the deployed site, and only when configured. <a href={repoUrl}>Source on GitHub</a>.</p>
   </div>
 </BaseLayout>

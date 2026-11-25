@@ -40,6 +40,11 @@ typedef struct RenderResources {
     int belt_mesh_count;
     size_t belt_count;
     Material belt_material;
+    /* Bright stars (A165): one static mesh of catalogue points. */
+    Shader star_shader;
+    int loc_star_eye, loc_star_radius, loc_star_viewport, loc_star_pixel_scale;
+    Mesh star_mesh;
+    Material star_material;
     Mesh sphere_detailed, sphere_simple, ring;
     /* Faint ring systems (A122, A126), indexed like render_ring_system_at:
      * mesh, real-scale coverage strip, illustrative strip. */
