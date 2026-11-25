@@ -377,7 +377,15 @@ static void test_star_catalogue_and_looks(void)
         if (mag < best) { best = mag; brightest = k; }
     }
     assert(!render_star(render_star_count(), &d, &mag, &bv));
+    /* Stored brightest first; wide fields draw to 4.5, telescopes to 6. */
+    float previous = -10;
+    for (size_t k = 0; k < render_star_count(); ++k) { render_star(k, &d, &mag, &bv); assert(mag >= previous); previous = mag; }
+    assert(render_star_limit_magnitude(45) == 4.5 && render_star_limit_magnitude(1) == 6.0 && render_star_limit_magnitude(NAN) == 4.5);
+    assert(render_star_limit_magnitude(10) > 4.5 && render_star_limit_magnitude(10) < render_star_limit_magnitude(5));
+    assert(render_star_draw_count(45) == 921 && render_star_draw_count(2) == render_star_count());
+    assert(render_star_draw_count(10) > 921 && render_star_draw_count(10) < render_star_count());
     /* Sirius (RA 101.29, Dec -16.72) is the brightest star in the table. */
+    assert(brightest == 0);
     render_star(brightest, &d, &mag, &bv);
     Vec3d sirius = orbit_icrf_direction(101.2872, -16.7161);
     assert(mag < -1.4f && vec3d_dot(d, sirius) > cos(0.1 * 3.14159265358979323846 / 180.0));

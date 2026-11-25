@@ -381,14 +381,15 @@ static const char star_vertex_shader[] = SHADER_HEADER_VS
     "    tint = vec4(vertexColor.rgb, vertexNormal.y);\n"
     "}\n";
 
-/* A soft Gaussian point, cut to zero at the quad's edge. */
+/* A soft Gaussian point, cut to zero at the quad's edge. In pixels it is
+ * exp(-1.375 (r / radius)^2); the quad edge sits at 1.25 radii. */
 static const char star_fragment_shader[] = SHADER_HEADER_FS
     "IN vec2 corner;\n"
     "IN vec4 tint;\n"
     SHADER_OUTPUT
     "void main() {\n"
     "    float r2 = dot(corner, corner);\n"
-    "    float glow = exp(-5.5 * r2) * (1.0 - smoothstep(0.6, 1.0, r2));\n"
+    "    float glow = exp(-2.15 * r2) * (1.0 - smoothstep(0.6, 1.0, r2));\n"
     "    FRAG_COLOR = vec4(tint.rgb * tint.a * glow, 1.0);\n"
     "}\n";
 
@@ -416,8 +417,10 @@ static Mesh build_star_mesh(void)
             size_t v = k * 4 + (size_t)c;
             mesh.vertices[v * 3] = (float)d.x; mesh.vertices[v * 3 + 1] = (float)d.y; mesh.vertices[v * 3 + 2] = (float)d.z;
             mesh.texcoords[v * 2] = corners[c][0]; mesh.texcoords[v * 2 + 1] = corners[c][1];
-            /* The quad spans two half-widths so the Gaussian's tail fits. */
-            mesh.normals[v * 3] = look.radius_px * 2.0f; mesh.normals[v * 3 + 1] = look.intensity; mesh.normals[v * 3 + 2] = 0;
+            /* The quad spans 1.25 half-widths: enough for the visible part of
+             * the Gaussian. Fill rate is the cost here (a software renderer
+             * halved its frame rate at twice the radius). */
+            mesh.normals[v * 3] = look.radius_px * 1.25f; mesh.normals[v * 3 + 1] = look.intensity; mesh.normals[v * 3 + 2] = 0;
             mesh.colors[v * 4] = (unsigned char)(look.r * 255); mesh.colors[v * 4 + 1] = (unsigned char)(look.g * 255);
             mesh.colors[v * 4 + 2] = (unsigned char)(look.b * 255); mesh.colors[v * 4 + 3] = 255;
         }
