@@ -14,7 +14,7 @@ test('the cinematic renderer loads every texture without console errors', async 
   await expect(canvas).toHaveAttribute('data-textures', /^(\d+)\/\1$/, { timeout: 45000 });
   const [loaded, total] = (await canvas.getAttribute('data-textures'))!.split('/').map(Number);
   expect(loaded).toBe(total);
-  expect(total).toBe(28); // 14 Solar System Scope maps + 14 USGS moon maps (A109)
+  expect(total).toBe(31); // 14 Solar System Scope maps + 14 USGS moon maps (A109) + 3 relief maps (A164)
   expect(problems).toEqual([]);
 });
 
@@ -23,7 +23,7 @@ test('missing textures fall back to lit colours and the simulation keeps running
   await page.goto(base);
   await expect(page.locator('[data-runtime-status]')).toHaveText('Running');
   const canvas = page.locator('canvas').first();
-  await expect(canvas).toHaveAttribute('data-textures', '0/28', { timeout: 45000 });
+  await expect(canvas).toHaveAttribute('data-textures', '0/31', { timeout: 45000 });
   const elapsed = page.locator('[data-runtime-elapsed]');
   const before = await elapsed.textContent();
   await expect.poll(async () => elapsed.textContent(), { timeout: 10000 }).not.toBe(before);
