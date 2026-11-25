@@ -62,6 +62,28 @@ typedef struct RenderAtmosphere {
 } RenderAtmosphere;
 RenderAtmosphere render_atmosphere_for_body(BodyId id);
 
+/* Planetshine (SPEC A162): a body as a secondary light source for its moons.
+ * `bond_albedo` is the fraction of sunlight it sends back (NASA planetary
+ * fact sheets; 0.1 for bodies without a listed value), `r, g, b` the reflected
+ * light's approximate linear colour. */
+typedef struct RenderShineSource {
+    float bond_albedo, r, g, b;
+} RenderShineSource;
+RenderShineSource render_shine_source(BodyId id);
+/* Exposure of one-bounce light on a moon from a source of `bond_albedo` and
+ * radius `source_radius_m` at `distance_m`, with `lit_fraction` of its disc
+ * sunlit as seen from the moon. The irradiance relative to direct sunlight is
+ * E = (2/3) A (R/d)^2 k (a Lambert sphere's full-phase factor 2/3); earthshine
+ * on the Moon is ~1e-4, Jupiter-shine on Io ~1e-2. Shown honestly it would be
+ * black next to sunlight, so E is mapped logarithmically: 0 below 1e-6, a
+ * smooth rise to 0.035 (linear light) at 1e-2 and above. The ordering is
+ * physical; the exposure is presentation. */
+float render_planetshine_exposure(double bond_albedo, double source_radius_m, double distance_m, double lit_fraction);
+/* Ringshine on Saturn's night side: the rings' sunlit face brightens with the
+ * sine of the Sun's elevation above the ring plane; 0.03 from 0.45 (27
+ * degrees, near the maximum tilt), smoothly to 0 edge-on. */
+float render_ringshine_exposure(double sun_elevation_sine);
+
 /* Spin orientation in simulation axes (+Y = ecliptic north, see
  * orbit_ecliptic_to_simulation). `pole` is the body's IAU north pole and
  * `prime_meridian` points from the centre through longitude 0 on its equator.

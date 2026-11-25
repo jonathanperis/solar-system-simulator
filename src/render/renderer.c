@@ -465,6 +465,9 @@ typedef struct RingShadow {
     float radius, ring_inner, ring_outer; /* ring edges in planet radii */
     Texture2D ring_opacity;
     float dust; /* forward-scattering dust fraction (A127); Saturn's icy main rings 0.05 */
+    /* Earth's cloud shadows (A161) reuse this geometry: centre, pole as
+     * `ring_normal`, radius, and the cloud map as `ring_opacity`. */
+    bool clouds;
 } RingShadow;
 
 /* raylib allocates MAX_MATERIAL_MAPS (12, an internal config.h value) maps
@@ -479,8 +482,10 @@ static void draw_shaded(const RenderResources *resources, const Mesh *mesh, cons
     Texture2D surface, Color tint, Vector3 light_direction, RenderAtmosphere atmosphere, const Texture2D *night,
     const RingShadow *rings)
 {
-    float ring_flag = rings ? 1.0f : 0.0f;
+    float ring_flag = rings && !rings->clouds ? 1.0f : 0.0f, cloud_flag = rings && rings->clouds ? 1.0f : 0.0f;
     SetShaderValue(resources->shader, resources->loc_ring_shadow, &ring_flag, SHADER_UNIFORM_FLOAT);
+    if (resources->loc_cloud_shadow >= 0)
+        SetShaderValue(resources->shader, resources->loc_cloud_shadow, &cloud_flag, SHADER_UNIFORM_FLOAT);
     if (rings) {
         float center[3] = {rings->center.x, rings->center.y, rings->center.z};
         float normal[3] = {rings->ring_normal.x, rings->ring_normal.y, rings->ring_normal.z};
@@ -1625,6 +1630,49 @@ static void set_eclipse_casters(const FrameContext *ctx, size_t i)
         SetShaderValueV(resources->shader, resources->loc_occluders, casters, SHADER_UNIFORM_VEC4, count);
 }
 
+/* One-bounce light for body i (SPEC A162): its parent's sunlit disc as a
+ * second light source, or, for Saturn, its rings' sunlit face. Strength from
+ * the true SI geometry (source size, distance and lit phase seen from the
+ * body); direction in render space, so illustrative spreading stays
+ * consistent with what is drawn. Presentation only. */
+static void set_planetshine(const FrameContext *ctx, size_t i, RenderOrientation orientation)
+{
+    const RenderResources *resources = ctx->resources;
+    if (resources->loc_shine < 0) return;
+    const SolarSystem *system = ctx->system;
+    const Body *body = &system->bodies[i];
+    float shine[4] = {0, 1, 0, 0}, color[3] = {1, 1, 1};
+    int parent = ctx->cache.parent[i];
+    if (ctx->star >= 0 && parent >= 0 && parent != ctx->star && system->bodies[parent].radius_quality != PHYSICAL_UNKNOWN) {
+        const Body *source = &system->bodies[parent];
+        Vec3d sun = system->bodies[ctx->star].position_m;
+        Vec3d to_sun = vec3d_sub(sun, source->position_m), to_body = vec3d_sub(body->position_m, source->position_m);
+        double ds = vec3d_length(to_sun), db = vec3d_length(to_body);
+        if (ds > 0 && db > 0) {
+            /* Lit fraction of the source's disc seen from the body:
+             * (1 + cos a) / 2, a the Sun-source-body angle. */
+            double lit = 0.5 * (1.0 + vec3d_dot(to_sun, to_body) / (ds * db));
+            RenderShineSource tint = render_shine_source(source->id);
+            Vector3 toward = unit_vector((Vector3){ctx->position[parent].x - ctx->position[i].x,
+                ctx->position[parent].y - ctx->position[i].y, ctx->position[parent].z - ctx->position[i].z}, (Vector3){0, 1, 0});
+            shine[0] = toward.x; shine[1] = toward.y; shine[2] = toward.z;
+            shine[3] = render_planetshine_exposure(tint.bond_albedo, source->radius_m, db, lit);
+            color[0] = tint.r; color[1] = tint.g; color[2] = tint.b;
+        }
+    } else if (body->id == BODY_ID_SATURN && ctx->star >= 0) {
+        /* The rings light the hemisphere on their sunlit side. */
+        Vector3 sun = light_toward_star(ctx, i);
+        Vector3 pole = {(float)orientation.pole.x, (float)orientation.pole.y, (float)orientation.pole.z};
+        float elevation = sun.x * pole.x + sun.y * pole.y + sun.z * pole.z;
+        float side = elevation >= 0 ? 1.0f : -1.0f;
+        shine[0] = pole.x * side; shine[1] = pole.y * side; shine[2] = pole.z * side;
+        shine[3] = render_ringshine_exposure(elevation);
+        color[0] = 1.0f; color[1] = 0.9f; color[2] = 0.72f;
+    }
+    SetShaderValue(resources->shader, resources->loc_shine, shine, SHADER_UNIFORM_VEC4);
+    SetShaderValue(resources->shader, resources->loc_shine_color, color, SHADER_UNIFORM_VEC3);
+}
+
 /* Phase 3. Opaque bodies. Each mesh draw costs dozens of WebGL calls, so
  * bodies behind the camera are skipped and sub-pixel bodies become one
  * batched dot (presentation only: their SI state is untouched). */
@@ -1677,7 +1725,16 @@ static void draw_opaque_bodies(const FrameContext *ctx)
         RingShadow saturn_rings;
         bool ringed = (body->id == BODY_ID_SATURN || ring_system_index(body->id) >= 0)
             && planet_ring_shadow(resources, body->id, orientation, position, radius, ctx->mode, &saturn_rings);
+        /* Earth's clouds shade the ground: the same geometry slots carry
+         * the pole and the cloud map (A161). */
+        if (body->id == BODY_ID_EARTH && resources->texture_loaded[RENDER_TEXTURE_EARTH_CLOUDS]) {
+            saturn_rings = (RingShadow){.center = position, .radius = radius,
+                .ring_normal = {(float)orientation.pole.x, (float)orientation.pole.y, (float)orientation.pole.z},
+                .ring_opacity = resources->textures[RENDER_TEXTURE_EARTH_CLOUDS], .clouds = true};
+            ringed = true;
+        }
         set_eclipse_casters(ctx, i);
+        set_planetshine(ctx, i, orientation);
         draw_shaded(resources, mesh, &transform, SHADE_LIT, texture_or_white(resources, slot), tint, light_toward_star(ctx, i),
             render_atmosphere_for_body(body->id), city_lights ? &resources->textures[RENDER_TEXTURE_EARTH_NIGHT] : NULL,
             ringed ? &saturn_rings : NULL);
