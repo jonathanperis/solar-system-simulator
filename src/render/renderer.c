@@ -724,6 +724,10 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
          * surface so it never pokes out through the near side. */
         Vec3d center = cache->position[i];
         double surface = body->radius_quality == PHYSICAL_UNKNOWN ? 0 : renderer_body_radius(body, mode);
+        /* And fade it where it runs in front of the body's own disc. */
+        bool own_fade = surface > 0 && render_projected_radius_pixels(surface,
+            vec3d_length(vec3d_sub(center, camera_world)), camera->fovy, viewport_height) >= 3.0;
+#define OWN_FADE(p) (own_fade ? render_own_disc_fade((p), camera_world, center, surface) : 1.0f)
         /* Adjacent segments share an endpoint. Reuse its render transform;
          * the simulation and synchronized history are immutable while drawing.
          * Opacity follows the sample's age so recent motion reads first. */
@@ -736,8 +740,8 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
             Vec3d a = start, b = end;
             if (!(start_code & end_code) && render_clip_segment_outside_sphere(&a, &b, center, surface)) {
                 /* The fade runs over the drawn window, oldest to newest. */
-                line_vertex(renderer_relative_vector(a, origin), color, render_trail_alpha(previous - first, shown));
-                line_vertex(renderer_relative_vector(b, origin), color, render_trail_alpha(j - first, shown));
+                line_vertex(renderer_relative_vector(a, origin), color, render_trail_alpha(previous - first, shown) * OWN_FADE(a));
+                line_vertex(renderer_relative_vector(b, origin), color, render_trail_alpha(j - first, shown) * OWN_FADE(b));
             }
             start = end;
             start_code = end_code;
@@ -747,10 +751,11 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
             Vec3d end = renderer_trail_point_cached(cache, system, trails, i, point_count - 1, mode, trail_frame);
             Vec3d a = start, b = end;
             if (!(start_code & render_frustum_outcode(&view, end)) && render_clip_segment_outside_sphere(&a, &b, center, surface)) {
-                line_vertex(renderer_relative_vector(a, origin), color, render_trail_alpha(previous - first, shown));
-                line_vertex(renderer_relative_vector(b, origin), color, 1.0f);
+                line_vertex(renderer_relative_vector(a, origin), color, render_trail_alpha(previous - first, shown) * OWN_FADE(a));
+                line_vertex(renderer_relative_vector(b, origin), color, OWN_FADE(b));
             }
         }
+#undef OWN_FADE
     }
     rlEnd();
 }
@@ -1392,6 +1397,12 @@ static void draw_orbit_guides(const FrameContext *ctx)
         double c = cos0, s = sin0;
         Vec3d previous = orbit_guide_vertex(system, parent_index, body, parent, parent_render, render_orbit_guide_point(&guide, c, s), ctx->mode, spread, clearance);
         unsigned previous_code = render_frustum_outcode(&view, previous);
+        /* A framed body's own guide fades where it passes in front of its
+         * disc; a body a few pixels across skips the per-vertex test. */
+        Vec3d own_center = ctx->cache.position[i];
+        double own_radius = body->radius_quality == PHYSICAL_UNKNOWN ? 0 : ctx->radius[i];
+        bool own_fade = own_radius > 0 && body_pixels(ctx, i, ctx->radius[i]) >= 3.0;
+        float previous_fade = own_fade ? render_own_disc_fade(previous, camera_world, own_center, own_radius) : 1.0f;
         for (int k = 1; k <= segments; ++k) {
             if (close) {
                 /* u in [-1, 1] around the orbit; E - E0 = pi u^3 is dense at the
@@ -1404,6 +1415,7 @@ static void draw_orbit_guides(const FrameContext *ctx)
                     previous = orbit_guide_vertex(system, parent_index, body, parent, parent_render,
                         render_orbit_guide_point(&guide, cos(e_start), sin(e_start)), ctx->mode, spread, clearance);
                     previous_code = render_frustum_outcode(&view, previous);
+                    previous_fade = own_fade ? render_own_disc_fade(previous, camera_world, own_center, own_radius) : 1.0f;
                 }
             } else {
                 double next_c = c * step_cos - s * step_sin;
@@ -1412,12 +1424,14 @@ static void draw_orbit_guides(const FrameContext *ctx)
             }
             Vec3d point = orbit_guide_vertex(system, parent_index, body, parent, parent_render, render_orbit_guide_point(&guide, c, s), ctx->mode, spread, clearance);
             unsigned code = render_frustum_outcode(&view, point);
-            if (!(code & previous_code)) {
-                line_vertex(renderer_relative_vector(previous, ctx->origin), color, alpha);
-                line_vertex(renderer_relative_vector(point, ctx->origin), color, alpha);
+            float fade = own_fade ? render_own_disc_fade(point, camera_world, own_center, own_radius) : 1.0f;
+            if (!(code & previous_code) && (previous_fade > 0 || fade > 0)) {
+                line_vertex(renderer_relative_vector(previous, ctx->origin), color, alpha * previous_fade);
+                line_vertex(renderer_relative_vector(point, ctx->origin), color, alpha * fade);
             }
             previous = point;
             previous_code = code;
+            previous_fade = fade;
         }
     }
     rlEnd();

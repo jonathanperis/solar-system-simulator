@@ -353,6 +353,23 @@ bool render_clip_segment_outside_sphere(Vec3d *a, Vec3d *b, Vec3d center, double
     return true;
 }
 
+float render_own_disc_fade(Vec3d point, Vec3d camera, Vec3d center, double radius)
+{
+    Vec3d to_center = vec3d_sub(center, camera), to_point = vec3d_sub(point, camera);
+    double center_distance = vec3d_length(to_center), point_distance = vec3d_length(to_point);
+    if (!(radius > 0) || center_distance <= radius || point_distance <= 0) return 1.0f;
+    /* Only the near side: farther than the centre, depth already hides it. */
+    double along = vec3d_dot(to_point, to_center) / center_distance;
+    if (along <= 0 || along >= center_distance) return 1.0f;
+    /* Angular separation from the disc centre over the disc's angular
+     * radius, both as sines (the cross product's length is |a||b| sin). */
+    double separation = vec3d_length(vec3d_cross(to_point, to_center)) / (point_distance * center_distance);
+    double ratio = separation / (radius / center_distance);
+    double t = (ratio - 1.0) / 0.6;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return (float)(t * t * (3 - 2 * t));
+}
+
 double render_moon_spread_factor(BodyId parent)
 {
     return parent == BODY_ID_MARS ? 40.0 : 1.0;
