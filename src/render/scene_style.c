@@ -88,6 +88,41 @@ RenderTextureSlot render_texture_for_body(BodyId id)
     }
 }
 
+RenderShineSource render_shine_source(BodyId id)
+{
+    /* Bond albedos from the NASA planetary fact sheets; colours are the
+     * reflected light's rough tint, not the catalogue marker colours. */
+    switch (id) {
+        case BODY_ID_EARTH: return (RenderShineSource){0.306f, 0.72f, 0.84f, 1.00f};
+        case BODY_ID_MARS: return (RenderShineSource){0.250f, 1.00f, 0.70f, 0.50f};
+        case BODY_ID_JUPITER: return (RenderShineSource){0.343f, 1.00f, 0.88f, 0.72f};
+        case BODY_ID_SATURN: return (RenderShineSource){0.342f, 1.00f, 0.90f, 0.70f};
+        case BODY_ID_URANUS: return (RenderShineSource){0.300f, 0.72f, 0.92f, 1.00f};
+        case BODY_ID_NEPTUNE: return (RenderShineSource){0.290f, 0.60f, 0.76f, 1.00f};
+        case BODY_ID_PLUTO: return (RenderShineSource){0.720f, 1.00f, 0.86f, 0.72f};
+        default: return (RenderShineSource){0.1f, 0.85f, 0.85f, 0.85f};
+    }
+}
+
+static double smooth01(double t)
+{
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return t * t * (3 - 2 * t);
+}
+
+float render_planetshine_exposure(double bond_albedo, double source_radius_m, double distance_m, double lit_fraction)
+{
+    if (!(bond_albedo > 0) || !(source_radius_m > 0) || !(distance_m > source_radius_m) || !(lit_fraction > 0)) return 0.0f;
+    double ratio = source_radius_m / distance_m;
+    double irradiance = 2.0 / 3.0 * bond_albedo * ratio * ratio * (lit_fraction > 1 ? 1 : lit_fraction);
+    return (float)(0.035 * smooth01((log10(irradiance) + 6.0) / 4.0));
+}
+
+float render_ringshine_exposure(double sun_elevation_sine)
+{
+    return (float)(0.03 * smooth01(fabs(sun_elevation_sine) / 0.45));
+}
+
 RenderAtmosphere render_atmosphere_for_body(BodyId id)
 {
     /* Rim tints are artistic approximations of each atmosphere's scattered

@@ -81,6 +81,9 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "uniform vec4 occluders[4];\n"    /* eclipse casters: centre (xyz) and drawn radius (w) */
     "uniform float occluderCount;\n"
     "uniform float sunRadius;\n"      /* the Sun's angular radius from this body, radians */
+    "uniform vec4 shine;\n"           /* one-bounce light: unit direction to its source (xyz), exposure (w) */
+    "uniform vec3 shineColor;\n"      /* that source's colour, linear */
+    "uniform float cloudShadow;\n"    /* 1 = Earth: texture2 is the cloud map, ringNormal the pole */
     SHADER_OUTPUT
     "vec3 toLinear(vec3 c) { return pow(c, vec3(2.2)); }\n"
     "vec3 toDisplay(vec3 c) { return pow(clamp(c, 0.0, 1.0), vec3(1.0 / 2.2)); }\n"
@@ -96,7 +99,7 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "    if (mode > 4.5) {\n"
     "        float mu = max(dot(n, v), 0.0);\n"
     "        float graze = smoothstep(0.0, 0.26, mu) * (1.0 - smoothstep(0.24, 0.75, mu));\n"
-    "        float day = smoothstep(-0.25, 0.45, dot(n, lightDir));\n"
+    "        float day = smoothstep(-0.12, 0.45, dot(n, lightDir));\n"
     "        FRAG_COLOR = vec4(atmosphere.rgb * atmosphere.a * graze * day * 1.6, 1.0);\n"
     "        return;\n"
     "    }\n"
@@ -125,7 +128,7 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "    }\n";
 
 /* ISO C caps a string literal at 4095 characters, so main() continues in a
- * second literal; renderer_resources_init joins the two. */
+ * second and third literal; renderer_resources_init joins them. */
 static const char fragment_shader_lit[] =
     /* Lambert's law: brightness follows the cosine of the Sun's angle; a 5%
      * wrap stands in for light scattered just past the terminator. */
@@ -182,6 +185,34 @@ static const char fragment_shader_lit[] =
     "    float u = (hitRadius - ringRadii.x) / max(ringRadii.y - ringRadii.x, 0.000001);\n"
     "    float ringAlpha = TEX(texture2, vec2(clamp(u, 0.0, 1.0), 0.5)).a;\n"
     "    if (ringShadow > 0.5 && abs(facing) > 0.0001 && t > 0.0 && u > 0.0 && u < 1.0) lit *= 1.0 - 0.85 * ringAlpha;\n"
+    /* Earth's clouds shade the ground (A161): follow the ray toward the Sun
+     * up to the cloud shell 1.2% of a radius above the surface, which lands
+     * h tan(z) along the ground toward the Sun (z the Sun's zenith angle,
+     * capped near the terminator), and read the cloud map's opacity there.
+     * The offset becomes a texture shift through the local east and north
+     * directions (u grows eastward over 2 pi R cos(latitude), v southward
+     * over pi R). The branch is on a uniform, so the lookup stays valid. */
+    "    if (cloudShadow > 0.5) {\n"
+    "        vec3 east = cross(ringNormal, n);\n"
+    "        float cosLat = max(length(east), 0.02);\n"
+    "        east /= cosLat;\n"
+    "        vec3 north = cross(n, east);\n"
+    "        vec3 drift = 0.012 * bodyRadius * (lightDir - n * ndl) / max(ndl, 0.15);\n"
+    "        vec2 shift = vec2(dot(drift, east) / (6.2831853 * bodyRadius * cosLat), -dot(drift, north) / (3.1415927 * bodyRadius));\n"
+    "        lit *= 1.0 - 0.6 * TEX(texture2, fragTexCoord + shift).r;\n"
+    "    }\n"
+    /* Airless regolith (A160) scatters like the Lommel-Seeliger law,
+     * 2 mu0 / (mu0 + mu) for Sun and eye cosines mu0 and mu, not Lambert's mu0:
+     * a full Moon is nearly as bright at its limb as at its centre. The
+     * lunar-Lambert blend (70% Lommel-Seeliger, McEwen 1991) keeps a little
+     * Lambert falloff; bodies with air (strength above 0) stay Lambertian. */
+    "    if (atmosphere.a <= 0.0) {\n"
+    "        float mu0 = max(ndl, 0.0);\n"
+    "        lit = 0.7 * min(2.0 * mu0 / (mu0 + max(dot(n, v), 0.0) + 1e-4), 1.6) + 0.3 * lit;\n"
+    "    }\n";
+
+/* The third part of main(): shadows, light sources and display. */
+static const char fragment_shader_shadows[] =
     /* Eclipses (SPEC A111): a moon's shadow on its planet, the planet's on
      * its moons. From this point the Sun is a disc of angular radius
      * sunRadius; each caster is a disc of angular radius R/t at angular
@@ -204,6 +235,11 @@ static const char fragment_shader_lit[] =
     /* Direct sunlight, the ocean glint and the lit air of the rim all dim. */
     "    lit *= sunlight;\n"
     "    vec3 color = albedo * (0.004 + lit);\n"
+    /* Planetshine (A162): sunlight reflected once by the parent (or by
+     * Saturn's rings) reaches the hemisphere facing it. Its strength comes
+     * from C (albedo, size, distance and lit phase of the source, through a
+     * log exposure); it is not eclipsed by the Sun's casters. */
+    "    color += albedo * shineColor * shine.w * max(dot(n, shine.xyz), 0.0);\n"
     /* Dusk: sunlight grazing the terminator crosses a long path of air that
      * scatters away blue, so planets with air redden there. Gaussian band in
      * the Sun's elevation, scaled by the atmosphere's strength. */
@@ -231,7 +267,7 @@ static const char fragment_shader_lit[] =
     /* Atmosphere rim: grazing sight lines cross more air (Fresnel-like
      * falloff), lit mostly on the day side. */
     "    float rim = pow(1.0 - max(dot(n, v), 0.0), 3.0);\n"
-    "    color += toLinear(atmosphere.rgb) * atmosphere.a * rim * smoothstep(-0.3, 0.45, ndl) * sunlight;\n"
+    "    color += toLinear(atmosphere.rgb) * atmosphere.a * rim * smoothstep(-0.12, 0.45, ndl) * sunlight;\n"
     /* A soft shoulder instead of a hard clip: values above ~0.8 roll toward
      * white, so bright cloud tops, glints and city lights keep their detail. */
     "    color = mix(color, 1.0 - 0.04 / max(color - 0.6, vec3(0.2)), step(0.8, color));\n"
@@ -396,8 +432,8 @@ static Texture2D build_glow(void)
 bool renderer_resources_init(RenderResources *resources)
 {
     *resources = (RenderResources){0};
-    static char fragment_source[sizeof(fragment_shader) + sizeof(fragment_shader_lit)];
-    snprintf(fragment_source, sizeof(fragment_source), "%s%s", fragment_shader, fragment_shader_lit);
+    static char fragment_source[sizeof(fragment_shader) + sizeof(fragment_shader_lit) + sizeof(fragment_shader_shadows)];
+    snprintf(fragment_source, sizeof(fragment_source), "%s%s%s", fragment_shader, fragment_shader_lit, fragment_shader_shadows);
     resources->shader = LoadShaderFromMemory(vertex_shader, fragment_source);
     /* A compile failure yields id 0, but a link failure makes raylib quietly
      * substitute its default shader. Treat both as unavailable so the flat
@@ -417,6 +453,9 @@ bool renderer_resources_init(RenderResources *resources)
     resources->loc_occluders = GetShaderLocation(resources->shader, "occluders");
     resources->loc_occluder_count = GetShaderLocation(resources->shader, "occluderCount");
     resources->loc_sun_radius = GetShaderLocation(resources->shader, "sunRadius");
+    resources->loc_shine = GetShaderLocation(resources->shader, "shine");
+    resources->loc_shine_color = GetShaderLocation(resources->shader, "shineColor");
+    resources->loc_cloud_shadow = GetShaderLocation(resources->shader, "cloudShadow");
     if (resources->loc_mode < 0 || resources->loc_light_dir < 0) {
         UnloadShader(resources->shader);
         resources->shader = (Shader){0};

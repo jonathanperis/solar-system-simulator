@@ -338,6 +338,29 @@ static void test_edge_on_orbits_dim(void)
     assert(render_edge_on_fade((Vec3d){0, 0, 0}, up) == 1.0f && render_edge_on_fade(up, (Vec3d){0, 0, 0}) == 1.0f);
 }
 
+static void test_planetshine_orders_sources_physically(void)
+{
+    RenderShineSource earth = render_shine_source(BODY_ID_EARTH), jupiter = render_shine_source(BODY_ID_JUPITER);
+    assert(earth.bond_albedo > 0.29f && earth.bond_albedo < 0.32f && earth.b > earth.r);
+    assert(jupiter.bond_albedo > 0.3f && render_shine_source(BODY_ID_MOON).bond_albedo > 0);
+    /* Earthshine on the Moon: brightest under a full Earth (new Moon). */
+    float full = render_planetshine_exposure(0.306, 6371e3, 384400e3, 1.0);
+    float crescent = render_planetshine_exposure(0.306, 6371e3, 384400e3, 0.1);
+    assert(full > crescent && crescent > 0 && full < 0.035f);
+    /* Jupiter-shine on Io is far stronger, near the top of the exposure. */
+    float io = render_planetshine_exposure(0.343, 69911e3, 421700e3, 1.0);
+    assert(io > full && io > 0.034f && io <= 0.035f);
+    /* A faint source far away contributes nothing; bad inputs are zero. */
+    assert(render_planetshine_exposure(0.1, 1e3, 1e9, 1.0) == 0.0f);
+    assert(render_planetshine_exposure(0.3, 6371e3, 384400e3, 0.0) == 0.0f);
+    assert(render_planetshine_exposure(0.3, 6371e3, 1e3, 1.0) == 0.0f);
+    assert(render_planetshine_exposure(NAN, 6371e3, 384400e3, 1.0) == 0.0f);
+    /* Ringshine: none edge-on, growing with the Sun's elevation, capped. */
+    assert(render_ringshine_exposure(0) == 0.0f);
+    assert(render_ringshine_exposure(0.1) < render_ringshine_exposure(-0.3));
+    assert(fabsf(render_ringshine_exposure(0.45) - 0.03f) < 1e-6f && fabsf(render_ringshine_exposure(1) - 0.03f) < 1e-6f);
+}
+
 static void test_own_path_fades_over_its_disc(void)
 {
     /* Camera on +z looking at a unit body at the origin, 10 units away. */
@@ -856,6 +879,7 @@ int main(void)
     test_small_wire_markers_become_dots();
     test_trail_segments_stop_at_the_body_surface();
     test_own_path_fades_over_its_disc();
+    test_planetshine_orders_sources_physically();
     test_edge_on_orbits_dim();
     test_sun_glare_fades_once_the_disc_is_resolved();
     test_sphere_matches_simulation_handedness_and_map_layout();

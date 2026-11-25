@@ -75,8 +75,8 @@ int main(void)
     glAttachShader(prog, compile(GL_VERTEX_SHADER, vertex_shader)); {
         /* The fragment shader spans two literals (C's string-length limit),
          * joined exactly as renderer_resources_init does. */
-        static char fragment_source[sizeof(fragment_shader) + sizeof(fragment_shader_lit)];
-        snprintf(fragment_source, sizeof(fragment_source), "%s%s", fragment_shader, fragment_shader_lit);
+        static char fragment_source[sizeof(fragment_shader) + sizeof(fragment_shader_lit) + sizeof(fragment_shader_shadows)];
+        snprintf(fragment_source, sizeof(fragment_source), "%s%s%s", fragment_shader, fragment_shader_lit, fragment_shader_shadows);
         glAttachShader(prog, compile(GL_FRAGMENT_SHADER, fragment_source));
     }
     glBindAttribLocation(prog, 0, "vertexPosition"); glBindAttribLocation(prog, 1, "vertexTexCoord"); glBindAttribLocation(prog, 2, "vertexNormal");
@@ -167,6 +167,27 @@ int main(void)
     EXPECT(glint > day, "the ocean sun glint is brighter than the surrounding sea");
     EXPECT(eclipsed_day < day * 0.35, "a sunward caster puts the day side in umbra (eclipse shadows)");
     EXPECT(africa_r > africa_b, "30 E faces the camera: central Africa reads land-coloured, so the map is not mirrored");
+    {
+        /* Airless regolith (A160): a white airless sphere at full phase (Sun
+         * behind the camera) keeps its limb nearly as bright as its centre
+         * (lunar-Lambert); pure Lambert would fall to about 0.7 in display
+         * values at 0.9 of the disc radius (~268 px here). */
+        GLuint white; unsigned char texel[4] = {255, 255, 255, 255};
+        glGenTextures(1, &white); glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, white);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, texel);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glUniform4f(glGetUniformLocation(prog, "atmosphere"), 0, 0, 0, 0);
+        glUniform1f(glGetUniformLocation(prog, "nightLights"), 0);
+        glUniform3f(glGetUniformLocation(prog, "lightDir"), 0, 0, 1);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glDrawElements(GL_TRIANGLES, (GLsizei)ni, GL_UNSIGNED_SHORT, 0);
+        unsigned char *airless = malloc((size_t)W * H * 4);
+        glReadPixels(0, 0, W, H, GL_RGBA, GL_UNSIGNED_BYTE, airless);
+        double centre = luma(airless, W, H, 320, 320), limb = luma(airless, W, H, 320 + 241, 320);
+        printf("airless full phase: centre %.0f limb %.0f\n", centre, limb);
+        EXPECT(limb > centre * 0.85, "an airless body at full phase stays bright to its limb (lunar-Lambert)");
+        free(airless);
+    }
     if (getenv("SOLAR_SHADER_PPM")) {
         FILE *out = fopen(getenv("SOLAR_SHADER_PPM"), "wb"); fprintf(out, "P6 %d %d 255\n", W, H);
         for (int y = H - 1; y >= 0; --y) for (int x = 0; x < W; ++x) fwrite(&px[(y * W + x) * 4], 1, 3, out);
