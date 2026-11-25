@@ -84,6 +84,7 @@ static const char fragment_shader[] = SHADER_HEADER_FS
     "uniform vec4 shine;\n"           /* one-bounce light: unit direction to its source (xyz), exposure (w) */
     "uniform vec3 shineColor;\n"      /* that source's colour, linear */
     "uniform float cloudShadow;\n"    /* 1 = Earth: texture2 is the cloud map, ringNormal the pole */
+    "uniform float relief;\n"         /* 1 = texture1 is a relief (normal) map, ringNormal the pole */
     SHADER_OUTPUT
     "vec3 toLinear(vec3 c) { return pow(c, vec3(2.2)); }\n"
     "vec3 toDisplay(vec3 c) { return pow(clamp(c, 0.0, 1.0), vec3(1.0 / 2.2)); }\n"
@@ -130,11 +131,26 @@ static const char fragment_shader[] = SHADER_HEADER_FS
 /* ISO C caps a string literal at 4095 characters, so main() continues in a
  * second and third literal; renderer_resources_init joins them. */
 static const char fragment_shader_lit[] =
+    /* Relief (A164): tilt the normal by the measured slopes in the relief
+     * map, stored in the local (east, north, up) frame. East is the pole
+     * crossed with the normal (the direction of growing longitude, as the
+     * map's u), north completes the frame. The branch is on a uniform. */
+    "    float geometric = dot(n, lightDir);\n"
+    "    if (relief > 0.5) {\n"
+    "        vec3 east = cross(ringNormal, n);\n"
+    "        float cosLat = length(east);\n"
+    "        east = cosLat > 0.001 ? east / cosLat : vec3(1.0, 0.0, 0.0);\n"
+    "        vec3 slope = TEX(texture1, fragTexCoord).rgb * 2.0 - 1.0;\n"
+    "        n = normalize(east * slope.x + cross(n, east) * slope.y + n * slope.z);\n"
+    "    }\n"
     /* Lambert's law: brightness follows the cosine of the Sun's angle; a 5%
      * wrap stands in for light scattered just past the terminator. */
     "    vec3 albedo = toLinear(surface.rgb);\n"
     "    float ndl = dot(n, lightDir);\n"
     "    float lit = clamp((ndl + 0.05) / 1.05, 0.0, 1.0);\n"
+    /* Peaks just past the terminator may catch light, but a tilted normal
+     * must not light the whole night side. */
+    "    if (relief > 0.5) lit *= smoothstep(-0.1, 0.0, geometric);\n"
     "    if (mode > 2.5) {\n" /* rings: thin ice and dust, lit from either face */
     /* Saturn's shadow on its rings: a ring point is dark when the ray toward
      * the Sun (P + t L, t > 0) passes closer to Saturn's centre than its
@@ -456,6 +472,7 @@ bool renderer_resources_init(RenderResources *resources)
     resources->loc_shine = GetShaderLocation(resources->shader, "shine");
     resources->loc_shine_color = GetShaderLocation(resources->shader, "shineColor");
     resources->loc_cloud_shadow = GetShaderLocation(resources->shader, "cloudShadow");
+    resources->loc_relief = GetShaderLocation(resources->shader, "relief");
     if (resources->loc_mode < 0 || resources->loc_light_dir < 0) {
         UnloadShader(resources->shader);
         resources->shader = (Shader){0};

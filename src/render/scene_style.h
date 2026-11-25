@@ -47,7 +47,11 @@ typedef enum RenderTextureSlot {
     RENDER_TEXTURE_TRITON = 25,
     RENDER_TEXTURE_PLUTO = 26,
     RENDER_TEXTURE_CHARON = 27,
-    RENDER_TEXTURE_COUNT = 28
+    /* Relief (tangent-space normal) maps from measured topography (A164). */
+    RENDER_TEXTURE_MOON_RELIEF = 28,
+    RENDER_TEXTURE_MARS_RELIEF = 29,
+    RENDER_TEXTURE_MERCURY_RELIEF = 30,
+    RENDER_TEXTURE_COUNT = 31
 } RenderTextureSlot;
 
 /* File name (no directory) of a slot, or NULL for an invalid slot. */
@@ -55,6 +59,10 @@ const char *render_texture_file(RenderTextureSlot slot);
 /* The surface map a body wears, or RENDER_TEXTURE_NONE for bodies without a
  * source-backed map (they stay honest lit colours rather than borrowed art). */
 RenderTextureSlot render_texture_for_body(BodyId id);
+/* The relief map a body wears (SPEC A164: LOLA, MOLA and MESSENGER heights
+ * as tangent-space normals, built by tools/relief_maps.py), or
+ * RENDER_TEXTURE_NONE. */
+RenderTextureSlot render_relief_for_body(BodyId id);
 
 /* Atmosphere rim glow: tint (0-1 RGB) and strength (0 = airless). */
 typedef struct RenderAtmosphere {

@@ -68,6 +68,21 @@ areas are filled with the mean surface colour.
 | `phobos.jpg` | `Phobos_ME_SRC_Mosaic_Global_16ppd` | tint 132 118 104 |
 | `vesta.jpg` | `Vesta_Dawn_FC_HAMO_Mosaic_Global_74ppd` | tint 176 168 158 |
 
+Relief maps (SPEC A164) are tangent-space normal maps (east, north, up in
+RGB, encoded n × 0.5 + 0.5) built by `python3 tools/relief_maps.py [--refresh]`
+from measured topography, all public domain; credit line: *Relief: NASA
+LRO LOLA, MGS MOLA and MESSENGER topography (NASA SVS, PDS Geosciences Node,
+USGS Astrogeology).* Heights are area-averaged, recentred on longitude 0 and
+turned into slopes on the sphere; the relief is exaggerated 4× (the shapes are
+measured, the height scale is presentation). JPEG quality 90 without chroma
+subsampling.
+
+| File | Source | Size |
+| --- | --- | --- |
+| `moon_relief.jpg` | LRO LOLA 16 px/degree, `ldem_16.tif` (NASA SVS CGI Moon Kit) | 2048 × 1024 |
+| `mars_relief.jpg` | MGS MOLA MEGDR 16 px/degree, `megt90n000eb.img` (PDS Geosciences) | 2048 × 1024 |
+| `mercury_relief.jpg` | `Mercury_Messenger_USGS_DEM_Global_665m_v2` (range-read rows) | 1024 × 512 |
+
 Each mapped body has an IAU WGCCRE 2015 rotation model, so longitude 0 of a
 synchronous moon faces its planet (checked by `make test`).
 
