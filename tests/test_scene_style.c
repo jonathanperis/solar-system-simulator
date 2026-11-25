@@ -312,6 +312,26 @@ static void test_trail_segments_stop_at_the_body_surface(void)
     assert(!render_clip_segment_outside_sphere(&a, &b, center, 1.0));
 }
 
+static void test_own_path_fades_over_its_disc(void)
+{
+    /* Camera on +z looking at a unit body at the origin, 10 units away. */
+    Vec3d camera = {0, 0, 10}, center = {0, 0, 0};
+    /* On the line of sight, in front of the body: hidden. */
+    assert(render_own_disc_fade((Vec3d){0, 0, 4}, camera, center, 1.0) == 0.0f);
+    /* In front, inside the disc's outline (0.05 rad off axis vs 0.1 disc). */
+    assert(render_own_disc_fade((Vec3d){0.25, 0, 5}, camera, center, 1.0) == 0.0f);
+    /* Well clear of the disc, or beyond the centre (depth hides it): full. */
+    assert(render_own_disc_fade((Vec3d){3, 0, 5}, camera, center, 1.0) == 1.0f);
+    assert(render_own_disc_fade((Vec3d){0.5, 0, -3}, camera, center, 1.0) == 1.0f);
+    /* Just outside the limb: partly faded, monotonic outward. */
+    float near_limb = render_own_disc_fade((Vec3d){0.6, 0, 5}, camera, center, 1.0);
+    float farther = render_own_disc_fade((Vec3d){0.7, 0, 5}, camera, center, 1.0);
+    assert(near_limb > 0.0f && near_limb < farther && farther < 1.0f);
+    /* Degenerate: camera inside the body, zero radius. */
+    assert(render_own_disc_fade((Vec3d){0, 0, 4}, (Vec3d){0, 0, 0.5}, center, 1.0) == 1.0f);
+    assert(render_own_disc_fade((Vec3d){0, 0, 4}, camera, center, 0.0) == 1.0f);
+}
+
 static void test_sphere_matches_simulation_handedness_and_map_layout(void)
 {
     const int slices = 16, rings = 8;
@@ -804,6 +824,7 @@ int main(void)
     test_frustum_outcodes_skip_only_invisible_segments();
     test_small_wire_markers_become_dots();
     test_trail_segments_stop_at_the_body_surface();
+    test_own_path_fades_over_its_disc();
     test_sphere_matches_simulation_handedness_and_map_layout();
     test_ring_annulus_spans_requested_radii();
     test_orbit_guide_reproduces_the_conic_through_the_state();

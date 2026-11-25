@@ -156,6 +156,14 @@ unsigned render_frustum_outcode(const RenderFrustum *frustum, Vec3d point);
  * at most one endpoint is inside, which holds for a body's own trail. */
 bool render_clip_segment_outside_sphere(Vec3d *a, Vec3d *b, Vec3d center, double radius);
 
+/* Opacity factor for a point of a body's own trail or orbit guide seen from
+ * `camera`: 0 where the point lies in front of the body's drawn disc, rising
+ * smoothly to 1 at 1.6 disc radii (angular). The path really does pass in
+ * front of the body there, but drawn over the framed disc it reads as a line
+ * stabbing into the planet. Points beyond the body's centre (hidden by depth)
+ * and points away from the disc are untouched. Presentation only. */
+float render_own_disc_fade(Vec3d point, Vec3d camera, Vec3d center, double radius);
+
 /* Orbit guides (SPEC A107): the closed two-body conic (Kepler ellipse)
  * through a body's current parent-relative position and velocity, drawn as a
  * faint full orbit so the shape of every path reads at a glance. This is the

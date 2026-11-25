@@ -512,6 +512,13 @@ A110|Look: the sky backdrop uses a squared contrast curve (no JPEG grain between
 
 Result: all scenes hold 60 fps in desktop Chrome; on the Pixel 7 profile at 4x CPU throttle the main scene, Jupiter family and Saturn family hold 60 fps (the Saturn family fell to 44 fps with full-detail guides; 10 px chords, half detail for faint guides and skipping the spreading test for distant orbits restored it; A135 later spread every guide with its clearance computed once per orbit, measured level with main at 52–60 fps on the 300-body Saturn family).
 
+## §A — Graphics audit, 2026-11-25
+
+Jonathan asked for a graphics audit of the live site and then "go on your plan. do all". Each item below is presentation only (no SI state, CSV or inspector change) and was screenshot-checked against the live build in Chrome before the next one; C9 and B5 still apply.
+
+id|criterion|verify
+A156|A body's own trail and orbit guide fade where they pass in front of its drawn disc (`render_own_disc_fade`: 0 inside the disc's angular outline on the camera side, smoothstep to 1 at 1.6 disc radii; points beyond the body's centre and bodies under 3 px are untouched). Framing a planet no longer shows its path as a line stabbing into the disc|`test_scene_style` (on-axis hidden, clear and far-side points full, monotonic near the limb, degenerate inputs), screenshots (Earth, Jupiter)
+
 ## §T
 
 id|status|task|cites
@@ -648,6 +655,7 @@ T129|x|trail window about the parent|A152
 T130|x|runs restore the speed they found|A153
 T131|x|sky captions for screen readers|A154
 T132|x|Mars moons spread; two-body lesson framing|A155
+T133|x|own path fades over its disc|A156
 
 Audit remediation verification, 2026-10-06: delivered through PRs #20, #21, #22, #24, #25 (round 1), #26 (main CI/analytics blocker found by round 2) and #27 (round 2), each rebase-merged after the required Build/CodeQL checks passed and every review thread was resolved. Production Pages served 81eb308 after #26 with CSP, Astro generator marker, generated sitemap and no robots.txt verified on the live site. Locally, round 2 passed `make clean && make test-sanitize`, `make && make test test-build test-cli test-validators`, catalog/command/epoch/Jovian/small-body checks, a fresh raylib WASM build with native/WASM replay of every example, `npm ci`/`npm audit`/37 Node tests/`astro check`/build, route checks, and 17/17 sandboxed Chrome journeys for both analytics-free and `PUBLIC_GA_ID` builds. The second audit's Medium findings (main CI red, experiment Earth-centre start, debug-info WASM, duplicate SPEC IDs, PR-only workflow docs, invisible catalog download) are closed. Remaining Low/Info items are recorded rather than changed: Jonathan later chose Renovate over Dependabot (A63) and asked for every non-main branch to be deleted; CI stays Linux-only and the browser lane stays on Ubuntu 22.04 per R13; browser specs are type-checked by Playwright, not `astro check` (adding `@types/node` was deferred); GA consent policy remains V17; the pre-existing desktop atlas Vesta/Uranus label overlap, Saturn's illustrative ring tilt and literal Jupiter–Neptune masses (V6 scopes GM-derived masses to Sun–Mars) are unchanged.
 
