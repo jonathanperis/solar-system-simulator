@@ -934,6 +934,25 @@ bool render_star(size_t index, Vec3d *direction, float *magnitude, float *bv)
     return true;
 }
 
+double render_star_limit_magnitude(double fovy_degrees)
+{
+    if (!(fovy_degrees < 30.0)) return 4.5;
+    if (fovy_degrees <= 3.0) return 6.0;
+    double t = (log(30.0) - log(fovy_degrees)) / (log(30.0) - log(3.0));
+    return 4.5 + 1.5 * t * t * (3 - 2 * t);
+}
+
+size_t render_star_draw_count(double fovy_degrees)
+{
+    double limit = render_star_limit_magnitude(fovy_degrees);
+    size_t lo = 0, hi = RENDER_STAR_COUNT;
+    while (lo < hi) { /* first star fainter than the limit */
+        size_t mid = lo + (hi - lo) / 2;
+        if (star_catalog[mid][2] <= limit) lo = mid + 1; else hi = mid;
+    }
+    return lo;
+}
+
 void render_blackbody_rgb(double kelvin, float rgb[3])
 {
     double t = (kelvin < 1000 ? 1000 : kelvin > 40000 ? 40000 : kelvin) / 100.0;

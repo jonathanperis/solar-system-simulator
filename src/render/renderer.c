@@ -1516,9 +1516,12 @@ static void draw_catalogue_stars(const FrameContext *ctx)
     SetShaderValue(resources->star_shader, resources->loc_star_radius, &radius, SHADER_UNIFORM_FLOAT);
     SetShaderValue(resources->star_shader, resources->loc_star_viewport, viewport, SHADER_UNIFORM_VEC2);
     SetShaderValue(resources->star_shader, resources->loc_star_pixel_scale, &pixel_scale, SHADER_UNIFORM_FLOAT);
+    /* The table is brightest first: draw the prefix the field calls for. */
+    Mesh stars = resources->star_mesh;
+    stars.triangleCount = (int)(render_star_draw_count(ctx->camera.fovy) * 2);
     rlDrawRenderBatchActive();
     BeginBlendMode(BLEND_ADDITIVE);
-    DrawMesh(resources->star_mesh, resources->star_material, (Matrix){1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1});
+    DrawMesh(stars, resources->star_material, (Matrix){1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1});
     EndBlendMode();
 }
 

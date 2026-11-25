@@ -440,6 +440,14 @@ bool render_constellation_segment(size_t index, Vec3d *a, Vec3d *b);
  * in simulation axes with V magnitude and B-V colour index. */
 size_t render_star_count(void);
 bool render_star(size_t index, Vec3d *direction, float *magnitude, float *bv);
+/* Faintest magnitude drawn for a vertical field of `fovy_degrees`: 4.5 from
+ * 30 degrees up (the sky map already carries the faint stars as a glow, and
+ * each catalogue point costs fill rate: drawing all 5,044 halved a software
+ * renderer's frame rate), rising smoothly in log field to 6 at 3 degrees and
+ * below, so a narrowing field reveals fainter stars, as a telescope does. */
+double render_star_limit_magnitude(double fovy_degrees);
+/* How many catalogue stars (stored brightest first) reach that limit. */
+size_t render_star_draw_count(double fovy_degrees);
 /* How a star is drawn: a soft point `radius_px` CSS pixels in half-width with
  * peak `intensity` (0-1) and colour `r, g, b` (0-1). Flux follows Pogson's
  * scale, 10^(-0.4 m); size and intensity grow with its logarithm (log10 of
