@@ -466,8 +466,9 @@ typedef struct RingShadow {
     Texture2D ring_opacity;
     float dust; /* forward-scattering dust fraction (A127); Saturn's icy main rings 0.05 */
     /* Earth's cloud shadows (A161) reuse this geometry: centre, pole as
-     * `ring_normal`, radius, and the cloud map as `ring_opacity`. */
-    bool clouds;
+     * `ring_normal`, radius, and the cloud map as `ring_opacity`. Relief
+     * maps (A164) need only the pole; the map travels as `night`. */
+    bool clouds, relief;
 } RingShadow;
 
 /* raylib allocates MAX_MATERIAL_MAPS (12, an internal config.h value) maps
@@ -482,7 +483,9 @@ static void draw_shaded(const RenderResources *resources, const Mesh *mesh, cons
     Texture2D surface, Color tint, Vector3 light_direction, RenderAtmosphere atmosphere, const Texture2D *night,
     const RingShadow *rings)
 {
-    float ring_flag = rings && !rings->clouds ? 1.0f : 0.0f, cloud_flag = rings && rings->clouds ? 1.0f : 0.0f;
+    float ring_flag = rings && !rings->clouds && !rings->relief ? 1.0f : 0.0f, cloud_flag = rings && rings->clouds ? 1.0f : 0.0f;
+    float relief_flag = rings && rings->relief ? 1.0f : 0.0f;
+    if (resources->loc_relief >= 0) SetShaderValue(resources->shader, resources->loc_relief, &relief_flag, SHADER_UNIFORM_FLOAT);
     SetShaderValue(resources->shader, resources->loc_ring_shadow, &ring_flag, SHADER_UNIFORM_FLOAT);
     if (resources->loc_cloud_shadow >= 0)
         SetShaderValue(resources->shader, resources->loc_cloud_shadow, &cloud_flag, SHADER_UNIFORM_FLOAT);
@@ -497,7 +500,7 @@ static void draw_shaded(const RenderResources *resources, const Mesh *mesh, cons
         if (resources->loc_ring_dust >= 0)
             SetShaderValue(resources->shader, resources->loc_ring_dust, &rings->dust, SHADER_UNIFORM_FLOAT);
     }
-    float mode_value = (float)mode, night_value = night ? 1.0f : 0.0f;
+    float mode_value = (float)mode, night_value = night && !relief_flag ? 1.0f : 0.0f;
     float light[3] = {light_direction.x, light_direction.y, light_direction.z};
     float air[4] = {atmosphere.r, atmosphere.g, atmosphere.b, atmosphere.strength};
     SetShaderValue(resources->shader, resources->loc_mode, &mode_value, SHADER_UNIFORM_FLOAT);
@@ -1733,11 +1736,19 @@ static void draw_opaque_bodies(const FrameContext *ctx)
                 .ring_opacity = resources->textures[RENDER_TEXTURE_EARTH_CLOUDS], .clouds = true};
             ringed = true;
         }
+        /* Measured relief (A164): the map rides in the city-lights slot. */
+        RenderTextureSlot relief = render_relief_for_body(body->id);
+        const Texture2D *second_map = city_lights ? &resources->textures[RENDER_TEXTURE_EARTH_NIGHT] : NULL;
+        if (relief >= 0 && resources->texture_loaded[relief] && textured && !ringed) {
+            saturn_rings = (RingShadow){.center = position, .radius = radius, .ring_opacity = resources->white,
+                .ring_normal = {(float)orientation.pole.x, (float)orientation.pole.y, (float)orientation.pole.z}, .relief = true};
+            ringed = true;
+            second_map = &resources->textures[relief];
+        }
         set_eclipse_casters(ctx, i);
         set_planetshine(ctx, i, orientation);
         draw_shaded(resources, mesh, &transform, SHADE_LIT, texture_or_white(resources, slot), tint, light_toward_star(ctx, i),
-            render_atmosphere_for_body(body->id), city_lights ? &resources->textures[RENDER_TEXTURE_EARTH_NIGHT] : NULL,
-            ringed ? &saturn_rings : NULL);
+            render_atmosphere_for_body(body->id), second_map, ringed ? &saturn_rings : NULL);
     }
     rlDrawRenderBatchActive();
 }

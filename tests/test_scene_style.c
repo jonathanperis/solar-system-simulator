@@ -37,6 +37,11 @@ static void test_texture_inventory_matches_assets(void)
     assert(render_texture_file(RENDER_TEXTURE_COUNT) == NULL);
 
     assert(render_texture_for_body(BODY_ID_EARTH) == RENDER_TEXTURE_EARTH_DAY);
+    /* Relief maps (A164): only the three bodies with measured global DEMs. */
+    assert(render_relief_for_body(BODY_ID_MOON) == RENDER_TEXTURE_MOON_RELIEF);
+    assert(render_relief_for_body(BODY_ID_MARS) == RENDER_TEXTURE_MARS_RELIEF);
+    assert(render_relief_for_body(BODY_ID_MERCURY) == RENDER_TEXTURE_MERCURY_RELIEF);
+    assert(render_relief_for_body(BODY_ID_EARTH) == RENDER_TEXTURE_NONE && render_relief_for_body(BODY_ID_SUN) == RENDER_TEXTURE_NONE);
     assert(render_texture_for_body(BODY_ID_SATURN) == RENDER_TEXTURE_SATURN);
     assert(render_texture_for_body(BODY_ID_SUN) == RENDER_TEXTURE_SUN);
     /* Moon maps (A109); every mapped body has an IAU spin model so its map

@@ -44,12 +44,25 @@ static const char *const texture_files[RENDER_TEXTURE_COUNT] = {
     [RENDER_TEXTURE_TRITON] = "triton.jpg",
     [RENDER_TEXTURE_PLUTO] = "pluto.jpg",
     [RENDER_TEXTURE_CHARON] = "charon.jpg",
+    [RENDER_TEXTURE_MOON_RELIEF] = "moon_relief.jpg",
+    [RENDER_TEXTURE_MARS_RELIEF] = "mars_relief.jpg",
+    [RENDER_TEXTURE_MERCURY_RELIEF] = "mercury_relief.jpg",
 };
 
 const char *render_texture_file(RenderTextureSlot slot)
 {
     if (slot < 0 || slot >= RENDER_TEXTURE_COUNT) return NULL;
     return texture_files[slot];
+}
+
+RenderTextureSlot render_relief_for_body(BodyId id)
+{
+    switch (id) {
+        case BODY_ID_MOON: return RENDER_TEXTURE_MOON_RELIEF;
+        case BODY_ID_MARS: return RENDER_TEXTURE_MARS_RELIEF;
+        case BODY_ID_MERCURY: return RENDER_TEXTURE_MERCURY_RELIEF;
+        default: return RENDER_TEXTURE_NONE;
+    }
 }
 
 RenderTextureSlot render_texture_for_body(BodyId id)

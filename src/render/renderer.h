@@ -31,7 +31,7 @@ typedef struct RenderResources {
     int loc_mode, loc_light_dir, loc_view_pos, loc_atmosphere, loc_night_lights;
     int loc_body_center, loc_body_radius, loc_ring_normal, loc_ring_radii, loc_ring_shadow, loc_ring_dust;
     int loc_occluders, loc_occluder_count, loc_sun_radius;
-    int loc_shine, loc_shine_color, loc_cloud_shadow; /* A161, A162 */
+    int loc_shine, loc_shine_color, loc_cloud_shadow, loc_relief; /* A161, A162, A164 */
     /* Small-body cloud (A121): its own point shader and up to
      * RENDER_BELT_MESHES meshes of quads (16-bit indices cap a mesh). */
     Shader belt_shader;
