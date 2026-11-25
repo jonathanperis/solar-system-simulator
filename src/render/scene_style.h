@@ -164,6 +164,15 @@ bool render_clip_segment_outside_sphere(Vec3d *a, Vec3d *b, Vec3d center, double
  * and points away from the disc are untouched. Presentation only. */
 float render_own_disc_fade(Vec3d point, Vec3d camera, Vec3d center, double radius);
 
+/* Opacity factor for an orbit guide or trail whose orbit plane has normal
+ * `orbit_normal`, seen along `view` (camera toward the parent). Seen edge-on
+ * an ellipse collapses onto a line where its near and far halves, the trail
+ * and the guide all stack, so additive lines pile up into a bright streak
+ * (Saturn's moons over the edge-on rings, the planets' orbits in the view
+ * from Earth). The factor is 0.3 edge-on, rising to 1 once the plane is
+ * tilted 20 degrees toward the eye; zero vectors give 1. */
+float render_edge_on_fade(Vec3d orbit_normal, Vec3d view);
+
 /* Orbit guides (SPEC A107): the closed two-body conic (Kepler ellipse)
  * through a body's current parent-relative position and velocity, drawn as a
  * faint full orbit so the shape of every path reads at a glance. This is the
@@ -362,6 +371,12 @@ typedef struct RenderRingSystem {
 const RenderRingSystem *render_ring_system_at(size_t index);
 /* The table-driven ring system of a planet, or NULL (Saturn has its map). */
 const RenderRingSystem *render_ring_system(BodyId planet);
+/* Dusty rings (dust fraction at least one half: Jupiter's, Neptune's) are
+ * optically thin: they scatter sunlight toward the eye but block almost none
+ * of what lies behind (tau ~ 1e-6 to 1e-4). They are drawn additively, so the
+ * illustrative opacity boost can brighten but never lays a dark veil over the
+ * grid, stars or planet. Uranus's dark, dense narrow rings keep alpha blending. */
+bool render_ring_system_adds_light(const RenderRingSystem *system);
 /* Real scale: area coverage, so a 2 km ring fills a fifth of a 10 km texel
  * and the rings are as faint as they really are. */
 #define RENDER_RING_STRIP_WIDTH 1024
@@ -424,6 +439,12 @@ void render_declutter_labels(RenderLabelBox *boxes, size_t count);
 /* Julian date of the J2000.0 epoch (2000 January 1, 12:00 TDB). */
 #define RENDER_J2000_JD 2451545.0
 
+/* Strength of the Sun's glare billboards for a disc `disc_pixels` in radius
+ * on screen. Glare is what an eye or camera makes of an unresolved point too
+ * bright to image; once the disc is resolved it would only veil the view, so
+ * the glare fades from full strength at 16 px to a tenth at 300 px (smooth in
+ * log size). Presentation only. */
+float render_sun_glare_strength(double disc_pixels);
 /* Normalized glow intensity at fraction `r` (0 = centre, 1 = edge) of the
  * Sun's halo billboard; 0 at and beyond the edge. */
 float render_glow_intensity(double r);

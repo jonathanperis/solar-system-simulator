@@ -312,6 +312,32 @@ static void test_trail_segments_stop_at_the_body_surface(void)
     assert(!render_clip_segment_outside_sphere(&a, &b, center, 1.0));
 }
 
+static void test_sun_glare_fades_once_the_disc_is_resolved(void)
+{
+    assert(render_sun_glare_strength(0.5) == 1.0f && render_sun_glare_strength(16) == 1.0f);
+    assert(fabsf(render_sun_glare_strength(300) - 0.1f) < 1e-6f && fabsf(render_sun_glare_strength(5000) - 0.1f) < 1e-6f);
+    float previous = 1.0f;
+    for (double px = 20; px <= 300; px *= 1.3) {
+        float s = render_sun_glare_strength(px);
+        assert(s < previous && s > 0.1f);
+        previous = s;
+    }
+    assert(render_sun_glare_strength(NAN) == 1.0f);
+}
+
+static void test_edge_on_orbits_dim(void)
+{
+    Vec3d up = {0, 1, 0};
+    /* Face-on: full; edge-on: 0.3; 20 degrees and beyond: full again. */
+    assert(render_edge_on_fade(up, (Vec3d){0, -5, 0}) == 1.0f);
+    assert(fabsf(render_edge_on_fade(up, (Vec3d){3, 0, 0}) - 0.3f) < 1e-6f);
+    double r = 20.0 * 3.14159265358979323846 / 180.0;
+    assert(fabsf(render_edge_on_fade(up, (Vec3d){cos(r), sin(r), 0}) - 1.0f) < 1e-5f);
+    float low = render_edge_on_fade(up, (Vec3d){1, 0.05, 0}), mid = render_edge_on_fade(up, (Vec3d){1, 0.2, 0});
+    assert(low > 0.3f && low < mid && mid < 1.0f);
+    assert(render_edge_on_fade((Vec3d){0, 0, 0}, up) == 1.0f && render_edge_on_fade(up, (Vec3d){0, 0, 0}) == 1.0f);
+}
+
 static void test_own_path_fades_over_its_disc(void)
 {
     /* Camera on +z looking at a unit body at the origin, 10 units away. */
@@ -702,6 +728,11 @@ static void test_ring_strips_follow_the_ring_tables(void)
     /* Backlit glow (A127): Jupiter's dust rings glow most, Uranus's least. */
     assert(render_ring_system(BODY_ID_JUPITER)->dust_fraction > render_ring_system(BODY_ID_NEPTUNE)->dust_fraction);
     assert(render_ring_system(BODY_ID_NEPTUNE)->dust_fraction > render_ring_system(BODY_ID_URANUS)->dust_fraction);
+    /* Dusty rings only add light; Uranus's dense dark rings still occlude. */
+    assert(render_ring_system_adds_light(render_ring_system(BODY_ID_JUPITER)));
+    assert(render_ring_system_adds_light(render_ring_system(BODY_ID_NEPTUNE)));
+    assert(!render_ring_system_adds_light(render_ring_system(BODY_ID_URANUS)));
+    assert(!render_ring_system_adds_light(NULL));
     for (size_t s = 0; s < RENDER_RING_SYSTEM_COUNT; ++s)
         assert(render_ring_system_at(s)->dust_fraction >= 0 && render_ring_system_at(s)->dust_fraction <= 1);
     /* Uranus: epsilon, 20-96 km wide and optically thick, is the densest
@@ -825,6 +856,8 @@ int main(void)
     test_small_wire_markers_become_dots();
     test_trail_segments_stop_at_the_body_surface();
     test_own_path_fades_over_its_disc();
+    test_edge_on_orbits_dim();
+    test_sun_glare_fades_once_the_disc_is_resolved();
     test_sphere_matches_simulation_handedness_and_map_layout();
     test_ring_annulus_spans_requested_radii();
     test_orbit_guide_reproduces_the_conic_through_the_state();

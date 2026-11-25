@@ -370,6 +370,18 @@ float render_own_disc_fade(Vec3d point, Vec3d camera, Vec3d center, double radiu
     return (float)(t * t * (3 - 2 * t));
 }
 
+float render_edge_on_fade(Vec3d orbit_normal, Vec3d view)
+{
+    double n = vec3d_length(orbit_normal), d = vec3d_length(view);
+    if (!(n > 0) || !(d > 0)) return 1.0f;
+    /* |cos| of the angle between the plane's normal and the sight line is
+     * the sine of the plane's tilt toward the eye. */
+    double tilt = fabs(vec3d_dot(orbit_normal, view)) / (n * d);
+    double t = tilt / sin(20.0 * 3.14159265358979323846 / 180.0);
+    t = t > 1 ? 1 : t;
+    return (float)(0.3 + 0.7 * t * t * (3 - 2 * t));
+}
+
 double render_moon_spread_factor(BodyId parent)
 {
     return parent == BODY_ID_MARS ? 40.0 : 1.0;
@@ -418,6 +430,14 @@ double render_world_units_per_pixel(double distance, double fovy_degrees, double
 {
     if (!(distance > 0) || !(fovy_degrees > 0) || !(viewport_height > 0)) return 0;
     return distance * 2 * tan(fovy_degrees * DEG / 2) / viewport_height;
+}
+
+float render_sun_glare_strength(double disc_pixels)
+{
+    if (!(disc_pixels > 16.0)) return 1.0f;
+    double t = (log(disc_pixels) - log(16.0)) / (log(300.0) - log(16.0));
+    t = t > 1 ? 1 : t;
+    return (float)(1.0 - 0.9 * t * t * (3 - 2 * t));
 }
 
 float render_glow_intensity(double r)
@@ -761,6 +781,11 @@ const RenderRingSystem *render_ring_system(BodyId planet)
 {
     for (size_t k = 0; k < RENDER_RING_SYSTEM_COUNT; ++k) if (ring_systems[k].planet == planet) return &ring_systems[k];
     return NULL;
+}
+
+bool render_ring_system_adds_light(const RenderRingSystem *system)
+{
+    return system && system->dust_fraction >= 0.5;
 }
 
 static void strip_pixel(const RenderRingSystem *system, unsigned char *rgba, double alpha)
