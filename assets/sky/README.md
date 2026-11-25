@@ -7,3 +7,9 @@ under its BSD 3-Clause licence (`LICENSE-d3-celestial`, reproduced in the
 generated `src/render/constellation_lines.inc` and credited on the About
 page). `python3 tools/constellations.py` regenerates the C table; `make test`
 checks it is current (SPEC A124). Presentation only.
+
+`stars.6.json` holds every star to visual magnitude 6 (5,044, Hipparcos-derived:
+right ascension, declination, V magnitude, B-V colour index; J2000) from the
+same project and licence, at commit 7e720a3 of ofrohn/d3-celestial (where the
+constellation file is byte-identical). `python3 tools/stars.py` regenerates
+`src/render/star_catalog.inc`; `make test` checks it is current (SPEC A165).

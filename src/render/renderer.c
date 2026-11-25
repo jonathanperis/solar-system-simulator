@@ -1502,15 +1502,38 @@ static void draw_constellations(const FrameContext *ctx)
     rlDrawRenderBatchActive();
 }
 
+/* Catalogue stars (SPEC A165) on a sphere around the eye, just inside the
+ * constellation lines; added to the sky map, whose own stars are blurred at
+ * a few pixels per degree, they keep every star a sharp point at any zoom. */
+static void draw_catalogue_stars(const FrameContext *ctx)
+{
+    const RenderResources *resources = ctx->resources;
+    if (!resources->star_shader.id || !resources->star_mesh.vertexCount) return;
+    float eye[3] = {ctx->camera.position.x, ctx->camera.position.y, ctx->camera.position.z};
+    float radius = ctx->view->far_plane * 0.44f;
+    float viewport[2] = {(float)GetRenderWidth(), (float)GetRenderHeight()};
+    SetShaderValue(resources->star_shader, resources->loc_star_eye, eye, SHADER_UNIFORM_VEC3);
+    SetShaderValue(resources->star_shader, resources->loc_star_radius, &radius, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(resources->star_shader, resources->loc_star_viewport, viewport, SHADER_UNIFORM_VEC2);
+    SetShaderValue(resources->star_shader, resources->loc_star_pixel_scale, &pixel_scale, SHADER_UNIFORM_FLOAT);
+    rlDrawRenderBatchActive();
+    BeginBlendMode(BLEND_ADDITIVE);
+    DrawMesh(resources->star_mesh, resources->star_material, (Matrix){1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1});
+    EndBlendMode();
+}
+
 static void draw_backdrop(const FrameContext *ctx)
 {
     const RenderResources *resources = ctx->resources;
     if (!resources->ready || !resources->texture_loaded[RENDER_TEXTURE_STARS]) {
-        if (ctx->view->show_constellations) {
-            rlDisableDepthMask();
-            draw_constellations(ctx);
-            rlEnableDepthMask();
+        rlDisableDepthMask();
+        if (resources->ready) {
+            rlDisableBackfaceCulling();
+            draw_catalogue_stars(ctx);
+            rlEnableBackfaceCulling();
         }
+        if (ctx->view->show_constellations) draw_constellations(ctx);
+        rlEnableDepthMask();
         return;
     }
     rlDrawRenderBatchActive();
@@ -1521,6 +1544,7 @@ static void draw_backdrop(const FrameContext *ctx)
     Matrix sky = body_matrix(render_sky_orientation(), ctx->camera.position, ctx->view->far_plane * 0.5f);
     draw_shaded(resources, &resources->sphere_detailed, &sky, SHADE_SKY, resources->textures[RENDER_TEXTURE_STARS],
         WHITE, (Vector3){0, 1, 0}, (RenderAtmosphere){0}, NULL, NULL);
+    draw_catalogue_stars(ctx);
     if (ctx->view->show_constellations) draw_constellations(ctx);
     rlEnableBackfaceCulling();
     rlEnableDepthMask();

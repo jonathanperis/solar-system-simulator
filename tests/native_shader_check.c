@@ -92,6 +92,16 @@ int main(void)
         GLint linked = 0; glGetProgramiv(belt, GL_LINK_STATUS, &linked);
         if (!linked) { char log[2048]; glGetProgramInfoLog(belt, 2048, NULL, log); fprintf(stderr, "belt link: %s\n", log); return 1; }
         glDeleteProgram(belt);
+        /* So must the catalogue stars' pair (A165). */
+        GLuint stars = glCreateProgram();
+        glAttachShader(stars, compile(GL_VERTEX_SHADER, star_vertex_shader));
+        glAttachShader(stars, compile(GL_FRAGMENT_SHADER, star_fragment_shader));
+        glBindAttribLocation(stars, 0, "vertexPosition"); glBindAttribLocation(stars, 1, "vertexTexCoord");
+        glBindAttribLocation(stars, 2, "vertexNormal"); glBindAttribLocation(stars, 3, "vertexColor");
+        glLinkProgram(stars);
+        glGetProgramiv(stars, GL_LINK_STATUS, &linked);
+        if (!linked) { char log[2048]; glGetProgramInfoLog(stars, 2048, NULL, log); fprintf(stderr, "stars link: %s\n", log); return 1; }
+        glDeleteProgram(stars);
         glUseProgram(prog);
     }
 

@@ -354,6 +354,80 @@ static const char belt_fragment_shader[] = SHADER_HEADER_FS
     "    FRAG_COLOR = vec4(tint.rgb * tint.a * fade, 1.0);\n"
     "}\n";
 
+/* Bright stars (SPEC A165): each catalogue star is a quad of four vertices
+ * sharing its direction; the vertex shader puts it on a sphere around the
+ * eye (stars are at infinity, like the sky map) and spreads the corners a
+ * fixed number of pixels, so a star stays a sharp point at any zoom, from
+ * the overview to a 72-arcsecond telescope field. Additive, no depth writes.
+ * Attributes: position = unit ICRF direction (simulation axes), texcoord =
+ * corner, normal = (half-width in CSS px, peak intensity, 0), colour = tint. */
+static const char star_vertex_shader[] = SHADER_HEADER_VS
+    "IN vec3 vertexPosition;\n"
+    "IN vec2 vertexTexCoord;\n"
+    "IN vec3 vertexNormal;\n"
+    "IN vec4 vertexColor;\n"
+    "uniform mat4 mvp;\n"
+    "uniform vec3 eye;\n"        /* camera position, render units */
+    "uniform float radius;\n"    /* sky sphere radius, render units */
+    "uniform vec2 viewport;\n"   /* device pixels */
+    "uniform float pixelScale;\n" /* device pixels per CSS pixel */
+    "OUT vec2 corner;\n"
+    "OUT vec4 tint;\n"
+    "void main() {\n"
+    "    vec4 clip = mvp * vec4(eye + vertexPosition * radius, 1.0);\n"
+    "    corner = vertexTexCoord;\n"
+    "    clip.xy += corner * vertexNormal.x * pixelScale / viewport * 2.0 * clip.w;\n"
+    "    gl_Position = clip;\n"
+    "    tint = vec4(vertexColor.rgb, vertexNormal.y);\n"
+    "}\n";
+
+/* A soft Gaussian point, cut to zero at the quad's edge. */
+static const char star_fragment_shader[] = SHADER_HEADER_FS
+    "IN vec2 corner;\n"
+    "IN vec4 tint;\n"
+    SHADER_OUTPUT
+    "void main() {\n"
+    "    float r2 = dot(corner, corner);\n"
+    "    float glow = exp(-5.5 * r2) * (1.0 - smoothstep(0.6, 1.0, r2));\n"
+    "    FRAG_COLOR = vec4(tint.rgb * tint.a * glow, 1.0);\n"
+    "}\n";
+
+static Mesh build_star_mesh(void)
+{
+    size_t n = render_star_count();
+    Mesh mesh = {0};
+    mesh.vertexCount = (int)(n * 4);
+    mesh.triangleCount = (int)(n * 2);
+    mesh.vertices = RL_MALLOC(n * 4 * 3 * sizeof(float));
+    mesh.texcoords = RL_MALLOC(n * 4 * 2 * sizeof(float));
+    mesh.normals = RL_MALLOC(n * 4 * 3 * sizeof(float));
+    mesh.colors = RL_MALLOC(n * 4 * 4);
+    mesh.indices = RL_MALLOC(n * 6 * sizeof(unsigned short));
+    if (n * 4 > 65535 || !mesh.vertices || !mesh.texcoords || !mesh.normals || !mesh.colors || !mesh.indices) {
+        RL_FREE(mesh.vertices); RL_FREE(mesh.texcoords); RL_FREE(mesh.normals); RL_FREE(mesh.colors); RL_FREE(mesh.indices);
+        return (Mesh){0};
+    }
+    const float corners[4][2] = {{-1, -1}, {1, -1}, {1, 1}, {-1, 1}};
+    for (size_t k = 0; k < n; ++k) {
+        Vec3d d; float magnitude, bv;
+        render_star(k, &d, &magnitude, &bv);
+        RenderStarLook look = render_star_look(magnitude, bv);
+        for (int c = 0; c < 4; ++c) {
+            size_t v = k * 4 + (size_t)c;
+            mesh.vertices[v * 3] = (float)d.x; mesh.vertices[v * 3 + 1] = (float)d.y; mesh.vertices[v * 3 + 2] = (float)d.z;
+            mesh.texcoords[v * 2] = corners[c][0]; mesh.texcoords[v * 2 + 1] = corners[c][1];
+            /* The quad spans two half-widths so the Gaussian's tail fits. */
+            mesh.normals[v * 3] = look.radius_px * 2.0f; mesh.normals[v * 3 + 1] = look.intensity; mesh.normals[v * 3 + 2] = 0;
+            mesh.colors[v * 4] = (unsigned char)(look.r * 255); mesh.colors[v * 4 + 1] = (unsigned char)(look.g * 255);
+            mesh.colors[v * 4 + 2] = (unsigned char)(look.b * 255); mesh.colors[v * 4 + 3] = 255;
+        }
+        const unsigned short base = (unsigned short)(k * 4), order[6] = {0, 1, 2, 0, 2, 3};
+        for (int t = 0; t < 6; ++t) mesh.indices[k * 6 + (size_t)t] = (unsigned short)(base + order[t]);
+    }
+    UploadMesh(&mesh, false);
+    return mesh;
+}
+
 /* Copy generated geometry into raylib-owned buffers (UnloadMesh frees them
  * with RL_FREE) and upload it to the GPU once. */
 static Mesh upload_mesh(size_t vertex_count, size_t index_count, const float *positions, const float *normals,
@@ -516,6 +590,18 @@ bool renderer_resources_init(RenderResources *resources)
     } else {
         resources->belt_shader = (Shader){0};
     }
+    resources->star_shader = LoadShaderFromMemory(star_vertex_shader, star_fragment_shader);
+    if (IsShaderValid(resources->star_shader) && resources->star_shader.id != rlGetShaderIdDefault()) {
+        resources->loc_star_eye = GetShaderLocation(resources->star_shader, "eye");
+        resources->loc_star_radius = GetShaderLocation(resources->star_shader, "radius");
+        resources->loc_star_viewport = GetShaderLocation(resources->star_shader, "viewport");
+        resources->loc_star_pixel_scale = GetShaderLocation(resources->star_shader, "pixelScale");
+        resources->star_material = LoadMaterialDefault();
+        resources->star_material.shader = resources->star_shader;
+        resources->star_mesh = build_star_mesh();
+    } else {
+        resources->star_shader = (Shader){0};
+    }
     resources->material = LoadMaterialDefault();
     resources->material.shader = resources->shader;
     resources->ready = resources->sphere_detailed.vertexCount > 0 && resources->sphere_simple.vertexCount > 0 &&
@@ -541,6 +627,11 @@ void renderer_resources_unload(RenderResources *resources)
     if (resources->belt_shader.id) {
         RL_FREE(resources->belt_material.maps);
         UnloadShader(resources->belt_shader);
+    }
+    if (resources->star_mesh.vertexCount) UnloadMesh(resources->star_mesh);
+    if (resources->star_shader.id) {
+        RL_FREE(resources->star_material.maps);
+        UnloadShader(resources->star_shader);
     }
     /* UnloadMaterial would also unload the shared shader and default texture;
      * release only the map array this material allocated. */
