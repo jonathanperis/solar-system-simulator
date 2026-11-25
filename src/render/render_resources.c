@@ -104,14 +104,23 @@ static const char fragment_shader[] = SHADER_HEADER_FS
      * just above the JPEG grain between stars, then a square, so the noise
      * goes black while stars and the Milky Way's band keep their light. */
     "    if (mode > 3.5) { vec3 sky = max(surface.rgb - 0.035, 0.0); FRAG_COLOR = vec4(min(sky * sky * 2.2 + sky * 0.55, vec3(1.0)), 1.0); return; }\n"
-    /* Star: emissive, darker toward the limb where we look through more of
-     * the cooler outer photosphere (limb darkening). */
+    /* Star: emissive. Limb darkening follows the linear law
+     * I(mu) / I(1) = 1 - u (1 - mu), mu the cosine between the surface normal
+     * and the sight line: near the limb we see only the cooler, higher
+     * photosphere. u grows toward the blue (approximate visible-band values,
+     * Allen's Astrophysical Quantities), so the limb is both dimmer and
+     * redder while the centre runs to a warm white, as in white-light
+     * photographs. The map supplies texture only: its brightness about its
+     * mean linear luminance (0.41) modulates the disc by about +-10%. */
     "    if (mode > 0.5 && mode < 1.5) {\n"
-    /* The disc centre is hot enough to read near white; the limb keeps the
-     * map's orange, as in white-light photographs of the photosphere. */
     "        float mu = max(dot(n, v), 0.0);\n"
-    "        vec3 photosphere = surface.rgb * (0.7 + 0.75 * sqrt(mu));\n"
-    "        FRAG_COLOR = vec4(min(mix(photosphere, vec3(1.0, 0.95, 0.82), 0.45 * mu * mu), vec3(1.0)), 1.0);\n"
+    "        vec3 limb = 1.0 - vec3(0.55, 0.68, 0.82) * (1.0 - mu);\n"
+    "        float grain = dot(toLinear(surface.rgb), vec3(0.2126, 0.7152, 0.0722)) / 0.41;\n"
+    "        vec3 sun = vec3(1.0, 0.66, 0.30) * limb * mix(1.0, clamp(grain, 0.3, 2.0), 0.15) * 1.35;\n"
+    /* Overexposed like a photograph: the centre rolls through the same soft
+     * shoulder as lit bodies toward a pale yellow-white. */
+    "        sun = mix(sun, 1.0 - 0.04 / max(sun - 0.6, vec3(0.2)), step(0.8, sun));\n"
+    "        FRAG_COLOR = vec4(toDisplay(sun), 1.0);\n"
     "        return;\n"
     "    }\n";
 
@@ -375,7 +384,7 @@ static Texture2D build_glow(void)
         for (int x = 0; x < size; ++x) {
             double dx = (x + 0.5) / size * 2 - 1, dy = (y + 0.5) / size * 2 - 1;
             float i = render_glow_intensity(sqrt(dx * dx + dy * dy));
-            pixels[y * size + x] = (Color){(unsigned char)(255 * i), (unsigned char)(196 * i), (unsigned char)(120 * i), 255};
+            pixels[y * size + x] = (Color){(unsigned char)(255 * i), (unsigned char)(220 * i), (unsigned char)(170 * i), 255};
         }
     }
     Texture2D texture = LoadTextureFromImage(image);

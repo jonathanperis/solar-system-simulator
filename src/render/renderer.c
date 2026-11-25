@@ -710,6 +710,14 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
         }
         size_t shown = point_count - first;
         if (shown < 2) continue;
+        /* A trail drawn about its parent lies in the orbit plane: dim it
+         * edge-on like the guide it overlaps (A159). */
+        float edge = 1.0f;
+        if (parent >= 0 && (trail_frame == RENDER_TRAILS_PARENT || system->bodies[parent].kind == BODY_KIND_STAR)) {
+            const Body *p = &system->bodies[parent];
+            edge = render_edge_on_fade(vec3d_cross(vec3d_sub(body->position_m, p->position_m), vec3d_sub(body->velocity_mps, p->velocity_mps)),
+                vec3d_sub(cache->position[parent], camera_world));
+        }
         Color color = renderer_body_color(body);
         color.a = 235;
         /* Draw only as finely as the trail's on-screen length can show. */
@@ -727,7 +735,7 @@ static void draw_trails(const RenderFrameCache *cache, const SolarSystem *system
         /* And fade it where it runs in front of the body's own disc. */
         bool own_fade = surface > 0 && render_projected_radius_pixels(surface,
             vec3d_length(vec3d_sub(center, camera_world)), camera->fovy, viewport_height) >= 3.0;
-#define OWN_FADE(p) (own_fade ? render_own_disc_fade((p), camera_world, center, surface) : 1.0f)
+#define OWN_FADE(p) (edge * (own_fade ? render_own_disc_fade((p), camera_world, center, surface) : 1.0f))
         /* Adjacent segments share an endpoint. Reuse its render transform;
          * the simulation and synchronized history are immutable while drawing.
          * Opacity follows the sample's age so recent motion reads first. */
@@ -1365,6 +1373,7 @@ static void draw_orbit_guides(const FrameContext *ctx)
             : body->radius_quality == PHYSICAL_UNKNOWN ? 0.07f : 0.22f;
         if (i == ctx->view->selected) alpha = 0.5f;
         alpha *= (float)fmin(1.0, (a_pixels - RENDER_ORBIT_GUIDE_MIN_PIXELS) / 24.0 + 0.15);
+        alpha *= render_edge_on_fade(vec3d_cross(guide.periapsis, guide.ahead), vec3d_sub(parent_render, camera_world));
         Color color = renderer_body_color(body);
 
         bool spread = ctx->mode != RENDER_SCALE_REAL && !(body->kind != BODY_KIND_MOON && parent->kind == BODY_KIND_STAR);
@@ -1710,10 +1719,13 @@ static void draw_translucent_layers(const FrameContext *ctx)
             bool ring_map = planet_ring_shadow(resources, body->id, orientation, position, radius, ctx->mode, &planet_shadow);
             Matrix ring_transform = body_matrix(orientation, position, radius);
             rlDisableBackfaceCulling();
+            bool adds_light = faint_rings >= 0 && render_ring_system_adds_light(render_ring_system_at((size_t)faint_rings));
+            if (adds_light) BeginBlendMode(BLEND_ADDITIVE);
             draw_shaded(resources, faint_rings >= 0 ? &resources->ring_meshes[faint_rings] : &resources->ring, &ring_transform, SHADE_RING,
                 faint_rings >= 0 ? ring_strip(resources, faint_rings, ctx->mode) : texture_or_white(resources, RENDER_TEXTURE_SATURN_RING),
                 ring_map ? WHITE : (Color){205, 184, 145, 150},
                 light_toward_star(ctx, i), (RenderAtmosphere){0}, NULL, &planet_shadow);
+            if (adds_light) EndBlendMode();
             rlEnableBackfaceCulling();
         }
         if (clouds) {
@@ -1745,6 +1757,11 @@ static void draw_translucent_layers(const FrameContext *ctx)
     EndBlendMode();
 }
 
+static Color scaled_color(Color color, float scale)
+{
+    return (Color){(unsigned char)(color.r * scale), (unsigned char)(color.g * scale), (unsigned char)(color.b * scale), color.a};
+}
+
 /* Phase 5. The Sun's halo, added on top of everything. Far away it keeps a
  * small minimum apparent size so the Sun still reads as a bright star; this
  * is presentation only. */
@@ -1757,9 +1774,11 @@ static void draw_sun_glow(const FrameContext *ctx)
      * point may be a planet many AU away. */
     double reference = observer_body >= 0 ? ctx->distance[ctx->star] : ctx->camera_distance;
     float size = fmaxf(ctx->radius[ctx->star] * 7.0f, (float)reference * 0.05f);
+    /* Framed close up, the resolved disc needs no glare (A158). */
+    float glare = render_sun_glare_strength(body_pixels(ctx, (size_t)ctx->star, ctx->radius[ctx->star]));
     BeginBlendMode(BLEND_ADDITIVE);
-    DrawBillboard(ctx->camera, ctx->resources->glow, ctx->star_position, size, WHITE);
-    DrawBillboard(ctx->camera, ctx->resources->glow, ctx->star_position, size * 4.0f, (Color){110, 92, 70, 255});
+    DrawBillboard(ctx->camera, ctx->resources->glow, ctx->star_position, size, scaled_color(WHITE, glare));
+    DrawBillboard(ctx->camera, ctx->resources->glow, ctx->star_position, size * 4.0f, scaled_color((Color){110, 92, 70, 255}, glare));
     EndBlendMode();
 }
 
