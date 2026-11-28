@@ -2,7 +2,7 @@ import type { Download } from '@playwright/test';
 import { test, expect } from './fixtures';
 import { resolve } from 'node:path';
 
-const base = '/';
+const base = '/solar-system-simulator/';
 async function downloadText(download: Download): Promise<string> {
   const stream = await download.createReadStream();
   if (!stream) throw new Error('Expected task-owned download stream');

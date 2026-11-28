@@ -20,8 +20,8 @@ from urllib.parse import unquote, urlsplit
 from xml.etree import ElementTree
 
 
-SITE_ORIGIN = "https://solar-system-simulator.jonathanperis.tech"
-BASE_PATH = "/"
+SITE_ORIGIN = "https://jonathanperis.dev"
+BASE_PATH = "/solar-system-simulator/"
 
 
 ROUTES: dict[str, list[str]] = {

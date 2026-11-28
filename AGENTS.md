@@ -145,7 +145,7 @@ The Pages site is live and follows DESIGN.md (decided 2026-10-07, shipped in T84
 - `docs/` Astro static site: dark instrument at `/`, warm-paper notebook pages for `/learn/`, `/catalog/` and `/about/`.
 - WebAssembly build artifacts copied into the Pages output.
 - Astro owns the runtime document and loader integration; Emscripten emits JS/WASM only. The old HTML URL is an Astro-prerendered redirect.
-- Base-path-safe loader for `https://solar-system-simulator.jonathanperis.tech/`. The custom domain serves the site at `/`.
+- Base-path-safe loader for `https://jonathanperis.dev/solar-system-simulator/`. The site is a GitHub Pages project site under the `jonathanperis.dev` user domain, served at `/solar-system-simulator/` (Astro `base`).
 - One About page explains the model, data sources, build and tests; old documentation URLs redirect to it.
 - CI split between native/test/WASM artifacts and Pages deployment.
 
